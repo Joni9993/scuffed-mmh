@@ -41,7 +41,7 @@ export class Hunt {
     this._lastRender = performance.now();
 
     this.scene = new THREE.Scene();
-    this.world = createWorld(this.quest.world);
+    this.world = createWorld(opts.world || this.quest.world || 'schotterklamm', { seed: this.seed }); // [K] world id override (?world=arena) + hunt seed
     const env = this.world.env;
     this.scene.background = new THREE.Color(env.background);
     this.scene.fog = new THREE.Fog(env.fog.color, env.fog.near, env.fog.far);
@@ -68,11 +68,7 @@ export class Hunt {
     if (opts.aggro) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
-    this.bus.on('sfx', (e) => {
-      let vol = 1;
-      if (e.pos) { const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); vol = 1 / (1 + d / 25); }
-      sfx.play(e.name, { ...e, vol });
-    });
+    sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', () => { this.stats.perfect++; });
     this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) this.#onBossDead(); });
@@ -121,7 +117,7 @@ export class Hunt {
     this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
     if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, 'Sauber!', 'weak'); }
-    this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at });
+    this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at, kind: res.weak ? 'weak' : res.crit ? 'crit' : undefined }); // [K] kind
     player.afterHit(res, ah);
     this.stats.damage += res.dmg;
     this.stats.hits++;
@@ -222,6 +218,7 @@ export class Hunt {
   dispose() {
     this.app.renderer.onResize.delete(this._onResize);
     this.fx.dispose();
+    this.world.dispose?.(); // [K] gather UI, ambient audio
     this.hud.dispose();
     this.overlay?.remove();
     this.pauseEl?.remove();
