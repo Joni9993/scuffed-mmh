@@ -774,6 +774,7 @@ export class Monster {
     const blink = Math.floor(this.time * 10) % 2 === 0;
     const poison = this.poisoned, trap = this.trapped;
     for (const part of this.parts) {
+      if (part.gone) continue;
       let r = 0, g = 0, b = 0;
       if (tele && tele.includes(part.id)) { if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
       else if (this.hitFlash > 0) { r = g = b = 0.45; }

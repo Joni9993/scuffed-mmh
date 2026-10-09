@@ -107,6 +107,30 @@ describe('status API on Brocken', () => {
   });
 });
 
+describe('nest and route lookups (world agent interface with fallbacks)', () => {
+  it('flees to world.nestFor(defId) when provided, otherwise nestPoint', () => {
+    const a = make(jaggo);
+    a.ctx.world.nestFor = (id) => (id === 'jaggo' ? { x: 0, z: -30 } : null);
+    a.m.hp = a.m.maxHp * 0.25; a.m.rageUsed = true;
+    run(a.m, 0.1);
+    expect(a.m.state).toBe('flee');
+    run(a.m, 12);
+    expect(a.m.pos.z).toBeLessThan(-5); // heads for (0,-30), not for nestPoint (40,0)
+    expect(Math.abs(a.m.pos.x)).toBeLessThan(10);
+    const b = make(jaggo);
+    b.m.hp = b.m.maxHp * 0.25; b.m.rageUsed = true;
+    run(b.m, 12);
+    expect(b.m.pos.x).toBeGreaterThan(5);
+  });
+  it('wanders along world.routeFor(defId) points', () => {
+    const { ctx, m } = make(jaggo, 'wander', 200, 200); // player far away: no notice
+    ctx.world.routeFor = () => [{ x: 30, z: 0 }, { x: 30, z: 30 }];
+    m.wanderT = 0;
+    run(m, 25);
+    expect(m.pos.x).toBeGreaterThan(15);
+  });
+});
+
 describe('Jagglinge', () => {
   it('spawnPack never exceeds 3 alive', () => {
     const ctx = makeCtx();

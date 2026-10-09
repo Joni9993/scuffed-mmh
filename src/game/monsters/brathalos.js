@@ -307,6 +307,7 @@ function severTail(m) {
   clone.position.set(0, 0, 0);
   clone.rotation.set(0, 0, 0);
   clone.scale.setScalar(1);
+  clone.traverse((o) => { if (o.material) o.material = lambert({ map: o.material.map }); }); // own materials: no part flash / jitter
   const wrap = new THREE.Group();
   wrap.scale.setScalar(scale);
   wrap.add(clone);
