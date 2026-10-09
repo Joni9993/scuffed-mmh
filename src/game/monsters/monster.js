@@ -354,7 +354,7 @@ export class Monster {
     this.vel.set(0, 0, 0);
     // timeline events (authority only: spawns etc.)
     for (const e of inst.def.events ?? []) {
-      if (s.tau >= e.t && !inst.firedEvents.has(e)) { inst.firedEvents.add(e); inst.def.calls?.[e.call]?.(this, ctx, inst); }
+      if (s.tau >= e.t && !inst.firedEvents.has(e)) { inst.firedEvents.add(e); if (this.authority) inst.def.calls?.[e.call]?.(this, ctx, inst); } // [N] replayed attacks (guests) must not spawn
     }
     this.#attackHits(inst, a.t);
     if (a.t >= inst.duration) {
