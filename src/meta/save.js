@@ -9,13 +9,14 @@ export const SAVE_KEY = 'scuffedhunter.save.v1';
 export const CURRENT_VERSION = 1;
 export const MAX_SCHROTT = 999999;
 export const BAR_SLOTS = 8;
+export const PLAYER_COLORS = ['#5ad8ff', '#ff6b6b', '#7dff7d', '#ffd84a', '#c08aff', '#ff9a3a', '#f4f0d0', '#ff7ad0'];
 
 export function defaultSave() {
   const armorOwned = {};
   for (const id of Object.values(DEFAULT_ARMOR)) armorOwned[id] = true;
   return {
     version: CURRENT_VERSION,
-    name: 'Pirscher', nameSet: false,
+    name: 'Pirscher', nameSet: false, color: PLAYER_COLORS[0],
     jr: 1, schrott: 0,
     box: {},
     weapons: { gs: { tier: 1, branch: null }, db: { tier: 1, branch: null }, bow: { tier: 1, branch: null } },
@@ -57,6 +58,7 @@ export function sanitize(d) {
   const s = base;
   s.name = typeof d.name === 'string' && d.name.trim() ? cleanName(d.name) : base.name;
   s.nameSet = !!d.nameSet;
+  s.color = PLAYER_COLORS.includes(d.color) ? d.color : PLAYER_COLORS[0];
   s.jr = int(d.jr, 1, 4, 1);
   s.schrott = int(d.schrott, 0, MAX_SCHROTT, 0);
   s.created = Number(d.created) || base.created;

@@ -65,7 +65,7 @@ export function buildLoadout(save) {
     const n = Math.min(e.n, def?.max ?? 0, boxCount(save, e.id));
     if (def && n > 0 && items.length < 8) items.push({ id: e.id, n });
   }
-  return { name: save.name, weapon: { type, tier: w.tier, branch: w.branch }, armor, items, food: save.meal };
+  return { name: save.name, color: save.color, weapon: { type, tier: w.tier, branch: w.branch }, armor, items, food: save.meal };
 }
 
 /** Standard gear for the debug URL (?scene=hunt) – no save involved. */

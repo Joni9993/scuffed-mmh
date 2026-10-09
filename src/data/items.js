@@ -52,6 +52,10 @@ export const ITEMS = {
   bummspitze: { id: 'bummspitze', name: 'Bummspitze', desc: 'Bogen-Munition, kleine Explosion mit Betäubung (8).', kind: 'ammo', max: 10, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ffe14d' }, value: 3, effect: { type: 'tip' } },
 };
 
+// baseValue = Schrott value per piece (shop sells at 40 % of it, see meta/shop.js). Defaults to 2x `value`.
+const BASE = { flickbrause: 30, knisterkraut: 8, sprudelwasser: 10, blaublatt: 15, altknochen: 12, brennspitze: 6, giftspitze: 6, klebefalle: 120, blendknolle: 70 };
+for (const it of Object.values(ITEMS)) it.baseValue = BASE[it.id] ?? Math.max(1, it.value * 2);
+
 export const ITEM_IDS = Object.keys(ITEMS);
 export const getItem = (id) => ITEMS[id] ?? null;
 export const itemName = (id) => ITEMS[id]?.name ?? id;
