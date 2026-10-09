@@ -89,7 +89,8 @@ export function createBrett(ctx) {
           ${p.joined ? `<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>${p.mine ? `<button class="btn small" data-a="unpost">Zurückziehen</button>` : ''}`
           : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
       }).join('') : '<div class="note">Niemand hat etwas gepostet. Sei der Erste.</div>';
-      return `<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}<div class="sub">Gepostete Aufträge</div>${postedHtml}`;
+      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}`;
+      return posted.length ? pb + qb : qb + pb; // posts first once something is posted
     },
     click(a, d) {
       if (a === 'qsel') { sel = d.k; return true; }

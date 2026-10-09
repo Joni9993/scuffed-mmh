@@ -1,5 +1,5 @@
 /* Meta UI: station panels, hub menu, results, in-hunt item strip / toasts. Compact, vmin based, touch first. */
-.st-screen, .hub-menu { background: rgba(8, 6, 20, 0.35); }
+.st-screen { background: rgba(8, 6, 20, 0.8); }
 .st-panel {
   --f: max(10px, 2.55vmin);
   display: flex; flex-direction: column; width: min(96vw, 190vmin); height: min(94vh, 94vmin * 1.2); max-height: 94vh;
