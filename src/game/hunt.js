@@ -13,6 +13,9 @@ import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
 import { sfx } from '../audio/sfx.js';
+// [P] meta layer: loadout, inventory, items, carving, end flow
+import { HuntMeta, resolveLoadout } from './huntmeta.js';
+import { Effects } from './effects.js';
 
 const MAX_KO = 3;
 
@@ -55,7 +58,10 @@ export class Hunt {
     app.renderer.onResize.add(this._onResize);
 
     const sp = this.world.spawnPoints[0];
-    const p = new Player({ id: 'p1', name: opts.name ?? 'Pirscher', weapon: opts.weapon ?? 'gs', tier: opts.tier ?? 1, ctx: this });
+    // [P] loadout from the hub (or standard gear for the debug URL)
+    const lo = resolveLoadout(opts);
+    this.loadout = lo;
+    const p = new Player({ id: 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, ctx: this });
     p.god = !!opts.god;
     p.spawnAt(sp.x, sp.z, sp.yaw);
     this.players.push(p);
@@ -64,8 +70,10 @@ export class Hunt {
     this.rig.snap(p.pos, sp.yaw);
 
     const ms = this.world.monsterSpawns?.[this.quest.monster] ?? this.world.monsterSpawns.default;
-    this.mainMonster = this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster });
-    if (opts.aggro) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
+    // [P] gather quests have no Brocken (quest.monster = null)
+    this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster }) : null;
+    if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
+    if (opts.aggro && this.mainMonster) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
     this.bus.on('sfx', (e) => {
@@ -86,6 +94,16 @@ export class Hunt {
     this.bus.on('*', (payload, type) => app.bus?.emit(type, payload));
     this.#applyUiSettings();
     app.touch?.setVisible(true);
+    // [P]
+    this.effects = new Effects(this);
+    this.meta = new HuntMeta(this, lo);
+  }
+
+  // [P] Rotglut variants: more HP, permanent rage
+  #applyQuestVariant(m) {
+    const q = this.quest;
+    if (q.hpMul) { m.maxHp = Math.round(m.maxHp * q.hpMul); m.hp = m.maxHp; }
+    if (q.rage === 'always') { m.rageUsed = true; m.rage = true; m.rageT = 1e9; m.def.onRage?.(m, true); }
   }
 
   // ---------- ctx API used by entities
@@ -114,6 +132,7 @@ export class Hunt {
     const st = player.stats;
     const attacker = { power: st.power, critChance: st.crit, elems: st.elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul };
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping });
+    if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     res.attackerId = player.id;
     applyMonsterHit(monster, res, this);
     const at = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z };
@@ -129,8 +148,12 @@ export class Hunt {
   }
 
   // Hooks for the meta agent (items, gathering, carving). Default: nothing.
-  onItem(/* player, action ('use'|'next'|'prev'|'slot'), slot */) {}
-  onContext(/* player, 'press'|'hold' */) {}
+  onItem(player, action, slot) { this.meta?.onItem(player, action, slot); } // [P]
+  onContext(player, kind) { this.meta?.onContext(player, kind); } // [P]
+  /** [P] world effects of items: 'flash' | 'stink' | 'trap' | 'bomb' (net layer mirrors by wrapping this) */
+  spawnEffect(kind, params) { return this.effects.spawn(kind, params); }
+  /** [P] give up (pause menu) */
+  abandon() { this.#finish('fail', 'Aufgegeben'); this.meta.proceed(); }
 
   // ---------- flow
   #onPlayerDown() {
@@ -147,7 +170,7 @@ export class Hunt {
     this.result = result;
     this.reason = reason;
     this.bus.emit(result === 'win' ? 'questComplete' : 'questFailed', { quest: this.quest, time: this.quest.timeLimit - this.timeLeft, reason, stats: this.stats });
-    if (this.opts.noOverlay) return;
+    if (this.meta.onFinish(result, reason) || this.opts.noOverlay) return; // [P] carve window / results scene
     const ov = document.createElement('div');
     ov.className = 'screen ui-hit';
     ov.innerHTML = `<div class="panel"><h2>${result === 'win' ? 'Auftrag erfüllt' : 'Auftrag gescheitert'}</h2>
@@ -168,7 +191,7 @@ export class Hunt {
       ov.addEventListener('click', (e) => {
         const a = e.target.dataset?.a;
         if (a === 'go') this.setPaused(false);
-        if (a === 'quit') this.app.goto('title');
+        if (a === 'quit') this.abandon();
       });
       this.app.ui.appendChild(ov);
       this.pauseEl = ov;
@@ -189,9 +212,12 @@ export class Hunt {
     if (this.timeLeft <= 0 && !this.result) this.#finish('fail', 'Zeit abgelaufen');
     if (this.winTimer > 0) { this.winTimer -= dt; if (this.winTimer <= 0) this.#finish('win'); }
 
+    this.meta.update(dt); // [P]
+    this.effects.update(dt); // [P]
     for (const p of this.players) p.update(dt);
     for (const m of this.monsters) m.update(dt);
     this.world.update(dt, this);
+    this.meta.late(dt); // [P]
 
     const p = this.player;
     this.fx.update(dt);
@@ -210,6 +236,7 @@ export class Hunt {
     this._lastRender = now;
     this.fx.updateNumbers(dt);
     this.hud.update(this, dt);
+    this.meta.render(); // [P]
     const lp = this.player.lockPoint();
     if (lp) {
       const v = new THREE.Vector3(lp.x, lp.y, lp.z).project(this.camera);
@@ -223,6 +250,7 @@ export class Hunt {
     this.app.renderer.onResize.delete(this._onResize);
     this.fx.dispose();
     this.hud.dispose();
+    this.meta?.dispose(); this.effects?.dispose(); // [P]
     this.overlay?.remove();
     this.pauseEl?.remove();
     this.app.touch?.setVisible(false);
