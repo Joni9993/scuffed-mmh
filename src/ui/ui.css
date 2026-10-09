@@ -132,3 +132,7 @@ body.touch #touch { display: block; }
 .btn.red { background: #a82a2a; box-shadow: 0 0 0 2px #000, inset -3px -3px 0 #5a1414; }
 .btn.small { font-size: max(8px, 2vmin); padding: 1vmin 2vmin; }
 .title-sub { font-size: max(8px, 2.2vmin); opacity: .7; margin-top: 2vmin; }
+
+/* [K] zone name toast + gather ring helper */
+.hud-zone { position: absolute; left: 50%; top: 9vmin; transform: translateX(-50%); font-size: max(11px, 3.3vmin); color: #f4f0d0; text-shadow: 1px 1px 0 #000, -1px 1px 0 #000; letter-spacing: .08em; opacity: 0; transition: opacity .5s; white-space: nowrap; pointer-events: none; }
+.hud-zone.show { opacity: 1; }

@@ -25,24 +25,27 @@ export function createHud(root) {
     </div>
     <div class="lockmark"></div>
     <div class="hud-banner"></div>
+    <div class="hud-zone"></div>
     <div class="hud-center"></div>`;
   root.appendChild(el);
   const q = (s) => el.querySelector(s);
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'),
     wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), mini: q('.mini'),
-    banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'),
+    banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
   const g = refs.mini.getContext('2d');
   g.imageSmoothingEnabled = false;
+  // [K] minimap: small (64 px) / enlarged overlay (240 px) on tap
+  const MM_SMALL = 64, MM_BIG = 240;
   refs.mini.addEventListener('click', () => {
     refs.mini.classList.toggle('big');
-    const big = refs.mini.classList.contains('big');
-    refs.mini.width = refs.mini.height = big ? 128 : 64;
+    refs.mini.width = refs.mini.height = refs.mini.classList.contains('big') ? MM_BIG : MM_SMALL;
+    g.imageSmoothingEnabled = false;
   });
   const cache = {};
   const set = (k, v, fn) => { if (cache[k] !== v) { cache[k] = v; fn(v); } };
-  let bannerT = 0, centerT = 0;
+  let bannerT = 0, centerT = 0, zoneT = 0, zoneShown = 0, zoneCand = 0, zoneCandT = 0; // [K] zone toast state
 
   const api = {
     el,
@@ -84,6 +87,7 @@ export function createHud(root) {
       });
       bannerT -= dt; if (bannerT <= 0) refs.banner.classList.remove('show');
       centerT -= dt; if (centerT <= 0) refs.center.classList.remove('show');
+      zoneToast(hunt, dt); // [K]
       drawMinimap(hunt);
     },
     /** screen position in 0..1 or null */
@@ -96,31 +100,90 @@ export function createHud(root) {
     dispose() { el.remove(); },
   };
 
-  function drawMinimap(hunt) {
-    const w = hunt.world, p = hunt.player, S = refs.mini.width;
-    const b = w.bounds;
-    const sx = (x) => ((x - b.minX) / (b.maxX - b.minX)) * S, sz = (z) => (1 - (z - b.minZ) / (b.maxZ - b.minZ)) * S;
-    g.fillStyle = '#16301a';
-    g.fillRect(0, 0, S, S);
-    g.fillStyle = '#2c4a22';
-    for (const z of w.zones || []) {
-      if (z.r) { g.beginPath(); g.arc(sx(z.x), sz(z.z), (z.r / (b.maxX - b.minX)) * S, 0, 6.3); g.fill(); }
+  // ---------------------------------------------------------------- [K] zone toast + minimap
+  function zoneToast(hunt, dt) {
+    const w = hunt.world, p = hunt.player;
+    if (!w.zoneAt || !p || (w.zones?.length ?? 0) < 2) return;
+    const z = w.zoneAt(p.pos.x, p.pos.z);
+    if (z !== zoneShown) {
+      if (z !== zoneCand) { zoneCand = z; zoneCandT = 0; }
+      zoneCandT += dt;
+      if (zoneCandT > (zoneShown === 0 ? 0 : 0.35)) {
+        zoneShown = z;
+        refs.zone.textContent = `Zone ${z} – ${w.zoneName?.(z) ?? ''}`;
+        refs.zone.classList.add('show');
+        zoneT = 2.8;
+      }
+    } else zoneCand = z;
+    zoneT -= dt; if (zoneT <= 0) refs.zone.classList.remove('show');
+  }
+
+  const mm = { base: null, world: null, seen: new Set(), first: new Map() };
+  function baseMap(w) {
+    if (mm.world === w) return mm.base;
+    mm.world = w; mm.base = null; mm.seen.clear(); mm.first.clear();
+    if (w.minimap) {
+      try {
+        const c = document.createElement('canvas');
+        c.width = c.height = w.minimap.size;
+        c.getContext('2d').putImageData(new ImageData(w.minimap.data, w.minimap.size, w.minimap.size), 0, 0);
+        mm.base = c;
+      } catch { mm.base = null; }
     }
-    const px = S > 64 ? 3 : 2;
-    for (const m of hunt.monsters) {
-      if (!m.alive) continue;
-      if (m.minor) { if (!m.discovered && m.state === 'wander') continue; g.fillStyle = '#ff9a3a'; g.fillRect(sx(m.pos.x) - 1, sz(m.pos.z) - 1, px - 1, px - 1); continue; }
-      if (m.discovered || m.state !== 'wander') {
-        if (Math.floor(performance.now() / 300) % 2) { g.fillStyle = '#ff3b3b'; g.fillRect(sx(m.pos.x) - px, sz(m.pos.z) - px, px * 2, px * 2); }
-      } else {
-        g.fillStyle = '#f4f0d0'; g.font = `${S / 5}px monospace`; g.fillText('?', sx(hunt.world.monsterSpawns?.default?.x ?? 0) - S / 14, sz(hunt.world.monsterSpawns?.default?.z ?? 0) + S / 14);
+    return mm.base;
+  }
+
+  function drawMinimap(hunt) {
+    const w = hunt.world, p = hunt.player, S = refs.mini.width, big = S > MM_SMALL;
+    const b = w.bounds, span = b.maxX - b.minX;
+    const sx = (x) => ((x - b.minX) / span) * S, sz = (z) => (1 - (z - b.minZ) / (b.maxZ - b.minZ)) * S;
+    g.imageSmoothingEnabled = false;
+    const base = baseMap(w);
+    if (base) g.drawImage(base, 0, 0, S, S);
+    else { // worlds without a precomputed map (test arena)
+      g.fillStyle = '#16301a'; g.fillRect(0, 0, S, S);
+      g.fillStyle = '#2c4a22';
+      for (const z of w.zones || []) if (z.r) { g.beginPath(); g.arc(sx(z.x), sz(z.z), (z.r / span) * S, 0, 6.3); g.fill(); }
+    }
+    // zone numbers
+    if (base && w.zones?.length > 1) {
+      g.font = `bold ${Math.round(S / (big ? 11 : 8))}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (const z of w.zones) {
+        const cx = sx(z.x), cz = sz(z.z);
+        g.fillStyle = 'rgba(0,0,0,.7)'; g.fillText(String(z.id), cx + 1, cz + 1);
+        g.fillStyle = '#f4f0d0'; g.fillText(String(z.id), cx, cz);
       }
     }
-    for (const o of hunt.players) {
-      g.fillStyle = o === p ? '#5ad8ff' : '#7dff7d';
-      g.fillRect(sx(o.pos.x) - px / 2, sz(o.pos.z) - px / 2, px, px);
-      if (o === p) { g.fillRect(sx(o.pos.x) + Math.sin(o.rot) * px * 1.6 - 0.5, sz(o.pos.z) - Math.cos(o.rot) * px * 1.6 - 0.5, 1.5, 1.5); }
+    // camp
+    if (w.campPoint) { g.fillStyle = '#fff'; g.fillRect(Math.round(sx(w.campPoint.x)) - 1, Math.round(sz(w.campPoint.z)) - 1, big ? 4 : 3, big ? 4 : 3); g.fillStyle = '#c8553a'; g.fillRect(Math.round(sx(w.campPoint.x)), Math.round(sz(w.campPoint.z)), big ? 2 : 1, big ? 2 : 1); }
+    const px = big ? 3 : 2;
+    // monsters: icon only once discovered (seen within 30 m, or roared / aware)
+    const blink = Math.floor(performance.now() / 300) % 2;
+    for (const m of hunt.monsters) {
+      if (!m.alive) continue;
+      if (!mm.first.has(m)) mm.first.set(m, { x: m.pos.x, z: m.pos.z });
+      const d = Math.hypot(m.pos.x - p.pos.x, m.pos.z - p.pos.z);
+      if (d < 30 || m.discovered || (m.state && m.state !== 'wander' && m.state !== 'sleep')) mm.seen.add(m);
+      if (mm.seen.has(m)) {
+        if (m.minor) { if (d < 45 || m.discovered) { g.fillStyle = '#ff9a3a'; g.fillRect(sx(m.pos.x) - 1, sz(m.pos.z) - 1, px - 1, px - 1); } continue; }
+        if (blink) { g.fillStyle = '#000'; g.fillRect(sx(m.pos.x) - px - 1, sz(m.pos.z) - px - 1, px * 2 + 2, px * 2 + 2); g.fillStyle = '#ff3b3b'; g.fillRect(sx(m.pos.x) - px, sz(m.pos.z) - px, px * 2, px * 2); }
+      } else if (!m.minor && m === hunt.mainMonster) {
+        const f = mm.first.get(m), zid = w.zoneAt?.(f.x, f.z), zc = w.zones?.find((z) => z.id === zid) ?? f;
+        g.font = `bold ${Math.round(S / (big ? 7 : 5))}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = '#000'; g.fillText('?', sx(zc.x ?? f.x) + 1, sz(zc.z ?? f.z) + 1 + S / 12);
+        g.fillStyle = '#f4f0d0'; g.fillText('?', sx(zc.x ?? f.x), sz(zc.z ?? f.z) + S / 12);
+      }
     }
+    // players: others are green dots, the local one is an arrow showing the facing direction
+    for (const o of hunt.players) {
+      if (o === p) continue;
+      g.fillStyle = '#7dff7d'; g.fillRect(Math.round(sx(o.pos.x)) - 1, Math.round(sz(o.pos.z)) - 1, px, px);
+    }
+    const ax = sx(p.pos.x), az = sz(p.pos.z), dx = Math.sin(p.rot), dz = -Math.cos(p.rot), r = big ? 6 : 4;
+    g.fillStyle = '#000';
+    g.beginPath(); g.moveTo(ax + dx * (r + 1.5), az + dz * (r + 1.5)); g.lineTo(ax - dx * r * 0.7 - dz * (r * 0.8 + 1), az - dz * r * 0.7 + dx * (r * 0.8 + 1)); g.lineTo(ax - dx * r * 0.7 + dz * (r * 0.8 + 1), az - dz * r * 0.7 - dx * (r * 0.8 + 1)); g.closePath(); g.fill();
+    g.fillStyle = '#5ad8ff';
+    g.beginPath(); g.moveTo(ax + dx * r, az + dz * r); g.lineTo(ax - dx * r * 0.7 - dz * r * 0.8, az - dz * r * 0.7 + dx * r * 0.8); g.lineTo(ax - dx * r * 0.7 + dz * r * 0.8, az - dz * r * 0.7 - dx * r * 0.8); g.closePath(); g.fill();
   }
   return api;
 }

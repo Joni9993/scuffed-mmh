@@ -430,15 +430,16 @@ export class Player {
     if (this.rollBuf > 0 && canRoll(v) && w.canRollCancel()) { this.#startRoll(); return 0; }
     w.update(dt, inp);
 
-    const d = this.#moveDir();
+    const d = this.gatherRoot ? null : this.#moveDir(); // [K] rooted while gathering
     const busy = w.busy;
     let speedTarget = 0, wantYaw = null;
     this.sprinting = false;
+    const mud = this.ctx.world.groundType?.(this.pos.x, this.pos.z) === 'mud'; // [K] Schlammsenke: -30 % speed, no sprint
     if (d) {
       const full = Math.hypot(input.move.x, input.move.y) >= 0.97;
       this.fullPushT = full ? this.fullPushT + dt : 0;
-      const sprintWanted = !busy && !this.status.mud && (input.sprint || this.fullPushT >= 0.4); // [M] mud: no sprint
-      if (sprintWanted && canSprint(v)) {
+      const sprintWanted = !busy && !this.status.mud && (input.sprint || this.fullPushT >= 0.4); // [M] mud status: no sprint
+      if (sprintWanted && !mud && canSprint(v)) { // [K] mud ground: no sprint
         this.sprinting = true;
         speedTarget = SPRINT;
         spendStamina(v, VIT.sprintCost * dt);
@@ -447,7 +448,7 @@ export class Player {
       if (v.exhaust > 0) speedTarget = Math.min(speedTarget, WALK);
       if (busy) speedTarget = WALK * w.moveSpeedMul() * (d.mag > 0.7 ? 1.4 : 1);
       speedTarget *= this.def.speedMul?.(w) ?? 1; // [W] Rausch +15 %
-      if (this.status.mud) speedTarget *= 0.7; // [M]
+      if (this.status.mud || mud) speedTarget *= 0.7; // [M] mud status / [K] mud ground (not stacked)
       wantYaw = yawOf(d.x, d.z);
     } else this.fullPushT = 0;
 

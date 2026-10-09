@@ -83,6 +83,7 @@ const startOpts = {
   mode: params.get('mode') || undefined, // [N] lobby: host | join
   code: params.get('code') || undefined,
   name: params.get('name') || undefined,
+  world: params.get('world') || undefined, // [K] ?world=arena for the flat test arena
 };
 app.goto(sceneName, startOpts);
 loop.start();
