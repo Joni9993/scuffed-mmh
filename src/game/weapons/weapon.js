@@ -206,7 +206,7 @@ export class WeaponState {
   canRollCancel() {
     const m = this.move;
     if (!m) return true;
-    if (m.kind === 'charge') return false;
+    if (m.kind === 'charge') return !!m.rollable; // [W] bow: roll out of a draw
     if (m.kind === 'hold') return true;
     return m.rollCancelAt !== undefined && this.t >= m.rollCancelAt;
   }

@@ -1,7 +1,7 @@
 // Damage rules (GDD 3.5). Pure functions, unit-tested.
 
-export const HITSTOP = { light: 0.04, medium: 0.07, heavy: 0.12 };
-export const SHAKE = { light: 0.08, medium: 0.18, heavy: 0.34 };
+export const HITSTOP = { none: 0, light: 0.04, medium: 0.07, heavy: 0.12 }; // [W] 'none' for projectiles
+export const SHAKE = { none: 0, light: 0.08, medium: 0.18, heavy: 0.34 };
 export const CRIT_MUL = 1.25;
 export const GLITCH_MUL = 1.5;
 export const SAUBER_MUL = 1.15;
