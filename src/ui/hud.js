@@ -15,6 +15,7 @@ export function createHud(root) {
       <div class="bar st"><i class="fill"></i></div>
       <div class="bar wu"><i class="fill"></i></div>
       <div class="wstat"></div>
+      <div class="hud-status"></div><!-- [M] -->
     </div>
     <div class="hud-party"></div>
     <div class="hud-tr">
@@ -29,7 +30,7 @@ export function createHud(root) {
   const q = (s) => el.querySelector(s);
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'),
-    wstat: q('.wstat'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), mini: q('.mini'),
+    wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'),
   };
   const g = refs.mini.getContext('2d');
@@ -68,6 +69,12 @@ export function createHud(root) {
         const pips = stat.max ? Array.from({ length: stat.max }, (_, i) => `<b class="${i < stat.level ? 'on' : ''}"></b>`).join('') : '';
         refs.wstat.innerHTML = `${pips}<span>${stat.sauber ? 'Sauber!' : stat.text}</span>`;
         refs.wstat.classList.toggle('sauber', !!stat.sauber);
+      });
+      // [M] player status icons (Schlamm / Brennen / Gift), tiny
+      const stKeys = Object.keys(p.status || {}).join(',');
+      set('pstatus', stKeys, (x) => {
+        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift' };
+        refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k}">${names[k] ?? k}</span>`).join('') : '';
       });
       set('timer', mmss(Math.max(0, hunt.timeLeft)), (x) => (refs.timer.textContent = x));
       set('ko', hunt.teamKo, (x) => { refs.ko.textContent = `Umgekippt ${x}/3`; refs.ko.classList.toggle('bad', x >= 2); });

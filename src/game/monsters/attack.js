@@ -49,6 +49,12 @@ export class AttackInstance {
     return t < this.tgWall ? t * (tg / this.tgWall) : tg + (t - this.tgWall) * this.speed;
   }
 
+  /** def time -> wall time (inverse of tau) */
+  wall(tau) {
+    const tg = this.def.telegraph;
+    return tau < tg ? tau * (this.tgWall / tg) : this.tgWall + (tau - tg) / this.speed;
+  }
+
   sample(t) {
     const tau = this.tau(t);
     let s;

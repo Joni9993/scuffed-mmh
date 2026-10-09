@@ -32,7 +32,8 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
   const zone = opts.zoneOverride ?? part.factor;
   const crit = rng() < (attacker.critChance ?? 0.05);
   let elemSum = 0;
-  for (const [k, v] of Object.entries(attacker.elems || {})) elemSum += v * ((part.elem?.[k] ?? 0) / 100);
+  const elemBy = {}; // [M] per-element damage (Barrotz mud armour breaks on shock)
+  for (const [k, v] of Object.entries(attacker.elems || {})) { const e = v * ((part.elem?.[k] ?? 0) / 100); elemSum += e; elemBy[k] = Math.round(e); }
   const dmg = calcDamage({
     power: attacker.power, mv: hit.mv, zone, crit,
     glitch: attacker.glitch, sauber: attacker.sauber,
@@ -43,7 +44,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
   const weak = zone >= WEAK_THRESHOLD;
   const size = hit.hitstop || 'light';
   return {
-    dmg: total, elemDmg: Math.round(dmg.elemDmg), crit, weak, zone,
+    dmg: total, elemDmg: Math.round(dmg.elemDmg), elemBy, crit, weak, zone,
     blunt: (hit.blunt || 0) * (part.blunt === false ? 0 : 1),
     stunEligible: !!part.stunPart,
     wucht: hit.wucht || 0,

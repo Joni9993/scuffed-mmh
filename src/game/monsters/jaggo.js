@@ -1,6 +1,7 @@
 import { buildRaptor } from './raptor.js';
 import { mTrack } from './monster.js';
 import { yawOf } from '../../core/math.js';
+import { spawnPack } from './jaggling.js';
 
 const SC = 1.3;
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -73,12 +74,9 @@ const rudelruf = {
   hits: [{ t0: 1.0, t1: 1.1, shape: 'sphere', at: [0, 0.8, 0], radius: 8, dmg: 0, knock: 'pin' }],
   events: [{ t: 1.0, call: 'summon' }],
   calls: {
+    // authority only: Jagglinge appear around Jaggo (max 3 alive in total)
     summon(m, ctx) {
-      const n = Math.min(2, 3 - ctx.countMonsters('jaggling'));
-      for (let i = 0; i < n; i++) {
-        const a = m.rot + (i === 0 ? 1 : -1) * 1.1;
-        ctx.spawnMonster('jaggling', { x: m.pos.x + Math.sin(a) * 4, z: m.pos.z + Math.cos(a) * 4, state: 'combat' });
-      }
+      spawnPack(ctx, m.pos, 2, { state: 'combat', spread: 4, target: m.target });
     },
   },
   pose: mTrack([
