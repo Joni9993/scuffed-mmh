@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#120d1c" />
+  <title>Scuffed Hunter</title>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="fxlayer"></div>
+  <div id="flash"></div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="sh-rgb" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%">
+      <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+      <feOffset in="r" id="sh-rgb-r" dx="6" dy="0" result="ro" />
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb" />
+      <feBlend in="ro" in2="gb" mode="screen" />
+    </filter>
+  </svg>
+  <div id="ui"></div>
+  <div id="portrait"><div>Bitte quer halten</div><small>Scuffed Hunter wird im Querformat gespielt.</small></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
