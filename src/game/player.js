@@ -50,6 +50,7 @@ export class Player {
     this.rollDir = { x: 0, z: 1 };
     this.rollStart = { x: 0, y: 0, z: 0 };
     this.rollFree = false;
+    this.rollCfg = null;
     this.rollBuf = 0;
     this.sinceRoll = 99;
     this.fullPushT = 0;
@@ -86,6 +87,7 @@ export class Player {
         self.glitchT = 0;
         return true;
       },
+      player: self, // [W] weapons that need aim / sinceRoll / ctx (bow, dual blades)
       drain: (amt) => spendStamina(this.v, amt),
       exhausted: () => this.v.exhaust > 0,
       onChargeLevel: (lvl) => { this.ctx.bus.emit('sfx', { name: 'charge', pos: this.pos, level: lvl }); this.flash = 0.12; },
@@ -261,6 +263,7 @@ export class Player {
     if (d) dir = { x: d.x, z: d.z };
     else if (lp) { const dx = this.pos.x - lp.x, dz = this.pos.z - lp.z, l = Math.hypot(dx, dz) || 1; dir = { x: dx / l, z: dz / l }; }
     else dir = { x: -Math.sin(this.rot), z: -Math.cos(this.rot) };
+    this.rollCfg = this.def.rollOverride?.(this.weapon) ?? null; // [W] Rausch dash {duration, dist}
     this.rollDir = dir;
     this.rollStart = { x: this.pos.x, y: this.pos.y, z: this.pos.z };
     this.rot = yawOf(dir.x, dir.z);
@@ -278,7 +281,12 @@ export class Player {
   update(dt) {
     const ctx = this.ctx, input = ctx.input;
     this.lastState = this.state;
-    if (consumeHitstop(this, dt)) { this.#animate(dt, 0); return; }
+    if (consumeHitstop(this, dt)) {
+      // [W] keep buffering button edges during hitstop (a press landing in a freeze frame must not be lost: B-hold finishers)
+      if (this.state === 'free') this.weapon.feed(dt, { A: input.b.attack, B: input.b.special });
+      this.#animate(dt, 0);
+      return;
+    }
     this.time += dt;
     this.stateT += dt;
     this.invuln = Math.max(0, this.invuln - dt);
@@ -358,6 +366,7 @@ export class Player {
       else speedTarget = WALK * clamp(d.mag / 0.7, 0.5, 1);
       if (v.exhaust > 0) speedTarget = Math.min(speedTarget, WALK);
       if (busy) speedTarget = WALK * w.moveSpeedMul() * (d.mag > 0.7 ? 1.4 : 1);
+      speedTarget *= this.def.speedMul?.(w) ?? 1; // [W] Rausch +15 %
       wantYaw = yawOf(d.x, d.z);
     } else this.fullPushT = 0;
 
@@ -398,9 +407,10 @@ export class Player {
   #updateRoll(dt, inp) {
     this.rollT += dt;
     this.weapon.feed(dt, inp);
-    const s = rollSpeed(this.rollT);
+    const rc = this.rollCfg; // [W]
+    const s = rc ? ((2 * rc.dist) / rc.duration) * Math.max(0, 1 - this.rollT / rc.duration) : rollSpeed(this.rollT);
     this.vel.x = this.rollDir.x * s; this.vel.z = this.rollDir.z * s;
-    if (this.rollT >= ROLL.duration) { this.#enter('free'); this.sinceRoll = 0; this.rollDir = { x: 0, z: 0 }; }
+    if (this.rollT >= (rc?.duration ?? ROLL.duration)) { this.#enter('free'); this.sinceRoll = 0; this.rollDir = { x: 0, z: 0 }; }
   }
 
   #integrate(dt) {
@@ -459,12 +469,12 @@ export class Player {
   #animate(dt, speed) {
     const p = this.pose, w = this.weapon;
     const t = {};
-    Object.assign(t, REST);
+    Object.assign(t, REST, this.def.rest); // [W] weapon-specific ready pose
     const wp = w.pose();
     let airY = 0;
     switch (this.state) {
       case 'roll': {
-        const k = this.rollT / ROLL.duration;
+        const k = this.rollT / (this.rollCfg?.duration ?? ROLL.duration);
         Object.assign(t, { prx: 360 * Math.min(1, k * 1.05), py: -0.45, tx: 35, lrx: 85, rrx: 85, arx: 70, alx: 70, sw: 120, hx: 20 });
         break;
       }
@@ -504,6 +514,7 @@ export class Player {
     const sh = this.rig.shadow;
     sh.position.set(this.pos.x, this.pos.y + 0.05, this.pos.z);
     sh.scale.setScalar(1 - Math.min(0.5, airY * 0.2));
+    this.def.updateMesh?.(w, this.weaponMesh, dt, this); // [W] weapon-specific visuals (Rausch glow, bow string)
     // blade glow while charging
     const glow = this.weaponMesh?.userData.glow;
     if (glow) {

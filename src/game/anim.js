@@ -6,11 +6,12 @@
 //  hx head pitch  hy head yaw
 //  arx arz (right arm)  alx alz (left arm)   sw (weapon pitch relative to right arm)
 //  lrx rrx (left / right leg)
-// Blade pitch angle (0 = down, 90 = forward, 180 = up) = arx + sw.
+// Blade pitch angle (0 = down, 90 = forward, 180 = up) = arx + sw. Off-hand weapon (dual blades): alx + sl.
 
 export const REST = {
   py: 0, prx: 0, pry: 0, tx: 3, ty: 0, tz: 0, hx: 0, hy: 0,
   arx: 25, arz: 8, sw: 155, alx: -12, alz: 9, lrx: 0, rrx: 0,
+  sl: 155, // [W] off-hand weapon pitch relative to the left arm (dual blades)
 };
 
 const ss = (t) => t * t * (3 - 2 * t);
