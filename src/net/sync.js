@@ -27,7 +27,7 @@ export class HuntNet {
     this.peers = new Map();       // id -> { id, name, rtt, player, buf }
     this.monBuf = new Map();      // Gast: Brocken-ID -> SnapBuffer
     this.hits = new Dedupe();
-    this.stats = { txP: 0, txM: 0, rxP: 0, rxM: 0, hitsSent: 0, hitsApplied: 0, hitsDup: 0 };
+    this.stats = { txP: 0, txM: 0, rxP: 0, rxM: 0, hitsSent: 0, hitsApplied: 0, hitsDup: 0, dmgApplied: 0, dmgSent: 0 };
     this.accP = 0; this.accM = 0;
     this.offs = [];
     this._fxHooked = false; this._inFx = false;
@@ -44,6 +44,7 @@ export class HuntNet {
   /** Gast: eigener Treffer -> Host (combat.applyMonsterHit). Lokales Feedback sofort. */
   sendHit(monster, res) {
     this.stats.hitsSent++;
+    this.stats.dmgSent += Math.round(res.dmg);
     this.net.sendHost(MSG.HIT, encodeHit(monster.id, res, this.myId));
     monster.hitFlash = 0.12;
   }
@@ -125,8 +126,10 @@ export class HuntNet {
       const m = hunt.monsters.find((x) => x.id === h.monsterId);
       if (!m || !m.alive) return null;
       h.res.attackerId = from; // dem Absender vertrauen, nicht der Nutzlast
+      const before = m.hp;
       const ev = m.applyDamage(h.res);
       this.stats.hitsApplied++;
+      this.stats.dmgApplied += before - m.hp;
       const hp = m.hurtParts().find((q) => q.part.id === h.res.partId);
       if (hp) hunt.fx.number({ x: hp.pos.x, y: hp.pos.y + 0.6, z: hp.pos.z }, h.res.dmg, h.res.weak ? 'weak' : h.res.crit ? 'crit' : 'hit');
       if (hp) hunt.fx.spark(hp.pos, 6, '#ffffff', 4);
