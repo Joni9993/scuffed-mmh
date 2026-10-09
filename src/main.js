@@ -79,6 +79,7 @@ const startOpts = {
   god: flag('god'),
   nofx: flag('nofx'),
   aggro: flag('aggro'),
+  world: params.get('world') || undefined, // [K] ?world=arena for the flat test arena
 };
 app.goto(sceneName, startOpts);
 loop.start();
