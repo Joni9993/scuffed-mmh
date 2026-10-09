@@ -13,6 +13,7 @@ import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
 import { sfx } from '../audio/sfx.js';
+import { Projectiles } from './projectiles.js'; // [W]
 
 const MAX_KO = 3;
 
@@ -51,6 +52,9 @@ export class Hunt {
     this.rig = createCameraRig(this.camera, (x, z) => this.world.heightAt(x, z));
     this.fx = createFx({ scene: this.scene, camera: this.camera, nofx: !!opts.nofx });
     this.viz = createDebugViz(this.scene);
+    // [W] generic projectile system (arrows, later monster projectiles)
+    this.projectiles = new Projectiles(this);
+    this.scene.add(this.projectiles.group);
     this._onResize = (aspect) => { this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); };
     app.renderer.onResize.add(this._onResize);
 
@@ -112,7 +116,9 @@ export class Hunt {
 
   playerHit(player, monster, hp, ah) {
     const st = player.stats;
-    const attacker = { power: st.power, critChance: st.crit, elems: st.elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul };
+    // [W] ah.elems = extra per-hit elements (fire arrow tips)
+    const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul };
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping });
     res.attackerId = player.id;
     applyMonsterHit(monster, res, this);
@@ -191,6 +197,7 @@ export class Hunt {
 
     for (const p of this.players) p.update(dt);
     for (const m of this.monsters) m.update(dt);
+    this.projectiles.update(dt); // [W]
     this.world.update(dt, this);
 
     const p = this.player;
@@ -221,6 +228,7 @@ export class Hunt {
 
   dispose() {
     this.app.renderer.onResize.delete(this._onResize);
+    this.projectiles.dispose(); // [W]
     this.fx.dispose();
     this.hud.dispose();
     this.overlay?.remove();
