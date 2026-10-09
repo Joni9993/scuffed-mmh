@@ -212,8 +212,10 @@ const feuer = {
 
 // ---- 2a. Aufflug: duckt sich, Flügel spreizen, Abheben (Flug-Zustand beginnt am Ende)
 const aufflug = {
-  id: 'brathalos_aufflug', range: [0, 40], weight: 2, cooldown: 14, telegraph: 0.6, flashParts: ['wingL', 'wingR'], duration: 1.8,
-  cond: (m) => !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
+  // Take-off cadence is driven by m.flyCd (see `tick`): one take-off every ~30-45 s (21-33 s of ground time + flight), picked sooner when the hunter is far away / in Rotglut.
+  id: 'brathalos_aufflug', range: [0, 40], cooldown: 0, telegraph: 0.6, flashParts: ['wingL', 'wingR'], duration: 1.8,
+  weight: (m, dist) => (dist > 14 ? 5 : dist > 8 ? 3 : 1.5) + (m.rage ? 1.5 : 0),
+  cond: (m) => m.flyCd <= 0 && !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
   hits: [],
   events: [{ t: 0.7, call: 'dust', all: true }],
   calls: { dust(m) { m.ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.4, z: m.pos.z }, 22, '#a08a60', 6); m.ctx.fx.shake(0.15, 0.4); } },
@@ -329,7 +331,7 @@ export const brathalos = {
   bodyRadius: 1.7,
   walk: 2.6, run: 6.2, detect: 32, prefer: 6, turn: 0.85,
   drops: ['brathalos_schuppe', 'brathalos_membran', 'glutsack', 'brathalos_rubin'],
-  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, attack: 'brathalos_sturz', radius: 11, speed: 9, angSpeed: 0.5, dropDamage: 250 },
+  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 21, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 11, speed: 9, angSpeed: 0.5, dropDamage: 250 },
   rageAttack: 'brathalos_bruellen',
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 350, jitter: 0.07, elem: { fire: 0, shock: 25 }, blunt: true, stunPart: true,
@@ -361,6 +363,16 @@ export const brathalos = {
   onAttackEnd(m, id) {
     if (id === 'brathalos_aufflug') m.beginFly();
     else if (id === 'brathalos_sturz') { m.air = 0; m.setState('combat'); m.recover = 0.9; }
+  },
+  init(m) { m.flyCd = m.def.fly.firstGap; m._wasUp = false; },
+  /** Flight cadence: the gap timer only runs on the ground; a fresh 21-33 s ground gap is rolled each time he comes down. */
+  tick(m, dt) {
+    const up = m.flying || m.attack?.id === 'brathalos_aufflug';
+    if (up) m._wasUp = true;
+    else if (m._wasUp) {
+      m._wasUp = false;
+      if (m.authority) { const f = m.def.fly; m.flyCd = f.gapMin + m.rng() * (f.gapMax - f.gapMin); }
+    } else if (m.state === 'combat' || m.state === 'enrage') m.flyCd -= dt;
   },
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
   poseHook(m, t) {

@@ -355,13 +355,16 @@ export class Monster {
       if (dist < def.range[0] || dist > def.range[1]) continue;
       if (def.cond && !def.cond(this, this.ctx)) continue;
       cands.push(def);
-      total += def.weight ?? 1;
+      total += this._weightOf(def, dist);
     }
     if (!cands.length) return null;
     let r = this.rng() * total;
-    for (const c of cands) { r -= c.weight ?? 1; if (r <= 0) return c; }
+    for (const c of cands) { r -= this._weightOf(c, dist); if (r <= 0) return c; }
     return cands[cands.length - 1];
   }
+
+  /** Attack weight; defs may use a function (m, dist) -> number. */
+  _weightOf(def, dist) { const w = def.weight; return typeof w === 'function' ? w(this, dist) : (w ?? 1); }
 
   // ---------- targeting
   _pickTarget() {
