@@ -10,6 +10,7 @@ import { appBus } from './core/events.js';
 import { settings } from './core/settings.js';
 import { scenes } from './scenes/index.js';
 import { sfx } from './audio/sfx.js';
+import { saveStore } from './meta/save.js'; // [P]
 
 const params = new URLSearchParams(location.search);
 const flag = (k) => params.get(k) === '1' || params.get(k) === 'true';
@@ -61,7 +62,7 @@ window.__SH = {
   press(action, ms = 100) { const a = ACTIONS[action]; if (!a) throw new Error(`unknown action ${action}`); input.press(a, ms); },
   stick(x = 0, y = 0) { input.setStick(x, y, 'dbg'); },
   camera(dx, dy) { input.addCamera(dx, dy); },
-  save: {},
+  save: saveStore, // [P] get() set(obj) reset() give(id, n) flush() exportCode() importCode(code) update(fn)
   goto: (name, opts) => app.goto(name, opts),
   step: (n = 1) => loop.step(n),
   /** n sim steps WITHOUT rendering (fast, deterministic) */
@@ -79,6 +80,10 @@ const startOpts = {
   god: flag('god'),
   nofx: flag('nofx'),
   aggro: flag('aggro'),
+  mode: params.get('mode') || undefined, // [N] lobby: host | join
+  code: params.get('code') || undefined,
+  name: params.get('name') || undefined,
+  world: params.get('world') || undefined, // [K] ?world=arena for the flat test arena
 };
 app.goto(sceneName, startOpts);
 loop.start();

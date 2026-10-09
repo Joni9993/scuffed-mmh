@@ -49,6 +49,11 @@ export function buildHunterRig({ tunic = 'cloth', weaponMesh = null } = {}) {
   const slot = new THREE.Group();
   R.hand.add(slot);
   if (weaponMesh) slot.add(weaponMesh);
+  // [W] off-hand slot: a weapon mesh may carry `userData.offhand` (second blade of the dual blades)
+  const slotL = new THREE.Group();
+  L.hand.add(slotL);
+  const setOff = (m) => { slotL.clear(); if (m?.userData.offhand) slotL.add(m.userData.offhand); };
+  setOff(weaponMesh);
 
   const mkLeg = (x) => {
     const l = new THREE.Group();
@@ -69,7 +74,7 @@ export function buildHunterRig({ tunic = 'cloth', weaponMesh = null } = {}) {
 
   const rig = {
     root, pelvis, torso, head, slot, shadow, weaponMesh,
-    swapWeapon(mesh) { slot.clear(); if (mesh) slot.add(mesh); rig.weaponMesh = mesh; },
+    swapWeapon(mesh) { slot.clear(); if (mesh) slot.add(mesh); setOff(mesh); rig.weaponMesh = mesh; },
     apply(p) {
       pelvis.position.y = 0.85 + p.py;
       pelvis.rotation.set(p.prx * D, p.pry * D, 0);
@@ -78,6 +83,7 @@ export function buildHunterRig({ tunic = 'cloth', weaponMesh = null } = {}) {
       R.a.rotation.set(-p.arx * D, 0, -p.arz * D);
       L.a.rotation.set(-p.alx * D, 0, p.alz * D);
       slot.rotation.set(-p.sw * D, 0, 0);
+      slotL.rotation.set(-(p.sl ?? 155) * D, 0, 0);
       legL.rotation.x = -p.lrx * D;
       legR.rotation.x = -p.rrx * D;
     },

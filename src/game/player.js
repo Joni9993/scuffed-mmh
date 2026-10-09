@@ -50,6 +50,7 @@ export class Player {
     this.rollDir = { x: 0, z: 1 };
     this.rollStart = { x: 0, y: 0, z: 0 };
     this.rollFree = false;
+    this.rollCfg = null;
     this.rollBuf = 0;
     this.sinceRoll = 99;
     this.fullPushT = 0;
@@ -59,6 +60,9 @@ export class Player {
     this.lock = null; // { monster, idx }
     this.flinkfuss = 0; // Macke level (0..2)
     this.flash = 0;
+    this.status = {}; // [M] mud / burn / poison: { t, rollsLeft }
+    this.pushT = 0; this.pushV = { x: 0, z: 0 }; // [M] wind push
+    this._dotAcc = 0;
 
     this.setWeapon(weapon, tier);
     this.pose = { ...REST };
@@ -86,6 +90,7 @@ export class Player {
         self.glitchT = 0;
         return true;
       },
+      player: self, // [W] weapons that need aim / sinceRoll / ctx (bow, dual blades)
       drain: (amt) => spendStamina(this.v, amt),
       exhausted: () => this.v.exhaust > 0,
       onChargeLevel: (lvl) => { this.ctx.bus.emit('sfx', { name: 'charge', pos: this.pos, level: lvl }); this.flash = 0.12; },
@@ -153,6 +158,15 @@ export class Player {
     }
     if (this.invuln > 0) return 'iframe';
     const w = this.weapon;
+    // [M] wind push (Fluegelboee): no damage, interrupts charging, ignores block / armour
+    if (h.knock === 'push') {
+      const dx = this.pos.x - (h.sourcePos?.x ?? this.pos.x), dz = this.pos.z - (h.sourcePos?.z ?? this.pos.z), l = Math.hypot(dx, dz) || 1;
+      this.push({ x: dx / l, z: dz / l }, h.push ?? 3);
+      w.cancel();
+      this.ctx.fx.shake(0.12, 0.2);
+      this.ctx.bus.emit('sfx', { name: 'swing', pos: this.pos, heavy: true });
+      return 'hit';
+    }
     const sa = w.superArmor();
     let dmg = h.dmg * (1 - protectReduction(this.protect)) * (h.dmgMul ?? 1);
 
@@ -184,6 +198,7 @@ export class Player {
     this.ctx.bus.emit('sfx', { name: 'hurt', pos: this.pos });
     this.ctx.bus.emit('playerHit', { player: this, dmg, key: h.key });
     if (this.v.hp <= 0) { this.#ko(); return 'hit'; }
+    if (h.status) this.addStatus(h.status.type, h.status); // [M]
 
     const knock = h.knock ?? 'flinch';
     if (sa === 'all') return 'hit';
@@ -197,13 +212,69 @@ export class Player {
     const dx = this.pos.x - h.sourcePos.x, dz = this.pos.z - h.sourcePos.z, l = Math.hypot(dx, dz) || 1;
     this.vel.x += (dx / l) * d * 4; this.vel.z += (dz / l) * d * 4;
   }
+  // ---- [M] status effects (docs/PHASE2_CONTRACTS.md): mud (slower, no sprint), burn (3 dmg/s), poison (dmg over time)
+  /** Push the player `dist` metres along `dir` (unit {x,z}) over ~0.3 s. Does not cancel by itself. */
+  push(dir, dist = 3, dur = 0.3) {
+    this.pushV.x = dir.x * dist / dur; this.pushV.z = dir.z * dist / dur;
+    this.pushT = dur;
+  }
+  /** type: 'mud' | 'burn' | 'poison'; opts {t, rolls}. */
+  addStatus(type, opts = {}) {
+    if (this.state === 'ko') return false;
+    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 } }[type];
+    if (!base) return false;
+    const had = !!this.status[type];
+    this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
+    if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
+    return true;
+  }
+  /** Remove one status (or all when no type given), e.g. Sprudelwasser. */
+  clearStatus(type) {
+    for (const k of Object.keys(this.status)) {
+      if (type && k !== type) continue;
+      delete this.status[k];
+      this.ctx.bus.emit('playerStatus', { player: this, type: k, on: false });
+    }
+  }
+  #statusOnRoll() {
+    for (const k of ['mud', 'burn']) {
+      const s = this.status[k];
+      if (!s) continue;
+      if (--s.rollsLeft <= 0) { this.clearStatus(k); this.ctx.fx.number(this.#top(), k === 'burn' ? 'Gelöscht' : 'Abgeschüttelt', 'heal'); }
+    }
+  }
+  #tickStatus(dt) {
+    const st = this.status;
+    if (!st.mud && !st.burn && !st.poison) return;
+    const fx = this.ctx.fx;
+    if (st.mud && (st.mud.t -= dt) <= 0) this.clearStatus('mud');
+    if (st.burn) {
+      if ((st.burn.t -= dt) <= 0) this.clearStatus('burn');
+      else { this.#dot(3 * dt); if (Math.random() < dt * 10) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, Math.random() < 0.5 ? '#ff7a1a' : '#ffd060', 1.5); }
+    }
+    if (st.poison) {
+      if ((st.poison.t -= dt) <= 0) this.clearStatus('poison');
+      else { this.#dot(1.5 * dt); if (Math.random() < dt * 4) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, '#9be15a', 1); }
+    }
+    if (st.mud && Math.random() < dt * 3) fx.spark({ x: this.pos.x, y: this.pos.y + 0.5, z: this.pos.z }, 1, '#6a4a28', 1);
+  }
+  /** Burn / poison damage: never lethal (leaves 1 HP), shows a number about once a second. */
+  #dot(n) {
+    if (this.god || this.state === 'ko') return;
+    const d = Math.min(n, this.v.hp - 1);
+    if (d <= 0) return;
+    damageVitals(this.v, d);
+    this._dotAcc += d;
+    if (this._dotAcc >= 3) { this.ctx.fx.number(this.#top(), Math.round(this._dotAcc), 'hurt'); this._dotAcc = 0; }
+  }
+
   #top() { return { x: this.pos.x, y: this.pos.y + 2.0, z: this.pos.z }; }
   #front() { return { x: this.pos.x + Math.sin(this.rot) * 0.6, y: this.pos.y + 1.2, z: this.pos.z + Math.cos(this.rot) * 0.6 }; }
 
   #glitchCounter() {
     this.glitchT = GLITCH_WINDOW;
     this.glitchCd = 0.5;
-    time.slowmo(0.35, 0.25);
+    if (!this.ctx.net) time.slowmo(0.35, 0.25); // [N] no slow-mo in coop (would slow the host's whole sim)
     this.ctx.fx.glitch(0.35);
     this.ctx.fx.number(this.#top(), 'GLITCH!', 'glitch');
     this.ctx.bus.emit('sfx', { name: 'glitch', pos: this.pos });
@@ -222,6 +293,7 @@ export class Player {
 
   respawn(x, z) {
     this.v.hp = this.v.maxHp; this.v.bruise = 0; this.v.stamina = this.v.maxStamina; this.v.exhaust = 0;
+    this.clearStatus(); // [M]
     this.state = 'free'; this.stateT = 0; this.invuln = 2.0; this.lock = null;
     this.weapon.reset(); this.weapon.wucht = 0;
     this.spawnAt(x, z, this.rot);
@@ -261,6 +333,7 @@ export class Player {
     if (d) dir = { x: d.x, z: d.z };
     else if (lp) { const dx = this.pos.x - lp.x, dz = this.pos.z - lp.z, l = Math.hypot(dx, dz) || 1; dir = { x: dx / l, z: dz / l }; }
     else dir = { x: -Math.sin(this.rot), z: -Math.cos(this.rot) };
+    this.rollCfg = this.def.rollOverride?.(this.weapon) ?? null; // [W] Rausch dash {duration, dist}
     this.rollDir = dir;
     this.rollStart = { x: this.pos.x, y: this.pos.y, z: this.pos.z };
     this.rot = yawOf(dir.x, dir.z);
@@ -268,6 +341,7 @@ export class Player {
     this.rollFree = free;
     this.perfectKeys.clear();
     this.weapon.cancel();
+    this.#statusOnRoll(); // [M]
     if (!free) spendStamina(this.v, VIT.rollCost);
     this.#enter('roll');
     this.rollBuf = 0;
@@ -278,7 +352,12 @@ export class Player {
   update(dt) {
     const ctx = this.ctx, input = ctx.input;
     this.lastState = this.state;
-    if (consumeHitstop(this, dt)) { this.#animate(dt, 0); return; }
+    if (consumeHitstop(this, dt)) {
+      // [W] keep buffering button edges during hitstop (a press landing in a freeze frame must not be lost: B-hold finishers)
+      if (this.state === 'free') this.weapon.feed(dt, { A: input.b.attack, B: input.b.special });
+      this.#animate(dt, 0);
+      return;
+    }
     this.time += dt;
     this.stateT += dt;
     this.invuln = Math.max(0, this.invuln - dt);
@@ -290,6 +369,7 @@ export class Player {
     if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
     tickPrellung(this.v, dt);
     tickStamina(this.v, dt);
+    this.#tickStatus(dt); // [M]
 
     const inp = { A: input.b.attack, B: input.b.special };
     const w = this.weapon;
@@ -338,19 +418,28 @@ export class Player {
       if (lk.released && lk.lastHeldMs >= 500) this.lock = null;
       if (this.lock && (!this.lock.monster.alive || Math.hypot(this.lock.monster.pos.x - this.pos.x, this.lock.monster.pos.z - this.pos.z) > 70)) this.lock = null;
     }
+    // [P] item use commits the hunter: rooted, no attacks; a roll cancels only once the effect landed (Items sets itemUse)
+    if (this.itemUse) {
+      if (this.rollBuf > 0 && canRoll(v) && this.itemUse.t >= this.itemUse.cancelAt) { this.itemUse = null; this.#startRoll(); return 0; }
+      const kb = Math.exp(-14 * dt);
+      this.vel.x *= kb; this.vel.z *= kb;
+      this.#processHits();
+      return 0;
+    }
     // roll (also cancels recoveries after the move's cancel window)
     if (this.rollBuf > 0 && canRoll(v) && w.canRollCancel()) { this.#startRoll(); return 0; }
     w.update(dt, inp);
 
-    const d = this.#moveDir();
+    const d = this.gatherRoot ? null : this.#moveDir(); // [K] rooted while gathering
     const busy = w.busy;
     let speedTarget = 0, wantYaw = null;
     this.sprinting = false;
+    const mud = this.ctx.world.groundType?.(this.pos.x, this.pos.z) === 'mud'; // [K] Schlammsenke: -30 % speed, no sprint
     if (d) {
       const full = Math.hypot(input.move.x, input.move.y) >= 0.97;
       this.fullPushT = full ? this.fullPushT + dt : 0;
-      const sprintWanted = !busy && (input.sprint || this.fullPushT >= 0.4);
-      if (sprintWanted && canSprint(v)) {
+      const sprintWanted = !busy && !this.status.mud && (input.sprint || this.fullPushT >= 0.4); // [M] mud status: no sprint
+      if (sprintWanted && !mud && canSprint(v)) { // [K] mud ground: no sprint
         this.sprinting = true;
         speedTarget = SPRINT;
         spendStamina(v, VIT.sprintCost * dt);
@@ -358,6 +447,8 @@ export class Player {
       else speedTarget = WALK * clamp(d.mag / 0.7, 0.5, 1);
       if (v.exhaust > 0) speedTarget = Math.min(speedTarget, WALK);
       if (busy) speedTarget = WALK * w.moveSpeedMul() * (d.mag > 0.7 ? 1.4 : 1);
+      speedTarget *= this.def.speedMul?.(w) ?? 1; // [W] Rausch +15 %
+      if (this.status.mud || mud) speedTarget *= 0.7; // [M] mud status / [K] mud ground (not stacked)
       wantYaw = yawOf(d.x, d.z);
     } else this.fullPushT = 0;
 
@@ -398,15 +489,17 @@ export class Player {
   #updateRoll(dt, inp) {
     this.rollT += dt;
     this.weapon.feed(dt, inp);
-    const s = rollSpeed(this.rollT);
+    const rc = this.rollCfg; // [W]
+    const s = rc ? ((2 * rc.dist) / rc.duration) * Math.max(0, 1 - this.rollT / rc.duration) : rollSpeed(this.rollT);
     this.vel.x = this.rollDir.x * s; this.vel.z = this.rollDir.z * s;
-    if (this.rollT >= ROLL.duration) { this.#enter('free'); this.sinceRoll = 0; this.rollDir = { x: 0, z: 0 }; }
+    if (this.rollT >= (rc?.duration ?? ROLL.duration)) { this.#enter('free'); this.sinceRoll = 0; this.rollDir = { x: 0, z: 0 }; }
   }
 
   #integrate(dt) {
     const w = this.ctx.world;
     this.pos.x += this.vel.x * dt;
     this.pos.z += this.vel.z * dt;
+    if (this.pushT > 0) { const s = Math.min(dt, this.pushT); this.pos.x += this.pushV.x * s; this.pos.z += this.pushV.z * s; this.pushT -= dt; } // [M]
     w.collide(this.pos, this.radius);
     for (const m of this.ctx.monsters) {
       if (!m.alive || !m.bodyRadius) continue;
@@ -455,16 +548,30 @@ export class Player {
     this.weapon.addWucht(wucht);
   }
 
+  // [N] network avatar (local:false): state/pose come from snapshots, no input or physics.
+  // remote = { state, rollT, sprint, speed, wp: {name, t, charging, level}|null, air }
+  updateRemote(dt) {
+    const r = this.remote;
+    if (!r) return;
+    this.time += dt;
+    this.lastState = this.state;
+    if (this.state !== r.state) { this.state = r.state; this.stateT = 0; } else this.stateT += dt;
+    this.rollT = r.rollT;
+    this.sprinting = r.sprint;
+    this.speed = r.speed;
+    this.#animate(dt, r.speed);
+  }
+
   // ---- animation
   #animate(dt, speed) {
     const p = this.pose, w = this.weapon;
     const t = {};
-    Object.assign(t, REST);
-    const wp = w.pose();
+    Object.assign(t, REST, this.def.rest); // [W] weapon-specific ready pose
+    const wp = this.remote ? this.remote.wp : w.pose(); // [N] remote avatars take the pose from snapshots
     let airY = 0;
     switch (this.state) {
       case 'roll': {
-        const k = this.rollT / ROLL.duration;
+        const k = this.rollT / (this.rollCfg?.duration ?? ROLL.duration);
         Object.assign(t, { prx: 360 * Math.min(1, k * 1.05), py: -0.45, tx: 35, lrx: 85, rrx: 85, arx: 70, alx: 70, sw: 120, hx: 20 });
         break;
       }
@@ -473,14 +580,17 @@ export class Player {
       case 'down': Object.assign(t, { prx: -86, py: -0.55, arx: 30, alx: 30, arz: 40, alz: 40, lrx: 8, rrx: 8, tx: 0 }); break;
       case 'ko': Object.assign(t, { prx: this.stateT > 0.2 ? -86 : -40, py: -0.55, arx: 30, alx: 30, arz: 40, alz: 40, lrx: 8, rrx: 8 }); break;
       default:
-        if (wp && this.anims?.[wp.name]) {
+        if (this.itemUse) {
+          // [P] drinking / throwing pose
+          Object.assign(t, { arx: 105, arz: 20, hx: -12, tx: 10, alx: 30, lrx: 6, rrx: -6, sw: 60 });
+        } else if (wp && this.anims?.[wp.name]) {
           const tt = wp.charging ? Math.min(wp.t, 0.25) : wp.t;
           sampleTrack(this.anims[wp.name], tt, t);
           if (wp.charging && wp.level) {
             const j = wp.level * 0.4;
             t.tx += (Math.random() - 0.5) * j; t.hy = (Math.random() - 0.5) * j; t.py += (Math.random() - 0.5) * 0.01 * wp.level;
           }
-          airY = w.airOffset();
+          airY = this.remote ? this.remote.air : w.airOffset();
         } else {
           // locomotion
           const s = clamp(speed / RUN, 0, 1.4);
@@ -504,6 +614,7 @@ export class Player {
     const sh = this.rig.shadow;
     sh.position.set(this.pos.x, this.pos.y + 0.05, this.pos.z);
     sh.scale.setScalar(1 - Math.min(0.5, airY * 0.2));
+    this.def.updateMesh?.(w, this.weaponMesh, dt, this); // [W] weapon-specific visuals (Rausch glow, bow string)
     // blade glow while charging
     const glow = this.weaponMesh?.userData.glow;
     if (glow) {
@@ -516,6 +627,6 @@ export class Player {
 
   /** Network/Hud-facing snapshot */
   snapshot() {
-    return { id: this.id, pos: [this.pos.x, this.pos.y, this.pos.z], rot: this.rot, hp: this.v.hp, state: this.state, pose: this.weapon.pose()?.name ?? null };
+    return { id: this.id, pos: [this.pos.x, this.pos.y, this.pos.z], rot: this.rot, hp: this.v.hp, state: this.state, pose: this.weapon.pose()?.name ?? null, status: Object.keys(this.status) };
   }
 }

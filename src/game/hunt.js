@@ -13,6 +13,11 @@ import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
 import { sfx } from '../audio/sfx.js';
+// [P] meta layer: loadout, inventory, items, carving, end flow
+import { HuntMeta, resolveLoadout } from './huntmeta.js';
+import { Effects } from './effects.js';
+import { Projectiles } from './projectiles.js'; // [W]
+import { HuntNet } from '../net/sync.js'; // [N]
 
 const MAX_KO = 3;
 
@@ -34,6 +39,7 @@ export class Hunt {
     this.teamKo = 0;
     this.result = null; // 'win' | 'fail'
     this.paused = false;
+    this.net = null; // [N] HuntNet in coop (hunt.net: isHost, send, on, peers), null in solo
     this.players = [];
     this.monsters = [];
     this.stats = { damage: 0, hits: 0, perfect: 0 };
@@ -41,7 +47,7 @@ export class Hunt {
     this._lastRender = performance.now();
 
     this.scene = new THREE.Scene();
-    this.world = createWorld(this.quest.world);
+    this.world = createWorld(opts.world || this.quest.world || 'schotterklamm', { seed: this.seed }); // [K] world id override (?world=arena) + hunt seed
     const env = this.world.env;
     this.scene.background = new THREE.Color(env.background);
     this.scene.fog = new THREE.Fog(env.fog.color, env.fog.near, env.fog.far);
@@ -51,11 +57,17 @@ export class Hunt {
     this.rig = createCameraRig(this.camera, (x, z) => this.world.heightAt(x, z));
     this.fx = createFx({ scene: this.scene, camera: this.camera, nofx: !!opts.nofx });
     this.viz = createDebugViz(this.scene);
+    // [W] generic projectile system (arrows, later monster projectiles)
+    this.projectiles = new Projectiles(this);
+    this.scene.add(this.projectiles.group);
     this._onResize = (aspect) => { this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); };
     app.renderer.onResize.add(this._onResize);
 
-    const sp = this.world.spawnPoints[0];
-    const p = new Player({ id: 'p1', name: opts.name ?? 'Pirscher', weapon: opts.weapon ?? 'gs', tier: opts.tier ?? 1, ctx: this });
+    const sp = this.world.spawnPoints[(opts.slot ?? 0) % this.world.spawnPoints.length]; // [N] slot = lobby position
+    // [P] loadout from the hub (or standard gear for the debug URL)
+    const lo = resolveLoadout(opts);
+    this.loadout = lo;
+    const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, ctx: this });
     p.god = !!opts.god;
     p.spawnAt(sp.x, sp.z, sp.yaw);
     this.players.push(p);
@@ -64,15 +76,13 @@ export class Hunt {
     this.rig.snap(p.pos, sp.yaw);
 
     const ms = this.world.monsterSpawns?.[this.quest.monster] ?? this.world.monsterSpawns.default;
-    this.mainMonster = this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster });
-    if (opts.aggro) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
+    // [P] gather quests have no Brocken (quest.monster = null)
+    this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster }) : null;
+    if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
+    if (opts.aggro && this.mainMonster) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
-    this.bus.on('sfx', (e) => {
-      let vol = 1;
-      if (e.pos) { const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); vol = 1 / (1 + d / 25); }
-      sfx.play(e.name, { ...e, vol });
-    });
+    sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', () => { this.stats.perfect++; });
     this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) this.#onBossDead(); });
@@ -86,6 +96,18 @@ export class Hunt {
     this.bus.on('*', (payload, type) => app.bus?.emit(type, payload));
     this.#applyUiSettings();
     app.touch?.setVisible(true);
+    // [P]
+    this.effects = new Effects(this);
+    this.meta = new HuntMeta(this, lo);
+    // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
+    if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); }
+  }
+
+  // [P] Rotglut variants: more HP, permanent rage
+  #applyQuestVariant(m) {
+    const q = this.quest;
+    if (q.hpMul) { m.maxHp = Math.round(m.maxHp * q.hpMul); m.hp = m.maxHp; }
+    if (q.rage === 'always') { m.rageUsed = true; m.rage = true; m.rageT = 1e9; m.def.onRage?.(m, true); }
   }
 
   // ---------- ctx API used by entities
@@ -112,8 +134,11 @@ export class Hunt {
 
   playerHit(player, monster, hp, ah) {
     const st = player.stats;
-    const attacker = { power: st.power, critChance: st.crit, elems: st.elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul };
+    // [W] ah.elems = extra per-hit elements (fire arrow tips)
+    const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul };
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping });
+    if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     res.attackerId = player.id;
     applyMonsterHit(monster, res, this);
     const at = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z };
@@ -121,7 +146,7 @@ export class Hunt {
     this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
     if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, 'Sauber!', 'weak'); }
-    this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at });
+    this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at, kind: res.weak ? 'weak' : res.crit ? 'crit' : undefined }); // [K] kind
     player.afterHit(res, ah);
     this.stats.damage += res.dmg;
     this.stats.hits++;
@@ -129,11 +154,53 @@ export class Hunt {
   }
 
   // Hooks for the meta agent (items, gathering, carving). Default: nothing.
-  onItem(/* player, action ('use'|'next'|'prev'|'slot'), slot */) {}
-  onContext(/* player, 'press'|'hold' */) {}
+  onItem(player, action, slot) { this.meta?.onItem(player, action, slot); } // [P]
+  onContext(player, kind) { this.meta?.onContext(player, kind); } // [P]
+  /** [P] world effects of items: 'flash' | 'stink' | 'trap' | 'bomb' (net layer mirrors by wrapping this) */
+  spawnEffect(kind, params) { return this.effects.spawn(kind, params); }
+  /** [P] give up (pause menu) */
+  abandon() { this.#finish('fail', 'Aufgegeben'); this.meta.proceed(); }
 
   // ---------- flow
   #onPlayerDown() {
+    if (this.net?.isGuest) { this.net.sendKo(); return; } // [N] the host counts team KOs
+    this.#countKo();
+  }
+  /** [N] host: a guest went down. */
+  netKo() { if (!this.result) this.#countKo(); }
+  /** [N] guest: the host decided the hunt. */
+  netFinish(result, reason) { this.#finish(result, reason); }
+  /** [N] guest: the host is gone -> message + back. */
+  netAbort(message) {
+    if (this.result) return;
+    this.result = 'abort';
+    this.reason = message;
+    this.overlay?.remove();
+    const ov = document.createElement('div');
+    ov.className = 'screen ui-hit';
+    ov.innerHTML = `<div class="panel"><h2>${message}</h2><p>Gesammeltes bleibt erhalten.</p><button class="btn">Zurück</button></div>`;
+    ov.querySelector('button').addEventListener('click', () => this.#leave());
+    this.app.ui.appendChild(ov);
+    this.overlay = ov;
+  }
+  #leave() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
+    for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name); } catch { /* scene missing */ } }
+  }
+  #toggleLeave() {
+    if (this.leaveEl) { this.leaveEl.remove(); this.leaveEl = null; return; }
+    if (this.result) return;
+    const ov = document.createElement('div');
+    ov.className = 'screen ui-hit';
+    ov.innerHTML = '<div class="panel"><h2>Jagd verlassen?</h2><button class="btn" data-a="go">Weiter</button><button class="btn red" data-a="quit">Verlassen</button></div>';
+    ov.addEventListener('click', (e) => {
+      const a = e.target.dataset?.a;
+      if (a === 'go') this.#toggleLeave();
+      if (a === 'quit') this.#leave();
+    });
+    this.app.ui.appendChild(ov);
+    this.leaveEl = ov;
+  }
+  #countKo() {
     this.teamKo++;
     this.hud.center(`Umgekippt! ${this.teamKo}/${MAX_KO}`, 2);
     if (this.teamKo >= MAX_KO) this.#finish('fail', 'Dreimal umgekippt');
@@ -146,14 +213,15 @@ export class Hunt {
     if (this.result) return;
     this.result = result;
     this.reason = reason;
+    if (this.net?.isHost) this.net.sendEnd(result, reason); // [N]
     this.bus.emit(result === 'win' ? 'questComplete' : 'questFailed', { quest: this.quest, time: this.quest.timeLimit - this.timeLeft, reason, stats: this.stats });
-    if (this.opts.noOverlay) return;
+    if (this.meta.onFinish(result, reason) || this.opts.noOverlay) return; // [P] carve window / results scene
     const ov = document.createElement('div');
     ov.className = 'screen ui-hit';
     ov.innerHTML = `<div class="panel"><h2>${result === 'win' ? 'Auftrag erfüllt' : 'Auftrag gescheitert'}</h2>
       <p>${result === 'win' ? `${this.quest.name} in ${Math.floor((this.quest.timeLimit - this.timeLeft) / 60)}:${String(Math.floor((this.quest.timeLimit - this.timeLeft) % 60)).padStart(2, '0')}.<br>Schrott gibt es später. Jetzt Daumen hoch.` : `${reason || 'Zeit abgelaufen'}.<br>Nächstes Mal mit mehr Rollen.`}</p>
       <button class="btn">Weiter</button></div>`;
-    ov.querySelector('button').addEventListener('click', () => this.app.goto('title'));
+    ov.querySelector('button').addEventListener('click', () => this.#leave()); // [N]
     this.app.ui.appendChild(ov);
     this.overlay = ov;
   }
@@ -168,7 +236,7 @@ export class Hunt {
       ov.addEventListener('click', (e) => {
         const a = e.target.dataset?.a;
         if (a === 'go') this.setPaused(false);
-        if (a === 'quit') this.app.goto('title');
+        if (a === 'quit') this.abandon();
       });
       this.app.ui.appendChild(ov);
       this.pauseEl = ov;
@@ -181,17 +249,23 @@ export class Hunt {
 
   update(dt) {
     this.input.poll(dt);
-    if (this.input.b.menu.pressed && !this.opts.coop) this.setPaused(!this.paused);
+    if (this.input.b.menu.pressed) { if (this.opts.coop) this.#toggleLeave(); else this.setPaused(!this.paused); } // [N] coop never pauses
     if (this.paused) return;
     this.time += dt;
     this.viz.begin();
     if (!this.result) this.timeLeft -= dt;
-    if (this.timeLeft <= 0 && !this.result) this.#finish('fail', 'Zeit abgelaufen');
-    if (this.winTimer > 0) { this.winTimer -= dt; if (this.winTimer <= 0) this.#finish('win'); }
+    const authoritative = !this.net || this.net.isHost; // [N] guests take quest state from the host
+    this.net?.update(dt); // [N]
+    if (authoritative && this.timeLeft <= 0 && !this.result) this.#finish('fail', 'Zeit abgelaufen');
+    if (this.winTimer > 0) { this.winTimer -= dt; if (this.winTimer <= 0 && authoritative) this.#finish('win'); }
 
-    for (const p of this.players) p.update(dt);
-    for (const m of this.monsters) m.update(dt);
+    this.meta.update(dt); // [P]
+    this.effects.update(dt); // [P]
+    for (const p of this.players) { if (p.local) p.update(dt); else p.updateRemote(dt); } // [N]
+    for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
+    this.projectiles.update(dt); // [W]
     this.world.update(dt, this);
+    this.meta.late(dt); // [P]
 
     const p = this.player;
     this.fx.update(dt);
@@ -210,6 +284,7 @@ export class Hunt {
     this._lastRender = now;
     this.fx.updateNumbers(dt);
     this.hud.update(this, dt);
+    this.meta.render(); // [P]
     const lp = this.player.lockPoint();
     if (lp) {
       const v = new THREE.Vector3(lp.x, lp.y, lp.z).project(this.camera);
@@ -221,10 +296,15 @@ export class Hunt {
 
   dispose() {
     this.app.renderer.onResize.delete(this._onResize);
+    this.projectiles.dispose(); // [W]
     this.fx.dispose();
+    this.world.dispose?.(); // [K] gather UI, ambient audio
     this.hud.dispose();
+    this.meta?.dispose(); this.effects?.dispose(); // [P]
     this.overlay?.remove();
     this.pauseEl?.remove();
+    this.leaveEl?.remove(); // [N]
+    this.net?.dispose(); // [N]
     this.app.touch?.setVisible(false);
     this.input.reset();
     this.input.contextLabel = null;
