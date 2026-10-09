@@ -220,7 +220,7 @@ export class Monster {
   applyDamage(res) {
     if (!this.alive) return null;
     const part = this.partById[res.partId];
-    const total = res.dmg + (res.elemDmg || 0);
+    const total = res.dmg; // res.dmg already INCLUDES elemDmg (combat.resolvePlayerHit); elemDmg is informational only
     const wasSleeping = this.sleeping;
     this.hp = Math.max(0, this.hp - total);
     this.hitFlash = 0.12;
