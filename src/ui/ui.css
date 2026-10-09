@@ -68,6 +68,12 @@ body.scan #stage::after {
 .bar.wu { height: .9vmin; width: 70%; }
 .bar.wu .fill { background: #5ad8ff; }
 .bar.wu.full .fill { background: #fff; animation: blink .5s steps(1) infinite; }
+/* [M] player status pills */
+.hud-status { display: flex; gap: .6vmin; min-height: 0; }
+.hud-status span { font-size: max(7px, 1.7vmin); padding: 0 .8vmin; border: 1px solid #000; color: #101010; font-weight: bold; line-height: 1.5; }
+.hud-status .st-mud { background: #a07a48; }
+.hud-status .st-burn { background: #ff8a2a; }
+.hud-status .st-poison { background: #9be15a; }
 .wstat { display: flex; gap: .6vmin; align-items: center; height: 2vmin; font-size: max(8px, 2vmin); }
 .wstat b { width: 2.4vmin; height: 1.6vmin; background: #2a2a6a; border: 1px solid #000; }
 .wstat b.on { background: #5ad8ff; }

@@ -60,6 +60,9 @@ export class Player {
     this.lock = null; // { monster, idx }
     this.flinkfuss = 0; // Macke level (0..2)
     this.flash = 0;
+    this.status = {}; // [M] mud / burn / poison: { t, rollsLeft }
+    this.pushT = 0; this.pushV = { x: 0, z: 0 }; // [M] wind push
+    this._dotAcc = 0;
 
     this.setWeapon(weapon, tier);
     this.pose = { ...REST };
@@ -155,6 +158,15 @@ export class Player {
     }
     if (this.invuln > 0) return 'iframe';
     const w = this.weapon;
+    // [M] wind push (Fluegelboee): no damage, interrupts charging, ignores block / armour
+    if (h.knock === 'push') {
+      const dx = this.pos.x - (h.sourcePos?.x ?? this.pos.x), dz = this.pos.z - (h.sourcePos?.z ?? this.pos.z), l = Math.hypot(dx, dz) || 1;
+      this.push({ x: dx / l, z: dz / l }, h.push ?? 3);
+      w.cancel();
+      this.ctx.fx.shake(0.12, 0.2);
+      this.ctx.bus.emit('sfx', { name: 'swing', pos: this.pos, heavy: true });
+      return 'hit';
+    }
     const sa = w.superArmor();
     let dmg = h.dmg * (1 - protectReduction(this.protect)) * (h.dmgMul ?? 1);
 
@@ -186,6 +198,7 @@ export class Player {
     this.ctx.bus.emit('sfx', { name: 'hurt', pos: this.pos });
     this.ctx.bus.emit('playerHit', { player: this, dmg, key: h.key });
     if (this.v.hp <= 0) { this.#ko(); return 'hit'; }
+    if (h.status) this.addStatus(h.status.type, h.status); // [M]
 
     const knock = h.knock ?? 'flinch';
     if (sa === 'all') return 'hit';
@@ -199,6 +212,62 @@ export class Player {
     const dx = this.pos.x - h.sourcePos.x, dz = this.pos.z - h.sourcePos.z, l = Math.hypot(dx, dz) || 1;
     this.vel.x += (dx / l) * d * 4; this.vel.z += (dz / l) * d * 4;
   }
+  // ---- [M] status effects (docs/PHASE2_CONTRACTS.md): mud (slower, no sprint), burn (3 dmg/s), poison (dmg over time)
+  /** Push the player `dist` metres along `dir` (unit {x,z}) over ~0.3 s. Does not cancel by itself. */
+  push(dir, dist = 3, dur = 0.3) {
+    this.pushV.x = dir.x * dist / dur; this.pushV.z = dir.z * dist / dur;
+    this.pushT = dur;
+  }
+  /** type: 'mud' | 'burn' | 'poison'; opts {t, rolls}. */
+  addStatus(type, opts = {}) {
+    if (this.state === 'ko') return false;
+    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 } }[type];
+    if (!base) return false;
+    const had = !!this.status[type];
+    this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
+    if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
+    return true;
+  }
+  /** Remove one status (or all when no type given), e.g. Sprudelwasser. */
+  clearStatus(type) {
+    for (const k of Object.keys(this.status)) {
+      if (type && k !== type) continue;
+      delete this.status[k];
+      this.ctx.bus.emit('playerStatus', { player: this, type: k, on: false });
+    }
+  }
+  #statusOnRoll() {
+    for (const k of ['mud', 'burn']) {
+      const s = this.status[k];
+      if (!s) continue;
+      if (--s.rollsLeft <= 0) { this.clearStatus(k); this.ctx.fx.number(this.#top(), k === 'burn' ? 'Gelöscht' : 'Abgeschüttelt', 'heal'); }
+    }
+  }
+  #tickStatus(dt) {
+    const st = this.status;
+    if (!st.mud && !st.burn && !st.poison) return;
+    const fx = this.ctx.fx;
+    if (st.mud && (st.mud.t -= dt) <= 0) this.clearStatus('mud');
+    if (st.burn) {
+      if ((st.burn.t -= dt) <= 0) this.clearStatus('burn');
+      else { this.#dot(3 * dt); if (Math.random() < dt * 10) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, Math.random() < 0.5 ? '#ff7a1a' : '#ffd060', 1.5); }
+    }
+    if (st.poison) {
+      if ((st.poison.t -= dt) <= 0) this.clearStatus('poison');
+      else { this.#dot(1.5 * dt); if (Math.random() < dt * 4) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, '#9be15a', 1); }
+    }
+    if (st.mud && Math.random() < dt * 3) fx.spark({ x: this.pos.x, y: this.pos.y + 0.5, z: this.pos.z }, 1, '#6a4a28', 1);
+  }
+  /** Burn / poison damage: never lethal (leaves 1 HP), shows a number about once a second. */
+  #dot(n) {
+    if (this.god || this.state === 'ko') return;
+    const d = Math.min(n, this.v.hp - 1);
+    if (d <= 0) return;
+    damageVitals(this.v, d);
+    this._dotAcc += d;
+    if (this._dotAcc >= 3) { this.ctx.fx.number(this.#top(), Math.round(this._dotAcc), 'hurt'); this._dotAcc = 0; }
+  }
+
   #top() { return { x: this.pos.x, y: this.pos.y + 2.0, z: this.pos.z }; }
   #front() { return { x: this.pos.x + Math.sin(this.rot) * 0.6, y: this.pos.y + 1.2, z: this.pos.z + Math.cos(this.rot) * 0.6 }; }
 
@@ -224,6 +293,7 @@ export class Player {
 
   respawn(x, z) {
     this.v.hp = this.v.maxHp; this.v.bruise = 0; this.v.stamina = this.v.maxStamina; this.v.exhaust = 0;
+    this.clearStatus(); // [M]
     this.state = 'free'; this.stateT = 0; this.invuln = 2.0; this.lock = null;
     this.weapon.reset(); this.weapon.wucht = 0;
     this.spawnAt(x, z, this.rot);
@@ -271,6 +341,7 @@ export class Player {
     this.rollFree = free;
     this.perfectKeys.clear();
     this.weapon.cancel();
+    this.#statusOnRoll(); // [M]
     if (!free) spendStamina(this.v, VIT.rollCost);
     this.#enter('roll');
     this.rollBuf = 0;
@@ -298,6 +369,7 @@ export class Player {
     if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
     tickPrellung(this.v, dt);
     tickStamina(this.v, dt);
+    this.#tickStatus(dt); // [M]
 
     const inp = { A: input.b.attack, B: input.b.special };
     const w = this.weapon;
@@ -365,7 +437,7 @@ export class Player {
     if (d) {
       const full = Math.hypot(input.move.x, input.move.y) >= 0.97;
       this.fullPushT = full ? this.fullPushT + dt : 0;
-      const sprintWanted = !busy && (input.sprint || this.fullPushT >= 0.4);
+      const sprintWanted = !busy && !this.status.mud && (input.sprint || this.fullPushT >= 0.4); // [M] mud: no sprint
       if (sprintWanted && canSprint(v)) {
         this.sprinting = true;
         speedTarget = SPRINT;
@@ -375,6 +447,7 @@ export class Player {
       if (v.exhaust > 0) speedTarget = Math.min(speedTarget, WALK);
       if (busy) speedTarget = WALK * w.moveSpeedMul() * (d.mag > 0.7 ? 1.4 : 1);
       speedTarget *= this.def.speedMul?.(w) ?? 1; // [W] Rausch +15 %
+      if (this.status.mud) speedTarget *= 0.7; // [M]
       wantYaw = yawOf(d.x, d.z);
     } else this.fullPushT = 0;
 
@@ -425,6 +498,7 @@ export class Player {
     const w = this.ctx.world;
     this.pos.x += this.vel.x * dt;
     this.pos.z += this.vel.z * dt;
+    if (this.pushT > 0) { const s = Math.min(dt, this.pushT); this.pos.x += this.pushV.x * s; this.pos.z += this.pushV.z * s; this.pushT -= dt; } // [M]
     w.collide(this.pos, this.radius);
     for (const m of this.ctx.monsters) {
       if (!m.alive || !m.bodyRadius) continue;
@@ -538,6 +612,6 @@ export class Player {
 
   /** Network/Hud-facing snapshot */
   snapshot() {
-    return { id: this.id, pos: [this.pos.x, this.pos.y, this.pos.z], rot: this.rot, hp: this.v.hp, state: this.state, pose: this.weapon.pose()?.name ?? null };
+    return { id: this.id, pos: [this.pos.x, this.pos.y, this.pos.z], rot: this.rot, hp: this.v.hp, state: this.state, pose: this.weapon.pose()?.name ?? null, status: Object.keys(this.status) };
   }
 }
