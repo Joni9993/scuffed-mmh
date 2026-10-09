@@ -4,11 +4,12 @@ import { titleScene } from './title.js';
 import { huntScene } from './hunt.js';
 import { hubScene } from './hub.js'; // [P]
 import { resultsScene } from './results.js'; // [P]
+import { lobbyScene } from './lobby.js'; // [N]
 
 export const scenes = {
   title: titleScene,
   hunt: huntScene,
   hub: hubScene, // [P]
   results: resultsScene, // [P]
-  // lobby: lobbyScene,
+  lobby: lobbyScene, // [N]
 };

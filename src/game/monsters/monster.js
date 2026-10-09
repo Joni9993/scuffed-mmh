@@ -569,6 +569,7 @@ export class Monster {
     for (const e of inst.def.events ?? []) {
       if (s.tau >= e.t && !inst.firedEvents.has(e)) {
         inst.firedEvents.add(e);
+        // [N] replayed attacks (guests) must not spawn; [M] events marked all:true (projectiles) run everywhere
         if (e.all || this.authority) inst.def.calls?.[e.call]?.(this, ctx, inst, Math.max(0, a.t - inst.wall(e.t)));
       }
     }

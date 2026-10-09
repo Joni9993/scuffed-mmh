@@ -274,7 +274,7 @@ export class Player {
   #glitchCounter() {
     this.glitchT = GLITCH_WINDOW;
     this.glitchCd = 0.5;
-    time.slowmo(0.35, 0.25);
+    if (!this.ctx.net) time.slowmo(0.35, 0.25); // [N] no slow-mo in coop (would slow the host's whole sim)
     this.ctx.fx.glitch(0.35);
     this.ctx.fx.number(this.#top(), 'GLITCH!', 'glitch');
     this.ctx.bus.emit('sfx', { name: 'glitch', pos: this.pos });
@@ -547,12 +547,26 @@ export class Player {
     this.weapon.addWucht(wucht);
   }
 
+  // [N] network avatar (local:false): state/pose come from snapshots, no input or physics.
+  // remote = { state, rollT, sprint, speed, wp: {name, t, charging, level}|null, air }
+  updateRemote(dt) {
+    const r = this.remote;
+    if (!r) return;
+    this.time += dt;
+    this.lastState = this.state;
+    if (this.state !== r.state) { this.state = r.state; this.stateT = 0; } else this.stateT += dt;
+    this.rollT = r.rollT;
+    this.sprinting = r.sprint;
+    this.speed = r.speed;
+    this.#animate(dt, r.speed);
+  }
+
   // ---- animation
   #animate(dt, speed) {
     const p = this.pose, w = this.weapon;
     const t = {};
     Object.assign(t, REST, this.def.rest); // [W] weapon-specific ready pose
-    const wp = w.pose();
+    const wp = this.remote ? this.remote.wp : w.pose(); // [N] remote avatars take the pose from snapshots
     let airY = 0;
     switch (this.state) {
       case 'roll': {
@@ -575,7 +589,7 @@ export class Player {
             const j = wp.level * 0.4;
             t.tx += (Math.random() - 0.5) * j; t.hy = (Math.random() - 0.5) * j; t.py += (Math.random() - 0.5) * 0.01 * wp.level;
           }
-          airY = w.airOffset();
+          airY = this.remote ? this.remote.air : w.airOffset();
         } else {
           // locomotion
           const s = clamp(speed / RUN, 0, 1.4);

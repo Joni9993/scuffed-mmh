@@ -1,0 +1,26 @@
+/* Lobby (kompakt, Querformat 844x390 im Blick) */
+.lobby { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3vmin; align-items: stretch; max-width: 92vw; padding: 2.4vmin 3vmin; text-align: left; }
+.lobby h2 { margin: 0 0 1.2vmin; font-size: max(11px, 3.4vmin); }
+.lobby .col { display: flex; flex-direction: column; gap: 1.4vmin; justify-content: center; align-items: center; min-width: 30vmin; }
+.lobby .code { font-size: max(24px, 11vmin); letter-spacing: .12em; padding: .6vmin 2vmin; border: 2px dashed var(--edge); background: rgba(0,0,0,.35); text-shadow: 3px 3px 0 #000, 0 0 12px #8a5aff; user-select: text; }
+.lobby .hint { font-size: max(8px, 2vmin); opacity: .75; line-height: 1.6; text-align: center; }
+.lobby .err { color: #ff6b6b; font-size: max(9px, 2.4vmin); min-height: 1.4em; text-align: center; }
+.lobby .list { display: grid; gap: .8vmin; align-content: start; min-height: 22vmin; }
+.lobby .row { display: grid; grid-template-columns: minmax(0, 1fr) auto 5vmin; gap: 1.6vmin; align-items: center; padding: 1vmin 1.6vmin; background: rgba(0,0,0,.35); border: 1px solid rgba(244,240,208,.35); font-size: max(9px, 2.4vmin); }
+.lobby .row.me { border-color: #5ad8ff; }
+.lobby .row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lobby .row .wp { opacity: .75; font-size: max(8px, 2vmin); }
+.lobby .row .rd { text-align: center; color: #7dff7d; }
+.lobby .row .rd.no { color: #8a8aa8; }
+.lobby .row.empty { opacity: .35; }
+.lobby .actions { display: flex; flex-wrap: wrap; gap: 1vmin; margin-top: 1.4vmin; }
+.lobby .btn { margin: 0; min-height: 40px; }
+.lobby .btn[disabled] { opacity: .4; pointer-events: none; }
+.lobby input.codein {
+  width: 8.4em; font: inherit; font-size: max(22px, 9vmin); letter-spacing: .12em; text-align: center; text-transform: uppercase;
+  color: var(--ink); background: rgba(0,0,0,.5); border: 2px solid var(--edge); padding: .6vmin 1vmin; border-radius: 0; outline: none;
+  user-select: text; -webkit-user-select: text; pointer-events: auto;
+}
+.lobby input.codein:focus { border-color: #5ad8ff; }
+.party-bar { display: inline-block; width: 7vmin; height: .9vmin; vertical-align: middle; background: #1a0a0a; outline: 1px solid rgba(244,240,208,.5); margin-left: .6vmin; }
+.party-bar > b { display: block; height: 100%; background: #4cff4c; }

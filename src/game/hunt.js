@@ -17,6 +17,7 @@ import { sfx } from '../audio/sfx.js';
 import { HuntMeta, resolveLoadout } from './huntmeta.js';
 import { Effects } from './effects.js';
 import { Projectiles } from './projectiles.js'; // [W]
+import { HuntNet } from '../net/sync.js'; // [N]
 
 const MAX_KO = 3;
 
@@ -38,6 +39,7 @@ export class Hunt {
     this.teamKo = 0;
     this.result = null; // 'win' | 'fail'
     this.paused = false;
+    this.net = null; // [N] HuntNet in coop (hunt.net: isHost, send, on, peers), null in solo
     this.players = [];
     this.monsters = [];
     this.stats = { damage: 0, hits: 0, perfect: 0 };
@@ -61,11 +63,11 @@ export class Hunt {
     this._onResize = (aspect) => { this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); };
     app.renderer.onResize.add(this._onResize);
 
-    const sp = this.world.spawnPoints[0];
+    const sp = this.world.spawnPoints[(opts.slot ?? 0) % this.world.spawnPoints.length]; // [N] slot = lobby position
     // [P] loadout from the hub (or standard gear for the debug URL)
     const lo = resolveLoadout(opts);
     this.loadout = lo;
-    const p = new Player({ id: 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, ctx: this });
+    const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, ctx: this });
     p.god = !!opts.god;
     p.spawnAt(sp.x, sp.z, sp.yaw);
     this.players.push(p);
@@ -101,6 +103,8 @@ export class Hunt {
     // [P]
     this.effects = new Effects(this);
     this.meta = new HuntMeta(this, lo);
+    // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
+    if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); }
   }
 
   // [P] Rotglut variants: more HP, permanent rage
@@ -163,6 +167,44 @@ export class Hunt {
 
   // ---------- flow
   #onPlayerDown() {
+    if (this.net?.isGuest) { this.net.sendKo(); return; } // [N] the host counts team KOs
+    this.#countKo();
+  }
+  /** [N] host: a guest went down. */
+  netKo() { if (!this.result) this.#countKo(); }
+  /** [N] guest: the host decided the hunt. */
+  netFinish(result, reason) { this.#finish(result, reason); }
+  /** [N] guest: the host is gone -> message + back. */
+  netAbort(message) {
+    if (this.result) return;
+    this.result = 'abort';
+    this.reason = message;
+    this.overlay?.remove();
+    const ov = document.createElement('div');
+    ov.className = 'screen ui-hit';
+    ov.innerHTML = `<div class="panel"><h2>${message}</h2><p>Gesammeltes bleibt erhalten.</p><button class="btn">Zurück</button></div>`;
+    ov.querySelector('button').addEventListener('click', () => this.#leave());
+    this.app.ui.appendChild(ov);
+    this.overlay = ov;
+  }
+  #leave() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
+    for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name); } catch { /* scene missing */ } }
+  }
+  #toggleLeave() {
+    if (this.leaveEl) { this.leaveEl.remove(); this.leaveEl = null; return; }
+    if (this.result) return;
+    const ov = document.createElement('div');
+    ov.className = 'screen ui-hit';
+    ov.innerHTML = '<div class="panel"><h2>Jagd verlassen?</h2><button class="btn" data-a="go">Weiter</button><button class="btn red" data-a="quit">Verlassen</button></div>';
+    ov.addEventListener('click', (e) => {
+      const a = e.target.dataset?.a;
+      if (a === 'go') this.#toggleLeave();
+      if (a === 'quit') this.#leave();
+    });
+    this.app.ui.appendChild(ov);
+    this.leaveEl = ov;
+  }
+  #countKo() {
     this.teamKo++;
     this.hud.center(`Umgekippt! ${this.teamKo}/${MAX_KO}`, 2);
     if (this.teamKo >= MAX_KO) this.#finish('fail', 'Dreimal umgekippt');
@@ -175,6 +217,7 @@ export class Hunt {
     if (this.result) return;
     this.result = result;
     this.reason = reason;
+    if (this.net?.isHost) this.net.sendEnd(result, reason); // [N]
     this.bus.emit(result === 'win' ? 'questComplete' : 'questFailed', { quest: this.quest, time: this.quest.timeLimit - this.timeLeft, reason, stats: this.stats });
     if (this.meta.onFinish(result, reason) || this.opts.noOverlay) return; // [P] carve window / results scene
     const ov = document.createElement('div');
@@ -182,7 +225,7 @@ export class Hunt {
     ov.innerHTML = `<div class="panel"><h2>${result === 'win' ? 'Auftrag erfüllt' : 'Auftrag gescheitert'}</h2>
       <p>${result === 'win' ? `${this.quest.name} in ${Math.floor((this.quest.timeLimit - this.timeLeft) / 60)}:${String(Math.floor((this.quest.timeLimit - this.timeLeft) % 60)).padStart(2, '0')}.<br>Schrott gibt es später. Jetzt Daumen hoch.` : `${reason || 'Zeit abgelaufen'}.<br>Nächstes Mal mit mehr Rollen.`}</p>
       <button class="btn">Weiter</button></div>`;
-    ov.querySelector('button').addEventListener('click', () => this.app.goto('title'));
+    ov.querySelector('button').addEventListener('click', () => this.#leave()); // [N]
     this.app.ui.appendChild(ov);
     this.overlay = ov;
   }
@@ -210,18 +253,20 @@ export class Hunt {
 
   update(dt) {
     this.input.poll(dt);
-    if (this.input.b.menu.pressed && !this.opts.coop) this.setPaused(!this.paused);
+    if (this.input.b.menu.pressed) { if (this.opts.coop) this.#toggleLeave(); else this.setPaused(!this.paused); } // [N] coop never pauses
     if (this.paused) return;
     this.time += dt;
     this.viz.begin();
     if (!this.result) this.timeLeft -= dt;
-    if (this.timeLeft <= 0 && !this.result) this.#finish('fail', 'Zeit abgelaufen');
-    if (this.winTimer > 0) { this.winTimer -= dt; if (this.winTimer <= 0) this.#finish('win'); }
+    const authoritative = !this.net || this.net.isHost; // [N] guests take quest state from the host
+    this.net?.update(dt); // [N]
+    if (authoritative && this.timeLeft <= 0 && !this.result) this.#finish('fail', 'Zeit abgelaufen');
+    if (this.winTimer > 0) { this.winTimer -= dt; if (this.winTimer <= 0 && authoritative) this.#finish('win'); }
 
     this.meta.update(dt); // [P]
     this.effects.update(dt); // [P]
-    for (const p of this.players) p.update(dt);
-    for (const m of this.monsters) m.update(dt);
+    for (const p of this.players) { if (p.local) p.update(dt); else p.updateRemote(dt); } // [N]
+    for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.projectiles.update(dt); // [W]
     this.world.update(dt, this);
     this.meta.late(dt); // [P]
@@ -261,6 +306,8 @@ export class Hunt {
     this.meta?.dispose(); this.effects?.dispose(); // [P]
     this.overlay?.remove();
     this.pauseEl?.remove();
+    this.leaveEl?.remove(); // [N]
+    this.net?.dispose(); // [N]
     this.app.touch?.setVisible(false);
     this.input.reset();
     this.input.contextLabel = null;
