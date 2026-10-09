@@ -338,6 +338,14 @@ export class Player {
       if (lk.released && lk.lastHeldMs >= 500) this.lock = null;
       if (this.lock && (!this.lock.monster.alive || Math.hypot(this.lock.monster.pos.x - this.pos.x, this.lock.monster.pos.z - this.pos.z) > 70)) this.lock = null;
     }
+    // [P] item use commits the hunter: rooted, no attacks; a roll cancels only once the effect landed (Items sets itemUse)
+    if (this.itemUse) {
+      if (this.rollBuf > 0 && canRoll(v) && this.itemUse.t >= this.itemUse.cancelAt) { this.itemUse = null; this.#startRoll(); return 0; }
+      const kb = Math.exp(-14 * dt);
+      this.vel.x *= kb; this.vel.z *= kb;
+      this.#processHits();
+      return 0;
+    }
     // roll (also cancels recoveries after the move's cancel window)
     if (this.rollBuf > 0 && canRoll(v) && w.canRollCancel()) { this.#startRoll(); return 0; }
     w.update(dt, inp);
@@ -473,7 +481,10 @@ export class Player {
       case 'down': Object.assign(t, { prx: -86, py: -0.55, arx: 30, alx: 30, arz: 40, alz: 40, lrx: 8, rrx: 8, tx: 0 }); break;
       case 'ko': Object.assign(t, { prx: this.stateT > 0.2 ? -86 : -40, py: -0.55, arx: 30, alx: 30, arz: 40, alz: 40, lrx: 8, rrx: 8 }); break;
       default:
-        if (wp && this.anims?.[wp.name]) {
+        if (this.itemUse) {
+          // [P] drinking / throwing pose
+          Object.assign(t, { arx: 105, arz: 20, hx: -12, tx: 10, alx: 30, lrx: 6, rrx: -6, sw: 60 });
+        } else if (wp && this.anims?.[wp.name]) {
           const tt = wp.charging ? Math.min(wp.t, 0.25) : wp.t;
           sampleTrack(this.anims[wp.name], tt, t);
           if (wp.charging && wp.level) {
