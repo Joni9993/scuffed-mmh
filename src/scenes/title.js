@@ -28,6 +28,7 @@ export const titleScene = {
       <h1>SCUFFED<br>HUNTER</h1>
       <p>Koop-Brockenjagd.<br>Nicht schön, aber fair.</p>
       <button class="btn red" data-a="hunt">Jagen</button><br>
+      <button class="btn small" data-a="host">Hosten</button><button class="btn small" data-a="join">Beitreten</button><br><!-- [N] temporary until the hub (P) offers coop -->
       <button class="btn small" data-a="res">Auflösung: ${settings.res}</button>
       <button class="btn small" data-a="scan">Scanlines: ${settings.scanlines ? 'an' : 'aus'}</button>
     </div>`;
@@ -36,6 +37,8 @@ export const titleScene = {
       if (!a) return;
       sfx.unlock(); sfx.play('ui');
       if (a === 'hunt') app.goto('hunt', { quest: 'jaggo', weapon: 'gs' });
+      if (a === 'host') app.goto('lobby', { mode: 'host', quest: 'jaggo' }); // [N]
+      if (a === 'join') app.goto('lobby', { mode: 'join', quest: 'jaggo' }); // [N]
       if (a === 'res') { app.renderer.setResolution(settings.res === 480 ? 360 : 480); e.target.textContent = `Auflösung: ${settings.res}`; saveSettings(); }
       if (a === 'scan') { settings.scanlines = !settings.scanlines; document.body.classList.toggle('scan', settings.scanlines); e.target.textContent = `Scanlines: ${settings.scanlines ? 'an' : 'aus'}`; saveSettings(); }
     });

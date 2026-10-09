@@ -72,8 +72,8 @@ export function createHud(root) {
       set('timer', mmss(Math.max(0, hunt.timeLeft)), (x) => (refs.timer.textContent = x));
       set('ko', hunt.teamKo, (x) => { refs.ko.textContent = `Umgekippt ${x}/3`; refs.ko.classList.toggle('bad', x >= 2); });
       const others = hunt.players.filter((o) => o !== p);
-      set('party', others.map((o) => `${o.name}${Math.round(o.v.hp)}`).join(','), () => {
-        refs.party.innerHTML = others.map((o) => `<div>${o.name} <small>${Math.round((o.v.hp / o.v.maxHp) * 100)}%</small></div>`).join('');
+      set('party', others.map((o) => `${o.name}${Math.round(o.v.hp)}`).join(','), () => { // [N] name + mini HP bar
+        refs.party.innerHTML = others.map((o) => `<div>${o.name} <span class="party-bar"><b style="width:${Math.round((o.v.hp / o.v.maxHp) * 100)}%"></b></span></div>`).join('');
       });
       bannerT -= dt; if (bannerT <= 0) refs.banner.classList.remove('show');
       centerT -= dt; if (centerT <= 0) refs.center.classList.remove('show');

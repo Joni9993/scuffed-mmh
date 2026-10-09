@@ -158,7 +158,9 @@ export class Hunt {
     this.app.ui.appendChild(ov);
     this.overlay = ov;
   }
-  #leave() { try { this.app.goto('hub'); } catch { this.app.goto('title'); } }
+  #leave() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
+    for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name); } catch { /* scene missing */ } }
+  }
   #toggleLeave() {
     if (this.leaveEl) { this.leaveEl.remove(); this.leaveEl = null; return; }
     if (this.result) return;
@@ -194,7 +196,7 @@ export class Hunt {
     ov.innerHTML = `<div class="panel"><h2>${result === 'win' ? 'Auftrag erfüllt' : 'Auftrag gescheitert'}</h2>
       <p>${result === 'win' ? `${this.quest.name} in ${Math.floor((this.quest.timeLimit - this.timeLeft) / 60)}:${String(Math.floor((this.quest.timeLimit - this.timeLeft) % 60)).padStart(2, '0')}.<br>Schrott gibt es später. Jetzt Daumen hoch.` : `${reason || 'Zeit abgelaufen'}.<br>Nächstes Mal mit mehr Rollen.`}</p>
       <button class="btn">Weiter</button></div>`;
-    ov.querySelector('button').addEventListener('click', () => this.app.goto('title'));
+    ov.querySelector('button').addEventListener('click', () => this.#leave()); // [N]
     this.app.ui.appendChild(ov);
     this.overlay = ov;
   }
