@@ -325,5 +325,44 @@ Regel: **HUD nimmt max. ~15 % der Bildfläche ein**. Alle Größen relativ zur k
 
 ---
 
+## 14. Rostnest – begehbare Basis-Stadt (ersetzt reinen Menü-Hub)
+
+Das Rostnest ist eine **kleine begehbare 3D-Stadt** (PS1-Look, ~60 × 60 m, Schrott-Hütten auf einem Felsplateau, Lagerfeuer in der Mitte). Pirscher laufen frei herum (gleiche Steuerung wie in der Jagd, keine Angriffe, Rolle erlaubt). An **Stationen** öffnet die Kontext-Taste das jeweilige Menü-Panel.
+
+### 14.1 Stationen
+| Station | NPC | Funktion |
+|---|---|---|
+| **Schmiede** | Schmiedin Funke | Waffen bauen/verbessern (Bäume §8.1), Rüstung schmieden (§8.2) |
+| **Krämerladen** | Krämer Kiesel | Verbrauchsitems + Grundmaterialien für Schrott kaufen; Materialien verkaufen |
+| **Truhe** | – (Kiste vor dem eigenen Zelt) | Inventar, Ausrüstung wechseln (Waffe, 3 Rüstungsteile), Item-Leiste belegen |
+| **Kochtopf** | Koch Brösel | Mahlzeit vor der Jagd (§7.1) |
+| **Auftragsbrett** | Brettwart Ole | Aufträge posten, gepostete Aufträge anderer sehen und beitreten |
+| **Abflugtor** | – | Wenn ein Auftrag gepostet ist und alle Teilnehmer „Bereit" sind, startet hier die Jagd |
+| **Spiegel** | – | Name und Farbe des Pirschers ändern |
+
+### 14.2 Krämerladen-Sortiment (Startwerte)
+| Item | Preis |
+|---|---|
+| Flickbrause | 30 |
+| Knisterkraut | 8 |
+| Sprudelwasser | 10 |
+| Blaublatt | 15 |
+| Altknochen | 12 |
+| Brennspitze ×10 | 60 (ab JR 2) |
+| Giftspitze ×10 | 60 (ab JR 2) |
+| Klebefalle | 120 (ab JR 2) |
+| Blendknolle | 70 (ab JR 3) |
+Verkauf: jedes Material zu 40 % seines Basiswerts (Brocken-Material hat Basiswert in `data/items.js`).
+
+### 14.3 Gemeinsame Stadt (Koop wie im Genre üblich)
+- Beim Start wählt man **„Eigenes Rostnest"** (man ist Host eines Stadt-Raums, Code wird angezeigt) oder **„Rostnest beitreten"** (Code). Solo = eigenes Rostnest ohne Gäste.
+- Alle im Raum (max. 4) sehen sich in der Stadt laufen (Name über dem Kopf, Emotes).
+- **Auftrag posten:** Ein Spieler postet am Auftragsbrett einen Auftrag (nur solche, die er selbst freigeschaltet hat). Am Brett sehen alle die geposteten Aufträge und können **beitreten**. Der Poster ist Jagd-Host (Brocken-Autorität), wenn mehrere posten, ist jeder Auftrag getrennt.
+- Teilnehmer gehen zum Abflugtor (oder drücken „Bereit" im Brett-Panel). Wenn alle Teilnehmer bereit sind, startet die Jagd für sie; wer nicht teilnimmt, bleibt in der Stadt.
+- Nach der Jagd kehren alle Teilnehmer in dasselbe Rostnest zurück (Raum bleibt bestehen).
+- Stadt-Host verlässt → Gäste bekommen Meldung und landen in ihrem eigenen Rostnest.
+
+---
+
 ## 13. Nicht im MVP
 Host-Migration, Online-Accounts, Chat (nur 6 Schnell-Emotes: „Hilfe!", „Hier!", „Falle!", „Danke", „Los!", „Oops"), weitere Waffen, Musik.
