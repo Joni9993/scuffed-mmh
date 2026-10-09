@@ -74,6 +74,7 @@ export const jaggling = {
     { id: 'body', label: 'Körper', factor: 0.8, elem: {}, spheres: [{ node: 'body', offset: [0, 0, 0.2], r: 0.9 }, { node: 'legL', offset: [0, -0.5, 0.1], r: 0.6 }] },
   ],
   attacks: { jaggling_biss: bite, jaggling_sprung: dart },
+  build: () => buildRaptor({ scale: SC, skin: 'scale', crest: false }),
   init(m) { m.jx = { dartCd: 1.2 + m.rng() * 2, retreatT: 0, dir: m.rng() < 0.5 ? 1 : -1 }; },
   recoverAfter: () => 0.25,
   onAttackEnd(m) { m.jx.retreatT = 0.9 + m.rng() * 0.8; m.jx.dartCd = 1.8 + m.rng() * 2.4; },

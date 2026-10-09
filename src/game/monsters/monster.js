@@ -292,10 +292,15 @@ export class Monster {
   }
   _enrage() {
     this.rage = true; this.rageT = RAGE_DURATION;
-    this._interrupt();
     this._rageAtkDone = false;
     this.queued = null;
-    this.setState('enrage');
+    if (this.flying) {
+      // airborne: keep flying, roar as soon as he is back on the ground
+      if (this.def.rageAttack) this.queued = this.def.rageAttack;
+    } else {
+      this._interrupt();
+      this.setState('enrage');
+    }
     this.ctx.bus.emit('rage', { monster: this, on: true });
     this.def.onRage?.(this, true);
   }

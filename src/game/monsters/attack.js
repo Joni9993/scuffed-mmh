@@ -29,8 +29,8 @@ export class AttackInstance {
     this.target = params.targetPos ?? { x: this.origin.x + this.dir.x * 5, y: this.origin.y, z: this.origin.z + this.dir.z * 5 };
     this.rage = !!params.rage;
     const seedRng = createRng(params.seed ?? 1);
-    this.rolls = Array.from({ length: 8 }, () => seedRng());
-    this.r = (i) => this.rolls[i % 8];
+    this.rolls = Array.from({ length: 16 }, () => seedRng());
+    this.r = (i) => this.rolls[i % 16];
     this.key = `${params.attackId}@${params.t0}`;
     this.hitSet = new Set();
     this.firedEvents = new Set();
@@ -70,7 +70,7 @@ export class AttackInstance {
     const s = this.sample(t);
     const out = [];
     const base = { x: s.x, y: this.origin.y + s.air, z: s.z };
-    const hits = this.def.hits;
+    const hits = this.def.hits ?? [];
     for (let i = 0; i < hits.length; i++) {
       const h = hits[i];
       if (s.tau < h.t0 || s.tau > h.t1) continue;
@@ -91,7 +91,7 @@ export class AttackInstance {
   /** Wall time of the first possible hit (telegraph length as the player experiences it). */
   firstHitTime() {
     let m = Infinity;
-    for (const h of this.def.hits) m = Math.min(m, h.t0);
+    for (const h of this.def.hits ?? []) m = Math.min(m, h.t0);
     return this.tgWall + (m - this.def.telegraph) / this.speed;
   }
 }

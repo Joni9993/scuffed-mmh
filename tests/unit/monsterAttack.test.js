@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { AttackInstance, MIN_TELEGRAPH } from '../../src/game/monsters/attack.js';
 import { jaggo } from '../../src/game/monsters/jaggo.js';
 import { jaggling } from '../../src/game/monsters/jaggling.js';
+import { barrotz } from '../../src/game/monsters/barrotz.js';
+import { brathalos } from '../../src/game/monsters/brathalos.js';
 
 const params = (id, extra = {}) => ({ attackId: id, t0: 12.5, origin: { x: 3, y: 0, z: -4 }, yaw: 0.7, targetPos: { x: 9, y: 0, z: 2 }, seed: 1234, ...extra });
 const trace = (def, p) => {
@@ -10,10 +12,10 @@ const trace = (def, p) => {
   for (let t = 0; t <= inst.duration + 0.01; t += 1 / 60) out.push({ s: inst.sample(t), h: inst.hitsAt(t).map((x) => [x.key, x.shape, x.dmg, x.knock]) });
   return out;
 };
-const all = [...Object.values(jaggo.attacks), ...Object.values(jaggling.attacks)];
+const all = [...Object.values(jaggo.attacks), ...Object.values(jaggling.attacks), ...Object.values(barrotz.attacks), ...Object.values(brathalos.attacks)]; // [M] phase 2: all Brocken
 
 describe('brocken attacks are deterministic', () => {
-  for (const def of Object.values(jaggo.attacks)) {
+  for (const def of all) {
     it(`${def.id}: same start params -> identical motion and hit shapes`, () => {
       expect(JSON.stringify(trace(def, params(def.id)))).toBe(JSON.stringify(trace(def, params(def.id))));
     });
@@ -62,7 +64,7 @@ describe('fairness: every hit is telegraphed >= 0.5 s', () => {
       for (const rage of [false, true]) {
         const inst = new AttackInstance(def, params(def.id, { rage }));
         expect(inst.firstHitTime()).toBeGreaterThanOrEqual(MIN_TELEGRAPH - 1e-9);
-        for (const h of def.hits) expect(h.t0).toBeGreaterThanOrEqual(def.telegraph);
+        for (const h of def.hits ?? []) expect(h.t0).toBeGreaterThanOrEqual(def.telegraph);
         // nothing hits during the telegraph
         for (let t = 0; t < inst.tgWall - 1e-6; t += 1 / 60) expect(inst.hitsAt(t).length).toBe(0);
       }
