@@ -152,7 +152,6 @@ export class Monster {
     if (this.hp <= 0) { this.#die(); ev.killed = true; return ev; }
     if (wasSleeping) { this.#interrupt(); this.setState('combat'); this.recover = 1.2; }
     else if (this.state === 'wander') { this.setState('notice'); this.discovered = true; }
-    if (!this.minor && !this.fleeing && this.state !== 'sleep' && this.hp <= this.maxHp * FLEE_HP && this.state === 'combat') this.#startFlee();
     return ev;
   }
   #burstDamage() {
@@ -202,6 +201,7 @@ export class Monster {
   }
   #startFlee() {
     this.fleeing = true;
+    this.fleeUsed = true;
     this.#interrupt();
     this.setState('flee');
   }
@@ -319,6 +319,7 @@ export class Monster {
 
   #combat(dt) {
     if (this.attack) { this.#runAttack(dt); return; }
+    if (!this.minor && !this.fleeUsed && this.hp <= this.maxHp * FLEE_HP) { this.#startFlee(); return; }
     this.retargetT -= dt;
     if (!this.target || !this.target.alive || this.retargetT <= 0) { this.#pickTarget(); this.retargetT = 5; }
     const tgt = this.target;
@@ -398,7 +399,7 @@ export class Monster {
   #sleep(dt) {
     this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.01 * dt);
     this.#brake(dt);
-    if (this.hp >= this.maxHp * 0.6) { this.setState('combat'); this.recover = 1.5; this.fleeing = false; this.rageUsed = false; }
+    if (this.hp >= this.maxHp * 0.6) { this.setState('combat'); this.recover = 1.5; this.fleeing = false; this.fleeUsed = false; this.rageUsed = false; }
   }
 
   #faceTarget(dt, rate) {

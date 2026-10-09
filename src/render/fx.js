@@ -39,7 +39,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
 
   // ---- ground markers
   const markers = new Map();
-  const ringGeo = new THREE.RingGeometry(0.92, 1, 24);
+  const ringGeo = new THREE.RingGeometry(0.88, 1, 24);
   ringGeo.rotateX(-Math.PI / 2);
   const discGeo = new THREE.CircleGeometry(1, 20);
   discGeo.rotateX(-Math.PI / 2);

@@ -79,6 +79,13 @@ body.scan #stage::after {
 .hud-ko.bad { color: #ff6b6b; }
 .mini { width: 16.4vmin; height: 16.4vmin; background: rgba(10,8,40,.6); border: 1px solid var(--edge); image-rendering: pixelated; pointer-events: auto; }
 .mini.big { position: fixed; left: 50%; top: 50%; width: 52vmin; height: 52vmin; transform: translate(-50%,-50%); z-index: 20; }
+.lockmark { position: absolute; left: 0; top: 0; width: 6.5vmin; height: 6.5vmin; display: none; opacity: .9;
+  --c: #ff3b3b;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 35% 2px no-repeat, linear-gradient(var(--c), var(--c)) top left / 2px 35% no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 35% 2px no-repeat, linear-gradient(var(--c), var(--c)) top right / 2px 35% no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 35% 2px no-repeat, linear-gradient(var(--c), var(--c)) bottom left / 2px 35% no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 35% 2px no-repeat, linear-gradient(var(--c), var(--c)) bottom right / 2px 35% no-repeat; }
 .hud-banner { position: absolute; left: 50%; top: 18vmin; transform: translateX(-50%); font-size: max(11px, 3.4vmin); color: #ff6b6b; text-align: center; opacity: 0; transition: opacity .3s; white-space: nowrap; }
 .hud-banner.show { opacity: 1; }
 .hud-center { position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%); font-size: max(12px, 4vmin); text-align: center; opacity: 0; transition: opacity .25s; white-space: nowrap; }

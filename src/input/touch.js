@@ -18,6 +18,10 @@ export function attachTouch(input, root) {
     BUTTONS.map((b) => `<div class="tbtn ${b.cls}" data-act="${b.act}"><span>${b.label}</span></div>`).join('') +
     `<div class="tmenu" data-act="menu"><span>II</span></div>`;
   root.appendChild(el);
+  if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window || new URLSearchParams(location.search).get('touch') === '1') {
+    input.hasTouch = true;
+    document.body.classList.add('touch');
+  }
   const base = el.querySelector('.stick-base'), knob = el.querySelector('.stick-knob');
   const ctxBtn = el.querySelector('.btn-ctx'), itemBtn = el.querySelector('.btn-item');
   const ptrs = new Map();

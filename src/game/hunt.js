@@ -201,6 +201,7 @@ export class Hunt {
     });
     this.viz.end();
     this.app.input.contextLabel = this.contextLabel ?? null;
+    this.app.input.itemLabel = this.itemLabel ?? '';
   }
 
   render() {
@@ -209,6 +210,11 @@ export class Hunt {
     this._lastRender = now;
     this.fx.updateNumbers(dt);
     this.hud.update(this, dt);
+    const lp = this.player.lockPoint();
+    if (lp) {
+      const v = new THREE.Vector3(lp.x, lp.y, lp.z).project(this.camera);
+      this.hud.lock(v.z < 1 ? { x: v.x * 0.5 + 0.5, y: -v.y * 0.5 + 0.5 } : null);
+    } else this.hud.lock(null);
     this.app.touch?.update();
     this.app.renderer.render(this.scene, this.camera);
   }
@@ -224,6 +230,7 @@ export class Hunt {
     this.input.contextLabel = null;
     time.reset();
     this.bus.clear();
+    this.scene.traverse((o) => { o.geometry?.dispose?.(); });
     document.body.classList.remove('scan');
   }
 }

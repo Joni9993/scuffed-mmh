@@ -4,5 +4,5 @@ export default defineConfig({
   base: './',
   build: { target: 'es2020', chunkSizeWarningLimit: 1500 },
   server: { host: true },
-  test: { include: ['tests/unit/**/*.test.js'], environment: 'node' },
+  test: { include: ['tests/unit/**/*.test.js'], environment: 'node', setupFiles: ['tests/setup.js'] },
 });

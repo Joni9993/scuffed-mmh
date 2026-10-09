@@ -22,6 +22,7 @@ export function createHud(root) {
       <div class="hud-ko">Umgekippt 0/3</div>
       <canvas class="mini ui-hit" width="64" height="64"></canvas>
     </div>
+    <div class="lockmark"></div>
     <div class="hud-banner"></div>
     <div class="hud-center"></div>`;
   root.appendChild(el);
@@ -29,7 +30,7 @@ export function createHud(root) {
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'),
     wstat: q('.wstat'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), mini: q('.mini'),
-    banner: q('.hud-banner'), center: q('.hud-center'),
+    banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'),
   };
   const g = refs.mini.getContext('2d');
   g.imageSmoothingEnabled = false;
@@ -77,6 +78,13 @@ export function createHud(root) {
       bannerT -= dt; if (bannerT <= 0) refs.banner.classList.remove('show');
       centerT -= dt; if (centerT <= 0) refs.center.classList.remove('show');
       drawMinimap(hunt);
+    },
+    /** screen position in 0..1 or null */
+    lock(pos) {
+      if (!pos) { if (cache.lk) { cache.lk = false; refs.lock.style.display = 'none'; } return; }
+      cache.lk = true;
+      refs.lock.style.display = 'block';
+      refs.lock.style.transform = `translate(${(pos.x * 100).toFixed(1)}vw,${(pos.y * 100).toFixed(1)}vh) translate(-50%,-50%)`;
     },
     dispose() { el.remove(); },
   };

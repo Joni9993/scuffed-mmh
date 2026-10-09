@@ -35,7 +35,7 @@ export function damageVitals(v, dmg) {
 export function tickPrellung(v, dt) {
   v.sinceHit += dt;
   if (v.hp <= 0 || v.bruise <= 0 || v.sinceHit < VIT.bruiseDelay) return 0;
-  const heal = Math.min(v.bruise, VIT.bruiseRegen * dt);
+  const heal = Math.min(v.bruise, VIT.bruiseRegen * dt, Math.max(0, v.maxHp - v.hp));
   v.hp += heal;
   v.bruise -= heal;
   return heal;

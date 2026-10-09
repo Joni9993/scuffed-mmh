@@ -494,7 +494,7 @@ export class Player {
           t.tx += Math.sin(this.time * 2.2) * 1.0;
         }
     }
-    const k = 1 - Math.exp(-(this.state === 'roll' ? 60 : 38) * dt);
+    const k = 1 - Math.exp(-(this.state === 'roll' ? 60 : wp ? 75 : 38) * dt);
     for (const key in t) p[key] += (t[key] - p[key]) * k;
     if (this.state === 'roll' || this.lastState === 'roll') p.prx = t.prx ?? 0;
     this.rig.apply(p);

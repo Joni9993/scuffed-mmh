@@ -53,7 +53,7 @@ export const titleScene = {
     this.boss.root.rotation.y = 0.6 + Math.sin(this.t * 0.3) * 0.25;
     const a = this.t * 0.12;
     this.cam.position.set(-14 + Math.sin(a) * 2 + 1, 2.4, -9);
-    this.cam.lookAt(-14, 2.4, 0);
+    this.cam.lookAt(-18, 2.2, 0);
   },
   render() { this.app.renderer.render(this.scene, this.cam); },
 };

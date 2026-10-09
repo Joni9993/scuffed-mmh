@@ -4,7 +4,7 @@ import { createInput } from './input/input.js';
 import { attachKeyboard } from './input/keyboard.js';
 import { attachTouch } from './input/touch.js';
 import { pollGamepad } from './input/gamepad.js';
-import { createLoop } from './core/loop.js';
+import { createLoop, DT } from './core/loop.js';
 import { time } from './core/time.js';
 import { appBus } from './core/events.js';
 import { settings } from './core/settings.js';
@@ -64,6 +64,8 @@ window.__SH = {
   save: {},
   goto: (name, opts) => app.goto(name, opts),
   step: (n = 1) => loop.step(n),
+  /** n sim steps WITHOUT rendering (fast, deterministic) */
+  sim(n = 1) { for (let i = 0; i < n; i++) { time.tick(DT); app.scene?.update(DT * time.scale); } },
   pause: (b = true) => (b ? loop.stop() : loop.start()),
   debugHitboxes(b = true) { const h = this.hunt; if (h) h.viz.enabled = !!b; },
   input, app, time,
