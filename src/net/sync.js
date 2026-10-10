@@ -64,7 +64,7 @@ export class HuntNet {
     const hunt = this.hunt;
     const weapon = weapons[info.weapon] ? info.weapon : 'gs';
     const dg = decodeGear(info.gear); // [G] remote outfit; old clients send no code -> default armor, weapon type/tier as before
-    const gear = dg ? makeGear({ ...dg, color: PLAYER_COLORS[dg.colorIdx] }) : null;
+    const gear = dg ? makeGear({ ...dg, color: PLAYER_COLORS[this.net.session?.member(info.id)?.colorIdx ?? dg.colorIdx] }) : null;
     const p = new Player({ id: info.id, name: info.name, weapon: dg?.weapon.type ?? weapon, tier: dg?.weapon.tier ?? info.tier ?? 1, branch: dg?.weapon.branch ?? null, gear, local: false, ctx: hunt });
     const sp = hunt.world.spawnPoints[(info.slot ?? 1) % hunt.world.spawnPoints.length];
     p.spawnAt(sp.x, sp.z, sp.yaw);
@@ -216,6 +216,7 @@ export class HuntNet {
       const s = sm.s, c = sm.cur;
       let m = this.#mon(id);
       if (!m) {
+        if (c.state === 'dead') continue; // already reaped here
         m = hunt.spawnMonster(c.def, { x: s.x, z: s.z, yaw: s.rot, state: c.state === 'dead' ? 'wander' : c.state, id });
         m.authority = false;
       }

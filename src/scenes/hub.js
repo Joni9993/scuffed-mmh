@@ -401,7 +401,7 @@ export const hubScene = {
       const s = this.presence.sample(id);
       if (!s) continue;
       let rec = this.members.get(id);
-      const col = PLAYER_COLORS[s.color] ?? PLAYER_COLORS[0];
+      const col = PLAYER_COLORS[session.member(id)?.colorIdx ?? s.color] ?? PLAYER_COLORS[0]; // room-resolved distinct colour
       if (!rec) rec = this.addRemote(id, s, col);
       const p = rec.player, hunting = this.board.state.busy.has(id);
       p.pos.set(s.x, s.y, s.z);

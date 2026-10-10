@@ -30,6 +30,7 @@ const MAX_KO = 3;
  * opts: { quest:'jaggo', weapon:'gs', seed:1, god:false, nofx:false, aggro:false, solo:true, name }
  */
 const _lockV = new THREE.Vector3(); // [B] perf: no per-frame allocation
+export const REAP_MINOR = 8, REAP_MAJOR = 70; // seconds dead before removal (> CARVE_WINDOW 45)
 export class Hunt {
   constructor(app, opts = {}) {
     this.app = app;
@@ -157,6 +158,20 @@ export class Hunt {
     this.monsters.push(m);
     this.scene.add(m.mesh, m.shadow);
     return m;
+  }
+
+  /** Dead monsters leave hunt.monsters (and the scene) once the carve window is over; minor ones after a few seconds. */
+  reapDead(dt) {
+    const list = this.monsters;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const m = list[i];
+      if (m.alive) continue;
+      m.deadFor = (m.deadFor ?? 0) + dt;
+      if (m.deadFor < (m.minor ? REAP_MINOR : REAP_MAJOR)) continue;
+      list.splice(i, 1);
+      this.scene.remove(m.mesh, m.shadow);
+      this.fx.clearMarker?.(m.id);
+    }
   }
 
   respawn(player) {
@@ -297,6 +312,7 @@ export class Hunt {
     this.effects.update(dt); // [P]
     for (const p of this.players) { if (p.local) p.update(dt); else p.updateRemote(dt); } // [N]
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
+    this.reapDead(dt);
     this.projectiles.update(dt); // [W]
     this.world.update(dt, this);
     this.ambientFauna?.update(dt); // [L]

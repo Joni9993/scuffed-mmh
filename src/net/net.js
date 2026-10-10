@@ -11,7 +11,11 @@ import { MSG, RELAY, IDEMPOTENT, MAX_PLAYERS, ERR, Dedupe, generateRoomCode, nor
  *   Sonderereignisse: 'roster' (Liste geändert), 'peer-leave' ({id, name}), 'close' ({reason}), 'start' (Spielstart)
  */
 
-export const TURN_SERVERS = []; // z. B. [{ urls: 'turn:turn.example.org:3478', username: 'u', credential: 'p' }]
+// Öffentliches Gratis-TURN (Open Relay) als Fallback für Mobilfunk/CGNAT; eigenes per ?turn=<JSON> ergänzbar.
+export const TURN_SERVERS = [{
+  urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'],
+  username: 'openrelayproject', credential: 'openrelayproject',
+}];
 const STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun2.l.google.com:19302' }];
 const HEARTBEAT_MS = 1000, TIMEOUT_MS = 10000, CONNECT_TIMEOUT_MS = 12000;
 const now = () => performance.now();
@@ -97,6 +101,7 @@ export class Net {
     if (peerRec) peerRec.lastRx = now(); else this.lastRx = now();
     if (w.t === MSG.PING) return this.#onPing(conn, w, peerRec);
     if (w.t === MSG.HELLO && this.isHost) return this.#onHello(conn, w);
+    if (w.t === MSG.PROFILE && this.isHost) return peerRec ? this.#onProfile(peerRec, w.d) : undefined;
     const from = peerRec ? peerRec.id : w.f;
     if (this.isHost) {
       if (!peerRec) return; // unbekannte Verbindung (kein hello)
@@ -155,6 +160,16 @@ export class Net {
     reply({ you: id, code: this.code });
     this.#pushLobby();
   }
+  /** Host: Gast ändert nach dem Beitritt Name/Waffe/Rüstung -> Roster aktualisieren und an alle schicken. */
+  #onProfile(rec, d) {
+    const r = this.roster.find((x) => x.id === rec.id);
+    if (!r || !d) return;
+    if (typeof d.name === 'string') r.name = rec.name = d.name.slice(0, 12);
+    if (typeof d.weapon === 'string') r.weapon = d.weapon.slice(0, 12);
+    if (Number.isFinite(d.tier)) r.tier = Math.max(1, Math.min(9, d.tier | 0));
+    if (typeof d.gear === 'string') r.gear = d.gear.slice(0, 8);
+    this.#pushLobby();
+  }
   #onReady(rec, d) {
     const r = this.roster.find((x) => x.id === rec.id);
     if (r) { r.ready = !!d.r; this.#pushLobby(); }
@@ -167,6 +182,12 @@ export class Net {
   setQuest(q) { this.quest = q; if (this.isHost) this.#pushLobby(); }
   /** Host: eigene Bereit-/Ausrüstungsdaten ändern. */
   updateSelf(patch) {
+    if (this.isGuest) {
+      const d = {};
+      for (const k of ['name', 'weapon', 'tier', 'gear']) if (patch[k] !== undefined) d[k] = patch[k];
+      if (Object.keys(d).length && this.myId) this.send(MSG.PROFILE, d);
+      return;
+    }
     const r = this.roster.find((x) => x.id === this.myId);
     if (r) Object.assign(r, patch);
     if (this.isHost) this.#pushLobby();
