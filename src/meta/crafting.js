@@ -23,6 +23,7 @@ export function craftItem(save, recipeId) {
   const r = RECIPES[recipeId];
   pay(save, r.cost);
   boxAdd(save, recipeId, r.out);
+  save.stats.crafted = (save.stats.crafted ?? 0) + 1;
   return { ok: true, id: recipeId, n: r.out };
 }
 
@@ -50,6 +51,7 @@ export function upgradeWeapon(save, type, branch = null) {
   if (m.length) return { ok: false, reason: 'mats', missing: m };
   pay(save, opt.cost);
   save.weapons[type] = { tier: opt.tier, branch: opt.tier === 4 ? w.branch : opt.branch };
+  save.stats.crafted = (save.stats.crafted ?? 0) + 1;
   return { ok: true, tier: opt.tier, branch: save.weapons[type].branch, name: opt.name };
 }
 
@@ -61,6 +63,7 @@ export function craftArmor(save, pieceId) {
   if (m.length) return { ok: false, reason: 'mats', missing: m };
   pay(save, p.cost);
   save.armorOwned[pieceId] = true;
+  save.stats.crafted = (save.stats.crafted ?? 0) + 1;
   return { ok: true, id: pieceId, name: p.name };
 }
 

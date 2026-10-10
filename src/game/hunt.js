@@ -48,7 +48,7 @@ export class Hunt {
     this.net = null; // [N] HuntNet in coop (hunt.net: isHost, send, on, peers), null in solo
     this.players = [];
     this.monsters = [];
-    this.stats = { damage: 0, hits: 0, perfect: 0 };
+    this.stats = { damage: 0, hits: 0, perfect: 0, kos: 0 };
     this._n = 0;
     this._lastRender = performance.now();
 
@@ -96,7 +96,8 @@ export class Hunt {
     this.hud = createHud(app.ui);
     sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this.bus.on('playerDown', () => this.#onPlayerDown());
-    this.bus.on('glitchCounter', () => { this.stats.perfect++; });
+    this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
+    this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
     this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) this.#onBossDead(); });
     this.bus.on('monsterState', ({ monster, state }) => {
       if (monster === this.mainMonster && state === 'notice') this.hud.banner(monster.def.name, 3);

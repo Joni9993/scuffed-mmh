@@ -4,9 +4,10 @@ import { ITEMS, BOX_MAX } from '../data/items.js';
 import { ARMOR_PIECES, DEFAULT_ARMOR, SLOTS } from '../data/armor.js';
 import { WEAPON_TYPES } from '../data/weapons.js';
 import { FOODS } from '../data/foods.js';
+import { getQuest } from '../data/quests.js';
 
 export const SAVE_KEY = 'scuffedhunter.save.v1';
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 export const MAX_SCHROTT = 999999;
 export const BAR_SLOTS = 8;
 export const PLAYER_COLORS = ['#5ad8ff', '#ff6b6b', '#7dff7d', '#ffd84a', '#c08aff', '#ff9a3a', '#f4f0d0', '#ff7ad0'];
@@ -24,7 +25,9 @@ export function defaultSave() {
     loadout: { weapon: 'gs', armor: { ...DEFAULT_ARMOR }, items: [] },
     meal: null,
     clears: {},
-    stats: { hunts: 0, wins: 0, fails: 0 },
+    stats: { hunts: 0, wins: 0, fails: 0, kos: 0, carves: 0, crafted: 0, glitch: 0, playtime: 0 },
+    kills: {}, // monsterId -> n
+    best: {}, // questId -> fastest win (seconds)
     created: Date.now(), updated: Date.now(),
   };
 }
@@ -42,6 +45,12 @@ export const MIGRATIONS = {
     if (d.weapon && typeof d.weapon === 'string') out.loadout = { weapon: d.weapon };
     delete out.playerName; delete out.rank; delete out.money; delete out.inv; delete out.weapon;
     return out;
+  },
+  // v1 -> v2: stats gain kos/carves/crafted/glitch/playtime, plus per-monster kills and per-quest best times (old saves: kills estimated from clears)
+  1(d) {
+    const kills = {};
+    if (isObj(d.clears)) for (const [q, n] of Object.entries(d.clears)) { const m = getQuest(q)?.monster; if (m) kills[m] = (kills[m] ?? 0) + (Number(n) || 0); }
+    return { ...d, version: 2, kills: isObj(d.kills) ? d.kills : kills, best: isObj(d.best) ? d.best : {} };
   },
 };
 
@@ -92,6 +101,8 @@ export function sanitize(d) {
   s.meal = FOODS[d.meal] ? d.meal : null;
   if (isObj(d.clears)) for (const [id, n] of Object.entries(d.clears)) { const c = int(n, 0, 99999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.clears[id] = c; }
   if (isObj(d.stats)) for (const k of Object.keys(s.stats)) s.stats[k] = int(d.stats[k], 0, 1e9, 0);
+  if (isObj(d.kills)) for (const [id, n] of Object.entries(d.kills)) { const c = int(n, 0, 99999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.kills[id] = c; }
+  if (isObj(d.best)) for (const [id, n] of Object.entries(d.best)) { const c = Number(n) >= 1 ? int(n, 1, 99999, 0) : 0; if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.best[id] = c; }
   s.version = CURRENT_VERSION;
   return s;
 }
