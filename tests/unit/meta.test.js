@@ -303,10 +303,11 @@ describe('progression: JR unlocks and rewards', () => {
     expect(win(quests.jaggo).jrUp).toBe(2);
     expect(s.jr).toBe(2);
     expect(win(quests.jaggo).jrUp).toBeNull();
+    s.rp = 1000; // Schwellen: rankpoints.test.js
     expect(win(quests.barrotz).jrUp).toBe(3);
-    expect(win(quests.brathalos).jrUp).toBe(5);
+    expect(win(quests.brathalos).jrUp).toBe(4);
     expect(win(quests.kraeuterlauf).jrUp).toBeNull();
-    expect(s.jr).toBe(5);
+    expect(s.jr).toBe(4);
     expect(s.clears.jaggo).toBe(2);
   });
   it('win pays Schrott, break bonus and quest drops; Rotglut doubles materials', () => {

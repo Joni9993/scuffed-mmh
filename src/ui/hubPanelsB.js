@@ -6,7 +6,7 @@ import { registerFieldStudy, getBestTime, FIELDSTUDY_ID } from '../meta/fieldstu
 import { monsters } from '../game/monsters/index.js';
 import { cookMeal } from '../meta/crafting.js';
 import { missing } from '../meta/inventory.js';
-import { questUnlocked } from '../meta/progression.js';
+import { questLock, isKeyQuest, rankProgress, questById } from '../meta/progression.js';
 import { buildLoadout } from '../meta/loadout.js';
 import { installHtml, bindInstall, onInstallChange } from './install.js';
 import { PLAYER_COLORS, cleanName, importCode, exportCode, SAVE_KEY } from '../meta/save.js';
@@ -83,11 +83,11 @@ export function createBrett(ctx) {
       const fs = registerFieldStudy(), fsBest = getBestTime(fs.fieldStudy);
       const list = [fs, ...questList()].map((q) => {
         const isFs = q.id === FIELDSTUDY_ID;
-        const open = questUnlocked(s, q), avail = !q.monster || !!monsters[q.monster];
+        const lock = questLock(s, q), open = !lock, key = isKeyQuest(q, s), avail = !q.monster || !!monsters[q.monster];
         const done = s.clears[q.id] ?? 0;
         return `<div class="row quest${open && avail ? '' : ' lock'}${sel === q.id ? ' sel' : ''}${isFs ? ' fieldstudy' : ''}"${isFs ? ' style="border:1px solid #ffd040;background:rgba(255,208,64,.12)"' : ''} data-a="qsel" data-k="${q.id}">
-          <span class="nm">${isFs ? '<small>★ Wochenauftrag</small><br>' : ''}<b>${esc(q.name)}</b> ${isFs ? `<small>(${esc(q.monster)})</small>` : ''}${done ? ` <small>✓${done}</small>` : ''}<br><small>${open ? (avail ? esc(q.desc) + (isFs ? ` Mutatoren: ${mutHtml(q.mutators)}. Bestzeit: ${fsBest ? mmss(fsBest) : '–'}` : '') : 'Dieser Brocken ist noch nicht im Rostnest angekommen.') : `Jägerrang ${q.jr} nötig.`}</small></span>
-          <span class="chip ok">${iconHtml('schrott')}${q.reward}</span>
+          <span class="nm">${isFs ? '<small>★ Wochenauftrag</small><br>' : ''}<b>${esc(q.name)}</b>${key ? ` <small class="keyq" style="color:#ffd040">Rang-Auftrag → JR ${q.jrUp}</small>` : ''} ${isFs ? `<small>(${esc(q.monster)})</small>` : ''}${done ? ` <small>✓${done}</small>` : ''}<br><small>${open ? (avail ? esc(q.desc) + (isFs ? ` Mutatoren: ${mutHtml(q.mutators)}. Bestzeit: ${fsBest ? mmss(fsBest) : '–'}` : '') : 'Dieser Brocken ist noch nicht im Rostnest angekommen.') : lock.reason === 'rp' ? `Noch ${lock.need} RP.` : `Jägerrang ${lock.need} nötig.`}</small></span>
+          <span class="chip ok">${iconHtml('schrott')}${q.reward}</span>${q.rp ? `<span class="chip">+${q.rp} RP</span>` : ''}
           ${open && avail ? `<button class="btn small go" data-a="post" data-k="${q.id}">Posten</button>` : '<span class="lockm">gesperrt</span>'}</div>`;
       }).join('');
       const posted = adapter.getPosted();
@@ -105,7 +105,7 @@ export function createBrett(ctx) {
       const focus = info ?? chosen[chosen.length - 1];
       const infoLine = `<div class="mt-info">${focus && MUTATORS[focus] ? `<b>${esc(MUTATORS[focus].name)}:</b> ${esc(MUTATORS[focus].desc)}` : 'Tippe einen Mutator an: Wirkung und Bonus erscheinen hier.'}</div>`;
       const mb = `<div class="sub">Mutatoren (optional) <small>${chosen.length}/${MAX_MUTATORS} gewählt${chosen.length ? ' · ' + esc(rewardLabel(resolveMods(chosen))) : ''}</small></div><div class="muts">${chips}</div>${infoLine}`;
-      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}${mb}`;
+      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `<div class="sub">Aufträge · ${rankLine(s)}</div>${list}${mb}`;
       return posted.length ? pb + qb : qb + pb; // posts first once something is posted
     },
     click(a, d) {
@@ -118,6 +118,13 @@ export function createBrett(ctx) {
       return false;
     },
   };
+}
+
+function rankLine(s) {
+  const { next, rp } = rankProgress(s);
+  if (!next) return `JR ${s.jr} · RP ${rp} (Höchstrang)`;
+  const k = next.keys.map((id) => questById(id).name).join(' oder ');
+  return `JR ${s.jr} · RP ${rp}/${next.rp} – nächster Rang: ${esc(k)} besiegen`;
 }
 
 // ============================================================ Spiegel (Aussehen + Erfolge)

@@ -224,7 +224,7 @@ export class HuntMeta {
     const h = this.hunt;
     return buildRewards({
       quest: { ...h.quest, matMul: this.matMul() }, result, gathered: this.inv.gathered(), carved: this.inv.carved, breaks: this.breaks,
-      used: h.opts.loadout?.debug ? {} : this.inv.used(), chest: this.chest.result(), rng: this.rng,
+      used: h.opts.loadout?.debug ? {} : this.inv.used(), chest: this.chest.result(), rng: this.rng, rpMul: h.boardMods?.reward ?? 1,
     });
   }
 

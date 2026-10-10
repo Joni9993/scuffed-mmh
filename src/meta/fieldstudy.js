@@ -1,6 +1,6 @@
 // Wöchentliche Feldstudie (GDD 16.8): Datum = Seed. Gleiche ISO-Kalenderwoche -> gleicher Auftrag (Brocken, 2 Mutatoren, Seed).
 import { createRng } from '../core/rng.js';
-import { quests, setFieldStudyQuest } from '../data/quests.js';
+import { quests, setFieldStudyQuest, MONSTER_RP } from '../data/quests.js';
 import { MUTATOR_ORDER, resolveMods } from '../data/mutators.js';
 import { getMonsterDef } from '../game/monsters/index.js';
 
@@ -42,6 +42,7 @@ export function fieldStudyQuest(date = new Date()) {
   const f = currentFieldStudy(date);
   return {
     id: FIELDSTUDY_ID, name: `Feldstudie KW ${f.week}`, type: 'hunt', monster: f.monster, world: f.world, timeLimit: 20 * 60, reward: f.reward, jr: f.jr,
+    rp: Math.round((MONSTER_RP[f.monster] ?? 60) * BONUS * resolveMods(f.mutators).reward),
     mutators: f.mutators, fixedSeed: f.seed, fieldStudy: f.key, matMul: Math.round(resolveMods(f.mutators).reward * MAT_BONUS * 1000) / 1000,
     desc: 'Wochenauftrag: gleicher Brocken, gleiche Mutatoren, gleicher Seed für alle. Bestzeit zählt. +50 % Schrott.',
   };

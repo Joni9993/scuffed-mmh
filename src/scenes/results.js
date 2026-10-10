@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { saveStore } from '../meta/save.js';
-import { applyHuntResult } from '../meta/progression.js';
+import { applyHuntResult, questById } from '../meta/progression.js';
 import { ITEMS } from '../data/items.js';
 import { iconHtml } from '../ui/hubIcons.js';
 import { esc } from '../ui/hubKit.js';
@@ -44,7 +44,9 @@ export const resultsScene = {
         ${list('Zerlegt', p.carved)}${list('Teilbruch-Bonus', p.breaks)}${list('Auftragsbonus', p.reward)}${list('Gesammelt', p.gathered)}
         ${rewards?.parts?.handedIn && Object.keys(p.handedIn).length ? `<div class="note">Abgegeben: ${Object.entries(p.handedIn).map(([id, n]) => `${n}× ${esc(ITEMS[id]?.name ?? id)}`).join(', ')}</div>` : ''}
         ${Object.keys(rewards?.used ?? {}).length ? list('Verbraucht', rewards.used) : ''}
-        ${sum?.jrUp ? `<div class="rs-jr">Jägerrang ${jrBefore} → ${sum.jrUp}! Neue Aufträge am Brett.</div>` : ''}
+        ${sum?.rp ? `<div class="rs-big">+${sum.rp} RP</div>` : ''}
+        ${sum?.keyOpen?.length ? `<div class="rs-jr">Rang-Auftrag freigeschaltet: ${sum.keyOpen.map((id) => esc(questById(id).name)).join(', ')}!</div>` : ''}
+        ${sum?.jrUp ? `<div class="rs-jr">Jägerrang ${sum.jrUp}! (vorher ${jrBefore}) Neue Aufträge am Brett.</div>` : ''}
         ${!Object.keys(rewards?.items ?? {}).length && !rewards?.schrott ? '<div class="note">Mit leeren Händen. Mindestens sauber.</div>' : ''}
       </div><div class="rs-foot"><button class="btn red" data-a="hub">Weiter</button> <!-- [T] --></div></div>`;
     el.addEventListener('click', (e) => { if (e.target.closest('[data-a="hub"]')) { sfx.play('ui'); app.goto('hub'); } });

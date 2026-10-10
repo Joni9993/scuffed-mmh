@@ -159,17 +159,19 @@ describe('Quests + JR-Gating', () => {
     expect(q.training.jr).toBe(0);
     expect(q.jaggo_rotglut.jr).toBe(4); // bestehende Rotglut bleibt
   });
-  it('JR: Brathalos -> 5, Kroll/Gorgo -> 6, Voltaro -> 7, nie zurueck', () => {
+  it('JR: Revierstreit -> 5, Kroll/Gorgo -> 6, Voltaro -> 7, nie zurueck', () => {
     expect(MAX_JR).toBe(7);
     const s = defaultSave();
     const win = (qu) => applyHuntResult(s, qu, buildRewards({ quest: qu, result: 'win', rng: createRng(1) }), { time: 100 });
-    s.jr = 3;
+    s.jr = 4; s.rp = 450;
     expect(questUnlocked(s, quests.kroll)).toBe(false);
-    expect(win(quests.brathalos).jrUp).toBe(5);
+    expect(win(quests.revierstreit).jrUp).toBe(5);
+    s.rp = 800;
     expect(questUnlocked(s, quests.kroll)).toBe(true);
     expect(questUnlocked(s, quests.voltaro)).toBe(false);
     expect(win(quests.kroll).jrUp).toBe(6);
     expect(win(quests.gorgo).jrUp).toBeNull();
+    s.rp = 1200;
     expect(questUnlocked(s, quests.voltaro)).toBe(true);
     expect(questUnlocked(s, quests.voltaro_rotglut)).toBe(false);
     expect(win(quests.voltaro).jrUp).toBe(7);

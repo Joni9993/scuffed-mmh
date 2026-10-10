@@ -4,7 +4,7 @@ import { ITEMS, BOX_MAX } from '../data/items.js';
 import { ARMOR_PIECES, DEFAULT_ARMOR, SLOTS } from '../data/armor.js';
 import { WEAPON_TYPES } from '../data/weapons.js';
 import { FOODS } from '../data/foods.js';
-import { getQuest } from '../data/quests.js';
+import { getQuest, RANK_RP } from '../data/quests.js';
 
 export const SAVE_KEY = 'scuffedhunter.save.v1';
 export const CURRENT_VERSION = 2;
@@ -18,7 +18,7 @@ export function defaultSave() {
   return {
     version: CURRENT_VERSION,
     name: 'Pirscher', nameSet: false, color: PLAYER_COLORS[0],
-    jr: 1, schrott: 0,
+    jr: 1, rp: 0, schrott: 0,
     box: {},
     weapons: { gs: { tier: 1, branch: null }, db: { tier: 1, branch: null }, bow: { tier: 1, branch: null }, kt: { tier: 1, branch: null } }, // [KT] sanitize() starts from defaults -> old saves get a starter Rostkatana
     armorOwned,
@@ -70,6 +70,12 @@ export function sanitize(d) {
   s.color = PLAYER_COLORS.includes(d.color) ? d.color : PLAYER_COLORS[0];
   s.jr = int(d.jr, 1, 7, 1);
   s.schrott = int(d.schrott, 0, MAX_SCHROTT, 0);
+  // Rang-Punkte: fehlt rp (alter Save) -> Summe Basis-RP je einmal geclearter Auftrag, mindestens Schwelle des aktuellen Rangs
+  if (d.rp === undefined) {
+    let est = 0;
+    if (isObj(d.clears)) for (const [q, n] of Object.entries(d.clears)) if (Number(n) > 0) { try { est += getQuest(q)?.rp ?? 0; } catch { /* unbekannt */ } }
+    s.rp = Math.max(est, RANK_RP[s.jr] ?? 0);
+  } else s.rp = int(d.rp, 0, 1e9, 0);
   s.created = Number(d.created) || base.created;
   s.updated = Number(d.updated) || base.updated;
   if (isObj(d.box)) for (const [id, n] of Object.entries(d.box)) if (ITEMS[id]) { const c = int(n, 0, BOX_MAX, 0); if (c > 0) s.box[id] = c; }

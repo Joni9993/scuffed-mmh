@@ -1,12 +1,41 @@
 // Jägerrang, quest unlocks, reward building/application (pure).
-import { getQuest } from '../data/quests.js';
+import { getQuest, RANK_RP } from '../data/quests.js';
 import { rollReward, rollBreak } from '../data/drops.js';
 import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
 import { applyChestResult } from './huntChest.js';
 
-export const MAX_JR = 7; // 5 nach Brathalos, 6 nach Kroll/Gorgo, 7 nach Voltaro
+export const MAX_JR = 7; // 2 Jaggo, 3 Barrotz, 4 Brathalos, 5 Revierstreit, 6 Kroll/Gorgo, 7 Voltaro
 
-export const questUnlocked = (save, quest) => save.jr >= (quest.jr ?? 1);
+/** Jägerrang-Stufen: Schlüssel-Aufträge (quest.jrUp = Rang) + Rang-Punkte-Schwelle (save.rp). */
+export const RANKS = [
+  { jr: 2, keys: ['jaggo'], rp: RANK_RP[2] },
+  { jr: 3, keys: ['barrotz'], rp: RANK_RP[3] },
+  { jr: 4, keys: ['brathalos'], rp: RANK_RP[4] },
+  { jr: 5, keys: ['revierstreit'], rp: RANK_RP[5] },
+  { jr: 6, keys: ['kroll', 'gorgo'], rp: RANK_RP[6] },
+  { jr: 7, keys: ['voltaro'], rp: RANK_RP[7] },
+];
+export const isKeyQuest = (quest, save) => !!quest.jrUp && (!save || quest.jrUp > save.jr);
+
+/** null wenn annehmbar, sonst { reason: 'jr'|'rp', need } (jr: nötiger Rang, rp: fehlende Rang-Punkte). */
+export function questLock(save, quest) {
+  const need = quest.jr ?? 1;
+  if (save.jr < need) return { reason: 'jr', need };
+  if (quest.jrUp && quest.jrUp > save.jr) {
+    const t = RANK_RP[quest.jrUp] ?? 0;
+    if ((save.rp ?? 0) < t) return { reason: 'rp', need: t - (save.rp ?? 0) };
+  }
+  return null;
+}
+export const questUnlocked = (save, quest) => !questLock(save, quest);
+
+const openKeys = (save) => RANKS.flatMap((r) => r.keys).filter((k) => { const q = getQuest(k); return isKeyQuest(q, save) && !questLock(save, q); });
+
+/** Fortschritt zum nächsten Rang: { jr, rp, next: {jr, rp, keys}|null, keysOpen } */
+export function rankProgress(save) {
+  const next = RANKS.find((r) => r.jr > save.jr) ?? null;
+  return { jr: save.jr, rp: save.rp ?? 0, next };
+}
 
 /** Merge helper: add n of id to a plain {id:n} map. */
 export function bump(map, id, n = 1) {
@@ -20,7 +49,7 @@ export function bump(map, id, n = 1) {
  *  used: {id:n} consumables spent from the box, rng: seeded rng for the drop rolls.
  * Failure keeps only what was gathered. Gather quests hand in the target items on success.
  */
-export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks = [], used = {}, chest = null, rng }) {
+export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks = [], used = {}, chest = null, rng, rpMul = 1 }) {
   const win = result === 'win';
   const matMul = quest.matMul ?? 1;
   const parts = { gathered: { ...gathered }, carved: win ? { ...carved } : {}, breaks: {}, reward: {}, handedIn: {} };
@@ -37,7 +66,7 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
   }
   const items = {};
   for (const m of [parts.gathered, parts.carved, parts.breaks, parts.reward]) for (const [id, n] of Object.entries(m)) bump(items, id, n);
-  return { quest: quest.id, result, schrott: win ? quest.reward : 0, items, parts, used: { ...used }, chest: chest ?? null };
+  return { quest: quest.id, result, schrott: win ? quest.reward : 0, rp: win ? Math.round((quest.rp ?? 0) * rpMul) : 0, items, parts, used: { ...used }, chest: chest ?? null };
 }
 
 /**
@@ -49,6 +78,8 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
   for (const [id, n] of Object.entries(rewards.used ?? {})) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
   const r = boxAddAll(save, rewards.items ?? {});
   addSchrott(save, rewards.schrott ?? 0);
+  const rpBefore = save.rp ?? 0, openBefore = openKeys(save);
+  if (rewards.result === 'win') save.rp = Math.min(1e9, rpBefore + Math.max(0, Math.floor(rewards.rp ?? 0)));
   save.stats.hunts++;
   let jrUp = null, firstClear = false;
   if (rewards.result === 'win') {
@@ -66,7 +97,7 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
   st.carves += Math.max(0, Math.floor(Number(info.carves) || 0));
   st.glitch += Math.max(0, Math.floor(Number(info.glitch) || 0));
   save.meal = null; // one meal per hunt
-  return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear };
+  return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear, rp: (save.rp ?? 0) - rpBefore, keyOpen: openKeys(save).filter((k) => !openBefore.includes(k)) };
 }
 
 export const questById = getQuest;
