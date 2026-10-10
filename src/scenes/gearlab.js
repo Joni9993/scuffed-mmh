@@ -4,7 +4,6 @@ import { getWeapon } from '../game/weapons/index.js';
 import { REST, sampleTrack } from '../game/anim.js';
 import { mirrorPose } from '../game/anim.js';
 import { makeGear } from '../data/gearlook.js';
-import { setSnapGrid } from '../render/ps1.js';
 
 // [G] Debug scene (?scene=gearlab): lineup of hunter rigs with arbitrary gear, for screenshots and visual checks.
 //   __SH.app.scene.show([{ gear:{weapon:{type,tier,branch},armor:{head,body,legs}}, pose?:{...}, yaw?:rad }], { cam?:[x,y,z], look?:[x,y,z], spacing? })
@@ -84,4 +83,3 @@ export const gearlabScene = {
   },
   exit() { this.clear(); this.app.renderer.onResize.delete(this._onResize); },
 };
-void setSnapGrid;

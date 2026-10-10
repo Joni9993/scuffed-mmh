@@ -207,7 +207,7 @@ export function buildBowLook(tier = 1, branch = null) {
         const root = [0, o * 0.18, 0.3], mid = [s * 0.5, o * 0.55, 0.08], end = [s * 0.34, o * (H + 0.12), -0.12];
         bar(P, root, mid, 0.035, 0.02, BR[5]);
         bar(P, [0, o * 0.4, 0.25], end, 0.03, 0.015, BR[5]);
-        tri(P, root, mid, [0, o * 0.5, 0.2], BR[6 - 6 + 1], { glow: 0.2 });
+        tri(P, root, mid, [0, o * 0.5, 0.2], BR[1], { glow: 0.2 });
         tri(P, mid, end, [0, o * 0.45, 0.2], BR[0], { glow: 0.25 });
         P.box(0.05, 0.05, 0.05, BR[4], { x: mid[0], y: mid[1], z: mid[2], glow: 1 });
       }
