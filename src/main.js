@@ -110,6 +110,7 @@ const sceneName = params.get('scene') || (joinCode ? 'hub' : 'title');
 const startOpts = {
   quest: params.get('quest') || 'jaggo',
   weapon: params.get('weapon') || 'gs',
+  music: ['hunt', 'rost'].includes(params.get('music')) ? params.get('music') : undefined, // Debug: Jagdmusik-Stil vorhören
   seed: Number(params.get('seed') || 1),
   god: flag('god'),
   nofx: flag('nofx'),

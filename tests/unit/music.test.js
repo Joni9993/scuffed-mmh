@@ -35,4 +35,15 @@ describe('music', () => {
     expect(settings.musicOn).toBe(true);
     expect(settings.musicVolume).toBe(0.5);
   });
+
+  it('Rostwerke-Stil: deterministisch, Amboss + Dampf, phrygische Akkorde', async () => {
+    const { genBar } = await import('../../src/audio/music.js');
+    const a = genBar('rost', 3), b = genBar('rost', 3);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    expect(a.anvil.length).toBeGreaterThan(0);
+    expect(a.steam).toEqual([8]); // Takt 3 von 4: Dampfventil
+    expect(genBar('rost', 0).chord.r).toBe(40); // Em
+    expect(genBar('rost', 2).chord.r).toBe(41); // F (bII)
+  });
 });
+

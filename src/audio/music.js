@@ -36,19 +36,33 @@ export function rng32(seed) {
 
 const mtof = (n) => 440 * Math.pow(2, (n - 69) / 12);
 const HUB_CHORDS = [{ r: 45, t: [0, 3, 7] }, { r: 41, t: [0, 4, 7] }, { r: 48, t: [0, 4, 7] }, { r: 43, t: [0, 4, 7] }]; // Am F C G
+const ROST_CHORDS = [{ r: 40, t: [0, 3, 7] }, { r: 41, t: [0, 4, 7] }, { r: 43, t: [0, 4, 7] }, { r: 41, t: [0, 4, 7] }]; // Em F G F (phrygisch, Rostwerke)
 const HUNT_CHORDS = [{ r: 38, t: [0, 3, 7] }, { r: 34, t: [0, 4, 7] }, { r: 41, t: [0, 4, 7] }, { r: 36, t: [0, 4, 7] }]; // Dm Bb F C
 export const HUB_SECTIONS = ['A', 'B', 'A', 'BREAK']; // je 8 Takte = 32 Takte Zyklus
 export const sectionOf = (bar) => HUB_SECTIONS[Math.floor(bar / 8) % 4];
 
 /** Deterministisches Pattern für einen Takt (16 Steps). */
 export function genBar(track, bar, seed = 1337) {
-  const hub = track === 'hub';
-  const chords = hub ? HUB_CHORDS : HUNT_CHORDS;
+  const hub = track === 'hub', rost = track === 'rost';
+  const chords = hub ? HUB_CHORDS : rost ? ROST_CHORDS : HUNT_CHORDS;
   const ch = chords[Math.floor(bar / 2) % 4];
-  const r = rng32(seed + bar * 977 + (hub ? 1 : 7));
+  const r = rng32(seed + bar * 977 + (hub ? 1 : rost ? 13 : 7));
   const sec = hub ? sectionOf(bar) : 'A';
   const last = bar % 8 === 7;
-  const kick = [], snare = [], hat = [], ghost = [], bass = [], arp = [], lead = [];
+  const kick = [], snare = [], hat = [], ghost = [], bass = [], arp = [], lead = [], anvil = [], steam = [];
+  if (rost) {
+    // Rostwerke: Industrial-Synthwave – stampfender Kick, Amboss-Schläge, Dampfzischen, verzerrter Achtel-Bass
+    for (const s of [0, 4, 8, 12]) kick.push(s); if (r() < 0.5) kick.push(14);
+    snare.push(4, 12);
+    for (let i = 0; i < 16; i++) if (i % 2 === 1 || r() < 0.25) hat.push(i);
+    anvil.push(bar % 2 === 0 ? 3 : 11); if (r() < 0.4) anvil.push(7 + (r() < 0.5 ? 0 : 8));
+    if (bar % 4 === 3) steam.push(8);
+    for (let i = 0; i < 16; i += 2) bass.push({ s: i, n: ch.r - 12 + (i === 6 || i === 14 ? 12 : 0) + (i === 10 && r() < 0.5 ? 1 : 0), len: 2 });
+    for (let i = 0; i < 16; i++) arp.push({ s: i, n: ch.r + 12 + [0, 7, 12, ch.t[1], 7, 0][(i + bar) % 6] });
+    const mel = [0, 1, 3, 7, 5, 3, 1, 0];
+    for (let i = 0; i < 4; i++) lead.push({ s: i * 4, n: ch.r + 24 + mel[(i + bar * 2) % 8], len: i === 3 ? 4 : 3 });
+    return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, sec, newChord: bar % 2 === 0 };
+  }
   if (hub) {
     if (sec !== 'BREAK') {
       kick.push(0); if (r() < 0.6) kick.push(10); if (sec === 'B' && r() < 0.5) kick.push(7);
@@ -69,7 +83,7 @@ export function genBar(track, bar, seed = 1337) {
     const mel = [0, 7, 3, 10, 7, 12, 10, 7];
     for (let i = 0; i < 4; i++) lead.push({ s: i * 4 + (r() < 0.3 ? 2 : 0), n: ch.r + 24 + mel[(i + bar * 2) % 8], len: 3 });
   }
-  return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, sec, newChord: bar % 2 === 0 };
+  return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, sec, newChord: bar % 2 === 0 };
 }
 
 /** Ziel-Pegel je Hunt-Intensität. */
@@ -82,11 +96,13 @@ export const HUNT_LAYERS = [
 
 // ------------------------------------------------------------------ Engine
 let ctx = null, out = null, duckG = null, noise = null, timer = null, retry = null;
-const tr = { hub: null, hunt: null };
+const tr = { hub: null, hunt: null, rost: null };
+const HUNTY = (k) => k === 'hunt' || k === 'rost'; // Jagd-Tracks mit Intensitäts-Layern
 let want = null;
 let intensity = 0, nextT = 0, step = 0, bar = 0, lastScene = null;
 const volOf = () => (settings.musicOn === false ? 0 : (settings.musicVolume ?? 0.5)) * 0.6;
-const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4;
+const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4, rostStep = 60 / 112 / 4;
+const stepOf = (k) => (k === 'hub' ? hubStep : k === 'rost' ? rostStep : huntStep);
 
 function init() {
   if (ctx) return true;
@@ -99,21 +115,26 @@ function init() {
   noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noise.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  for (const k of ['hub', 'hunt']) {
+  for (const k of ['hub', 'hunt', 'rost']) {
     const g = ctx.createGain(); g.gain.value = 0; g.connect(out);
     const L = {};
     for (const l of ['pad', 'bass', 'drums', 'arp', 'lead']) { L[l] = ctx.createGain(); L[l].gain.value = k === 'hub' ? 1 : 0; }
     const sc = ctx.createGain(); L.pad.connect(sc); L.bass.connect(sc); sc.connect(g); // Sidechain-Bus
     L.drums.connect(g); L.arp.connect(g); L.lead.connect(g);
     // Pad: Lowpass + Chorus (Delay mit LFO); Arp: Echo
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = k === 'hub' ? 1100 : 700; lp.Q.value = 2;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = k === 'hub' ? 1100 : 700; lp.Q.value = k === 'rost' ? 6 : 2;
     const chD = ctx.createDelay(0.05); chD.delayTime.value = 0.018;
     const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.4; lg.gain.value = 0.004; lfo.connect(lg).connect(chD.delayTime); lfo.start();
     const pin = ctx.createGain();
     pin.connect(lp); lp.connect(L.pad); lp.connect(chD); chD.connect(L.pad);
     const echo = ctx.createDelay(1), fb = ctx.createGain(), ew = ctx.createGain();
-    echo.delayTime.value = (k === 'hub' ? hubStep : huntStep) * 3; fb.gain.value = 0.35; ew.gain.value = 0.3;
+    echo.delayTime.value = stepOf(k) * 3; fb.gain.value = 0.35; ew.gain.value = 0.3;
     L.arp.connect(echo); echo.connect(fb); fb.connect(echo); echo.connect(ew); ew.connect(g);
+    if (k === 'rost') { // verzerrter Bass (Rost/Industrie)
+      const ws = ctx.createWaveShaper(), curve = new Float32Array(256);
+      for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(x * 3.2); }
+      ws.curve = curve; L.dist = ws; ws.connect(L.bass);
+    }
     tr[k] = { g, L, lp, pin, sc };
   }
   return true;
@@ -139,20 +160,34 @@ function hit(t, dest, kind, vol) {
     o.connect(g).connect(dest); o.start(t); o.stop(t + 0.25);
     return;
   }
+  if (kind === 'anvil') { // Amboss: zwei unharmonische Rechtecke durch Bandpass, kurzes Abklingen
+    const bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 3;
+    g.gain.setValueAtTime(vol * 0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    for (const f of [523, 1397]) { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(bp); o.start(t); o.stop(t + 0.4); }
+    bp.connect(g).connect(dest);
+    return;
+  }
   const s = ctx.createBufferSource(); s.buffer = noise;
   const f = ctx.createBiquadFilter(), g = ctx.createGain();
+  if (kind === 'steam') { // Dampfventil: Rauschen schwillt an und zischt ab
+    f.type = 'highpass'; f.frequency.value = 2400;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * 0.12, t + 0.25); g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    s.connect(f).connect(g).connect(dest); s.loop = true; s.start(t); s.stop(t + 1);
+    return;
+  }
   if (kind === 'hat') { f.type = 'highpass'; f.frequency.value = 6500; g.gain.setValueAtTime(vol * 0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04); }
   else { f.type = 'bandpass'; f.frequency.value = 1600; g.gain.setValueAtTime(vol * (kind === 'ghost' ? 0.3 : 0.7), t); g.gain.exponentialRampToValueAtTime(0.001, t + (kind === 'ghost' ? 0.06 : 0.15)); }
   s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 0.5, 0.2);
 }
 
 function scheduleStep(k, t, s, b, sd) {
-  const T = tr[k], L = T.L, p = genBar(k, b), hub = k === 'hub';
+  const T = tr[k], L = T.L, p = genBar(k, b), hub = k === 'hub', rost = k === 'rost';
   const dv = hub ? (p.sec === 'BREAK' ? 0.5 : 0.7) : 1;
   const tt = t + (hub && s % 2 === 1 ? sd * 0.28 : 0); // Swing
   if (s === 0 && p.newChord) { // Pad: 2 Takte, detunte Saws
     const c = p.chord;
-    for (const iv of c.t.concat([12])) for (const dt of [-9, 9]) osc('sawtooth', mtof(c.r + 12 + iv), t, sd * 32, T.pin, 0.03, 0, 0.5, dt);
+    for (const iv of c.t.concat([12])) for (const dt of [-9, 9]) osc(rost ? 'square' : 'sawtooth', mtof(c.r + 12 + iv), t, sd * 32, T.pin, rost ? 0.022 : 0.03, 0, 0.5, dt);
   }
   if (p.kick.includes(s)) {
     hit(tt, L.drums, 'kick', 0.9 * dv);
@@ -161,9 +196,11 @@ function scheduleStep(k, t, s, b, sd) {
   if (p.snare.includes(s)) hit(tt, L.drums, 'snare', dv);
   if (p.ghost.includes(s)) hit(tt, L.drums, 'ghost', dv);
   if (p.hat.includes(s)) hit(tt, L.drums, 'hat', dv);
-  for (const n of p.bass) if (n.s === s) osc('sawtooth', mtof(n.n), tt, sd * n.len * 0.9, L.bass, hub ? 0.2 : 0.17, hub ? 380 : 520);
-  if (hub || intensity >= 1) for (const n of p.arp) if (n.s === s) osc(hub ? 'triangle' : 'square', mtof(n.n), tt, sd * 1.5, L.arp, hub ? 0.07 : 0.04, 1800);
-  if (!hub && intensity >= 3) for (const n of p.lead) if (n.s === s) osc('sawtooth', mtof(n.n), tt, sd * n.len, L.lead, 0.05, 2400, 0.02, 6);
+  if (p.anvil.includes(s) && (intensity >= 1 || s === 3)) hit(tt, L.drums, 'anvil', dv);
+  if (p.steam.includes(s)) hit(tt, L.pad, 'steam', 1);
+  for (const n of p.bass) if (n.s === s) osc('sawtooth', mtof(n.n), tt, sd * n.len * 0.9, rost ? L.dist : L.bass, hub ? 0.2 : rost ? 0.14 : 0.17, hub ? 380 : rost ? 700 : 520);
+  if (hub || intensity >= 1) for (const n of p.arp) if (n.s === s) osc(hub ? 'triangle' : rost ? 'sawtooth' : 'square', mtof(n.n), tt, sd * 1.5, L.arp, hub ? 0.07 : rost ? 0.03 : 0.04, rost ? 1300 : 1800);
+  if (!hub && intensity >= 3) for (const n of p.lead) if (n.s === s) osc(rost ? 'square' : 'sawtooth', mtof(n.n), tt, sd * n.len, L.lead, rost ? 0.04 : 0.05, rost ? 2000 : 2400, 0.02, 6);
 }
 
 function tick() {
@@ -172,7 +209,7 @@ function tick() {
   if (nextT < now) nextT = now + 0.05;
   const k = want ?? lastScene;
   if (!k) return;
-  const sd = k === 'hub' ? hubStep : huntStep;
+  const sd = stepOf(k);
   while (nextT < now + 0.1) {
     scheduleStep(k, nextT, step, bar, sd);
     nextT += sd; step++;
@@ -182,13 +219,14 @@ function tick() {
 
 function applyLayers() {
   if (!ctx) return;
-  const now = ctx.currentTime, T = tr.hunt, lay = HUNT_LAYERS[intensity];
+  const k = HUNTY(want) ? want : 'hunt';
+  const now = ctx.currentTime, T = tr[k], lay = HUNT_LAYERS[intensity];
   for (const l of ['pad', 'bass', 'drums', 'arp', 'lead']) T.L[l].gain.setTargetAtTime(lay[l], now, 0.9);
   T.lp.frequency.setTargetAtTime(lay.lp, now, 1.2);
 }
 
 export const music = {
-  /** 'hub' | 'hunt' | null; Crossfade ~1,5 s. Wirkt erst nach erstem Gesture (sfx.unlock). */
+  /** 'hub' | 'hunt' | 'rost' (Rostwerke-Jagd) | null; Crossfade ~1,5 s. Wirkt erst nach erstem Gesture (sfx.unlock). */
   setScene(name) {
     want = name; if (name) lastScene = name;
     if (!init()) {
@@ -196,18 +234,19 @@ export const music = {
       return;
     }
     const now = ctx.currentTime;
-    for (const k of ['hub', 'hunt']) tr[k].g.gain.setTargetAtTime(k === name ? 1 : 0, now, 0.5);
-    if (name) { step = 0; bar = 0; nextT = now + 0.1; intensity = 0; if (name === 'hunt') applyLayers(); }
+    for (const k of ['hub', 'hunt', 'rost']) tr[k].g.gain.setTargetAtTime(k === name ? 1 : 0, now, 0.5);
+    if (name) { step = 0; bar = 0; nextT = now + 0.1; intensity = 0; if (HUNTY(name)) applyLayers(); }
     if (!timer) timer = setInterval(tick, 25);
     if (!name) setTimeout(() => { if (!want && timer) { clearInterval(timer); timer = null; } }, 2500);
   },
-  setIntensity(i) { i = Math.max(0, Math.min(3, i | 0)); if (i === intensity) return; intensity = i; if (want === 'hunt') applyLayers(); },
+  setIntensity(i) { i = Math.max(0, Math.min(3, i | 0)); if (i === intensity) return; intensity = i; if (HUNTY(want)) applyLayers(); },
   get intensity() { return intensity; },
   /** kurzer Sieges-Stinger */
   stinger() {
-    if (!ctx || ctx.state !== 'running' || !tr.hunt) return;
+    const T = tr[HUNTY(want) ? want : 'hunt'];
+    if (!ctx || ctx.state !== 'running' || !T) return;
     const t = ctx.currentTime + 0.05;
-    [62, 66, 69, 74, 78].forEach((n, i) => osc('sawtooth', mtof(n), t + i * 0.09, 0.9 - i * 0.05, tr.hunt.g, 0.07, 3000, 0.01, 5));
+    [62, 66, 69, 74, 78].forEach((n, i) => osc('sawtooth', mtof(n), t + i * 0.09, 0.9 - i * 0.05, T.g, 0.07, 3000, 0.01, 5));
   },
   /** Ducking bei großen SFX (-30 %) */
   duck(sec = 0.5) {

@@ -1,4 +1,4 @@
-// Echtes Spiel-Audio aufnehmen (Musik + SFX + Ambient) → WebM. SH_URL=... node tools/audio-rec.mjs <hub|hunt> <sekunden> out.webm
+// Echtes Spiel-Audio aufnehmen (Musik + SFX + Ambient) → WebM. SH_URL=... node tools/audio-rec.mjs <hub|hunt|rost> <sekunden> out.webm
 import { createRequire } from 'module';
 import { writeFileSync } from 'node:fs';
 const require = createRequire('/opt/node-tools/');
@@ -19,13 +19,19 @@ await page.addInitScript(() => {
     return r;
   };
 });
-const q = scene === 'hunt' ? 'scene=hunt&quest=jaggo&god=1&seed=3&weapon=gs' : 'scene=hub&nofs=1&mode=solo';
+const q = scene === 'hunt' ? 'scene=hunt&quest=jaggo&god=1&seed=3&weapon=gs' : scene === 'rost' ? 'scene=hunt&quest=jaggo&god=1&seed=3&weapon=gs&music=rost' : 'scene=hub&nofs=1&mode=solo';
 await page.goto(`${process.env.SH_URL}?${q}`);
 await page.waitForTimeout(2500);
 await page.mouse.click(420, 200); await page.keyboard.press('KeyW');
 await page.waitForTimeout(800);
 const b64 = await page.evaluate(async ({ secs, scene }) => {
   const c = window.__tapCtx; if (!c) return null;
+  if (scene === 'rost') { // Rostwerke-Vorhören: 0–12 s Erkunden, 12 s Kampf, 24 s Rotglut, 36 s Glitch, 48 s Sieg-Stinger
+    const fight = () => { const h = window.__SH.hunt, m = h.mainMonster, p = h.player; m.target = p; m.discovered = true; m.setState('combat'); m.pos.set(p.pos.x + 6, m.pos.y, p.pos.z + 6); };
+    setTimeout(fight, 12000);
+    setTimeout(() => window.__SH.hunt.mainMonster._enrage(), 24000);
+    setTimeout(() => { const p = window.__SH.player; p.glitch.energy = 100; window.__SH.press('glitch'); }, 36000);
+  }
   if (scene === 'hunt') { // Jagd: nach 10 s Kampf erzwingen (aggro), nach 20 s Glitch → Intensität steigt
     setTimeout(() => { const h = window.__SH.hunt, m = h.mainMonster, p = h.player; m.target = p; m.discovered = true; m.setState('combat'); m.pos.set(p.pos.x + 6, m.pos.y, p.pos.z + 6); }, 10000);
     setTimeout(() => { const p = window.__SH.player; p.glitch.energy = 100; window.__SH.press('glitch'); }, 20000);

@@ -114,7 +114,7 @@ export class Hunt {
     sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this._detachCues = cues.attach(this); // Lesbarkeit: Windup-Ton, Farbcue, Auto-Framing, Tod-Log
     this.musicTr = new IntensityTracker(4); this.musicChainT = -99; this.musicWon = false;
-    music.setScene('hunt');
+    music.setScene(opts.music ?? (this.world.id === 'rostwerke' ? 'rost' : 'hunt')); // Rostwerke: eigener Industrial-Stil (?music=rost zum Vorhören)
     this.bus.on('glitchCounter', () => { this.musicChainT = this.time; });
     this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
     this.bus.on('playerDown', () => this.#onPlayerDown());
