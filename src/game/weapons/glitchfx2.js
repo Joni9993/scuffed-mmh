@@ -71,10 +71,10 @@ export function createCrackPool(max = MAX_CRACKS) {
 export function createCounters(n = 3) {
   const list = [];
   for (let i = 0; i < n; i++) {
-    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
     const tex = new THREE.CanvasTexture(cv);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-    sp.scale.set(1.6, 0.8, 1); sp.visible = false; sp.renderOrder = 999;
+    sp.scale.set(3.2, 0.8, 1); // breit genug für „RESYNC ×12" sp.visible = false; sp.renderOrder = 999;
     list.push({ sp, cv, tex, text: '' });
   }
   return {
@@ -86,10 +86,10 @@ export function createCounters(n = 3) {
       if (c.text !== text) {
         c.text = text;
         const g = c.cv.getContext('2d');
-        g.clearRect(0, 0, 128, 64);
+        g.clearRect(0, 0, 256, 64);
         g.font = 'bold 40px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.lineWidth = 6; g.strokeStyle = '#300'; g.strokeText(text, 64, 32);
-        g.fillStyle = '#ff3040'; g.fillText(text, 64, 32);
+        g.lineWidth = 6; g.strokeStyle = '#300'; g.strokeText(text, 128, 32);
+        g.fillStyle = '#ff3040'; g.fillText(text, 128, 32);
         c.tex.needsUpdate = true;
       }
     },
