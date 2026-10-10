@@ -173,7 +173,7 @@ export class HuntNet {
     }
     for (const s of q.monsters) {
       let buf = this.monBuf.get(s.id);
-      if (!buf) { buf = new SnapBuffer({ angleKeys: ['rot'], delay: MONDEFS[s.def]?.neutral ? 0.3 : 0.1 }); this.monBuf.set(s.id, buf); } // [L] neutrals arrive at 5 Hz
+      if (!buf) { buf = new SnapBuffer({ angleKeys: ['rot'], delay: MONDEFS[s.def]?.neutral ? 0.22 : 0.1 }); this.monBuf.set(s.id, buf); } // [L] neutrals arrive at 5 Hz
       buf.push(q.T, { ...s, T: q.T }, nowS());
     }
   }
@@ -371,7 +371,7 @@ export class HuntNet {
         // [L] neutral fauna: every 2nd snapshot (5 Hz) and only when within NEUTRAL_R of any hunter; no part data
         this._mTick = (this._mTick ?? 0) + 1;
         const withN = this._mTick % 2 === 0, list = [];
-        for (const m of hunt.monsters) if (!m.def.neutral || (withN && this.#nearAny(m))) list.push(this.#monSnap(m));
+        for (const m of hunt.monsters) if (!m.def.neutral || ((withN || m.state === 'flee') && this.#nearAny(m))) list.push(this.#monSnap(m)); // fleeing neutrals at 10 Hz (stampede turns along nav paths)
         this.net.sendAll(MSG.M, encodeM(t, hunt.timeLeft, hunt.teamKo, list));
         this.stats.txM++;
       }
