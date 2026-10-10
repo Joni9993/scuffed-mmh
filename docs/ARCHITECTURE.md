@@ -223,3 +223,15 @@ Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert,
 8. **Lock = Schalter:** Tippen an/aus (Taste feuert beim Loslassen, damit Wischen nicht auch toggelt); Wischen hoch/runter auf Lock = nächstes/voriges Teil (`lockNext`/`lockPrev`); Zustand sichtbar auf der Taste (`input.lockOn`). Logik als reine State-Machine `stepLock` (src/input/lock.js), vom Spieler jeden Sim-Schritt in jedem Zustand aufgerufen (kein verlorener Tap im Angriff/Hitstop). Tot/>70 m = Lock aus. Q / RB = Toggle, F,V / R3 = Teil.
 9. **Text in Buttons:** alle Buttons `display:flex` + `align-items/justify-content:center`, `line-height:1.2`, `text-align:center`, `white-space:normal`, `overflow-wrap:anywhere`, `text-wrap:balance`; Kontext-/Item-Label schrumpfen per `fitText` bis sie in den Kreis passen. Mindesthöhe 44 px für alle UI-Buttons.
 10. **Layout-Option:** `settings.btnSize` ('S'|'M'|'L'), `settings.leftHand`, `settings.haptics` (localStorage `scuffedhunter.settings.v1`), UI im Optionen-Panel; `app.touch.relayout()` wendet sie sofort an. CSS-Variablen `--strip-*`, `--emote-*`, `--wheel-*` koppeln Item-Leiste und Stadt-Emote-Button an den Solver.
+
+---
+
+# Phase 3 (Balancing & Bugfixes) – Änderungen an Verträgen
+
+- **Schaden:** `resolvePlayerHit(...).dmg` ist der **Gesamtschaden inkl. Element**; `elemDmg` ist nur der Elementanteil (Anzeige/Statistik). `Monster.applyDamage` zieht genau `res.dmg` ab.
+- **Brocken-Angriffsgewicht:** `AttackDef.weight` darf eine Funktion `(monster, dist) => Zahl` sein. Brathalos-Aufflug nutzt `monster.flyCd` (nur am Boden herunterzählend, 21–33 s nach jeder Landung).
+- **Kleinmonster-Culling:** `minor`-Monster weiter als 65 m von jedem lokalen Pirscher werden weder gezeichnet noch gepost; `hurtParts()`/`lockPoints()` liefern dann `[]`. `hurtParts()`/`lockPoints()` sind gepoolt und pro Pose-Update gecacht – Einträge nicht über Sim-Schritte hinweg aufbewahren.
+- **Ambient-Packs:** `Hunt` spawnt beim Start (nur Host/Solo, `?noambient=1` schaltet ab) je 2 Rudel Jagglinge in Zone 1 und 2 (`spawnPack(..., {ambient:true})`, zählt nicht gegen das Rudelruf-Limit von 3). Gäste bekommen sie über die Brocken-Snapshots.
+- **Netz:** Gast-Pfeile werden per `fx {k:'arrow'}` gespiegelt (nur Optik, Schaden bleibt Gast-`hit`). Sammeln im Koop ist host-arbitriert: Gast sendet `gather {id, c:1}`, Host antwortet an den Absender mit `{id,u,it:[…]}` (oder `deny`) und meldet den neuen Stand an die übrigen. Gameplay-Item-Effekte (`flash/stink/trap/bomb`) wirken nur beim Host/Solo, Gäste spielen die Optik.
+- **Kamera:** `createCameraRig(camera, getGroundY, collide)` – Kollision gegen Gelände/Wände; `update({lockSize})` skaliert Abstand/Neigung mit `monster.bodyRadius`.
+- **Tools:** `tools/weapon-dps.mjs` (DPS-Sweep), `tools/net-e2e.mjs` (2-Peer-Test, braucht PeerJS-Server auf :9000), `tools/perf-probe.mjs` (renderer.info + Allokationen). `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js` = volles Fairness-Audit (~2 min).

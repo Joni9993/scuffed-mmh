@@ -81,6 +81,7 @@ const startOpts = {
   god: flag('god'),
   nofx: flag('nofx'),
   aggro: flag('aggro'),
+  noAmbient: flag('noambient'), // [B] ?noambient=1 disables the ambient Jagglinge packs
   mode: params.get('mode') || undefined, // [N] lobby: host | join
   code: params.get('code') || undefined,
   name: params.get('name') || undefined,

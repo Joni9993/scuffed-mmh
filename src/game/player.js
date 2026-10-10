@@ -125,7 +125,8 @@ export class Player {
     const l = this.lock;
     if (!l) return null;
     if (!l.monster.alive) { this.lock = null; return null; }
-    return l.monster.lockPoints()[l.idx % l.monster.lockPoints().length].pos;
+    const pts = l.monster.lockPoints();
+    return pts.length ? pts[l.idx % pts.length].pos : null;
   }
   #pickLockTarget() {
     let best = null, bd = 1e9;
@@ -364,6 +365,8 @@ export class Player {
     const ctx = this.ctx, input = ctx.input;
     this.lastState = this.state;
     if (this.local) this.#stepLock(input);
+    // [B] a roll press landing in a hitstop frame must not be eaten (button edges last exactly one sim step)
+    if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
     if (consumeHitstop(this, dt)) {
       // [W] keep buffering button edges during hitstop (a press landing in a freeze frame must not be lost: B-hold finishers)
       if (this.state === 'free') this.weapon.feed(dt, { A: input.b.attack, B: input.b.special });

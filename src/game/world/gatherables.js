@@ -266,6 +266,12 @@ export function createGatherables({ layout, seed = 1, bus = null }) {
         st.tickT -= dt;
         if (st.tickT <= 0) { st.tickT = 0.22; hunt.bus.emit('sfx', { name: 'gatherTick', pos: pl.pos }); }
         if (st.prog >= GATHER_TIME) {
+          if (hunt.net?.isGuest) { // [B] coop guest: the host arbitrates the use (last use goes to whoever arrives first)
+            hunt.net.claimGather(best.id);
+            st.prog = 0; st.target = null; st.needRelease = true; pl.gatherRoot = false;
+            hunt.bus.emit('sfx', { name: 'gatherTick', pos: pl.pos });
+            return;
+          }
           const useIndex = best.maxUses - best.usesLeft;
           const items = rollGather(hunt.seed, best.id, best.kind, best.zone, useIndex);
           best.usesLeft--;

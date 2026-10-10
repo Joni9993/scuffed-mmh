@@ -38,6 +38,7 @@ export class Projectiles {
     this.visual = visual;
     this.list = [];
     this.stuck = [];
+    this.trailPool = [];
     this.group = new THREE.Group();
     this.group.name = 'projectiles';
     this.time = 0;
@@ -68,12 +69,17 @@ export class Projectiles {
     p.mesh = m;
     this.group.add(m);
     const N = 7;
-    const geo = new THREE.BufferGeometry();
-    const arr = new Float32Array(N * 3);
+    let line = this.trailPool.pop(); // [B] perf: trail lines are pooled (no geometry upload/dispose per arrow)
+    if (!line) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+      line = new THREE.Line(geo, trailMat(p.color));
+      line.frustumCulled = false;
+    }
+    line.material = trailMat(p.color);
+    const attr = line.geometry.attributes.position, arr = attr.array;
     for (let i = 0; i < N; i++) { arr[i * 3] = p.pos.x; arr[i * 3 + 1] = p.pos.y; arr[i * 3 + 2] = p.pos.z; }
-    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-    const line = new THREE.Line(geo, trailMat(p.color));
-    line.frustumCulled = false;
+    attr.needsUpdate = true;
     p.trail = line;
     this.group.add(line);
     this.#orient(p);
@@ -92,6 +98,8 @@ export class Projectiles {
     }
   }
 
+  #recycle(line) { if (this.trailPool.length < 48) this.trailPool.push(line); else line.geometry.dispose(); }
+
   #pushTrail(p) {
     const a = p.trail.geometry.attributes.position;
     const arr = a.array;
@@ -102,8 +110,8 @@ export class Projectiles {
 
   update(dt) {
     this.time += dt;
-    const cache = new Map(); // monster -> hurtParts for this step
-    const hurt = (m) => { let h = cache.get(m); if (!h) { h = m.hurtParts(); cache.set(m, h); } return h; };
+    if (!this.list.length && !this.stuck.length) return;
+    const hurt = hurtOf; // hurtParts() is cached per monster until its next pose update
     for (let i = this.list.length - 1; i >= 0; i--) {
       const p = this.list[i];
       if (p.dead) { this.list.splice(i, 1); continue; }
@@ -113,7 +121,7 @@ export class Projectiles {
     for (let i = this.stuck.length - 1; i >= 0; i--) {
       const s = this.stuck[i];
       s.t -= dt;
-      if (s.t <= 0) { s.obj.removeFromParent(); if (s.dispose) s.obj.geometry.dispose(); this.stuck.splice(i, 1); }
+      if (s.t <= 0) { s.obj.removeFromParent(); if (s.dispose) this.#recycle(s.obj); this.stuck.splice(i, 1); }
     }
   }
 
@@ -135,8 +143,9 @@ export class Projectiles {
       for (const m of this.ctx.monsters) {
         if (!m.alive) continue;
         for (const hp of hurt(m)) {
-          if (p.parts.has(m.id + '|' + hp.part.id)) continue;
-          if (overlap(seg, hp.sphere)) cands.push({ t: along(hp.sphere), monster: m, hp });
+          const hk = hp.key ?? (m.id + '|' + hp.part.id);
+          if (p.parts.has(hk)) continue;
+          if (overlap(seg, hp.sphere)) cands.push({ t: along(hp.sphere), monster: m, hp, key: hk });
         }
       }
     } else {
@@ -151,7 +160,7 @@ export class Projectiles {
     cands.sort((a, b) => a.t - b.t);
     for (const c of cands) {
       // one hit per distinct part (several spheres of one part count once)
-      const key = c.monster ? c.monster.id + '|' + c.hp.part.id : c.player.id;
+      const key = c.monster ? c.key : c.player.id;
       if (p.parts.has(key)) continue;
       p.parts.add(key);
       p.pierced++;
@@ -208,6 +217,7 @@ export class Projectiles {
 
 // ---------- shared visuals (PS1 look: boxes + lines)
 const _z = new THREE.Vector3(0, 0, 1), _d = new THREE.Vector3();
+const hurtOf = (m) => m.hurtParts();
 const SHARED = {};
 const trailMats = new Map();
 function trailMat(color) {

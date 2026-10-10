@@ -4,6 +4,7 @@ import { SnapBuffer } from './interp.js';
 import { Player } from '../game/player.js';
 import { weapons } from '../game/weapons/index.js';
 import { clamp } from '../core/math.js';
+import { rollGather } from '../data/gather.js';
 
 export const RATE_P = 15;   // Hz  Pirscher
 export const RATE_M = 10;   // Hz  Brocken
@@ -82,8 +83,8 @@ export class HuntNet {
   #bind() {
     const n = this.net, hunt = this.hunt, off = (this.offs = []);
     off.push(n.on(MSG.P, (d, from) => this.#onP(d, from)));
-    off.push(n.on(MSG.GATHER, (d) => this.#onGather(d)));
-    off.push(n.on(MSG.FX, (d) => this.#onFx(d)));
+    off.push(n.on(MSG.GATHER, (d, from) => this.#onGather(d, from)));
+    off.push(n.on(MSG.FX, (d, from) => this.#onFx(d, from)));
     off.push(n.on(MSG.EV, (d, from) => this.#onEv(d, from)));
     // lokales Einsammeln (K) -> alle
     off.push(hunt.bus.on('gathered', (e) => {
@@ -257,15 +258,59 @@ export class HuntNet {
   }
 
   // ---------- Welt-/Effekt-Replikation
-  #onGather(d) {
-    const pt = this.hunt.world.gatherPoints?.find((g) => g.id === d.id);
+  /** Guest -> host: "I finished gathering at this point". The host arbitrates (last use goes to whoever arrives first). */
+  claimGather(pointId) { this.net.sendHost(MSG.GATHER, { id: pointId, c: 1 }); }
+
+  #onGather(d, from) {
+    const hunt = this.hunt, world = hunt.world;
+    const pt = world.gatherPoints?.find((g) => g.id === d.id);
     if (!pt) return;
-    if (pt.usesLeft > d.u) { pt.usesLeft = d.u; this.hunt.world.onGatherSync?.(pt); }
+    if (d.c) { // host: arbitrate a claim
+      if (!this.isHost) return;
+      const reply = (x) => this.net.session.send(MSG.GATHER, { id: pt.id, ...x }, [from]);
+      if (pt.usesLeft <= 0) { reply({ u: 0, deny: 1 }); return; }
+      const items = rollGather(hunt.seed, pt.id, pt.kind, pt.zone, pt.maxUses - pt.usesLeft);
+      world.setGatherState(pt.id, pt.usesLeft - 1);
+      this.stats.gathersGranted = (this.stats.gathersGranted ?? 0) + 1;
+      reply({ u: pt.usesLeft, it: items });
+      const others = this.net.others().filter((i) => i !== from);
+      if (others.length) this.net.session.send(MSG.GATHER, { id: pt.id, u: pt.usesLeft }, others);
+      hunt.fx?.spark({ x: pt.pos.x, y: pt.pos.y + 0.7, z: pt.pos.z }, 6, '#ffe14d', 2);
+      return;
+    }
+    if (d.deny) {
+      world.setGatherState(pt.id, 0);
+      hunt.fx?.number({ x: hunt.player.pos.x, y: hunt.player.pos.y + 2.3, z: hunt.player.pos.z }, 'Schon leer!', 'hurt');
+      return;
+    }
+    if (pt.usesLeft > d.u) world.setGatherState(pt.id, d.u);
+    if (d.it) { // my claim was granted: items + the usual local feedback
+      hunt.bus.emit('gathered', { pointId: pt.id, items: d.it, usesLeft: d.u, remote: true });
+      hunt.bus.emit('sfx', { name: 'gather', pos: pt.pos });
+      const p = hunt.player;
+      hunt.fx?.number({ x: p.pos.x, y: p.pos.y + 2.3, z: p.pos.z }, d.it.map((it) => `${it.id} x${it.n}`).join(', '), 'heal');
+    }
   }
-  #onFx(d) {
+  #onFx(d, from) {
+    if (d.k === 'arrow') { this.#mirrorArrow(d.p, from); return; }
     if (!this.hunt.spawnEffect) return;
     this._inFx = true;
     try { this.hunt.spawnEffect(d.k, d.p); } finally { this._inFx = false; }
+  }
+  /** Remote hunters' arrows: visual only (their client resolves the hits and sends them as `hit`). */
+  #mirrorArrow(a, from) {
+    const hunt = this.hunt, peer = this.peers.get(from);
+    if (!hunt.projectiles || !a) return;
+    hunt.projectiles.spawn({
+      pos: { x: a.x, y: a.y, z: a.z }, vel: { x: a.vx, y: a.vy, z: a.vz }, gravity: a.g ?? 7, radius: 0.1, life: a.l ?? 2.6,
+      team: 'player', owner: peer?.player ?? null, pierce: a.pi ?? 1, color: a.c, mirror: true, onHit: () => {},
+    });
+    this.stats.arrowsMirrored = (this.stats.arrowsMirrored ?? 0) + 1;
+  }
+  /** Tell the others about an arrow I fired (compact). */
+  #sendArrow(o) {
+    const r = (n) => Math.round(n * 100) / 100;
+    this.net.sendAll(MSG.FX, { k: 'arrow', p: { x: r(o.pos.x), y: r(o.pos.y), z: r(o.pos.z), vx: r(o.vel.x), vy: r(o.vel.y), vz: r(o.vel.z), g: o.gravity ?? 0, c: o.color, l: o.life, pi: o.pierce } });
   }
   #hookFx() {
     const hunt = this.hunt;
@@ -283,6 +328,17 @@ export class HuntNet {
     };
   }
 
+  #hookArrows() {
+    const hunt = this.hunt, pr = hunt.projectiles;
+    if (!pr || this._arrowsHooked) return;
+    this._arrowsHooked = true;
+    const orig = pr.spawn.bind(pr);
+    pr.spawn = (o) => {
+      if (o.team !== 'monster' && !o.mirror && o.owner === hunt.player) this.#sendArrow(o);
+      return orig(o);
+    };
+  }
+
   #hostGone() {
     const hunt = this.hunt;
     if (hunt.result || this.ended) return;
@@ -292,7 +348,7 @@ export class HuntNet {
   // ---------- pro Sim-Schritt
   update(dt) {
     const hunt = this.hunt, t = nowS();
-    if (!this._fxHooked) this.#hookFx();
+    if (!this._fxHooked) { this.#hookFx(); this.#hookArrows(); }
     // eigener Pirscher
     this.accP += dt;
     if (this.accP >= 1 / RATE_P) {

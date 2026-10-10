@@ -143,12 +143,12 @@ Mittleres Tempo, präzise, belohnt **Konter-Timing**. Zweihändig geführt.
 
 Gemeinsame KI-Struktur: Zustände **Umherziehen → Bemerken (Brüllen) → Kampf → (Rotglut) → Flucht (bei 30 % HP, Zone wechseln) → Schlafen im Nest (regeneriert 1 % HP/s, Treffer auf Schlafenden ×2)**.
 Jeder Angriff hat: **Ankündigung (Telegraph) ≥ 0,5 s** (Körper-Haltung + Teil blinkt rot/weiß + Sound), **aktive Hitbox-Phase**, **Erholung** (Strafe-Fenster für Pirscher).
-Rotglut: ab 60 % HP oder nach 300 Schaden in 20 s; dauert 45 s; +20 % Tempo, +15 % Schaden, Ankündigungen 20 % kürzer, glühende Augen + roter Dampf.
+Rotglut: ab 60 % HP oder nach 7,5 % der Max-HP als Schaden in 20 s (Phase 3: war flach 300); dauert 45 s; +20 % Tempo, +15 % Schaden, Ankündigungen 20 % kürzer, glühende Augen + roter Dampf.
 Zielwahl: Pirscher mit höchster „Bedrohung" (Schaden der letzten 10 s), gelegentlich zufällig.
 
 ### 5.1 Jaggo der Große (JR 1) – Rudel-Raptor
-HP 1800 · Größe 2,1× · Schwäche: Feuer (Kopf 25, Körper 10), Schock 10.
-Teile: Kopf (Kamm brechbar, 250 Teil-HP, Faktor 1,0), Körper 0,7, Beine 0,8, Schwanz 0,6.
+HP 7000 (Phase 3 Balancing, vorher 1800) · Größe 2,1× · Schwäche: Feuer (Kopf 25, Körper 10), Schock 10.
+Teile: Kopf (Kamm brechbar, 600 Teil-HP, Faktor 1,0), Körper 0,7, Beine 0,8, Schwanz 0,6.
 Angriffe:
 1. **Bissreihe:** 3 Bisse vorwärts, je 12 Schaden (Telegraph: Kopf zurück 0,5 s).
 2. **Hüpfer:** Sprung auf Ziel bis 10 m, 22 Schaden, wirft um (Telegraph: duckt sich, Beine blinken 0,7 s).
@@ -157,8 +157,8 @@ Angriffe:
 Kleine Monster **Jagglinge:** HP 80, Biss 6 Schaden, sterben schnell, droppen Jaggling-Schuppe beim Zerlegen.
 
 ### 5.2 Barrotz (JR 2) – Rammbock-Dino, Schlamm
-HP 3200 · Größe 2,4× · Schwäche: Schock (Kopf 20), Feuer nur wenn ohne Schlammpanzer (sonst 0).
-Teile: Kopfplatte (brechbar, 400 Teil-HP, Faktor 0,5 → nach Bruch 0,9), Vorderbeine 0,9, Körper 0,7, Schwanz (brechbar) 0,8.
+HP 9000 (vorher 3200) · Größe 2,4× · Schwäche: Schock (Kopf 20), Feuer nur wenn ohne Schlammpanzer (sonst 0).
+Teile: Kopfplatte (brechbar, 800 Teil-HP, Faktor 0,5 → nach Bruch 0,9), Vorderbeine 0,9, Körper 0,7, Schwanz (brechbar) 0,8.
 Angriffe:
 1. **Rammsturm:** Anlauf 0,9 s (scharrt mit Fuß, Staub), rennt 15 m geradeaus, 30 Schaden, wirft um; dreht und rennt nochmal in Rotglut.
 2. **Plattenhammer:** Kopf hebt sich 0,7 s, Schlag nach vorne + Schlamm-Schockwelle 4 m, 25 Schaden.
@@ -167,15 +167,20 @@ Angriffe:
 5. **Schwanzfeger:** Halbkreis hinten, 18 Schaden.
 
 ### 5.3 Brathalos (JR 3) – Feuerwyvern
-HP 4200 · Größe 2,6× · Schwäche: Schock (Kopf 25, Flügel 20), Feuer 0.
-Teile: Kopf (brechbar, 350, 1,0), Flügel L/R (brechbar, je 300, 0,8), Körper 0,6, Schwanz (abtrennbar, 450, 0,7 → abgetrennter Schwanz liegt in der Welt, kann einmal zerlegt werden).
+HP 12000 (vorher 4200) · Größe 2,6× · Schwäche: Schock (Kopf 25, Flügel 20), Feuer 0.
+Teile: Kopf (brechbar, 700, 1,0), Flügel L/R (brechbar, je 600, 0,8), Körper 0,6, Schwanz (abtrennbar, 900, 0,7 → abgetrennter Schwanz liegt in der Welt, kann einmal zerlegt werden).
 Angriffe:
 1. **Feuerspucke:** Kopf zieht zurück, Maul glüht 0,6 s → Feuerball, 28 Schaden + Brennen (3 Schaden/s, 3× rollen löscht). Rotglut: 3er-Fächer.
 2. **Krallensturz:** Hebt ab (Flug-Zustand 4–8 s), Schatten auf Ziel 0,9 s, Sturzflug 26 Schaden + Gift.
 3. **Flügelböe:** Wind schiebt Pirscher 3 m zurück, keine Schaden, unterbricht Aufladen.
 4. **Schwanzhieb:** 180° hinten, 20 Schaden.
 5. **Rotglut-Brüllen:** Hält Pirscher fest (wie Rudelruf).
-Im Flug: nur Bogen + Item „Blendknolle" holt ihn runter (stürzt ab, 4 s wehrlos).
+Im Flug: nur Bogen + Item „Blendknolle" holt ihn runter (stürzt ab, 4 s wehrlos). Abheben höchstens alle ~30–45 s (21–33 s Bodenzeit + 4–8 s Flug; bei großer Distanz/Rotglut früher gewählt) → ca. 20 % der Kampfzeit in der Luft; beim Abheben und nach dem Sturz ist er für Nahkämpfer ca. 6 s pro Flug erreichbar.
+
+---
+
+### 5.4 Balancing-Stand (Phase 3)
+Idealer DPS (Stufe-1-Waffe, ruhender Brocken, beste Zone, Skript-Spieler): Plattmacher ≈ 50, Zwillingsklingen ≈ 45 (90 %, Zwillingsklingen-BW ×1,18), Spannbogen ≈ 45 (88 %, Schnellschuss ×1,08, gespannt ×1,7/2,6/3,6). Kampfdauer bei ~45 % Uptime und passender Waffenstufe (Jaggo St. 1, Barrotz St. 2, Brathalos St. 3): ca. 5–8 min, daher die HP-Werte oben. Teil-HP wurden ~×2 mitskaliert.
 
 ### 5.4 Neutrale Tiere (Leben auf der Map)
 Friedliche Herdentiere ziehen grasend durch die Zonen. Sie greifen nicht an, außer man ärgert sie.

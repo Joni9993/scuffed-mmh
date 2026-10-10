@@ -175,16 +175,16 @@ describe('Jagglinge', () => {
 
 describe('Barrotz', () => {
   it('has the GDD parts and numbers', () => {
-    expect(barrotz.hp).toBe(3200);
+    expect(barrotz.hp).toBe(9000);
     const ids = barrotz.parts.map((p) => p.id);
     expect(ids).toEqual(['head', 'legs', 'body', 'tail']);
-    expect(barrotz.parts[0].breakHp).toBe(400);
+    expect(barrotz.parts[0].breakHp).toBe(800);
     expect(barrotz.parts[0].factor).toBe(0.5);
     expect(Object.keys(barrotz.attacks).length).toBe(5);
   });
-  it('head plate breaks at 400: factor 0.5 -> 0.9, plate mesh gone, partBreak emitted', () => {
+  it('head plate breaks at 800: factor 0.5 -> 0.9, plate mesh gone, partBreak emitted', () => {
     const { ctx, m } = make(barrotz);
-    hit(m, 'head', 399);
+    hit(m, 'head', 799);
     expect(m.partById.head.factor).toBe(0.5);
     hit(m, 'head', 2);
     expect(m.partById.head.broken).toBe(true);
@@ -192,9 +192,9 @@ describe('Barrotz', () => {
     expect(m.extra.plateMeshes.every((x) => !x.visible)).toBe(true);
     expect(ctx.events).toContain('partBreak');
   });
-  it('tail is breakable (300)', () => {
+  it('tail is breakable (600)', () => {
     const { m } = make(barrotz);
-    hit(m, 'tail', 301);
+    hit(m, 'tail', 601);
     expect(m.partById.tail.broken).toBe(true);
     expect(m.extra.club.visible).toBe(false);
   });
@@ -275,10 +275,10 @@ describe('Barrotz', () => {
 
 describe('Brathalos', () => {
   it('has the GDD parts and numbers', () => {
-    expect(brathalos.hp).toBe(4200);
+    expect(brathalos.hp).toBe(12000);
     expect(brathalos.parts.map((p) => p.id)).toEqual(['head', 'wingL', 'wingR', 'body', 'tail']);
-    expect(brathalos.parts.find((p) => p.id === 'tail').breakHp).toBe(450);
-    expect(brathalos.parts.find((p) => p.id === 'wingL').breakHp).toBe(300);
+    expect(brathalos.parts.find((p) => p.id === 'tail').breakHp).toBe(900);
+    expect(brathalos.parts.find((p) => p.id === 'wingL').breakHp).toBe(600);
     for (const p of brathalos.parts) expect(p.elem.fire).toBe(0);
   });
   it('Aufflug leads into the flight state (4-8 s) and ends with a Krallensturz', () => {
@@ -335,16 +335,16 @@ describe('Brathalos', () => {
   it('a broken wing grounds him; he cannot take off again', () => {
     const { m } = make(brathalos);
     m.beginAttack('brathalos_aufflug'); run(m, 2);
-    hit(m, 'wingL', 301);
+    hit(m, 'wingL', 601);
     expect(m.partById.wingL.broken).toBe(true);
     expect(m.state).toBe('fall');
     expect(brathalos.attacks.brathalos_aufflug.cond(m)).toBe(false);
   });
-  it('tail is severed at 450: tailSevered event, part gone, dropped object', () => {
+  it('tail is severed at 900: tailSevered event, part gone, dropped object', () => {
     const { m, ctx } = make(brathalos);
     let ev = null;
     ctx.bus.on('tailSevered', (e) => { ev = e; });
-    hit(m, 'tail', 449);
+    hit(m, 'tail', 899);
     expect(ev).toBeNull();
     expect(m.hurtParts().some((h) => h.part.id === 'tail')).toBe(true);
     hit(m, 'tail', 2);
@@ -402,7 +402,7 @@ describe('Brathalos', () => {
     const { m, ctx } = make(brathalos);
     const atk = [];
     ctx.bus.on('monsterAttack', (e) => atk.push(e.attackId));
-    hit(m, 'body', 4200 * 0.41);
+    hit(m, 'body', 12000 * 0.41);
     run(m, 0.5);
     expect(m.rage).toBe(true);
     expect(atk[0]).toBe('brathalos_bruellen');

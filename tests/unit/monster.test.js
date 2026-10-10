@@ -51,10 +51,10 @@ describe('monster replay determinism (host and client agree)', () => {
 });
 
 describe('monster parts, breaks, stun', () => {
-  it('head crest breaks at 250 part HP: stagger 2 s, factor -0.1, mesh hook', () => {
+  it('head crest breaks at jaggo.parts head breakHp (600): stagger 2 s, factor -0.1, mesh hook', () => {
     const { ctx, m } = make();
     expect(m.partById.head.factor).toBe(1.0);
-    hit(m, 'head', 200);
+    hit(m, 'head', 550);
     expect(m.partById.head.broken).toBe(false);
     hit(m, 'head', 60);
     expect(m.partById.head.broken).toBe(true);
@@ -94,22 +94,22 @@ describe('monster parts, breaks, stun', () => {
 describe('monster AI states', () => {
   it('Rotglut: at 60 % HP, lasts 45 s, then ends', () => {
     const { m } = make();
-    hit(m, 'body', 1800 * 0.4 + 1);
+    hit(m, 'body', m.maxHp * 0.4 + 1);
     expect(m.rage).toBe(true);
     expect(m.state).toBe('enrage');
     for (let i = 0; i < 60 * 46; i++) m.update(DT);
     expect(m.rage).toBe(false);
   });
-  it('Rotglut after 300 damage in 20 s', () => {
+  it('Rotglut after 7.5 % max HP damage in 20 s', () => {
     const { m } = make();
-    for (let i = 0; i < 6; i++) { hit(m, 'body', 50); m.update(DT); }
+    for (let i = 0; i < 6; i++) { hit(m, 'body', m.maxHp * 0.0126); m.update(DT); }
     expect(m.rage).toBe(true);
   });
   it('flees at 30 % HP toward the nest, then sleeps and regenerates 1 %/s', () => {
     const { m } = make();
-    m.hp = 1800 * 0.5;
+    m.hp = m.maxHp * 0.5;
     m.rageUsed = true;
-    hit(m, 'body', 1800 * 0.21);
+    hit(m, 'body', m.maxHp * 0.21);
     m.stateT = 5; m.state = 'combat'; // (burst damage may have triggered Rotglut first)
     m.update(DT);
     expect(m.state).toBe('flee');
@@ -117,7 +117,7 @@ describe('monster AI states', () => {
     expect(m.state).toBe('sleep');
     const hp0 = m.hp;
     for (let i = 0; i < 60 * 10; i++) m.update(DT);
-    expect(m.hp - hp0).toBeCloseTo(180, -1);
+    expect(m.hp - hp0).toBeCloseTo(m.maxHp * 0.1, -1);
   });
   it('picks the player with highest threat', () => {
     const { ctx, m, p } = make();
