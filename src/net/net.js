@@ -149,7 +149,7 @@ export class Net {
     const id = 'p' + n;
     const rec = { id, name: String(d.name ?? 'Pirscher').slice(0, 12), conn, rtt: 0, lastRx: now() };
     this.peers.set(id, rec);
-    this.roster.push({ id, name: rec.name, weapon: d.weapon ?? 'gs', tier: d.tier ?? 1, ready: false });
+    this.roster.push({ id, name: rec.name, weapon: d.weapon ?? 'gs', tier: d.tier ?? 1, ready: false, ...(typeof d.gear === 'string' ? { gear: d.gear.slice(0, 8) } : {}) }); // [G] gear code
     conn.on('close', () => this.#dropPeer(id, ERR.lost));
     conn.on('error', () => this.#dropPeer(id, ERR.lost));
     reply({ you: id, code: this.code });
@@ -184,7 +184,7 @@ export class Net {
   /** Host: Jagd starten. Liefert die Spielerliste mit Slots; schickt `start` an alle Gäste. */
   startGame({ quest, seed }) {
     this.started = true;
-    const players = this.roster.map((r, slot) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, slot }));
+    const players = this.roster.map((r, slot) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, slot }));
     this.send(MSG.START, { seed, quest, players, t: Date.now() });
     return { seed, quest, players };
   }

@@ -15,7 +15,7 @@ ERR.roomClosed = 'Der Raum-Host ist weg. Du jagst jetzt in deinem eigenen Rostne
  */
 export class Session {
   constructor(profile = {}) {
-    this.profile = { name: profile.name ?? 'Pirscher', weapon: profile.weapon ?? 'gs', tier: profile.tier ?? 1 };
+    this.profile = { name: profile.name ?? 'Pirscher', weapon: profile.weapon ?? 'gs', tier: profile.tier ?? 1, gear: profile.gear }; // [G] gear = compact code (data/gearlook.js)
     this.handlers = new Map();
     this.#reset();
   }
@@ -91,7 +91,7 @@ export class Session {
   }
   #syncMembers(roster, notify) {
     const old = this.members;
-    this.members = roster.map((r, i) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, color: MEMBER_COLORS[Number(r.id.slice(1)) % 4] ?? MEMBER_COLORS[i % 4], you: r.id === this.myId }));
+    this.members = roster.map((r, i) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, color: MEMBER_COLORS[Number(r.id.slice(1)) % 4] ?? MEMBER_COLORS[i % 4], you: r.id === this.myId }));
     if (!notify) return;
     if (this.role === 'guest') for (const m of old) if (!this.members.some((x) => x.id === m.id)) this.emit('peer-leave', { id: m.id, name: m.name });
     this.emit('members', this.members);

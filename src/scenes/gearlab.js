@@ -31,7 +31,8 @@ export const gearlabScene = {
     return this;
   },
   clear() { for (const r of this.rigs) { this.scene.remove(r.rig.root, r.rig.shadow); r.rig.dispose(); } this.rigs = []; },
-  show(items, { cam = null, look = null, spacing = 1.9 } = {}) {
+  show(items, { cam = null, look = null, spacing = 1.9, fov = 40 } = {}) {
+    this.camera.fov = fov; this.camera.updateProjectionMatrix();
     this.clear();
     const n = items.length, x0 = -((n - 1) * spacing) / 2;
     items.forEach((it, i) => {

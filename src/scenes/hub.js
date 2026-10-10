@@ -11,6 +11,7 @@ import { EMOTES, EMOTE_SECS, emoteWire, emoteText } from '../game/town/emotes.js
 import { createTownHud } from '../ui/townHud.js';
 import { saveStore, PLAYER_COLORS } from '../meta/save.js';
 import { buildLoadout } from '../meta/loadout.js';
+import { makeGear, encodeGear, decodeGear } from '../data/gearlook.js'; // [G]
 import { openStation, closeStation, isStationOpen } from '../ui/stations.js';
 import { session, createHuntChannel } from '../net/session.js';
 import { getQuestBoard } from '../net/questboard.js';
@@ -43,7 +44,7 @@ function townInput(input, blocked) {
 /** Town look for a Player: merged rig in the member colour, neutral pose, weapon on the back. */
 function townify(p, color) {
   if (color || !p._townRig) {
-    p.rig = buildHunterRig({ merged: true, color: color ?? '#5ad8ff' });
+    p.rig = buildHunterRig({ merged: true, color: color ?? p.gear?.color ?? '#5ad8ff', gear: p.gear }); // [G] armor + weapon tier looks
     p.mesh = p.rig.root;
     p._townRig = true;
   }
@@ -51,7 +52,7 @@ function townify(p, color) {
 }
 function mountWeapon(p) {
   const base = Object.getPrototypeOf(p.def) !== Object.prototype && p.def._town ? Object.getPrototypeOf(p.def) : p.def;
-  p.def = Object.assign(Object.create(base), { rest: {}, updateMesh: undefined, rollOverride: undefined, speedMul: undefined, _town: true });
+  p.def = Object.assign(Object.create(base), { rest: {}, updateMesh: undefined, rollOverride: undefined, speedMul: undefined, hand: undefined, sprintArx: undefined, _town: true });
   p.rig.swapWeapon(null);
   if (p.backSlot) p.backSlot.parent?.remove(p.backSlot);
   const back = new THREE.Group();
@@ -104,9 +105,12 @@ export const hubScene = {
     };
     this.cameraYaw = 0;
     const lo = save.loadout.weapon;
-    const p = new Player({ id: 'me', name: save.name, weapon: lo, tier: save.weapons[lo]?.tier ?? 1, ctx: this.ctx });
+    const gear0 = makeGear(buildLoadout(save)); // [G] what the town shows (armor per slot, weapon tier/branch, colour)
+    const p = new Player({ id: 'me', name: save.name, weapon: lo, tier: save.weapons[lo]?.tier ?? 1, branch: save.weapons[lo]?.branch ?? null, gear: gear0, ctx: this.ctx });
+    this._gearCode = encodeGear(gear0, Math.max(0, PLAYER_COLORS.indexOf(save.color)));
     this.player = p;
     townify(p, save.color);
+    this.colors.set('applied', save.color);
     this.scene.add(p.mesh, p.rig.shadow);
     this.spawn(0);
     this.rig.snap(p.pos, p.rot);
@@ -306,23 +310,23 @@ export const hubScene = {
 
   // ---------------------------------------------------------------- session / board events
   syncProfile() {
-    const s = saveStore.get(), w = s.loadout.weapon, tier = s.weapons[w]?.tier ?? 1;
-    session.setProfile({ name: s.name, weapon: w, tier });
+    const s = saveStore.get(), w = s.loadout.weapon, tier = s.weapons[w]?.tier ?? 1, branch = s.weapons[w]?.branch ?? null;
+    // [G] gear = what everybody sees: armor per slot + weapon type/tier/branch + colour (compact code for the network)
+    const gear = makeGear(buildLoadout(s)), code = encodeGear(gear, Math.max(0, PLAYER_COLORS.indexOf(s.color)));
+    session.setProfile({ name: s.name, weapon: w, tier, gear: code });
     this.colors.set(session.myId, s.color);
     const p = this.player;
     if (p.name !== s.name) p.name = s.name;
-    if (p.weaponId !== w || p.stats == null || this._tier !== tier) {
-      this._tier = tier;
-      if (p.weaponId !== w) { p.setWeapon(w, tier); townify(p, null); this.scene.add(p.rig.shadow); }
+    if (p.weaponId !== w || p.stats == null || this._tier !== tier || this._branch !== branch) {
+      this._tier = tier; this._branch = branch;
+      p.gear = gear;
+      p.setWeapon(w, tier, branch); townify(p, null);
     }
-    if (this.colors.get('applied') !== s.color) {
+    if (this._gearCode !== code || this.colors.get('applied') !== s.color) {
+      this._gearCode = code;
       this.colors.set('applied', s.color);
-      const prev = p.mesh, shadow = p.rig.shadow;
-      p.rig = buildHunterRig({ merged: true, color: s.color });
-      p.mesh = p.rig.root;
-      mountWeapon(p);
-      this.scene.remove(prev, shadow);
-      this.scene.add(p.mesh, p.rig.shadow);
+      p.gear = gear;
+      p.rig.setGear(gear);
     }
   },
   refreshRoom() {
@@ -358,7 +362,7 @@ export const hubScene = {
     if (session.role === 'solo') { this.app.goto('hunt', { ...base, aggro: o.aggro }); return; }
     const board = this.board;
     const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, onDispose: () => board.returned() });
-    const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, slot }; });
+    const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, gear: m?.gear, slot }; });
     const slot = st.members.indexOf(session.myId);
     this.app.goto('hunt', { ...base, net: channel, players, playerId: session.myId, slot: Math.max(0, slot), coop: true, aggro: st.hostId === session.myId ? o.aggro : false });
   },
@@ -408,7 +412,15 @@ export const hubScene = {
       r.rollT = r.state === 'roll' ? ((r.rollT ?? 0) + dt) % 0.6 : 0;
       p.updateRemote(dt);
       p.mesh.visible = !hunting; p.rig.shadow.visible = !hunting; // after the animate step (it forces visible)
-      if (s.weapon && s.weapon !== p.weaponId) { p.setWeapon(s.weapon, session.member(id)?.tier ?? 1); townify(p, null); }
+      const dg = s.gear ? decodeGear(s.gear) : null; // [G] remote outfit (backward compatible: no code -> weapon type only)
+      if (dg) {
+        if (rec.gearCode !== s.gear) {
+          rec.gearCode = s.gear;
+          const w = dg.weapon;
+          p.gear = makeGear({ ...dg, color: col });
+          if (p.weaponId !== w.type || p.gear.weapon.tier !== rec.wTier || rec.wBranch !== w.branch) { rec.wTier = w.tier; rec.wBranch = w.branch; p.setWeapon(w.type, w.tier, w.branch); townify(p, null); p.rig.setGear(p.gear); } else p.rig.setGear(p.gear);
+        }
+      } else if (s.weapon && s.weapon !== p.weaponId) { p.setWeapon(s.weapon, session.member(id)?.tier ?? 1); townify(p, null); }
       if (s.emote && s.emoteN !== rec.lastN) { rec.lastN = s.emoteN; this.showBubble(p, s.emote, rec); }
       this.colors.set(id, col);
       this.tickBubble(rec, dt);
@@ -416,9 +428,10 @@ export const hubScene = {
   },
   addRemote(id, s, col) {
     const m = session.member(id);
-    const p = new Player({ id, name: m?.name ?? id, weapon: s.weapon ?? m?.weapon ?? 'gs', tier: m?.tier ?? 1, local: false, ctx: this.ctx });
+    const dg = s.gear ? decodeGear(s.gear) : null; // [G]
+    const p = new Player({ id, name: m?.name ?? id, weapon: dg?.weapon.type ?? s.weapon ?? m?.weapon ?? 'gs', tier: dg?.weapon.tier ?? m?.tier ?? 1, branch: dg?.weapon.branch ?? null, gear: dg ? { ...dg, color: col } : { color: col }, local: false, ctx: this.ctx });
     p.remote = { state: 'free', rollT: 0, sprint: false, speed: 0, wp: null, air: 0 };
-    p.rig = buildHunterRig({ merged: true, color: col });
+    p.rig = buildHunterRig({ merged: true, color: col, gear: p.gear });
     p.mesh = p.rig.root;
     p._townRig = true;
     mountWeapon(p);
@@ -426,7 +439,7 @@ export const hubScene = {
     tag.position.y = 2.4;
     p.mesh.add(tag);
     this.scene.add(p.mesh, p.rig.shadow);
-    const rec = { player: p, tag, bubble: null, bubbleT: 0, lastN: -1 };
+    const rec = { player: p, tag, bubble: null, bubbleT: 0, lastN: -1, gearCode: s.gear ?? null, wTier: p.gear.weapon.tier, wBranch: p.gear.weapon.branch };
     this.members.set(id, rec);
     this.onMembers();
     return rec;
@@ -462,7 +475,7 @@ export const hubScene = {
 
     this.presence.update(dt, {
       x: p.pos.x, y: p.pos.y, z: p.pos.z, rot: p.rot, anim: p.state === 'roll' ? 'roll' : null, speed: p.speed,
-      emote: this.t < this.emoteUntil ? this.emoteId : 0, emoteN: this.emoteN, color: Math.max(0, PLAYER_COLORS.indexOf(saveStore.get().color)), weapon: p.weaponId,
+      emote: this.t < this.emoteUntil ? this.emoteId : 0, emoteN: this.emoteN, color: Math.max(0, PLAYER_COLORS.indexOf(saveStore.get().color)), weapon: p.weaponId, gear: this._gearCode,
     });
     this.syncRemotes(dt);
     this.tickBubble(this, dt);

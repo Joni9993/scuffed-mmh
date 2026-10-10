@@ -4,6 +4,8 @@ import { SnapBuffer } from './interp.js';
 import { Player } from '../game/player.js';
 import { weapons } from '../game/weapons/index.js';
 import { clamp } from '../core/math.js';
+import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
+import { PLAYER_COLORS } from '../meta/save.js';
 
 export const RATE_P = 15;   // Hz  Pirscher
 export const RATE_M = 10;   // Hz  Brocken
@@ -58,7 +60,9 @@ export class HuntNet {
   #addRemote(info) {
     const hunt = this.hunt;
     const weapon = weapons[info.weapon] ? info.weapon : 'gs';
-    const p = new Player({ id: info.id, name: info.name, weapon, tier: info.tier ?? 1, local: false, ctx: hunt });
+    const dg = decodeGear(info.gear); // [G] remote outfit; old clients send no code -> default armor, weapon type/tier as before
+    const gear = dg ? makeGear({ ...dg, color: PLAYER_COLORS[dg.colorIdx] }) : null;
+    const p = new Player({ id: info.id, name: info.name, weapon: dg?.weapon.type ?? weapon, tier: dg?.weapon.tier ?? info.tier ?? 1, branch: dg?.weapon.branch ?? null, gear, local: false, ctx: hunt });
     const sp = hunt.world.spawnPoints[(info.slot ?? 1) % hunt.world.spawnPoints.length];
     p.spawnAt(sp.x, sp.z, sp.yaw);
     p.remote = { state: 'free', rollT: 0, sprint: false, speed: 0, wp: null, air: 0 };

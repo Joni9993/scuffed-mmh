@@ -1,0 +1,7 @@
+/* [G] gear preview column in the station panels (Truhe, Schmiede) */
+.gpv-row { display: flex; gap: 1.6vmin; align-items: flex-start; }
+.gpv-main { flex: 1; min-width: 0; }
+.gpv-slot { flex: none; position: sticky; top: 0; width: min(30vmin, 150px); aspect-ratio: 96 / 120; background: radial-gradient(ellipse at 50% 85%, rgba(90, 58, 192, .55), rgba(20, 16, 60, .7) 70%); border: 2px solid #000; box-shadow: inset 0 0 0 1px #6a6ad0; }
+.gpv-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+@media (max-aspect-ratio: 1/1) { .gpv-row { flex-direction: column; } .gpv-slot { position: static; width: 34vmin; } }
+.card.up.sel { box-shadow: inset 0 0 0 2px #ffd84a; background: rgba(90, 58, 192, .4); }
