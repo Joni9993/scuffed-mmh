@@ -10,6 +10,7 @@ import { installHtml, bindInstall, onInstallChange } from './install.js';
 import { PLAYER_COLORS, cleanName, importCode, exportCode, SAVE_KEY } from '../meta/save.js';
 import { settings, saveSettings, nextRes } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
+import { deathlog, prettyAttack } from '../meta/deathlog.js';
 import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { GearPreview, previewSlot } from './gearPreview.js';
@@ -123,6 +124,12 @@ export function createSpiegel(ctx) {
       <div class="fg-p">${previewSlot(true)}<div class="fi-h pn" style="color:${s.color}"><b>${esc(s.name)}</b> <small>JR ${s.jr}</small></div></div></div>`;
   }
 
+  function deathHtml() {
+    const top = deathlog.top(5);
+    const list = top.length ? top.map((e) => `<div class="row srow"><span class="nm"><b>${esc(prettyAttack(e.a))}</b><br><small>${esc(monsters[e.m]?.name ?? e.m)}${e.q ? ' · schnell/Kette' : ''}</small></span><span class="num">×${e.n}</span></div>`).join('') : '<div class="note">Noch kein KO. Respekt.</div>';
+    return `<div class="sub">Tod-Log</div>${list}<div class="row"><button class="btn small" data-a="dlexport">Exportieren</button></div>`;
+  }
+
   function statsView() {
     const s = ctx.save, st = s.stats;
     const tile = (k, v) => `<div class="stile"><b>${v}</b><small>${k}</small></div>`;
@@ -133,7 +140,7 @@ export function createSpiegel(ctx) {
       return `<div class="row srow"><span class="nm"><b>${esc(q.name)}</b><br><small>${q.monster ? esc(monsters[q.monster]?.name ?? q.monster) + ' besiegt' : 'Abgeschlossen'}</small></span><span class="num">×${kills}</span><span class="chip ${best ? 'ok' : ''}">${best ? mmss(best) : '–:––'}</span></div>`;
     }).join('');
     return `<div class="fg-tabs">${tabsHtml()}</div><div class="stile-grid">${tiles.map(([k, v]) => tile(k, v)).join('')}</div>
-      <div class="sub">Brocken &amp; Bestzeiten</div>${rows}`;
+      <div class="sub">Brocken &amp; Bestzeiten</div>${rows}${deathHtml()}`;
   }
 
   const tabsHtml = () => `<div class="tabs">${[['look', 'Aussehen'], ['stats', 'Erfolge']].map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
@@ -159,6 +166,7 @@ export function createSpiegel(ctx) {
     },
     click(a, d) {
       if (a === 'color') { ctx.save.color = d.k; ctx.commit(); } else if (a === 'tab') tab = d.k;
+      else if (a === 'dlexport') { try { navigator.clipboard?.writeText(deathlog.exportText()); ctx.toast('Tod-Log kopiert.'); } catch { ctx.toast('Kopieren ging nicht.', true); } }
     },
   };
 }

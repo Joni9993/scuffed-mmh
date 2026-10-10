@@ -175,6 +175,7 @@ export class Player {
    */
   takeHit(h) {
     if (this.state === 'ko') return 'ignored';
+    this.lastHit = h.attackId ? { attackId: h.attackId, monsterId: h.monster?.def?.id ?? null, time: (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000 } : null; // Tod-Log
     const rp = this.state === 'roll' ? rollPhase(this.rollT, this.iframeExtend) : null;
     if (rp?.invuln) {
       if (rp.phase === 'perfect' && !this.perfectKeys.has(h.key) && this.glitchCd <= 0) {
@@ -335,7 +336,7 @@ export class Player {
     this.weapon.cancel();
     this.v.hp = 0;
     this.koCount++;
-    this.ctx.bus.emit('playerDown', { player: this });
+    this.ctx.bus.emit('playerDown', { player: this, lastHit: this.lastHit ?? null, time: (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000 });
     this.ctx.bus.emit('sfx', { name: 'ko', pos: this.pos });
   }
 
