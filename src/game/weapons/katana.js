@@ -134,7 +134,7 @@ const moves = {
 
 // ---- animation (see anim.js). P(arm pitch, blade pitch) -> {arx, sw}: blade pitch = arx + sw
 const P = (arx, bl, extra = {}) => ({ arx, sw: bl - arx, ...extra });
-export const KT_REST = { ...P(54, 104), arz: -24, alz: 9, tx: 9, ty: 0, py: -0.07, lrx: 14, rrx: -14, hx: 0 };
+export const KT_REST = { ...P(62, 146), arz: -10, alz: 9, tx: 8, ty: 0, py: -0.07, lrx: 14, rrx: -14, hx: 0 }; // blade raised beside the shoulder: readable from the chase camera
 const BASE = { ...REST, ...KT_REST };
 const A = (frames) => compileTrack(frames, BASE);
 const SHEATHED = { ...P(18, -52), arz: -42, tx: 12, ty: -8, py: -0.16, lrx: 16, rrx: -20, hx: 4 }; // hand on the hilt at the belly, blade in the scabbard
@@ -143,15 +143,15 @@ const anims = {
     [0, {}], [0.1, { ...P(130, 168), tx: -8, py: 0, arz: -14 }], [0.12, P(130, 168), 'lin'], [0.21, { ...P(52, 60), tx: 28, py: -0.12, arz: -24 }, 'lin'], [0.36, P(52, 60)], [0.5, {}],
   ]),
   kt_a2: A([
-    [0, {}], [0.11, { ...P(86, 92), ty: -78, tx: 8, py: -0.1, arz: -30 }], [0.13, {}, 'lin'], [0.24, { ty: 78, tx: 14 }, 'lin'], [0.38, { ty: 70 }], [0.55, { ...P(54, 104), ty: 0, tx: 9, py: -0.07 }],
+    [0, {}], [0.11, { ...P(86, 92), ty: -78, tx: 8, py: -0.1, arz: -30 }], [0.13, {}, 'lin'], [0.24, { ty: 78, tx: 14 }, 'lin'], [0.38, { ty: 70 }], [0.55, { ...KT_REST, ty: 0 }],
   ]),
   kt_a3: A([
     [0, {}], [0.1, { ...P(132, 170), ty: 18, tx: -6, py: 0, arz: -14 }], [0.13, {}, 'lin'], [0.22, { ...P(48, 48), ty: -30, tx: 28, py: -0.12, arz: -26 }, 'lin'],
-    [0.29, { ...P(130, 170), ty: -18, tx: -4, py: 0 }], [0.31, {}, 'lin'], [0.41, { ...P(46, 46), ty: 32, tx: 30, py: -0.14 }, 'lin'], [0.55, {}], [0.78, { ...P(54, 104), ty: 0, tx: 9, py: -0.07 }],
+    [0.29, { ...P(130, 170), ty: -18, tx: -4, py: 0 }], [0.31, {}, 'lin'], [0.41, { ...P(46, 46), ty: 32, tx: 30, py: -0.14 }, 'lin'], [0.55, {}], [0.78, { ...KT_REST, ty: 0 }],
   ]),
   kt_iaido: A([[0, {}], [0.2, SHEATHED]]),
   kt_zieh: A([
-    [0, SHEATHED], [0.04, { ...SHEATHED, ty: -40, tx: 16 }, 'lin'], [0.15, { ...P(86, 92), arz: -30, ty: 62, tx: 20, py: -0.1 }, 'lin'], [0.34, { ...P(86, 92), ty: 62 }], [0.62, { ...P(54, 104), ty: 0, tx: 9, py: -0.07 }],
+    [0, SHEATHED], [0.04, { ...SHEATHED, ty: -40, tx: 16 }, 'lin'], [0.15, { ...P(86, 92), arz: -30, ty: 62, tx: 20, py: -0.1 }, 'lin'], [0.34, { ...P(86, 92), ty: 62 }], [0.62, { ...KT_REST, ty: 0 }],
   ]),
   kt_stance: A([ // low guard, blade angled across the body, weight back
     [0, {}], [0.07, { ...P(78, 140), arz: -34, ty: 24, tx: 4, py: -0.2, lrx: 22, rrx: -26, hx: 6 }], [0.4, { ...P(78, 140), arz: -34, ty: 24, py: -0.2 }],
@@ -159,18 +159,17 @@ const anims = {
   ]),
   kt_konter: A([
     [0, { ...P(78, 140), arz: -34, ty: 24, tx: 4, py: -0.2 }], [0.04, { ...P(132, 170), ty: 14, tx: -6, py: 0, arz: -14 }, 'lin'], [0.15, { ...P(46, 40), ty: -26, tx: 32, py: -0.14, arz: -26 }, 'lin'],
-    [0.4, P(46, 40)], [0.7, { ...P(54, 104), ty: 0, tx: 9, py: -0.07 }],
+    [0.4, P(46, 40)], [0.7, { ...KT_REST, ty: 0 }],
   ]),
   kt_gleit: A([
-    [0, { py: -0.3, tx: 30, ...P(90, 94), ty: -70, arz: -30 }], [0.1, { py: -0.3, tx: 30, ...P(90, 94), ty: -72 }], [0.2, { ty: 72, tx: 28, py: -0.28 }, 'lin'], [0.36, { ty: 60, py: -0.2 }], [0.55, { ...P(54, 104), ty: 0, tx: 9, py: -0.07 }],
+    [0, { py: -0.3, tx: 30, ...P(90, 94), ty: -70, arz: -30 }], [0.1, { py: -0.3, tx: 30, ...P(90, 94), ty: -72 }], [0.2, { ty: 72, tx: 28, py: -0.28 }, 'lin'], [0.36, { ty: 60, py: -0.2 }], [0.55, { ...KT_REST, ty: 0 }],
   ]),
-  kt_finisher: A([
-    [0, {}], [0.18, { py: -0.38, tx: 26, ...P(150, 178), ty: -50, lrx: 26, rrx: -18 }], [0.4, { py: 0.25, tx: -10, lrx: -14, rrx: -14, ...P(160, 180), pry: 180 }, 'lin'],
-    [0.5, { py: 0.1, ...P(100, 100), ty: -60, pry: 300, tx: 14 }, 'lin'], [0.64, { py: -0.1, ...P(86, 92), ty: 60, pry: 540, tx: 30 }, 'lin'], [0.9, { py: -0.18, pry: 540, tx: 34 }],
-    [1.5, { ...P(54, 104), ty: 0, tx: 9, py: -0.07, pry: 540, lrx: 14, rrx: -14 }],
-  ]),
+  kt_finisher: A([ // Sprung-Drehschnitt (Torso-Drehung ty statt Koerper-Gier, damit nichts nach dem Move zurueckdreht)
+    [0, {}], [0.18, { py: -0.38, tx: 26, ...P(150, 178), ty: -60, lrx: 26, rrx: -18 }], [0.4, { py: 0.25, tx: -10, lrx: -14, rrx: -14, ...P(160, 180), ty: -150 }, 'lin'],
+    [0.5, { py: 0.1, ...P(100, 100), ty: -60, tx: 14 }, 'lin'], [0.64, { py: -0.1, ...P(86, 92), ty: 110, tx: 30 }, 'lin'], [0.9, { py: -0.18, ty: 90, tx: 34 }],
+    [1.5, { ...KT_REST, ty: 0 }],
+]),
 };
-// pry keeps counting up inside a move; the renderer wraps it (rotation is periodic)
 
 // ---- visuals ---------------------------------------------------------------------------------------------------
 registerTexture('kt_rust', (g, n, rnd) => {
@@ -204,11 +203,11 @@ registerTexture('kt_char', (g, n, rnd) => { // Brathalos: charred scales with em
 
 // Per-tier look. len = blade length (m), w = blade width, curve = sori, tipW = kissaki width factor.
 const LOOKS = {
-  1: { tex: 'kt_rust', len: 0.95, w: 0.11, curve: 0.05, tsuka: '#6a5a44', wrap: '#4a3a2a', tsuba: '#6a4a30', saya: '#6a4a2a', cord: '#7a6a4a' },
-  2: { tex: 'kt_bone', len: 1.02, w: 0.12, curve: 0.06, tsuka: '#d6c8a6', wrap: '#7a4a2a', tsuba: '#e8dcc0', saya: '#a8845a', cord: '#a8301c' },
-  3.1: { tex: 'kt_fang', len: 1.1, w: 0.14, curve: 0.08, tsuka: '#c0501a', wrap: '#ff9a3a', tsuba: '#ff8a2a', saya: '#3a30a0', cord: '#ff5a1a' },
-  3.2: { tex: 'kt_mud', len: 1.06, w: 0.16, curve: 0.04, tsuka: '#4a3a24', wrap: '#6a7a3a', tsuba: '#5a4a32', saya: '#6a5a3a', cord: '#6a7a3a' },
-  4: { tex: 'kt_char', len: 1.22, w: 0.16, curve: 0.09, tsuka: '#1a0e0c', wrap: '#8a1a10', tsuba: '#c0301a', saya: '#3a1a14', cord: '#ff6a1a' },
+  1: { tex: 'kt_rust', len: 0.95, w: 0.13, curve: 0.05, tsuka: '#6a5a44', wrap: '#4a3a2a', tsuba: '#6a4a30', saya: '#6a4a2a', cord: '#7a6a4a' },
+  2: { tex: 'kt_bone', len: 1.02, w: 0.17, curve: 0.06, tsuka: '#d6c8a6', wrap: '#7a4a2a', tsuba: '#e8dcc0', saya: '#a8845a', cord: '#a8301c' },
+  3.1: { tex: 'kt_fang', len: 1.1, w: 0.17, curve: 0.08, tsuka: '#c0501a', wrap: '#ff9a3a', tsuba: '#ff8a2a', saya: '#3a30a0', cord: '#ff5a1a' },
+  3.2: { tex: 'kt_mud', len: 1.06, w: 0.19, curve: 0.04, tsuka: '#4a3a24', wrap: '#6a7a3a', tsuba: '#5a4a32', saya: '#6a5a3a', cord: '#6a7a3a' },
+  4: { tex: 'kt_char', len: 1.22, w: 0.19, curve: 0.09, tsuka: '#1a0e0c', wrap: '#8a1a10', tsuba: '#c0301a', saya: '#3a1a14', cord: '#ff6a1a' },
 };
 const lookFor = (tier, branch) => LOOKS[tier >= 4 ? 4 : tier === 3 ? (branch === 'b' ? 3.2 : 3.1) : tier] ?? LOOKS[1];
 
@@ -248,7 +247,7 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
     const f0 = bladeFrame(look, s0), f1 = bladeFrame(look, s1);
     const len = Math.hypot(f1.y - f0.y, f1.z - f0.z);
     const taper = i === SEG - 1 ? 0.7 : 1;
-    const seg = box(0.04, len + 0.01, look.w * taper, bladeMat, 0, (f0.y + f1.y) / 2, (f0.z + f1.z) / 2);
+    const seg = box(0.055, len + 0.01, look.w * taper, bladeMat, 0, (f0.y + f1.y) / 2, (f0.z + f1.z) / 2);
     seg.rotation.x = Math.atan2(-(f1.z - f0.z), -(f1.y - f0.y)); // bend toward -Z (the edge)
     bladeG.add(seg);
     const sp = box(0.04, len + 0.01, 0.022, mSpine, 0, (f0.y + f1.y) / 2, (f0.z + f1.z) / 2 + look.w * taper * 0.5);
