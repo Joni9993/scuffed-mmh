@@ -82,6 +82,7 @@ export const hubScene = {
     if (fresh) { townState.entered = false; session.leave(); townState.mode = 'solo'; }
     const mode = opts.mode === 'host' || opts.mode === 'join' || opts.mode === 'solo' ? opts.mode : null;
     const save = saveStore.get();
+    if (opts.name && !save.nameSet) save.name = String(opts.name).slice(0, 12); // debug URL ?name=
 
     // ---- world + player
     this.world = createTown();
@@ -224,7 +225,7 @@ export const hubScene = {
     this.app.touch.setVisible(true);
     this.refreshRoom();
     this.onMembers();
-    const slot = Math.max(0, session.members.findIndex((m) => m.you));
+    const slot = Number(String(session.myId).slice(1)) || 0;
     this.spawn(slot);
     this.rig.snap(this.player.pos, this.player.rot);
   },
@@ -399,7 +400,6 @@ export const hubScene = {
       const col = PLAYER_COLORS[s.color] ?? PLAYER_COLORS[0];
       if (!rec) rec = this.addRemote(id, s, col);
       const p = rec.player, hunting = this.board.state.busy.has(id);
-      p.mesh.visible = !hunting; p.rig.shadow.visible = !hunting;
       p.pos.set(s.x, s.y, s.z);
       p.rot = s.rot;
       const r = p.remote;
@@ -407,6 +407,7 @@ export const hubScene = {
       r.state = s.anim === 'roll' ? 'roll' : 'free';
       r.rollT = r.state === 'roll' ? ((r.rollT ?? 0) + dt) % 0.6 : 0;
       p.updateRemote(dt);
+      p.mesh.visible = !hunting; p.rig.shadow.visible = !hunting; // after the animate step (it forces visible)
       if (s.weapon && s.weapon !== p.weaponId) { p.setWeapon(s.weapon, session.member(id)?.tier ?? 1); townify(p, null); }
       if (s.emote && s.emoteN !== rec.lastN) { rec.lastN = s.emoteN; this.showBubble(p, s.emote, rec); }
       this.colors.set(id, col);
