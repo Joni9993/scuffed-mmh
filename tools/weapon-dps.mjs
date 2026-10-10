@@ -1,5 +1,6 @@
 // DPS comparison (gs / db / bow) against a frozen Brocken via window.__SH.sim. Ideal play, god on, tier 1 weapons.
 // Usage: npm run dev (port 5173), then: SH_URL=http://127.0.0.1:5173/ node tools/weapon-dps.mjs [quest=jaggo] [seconds=40] [tier=1]
+// GLITCH=1: Glitch-Modus dauerhaft (bei Ende sofort neu starten) → Faktor gegen normal. QUICK=1: kleiner Sweep.
 // Melee strategies are swept over all lockable parts and distances; the best (part, distance) is reported. Needs playwright (/opt/node-tools).
 import { open } from './pw-lib.mjs';
 const quest = process.argv[2] || 'jaggo';
@@ -16,7 +17,7 @@ const strategies = [
 const tier = Number(process.argv[4] || 1);
 async function run(s, dist, lockIdx) {
   const { browser, page, errors } = await open(`scene=hunt&quest=${quest}&weapon=${s.weapon}&seed=1&nofx=1&god=1`);
-  const res = await page.evaluate(({ s, dist, lockIdx, secs, tier }) => {
+  const res = await page.evaluate(({ s, dist, lockIdx, secs, tier, glitch }) => {
     const SH = window.__SH, h = SH.hunt, p = h.player, m = h.mainMonster, inp = SH.input;
     if (tier > 1 && p.stats) { /* power override via weapon stats */ }
     m.update = () => {}; m.hp = m.maxHp = 1e8;
@@ -56,19 +57,20 @@ async function run(s, dist, lockIdx) {
         }
       }
       set(A, B);
+      if (glitch && !p.glitching) { p.glitch.energy = 100; inp.set('glitch', true, 'bot'); } else if (glitch) inp.set('glitch', false, 'bot');
       SH.sim(1);
     }
     set(false, false);
     return { dps: (h.stats.damage - dmg0) / secs, hits: h.stats.hits, stam: p.v.stamina, nLock };
-  }, { s, dist, lockIdx, secs, tier });
+  }, { s, dist, lockIdx, secs, tier, glitch: !!process.env.GLITCH });
   await browser.close();
   return res;
 }
 const out = [];
 for (const s of strategies) {
   let best = null;
-  for (const d of s.dists) {
-    for (let li = 0; li < (s.melee ? 6 : 2); li++) {
+  for (const d of process.env.QUICK ? s.dists.slice(0, 1) : s.dists) {
+    for (let li = 0; li < (process.env.QUICK ? 2 : s.melee ? 6 : 2); li++) {
       const r = await run(s, d, li);
       if (!r) break;
       if (!best || r.dps > best.dps) best = { ...r, dist: d, lockIdx: li };

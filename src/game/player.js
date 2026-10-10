@@ -411,6 +411,7 @@ export class Player {
     if (this.local) this.#stepLock(input);
     // [B] a roll press landing in a hitstop frame must not be eaten (button edges last exactly one sim step)
     if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
+    if (this.local && input.b.glitch?.pressed) this.glitchBuf = 0.25; // Glitch-Druck im Hitstop-Frame nicht verlieren
     if (consumeHitstop(this, dt)) {
       // [W] keep buffering button edges during hitstop (a press landing in a freeze frame must not be lost: B-hold finishers)
       if (this.state === 'free') this.weapon.feed(dt, { A: input.b.attack, B: input.b.special });
@@ -422,7 +423,11 @@ export class Player {
     this.invuln = Math.max(0, this.invuln - dt);
     this.glitchT = Math.max(0, this.glitchT - dt);
     this.glitchCd = Math.max(0, this.glitchCd - dt);
-    if (this.local) { if (input.b.glitch?.pressed && this.alive) activateGlitch(this); tickGlitch(this, dt); }
+    if (this.local) {
+      if (this.glitchBuf > 0 && this.alive && activateGlitch(this)) this.glitchBuf = 0;
+      this.glitchBuf = Math.max(0, (this.glitchBuf ?? 0) - dt);
+      tickGlitch(this, dt);
+    }
     this.sinceRoll += dt;
     this.rollBuf = Math.max(0, this.rollBuf - dt);
     this.flash = Math.max(0, this.flash - dt);
