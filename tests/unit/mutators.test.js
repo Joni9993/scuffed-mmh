@@ -46,7 +46,7 @@ describe('resolveMods', () => {
     expect(cleanMutatorIds(['overflow', 'overflow', 'nix', 5])).toEqual(['overflow']);
     expect(cleanMutatorIds(['speicherleck', 'overflow', 'kein_undo'])).toHaveLength(2);
   });
-  it('Belohnungs-Label', () => { expect(rewardLabel(MUTATORS.overflow)).toBe('+30 % Beute'); });
+  it('Belohnungs-Label', () => { expect(rewardLabel(MUTATORS.overflow)).toBe('+30 % Beute & RP'); });
 });
 
 describe('Monster-Hooks', () => {

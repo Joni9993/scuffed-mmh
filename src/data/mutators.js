@@ -48,5 +48,5 @@ export function resolveMods(ids) {
   return out;
 }
 
-/** „+30 % Beute" für Anzeige. */
-export const rewardLabel = (m) => { const pct = Math.round(((m.reward ?? 1) - 1) * 100); return pct > 0 ? `+${pct} % Beute` : ''; };
+/** „+30 % Beute & RP" (Faktor gilt auch für Rang-Punkte) für Anzeige. */
+export const rewardLabel = (m) => { const pct = Math.round(((m.reward ?? 1) - 1) * 100); return pct > 0 ? `+${pct} % Beute & RP` : ''; };
