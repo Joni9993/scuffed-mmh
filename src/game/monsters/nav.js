@@ -77,8 +77,8 @@ function buildNav(world) {
     const ex = cx(ek % N), ez = cx((ek / N) | 0);
     const h = (k) => Math.hypot(cx(k % N) - ex, cx((k / N) | 0) - ez) / CELL;
     g[sk] = 0; seen[sk] = stamp; from[sk] = -1; push(h(sk), sk);
-    let found = false;
-    while (heap.length) {
+    let found = false, budget = N * N; // bounded; callers back off 1.5 s after a failed search
+    while (heap.length && budget-- > 0) {
       const k = pop()[1];
       if (closed[k] === stamp) continue;
       closed[k] = stamp;
