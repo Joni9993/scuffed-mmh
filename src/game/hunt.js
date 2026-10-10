@@ -17,6 +17,7 @@ import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
 import { sfx } from '../audio/sfx.js';
 import * as cues from './cues.js';
+import { music, computeIntensity, IntensityTracker } from '../audio/music.js';
 // [P] meta layer: loadout, inventory, items, carving, end flow
 import { HuntMeta, resolveLoadout } from './huntmeta.js';
 import { Effects } from './effects.js';
@@ -107,6 +108,10 @@ export class Hunt {
     this.hud = createHud(app.ui);
     sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this._detachCues = cues.attach(this); // Lesbarkeit: Windup-Ton, Farbcue, Auto-Framing, Tod-Log
+    this.musicTr = new IntensityTracker(4); this.musicChainT = -99; this.musicWon = false;
+    music.setScene('hunt');
+    this.bus.on('glitchCounter', () => { this.musicChainT = this.time; });
+    this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
     this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
     this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
@@ -365,6 +370,10 @@ export class Hunt {
     if (this.input.b.menu.pressed) { if (this.opts.coop) this.#toggleLeave(); else this.setPaused(!this.paused); } // [N] coop never pauses
     if (this.paused) return;
     this.time += dt;
+    if (!this.musicWon) {
+      const lp = this.player;
+      music.setIntensity(this.musicTr.update(computeIntensity({ monster: this.mainMonster, player: lp?.v, glitching: !!lp?.glitching, chain: this.time - this.musicChainT < 5 }), dt));
+    }
     this.viz.begin();
     if (!this.result) this.timeLeft -= dt;
     const authoritative = !this.net || this.net.isHost; // [N] guests take quest state from the host
@@ -413,6 +422,7 @@ export class Hunt {
 
   dispose() {
     this.disposed = true;
+    music.setScene(null);
     closeStation(); // restores nothing visible (touch is hidden below) but clears the module-level panel state
     this.app.renderer.onResize.delete(this._onResize);
     this.projectiles.dispose(); // [W]

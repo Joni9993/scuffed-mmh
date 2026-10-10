@@ -11,6 +11,7 @@ import { installHtml, bindInstall, onInstallChange } from './install.js';
 import { PLAYER_COLORS, cleanName, importCode, exportCode, SAVE_KEY } from '../meta/save.js';
 import { settings, saveSettings, nextRes } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
+import { music } from '../audio/music.js';
 import { deathlog, prettyAttack } from '../meta/deathlog.js';
 import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
@@ -199,6 +200,8 @@ export function createOptionen(ctx) {
         <div class="row"><span class="nm">Joystick</span><button class="btn small" data-a="stk">${settings.stickMode === 'fixed' ? 'bleibt fest' : 'folgt Daumen'}</button></div>
         <div class="row"><span class="nm">Vibration</span><button class="btn small" data-a="hap">${on(settings.haptics)}</button></div>
         <div class="note">Lock: tippen = an/aus. Lock-Taste hoch/runter wischen = nächster/voriger Körperteil (Taste F/V, Pad: R3).</div>
+        <div class="row"><span class="nm">Musik</span><button class="btn small" data-a="mus">${on(settings.musicOn !== false)}</button></div>
+        <div class="row"><span class="nm">Musik-Lautstärke</span><span class="seg">${[0, 25, 50, 75, 100].map((k) => `<button class="btn small ${Math.round((settings.musicVolume ?? 0.5) * 100) === k ? 'on' : ''}" data-a="musv" data-v="${k}">${k}</button>`).join('')}</span></div>
         <div class="row"><span class="nm">Lautstärke</span><input id="st-vol" class="inp rng" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></div>
         ${ctx.adapter?.hunt ? '' : `<div class="sub">Spielstand-Code (Schutz gegen gelöschten Browserspeicher)</div>
         <textarea id="st-code" class="inp code" rows="3" placeholder="Code hier einfügen" spellcheck="false">${esc(code)}</textarea>
@@ -225,6 +228,8 @@ export function createOptionen(ctx) {
       else if (a === 'tips') { settings.tipsSeen = !settings.tipsSeen; settings.tipsShown = 0; saveSettings(); }
       else if (a === 'scan') { settings.scanlines = !settings.scanlines; document.body.classList.toggle('scan', settings.scanlines); saveSettings(); }
       else if (a === 'bsz') { settings.btnSize = ds?.v === 'S' || ds?.v === 'L' ? ds.v : 'M'; saveSettings(); app.touch?.relayout(); }
+      else if (a === 'mus') { settings.musicOn = settings.musicOn === false; saveSettings(); music.refresh(); }
+      else if (a === 'musv') { settings.musicVolume = Math.max(0, Math.min(100, Number(ds?.v) || 0)) / 100; saveSettings(); music.refresh(); }
       else if (a === 'stk') { settings.stickMode = settings.stickMode === 'fixed' ? 'follow' : 'fixed'; saveSettings(); }
       else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
       else if (a === 'hap') { settings.haptics = !settings.haptics; saveSettings(); if (settings.haptics) navigator.vibrate?.(15); }

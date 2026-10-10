@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { music } from '../audio/music.js';
 import { shareJoinLink } from '../meta/sharelink.js';
 import { createBus } from '../core/events.js';
 import { createCameraRig } from '../render/camera.js';
@@ -65,6 +66,7 @@ export const hubScene = {
     this.app = app;
     this.opts = opts;
     this.t = 0;
+    music.setScene('hub');
     this.offs = [];
     this.err = '';
     this.members = new Map(); // remote id -> { player, tag, bubble, bubbleT, lastN }
@@ -531,6 +533,7 @@ export const hubScene = {
 
   exit() {
     this.dead = true;
+    music.setScene(null);
     for (const f of this.offs) f();
     this.presence.dispose();
     closeStation();

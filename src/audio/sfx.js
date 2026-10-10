@@ -239,7 +239,7 @@ function buildAmbient() {
   loopNoise().connect(rf).connect(rum).connect(ambBus);
   amb.wind = wind; amb.cricket = cr; amb.rumble = rum;
 }
-const AMB_WIND = [0.035, 0.07, 0.03, 0.05], AMB_RUMBLE = [0, 0, 0.02, 0.16], AMB_CRICKET = [0.006, 0, 0.004, 0];
+const AMB_WIND = [0.035, 0.07, 0.03, 0.05], AMB_RUMBLE = [0, 0, 0.02, 0.16], AMB_CRICKET = [0, 0, 0, 0];
 
 function oneShot(fn, vol, pan = 0) { // ambient blips go through the SFX voices so they obey the voice cap
   const v = takeVoice(0);
@@ -257,8 +257,13 @@ function takeVoice(prio) {
   return best;
 }
 
+const BIG = new Set(['roar', 'phase', 'ko', 'questComplete', 'questFail', 'glitchOn']);
 let primed = false;
 export const sfx = {
+  /** Audio-Knoten für die Musik (ctx + master) oder null vor dem ersten Gesture */
+  audio() { return ctx && master ? { ctx, master } : null; },
+  /** Hook: music.duck bei großen Effekten */
+  onBig: null,
   unlock() {
     if (!ensure()) return;
     if (ctx.state !== 'running') { try { ctx.resume?.()?.catch?.(() => {}); } catch { /* ignore */ } }
@@ -294,6 +299,7 @@ export const sfx = {
     const v = takeVoice(prio);
     if (!v) return; // voice cap reached
     lastPlay[name] = now;
+    if (BIG.has(name)) sfx.onBig?.();
     v.input.gain.cancelScheduledValues(now);
     v.input.gain.value = opts.vol ?? 1;
     if (v.pan) v.pan.pan.value = opts.pan ?? 0;

@@ -1,6 +1,6 @@
 const KEY = 'scuffedhunter.settings.v1';
 export const RES_STEPS = [360, 480, 640, 800];
-const defaults = { res: 640, resV: 2, scanlines: true, dmgNumbers: true, volume: 0.6, nofx: false, btnSize: 'M', leftHand: false, stickMode: 'follow', haptics: true, autoRes: true, tipsSeen: false, a2hsSeen: false };
+const defaults = { res: 640, resV: 2, scanlines: true, dmgNumbers: true, volume: 0.6, musicOn: true, musicVolume: 0.5, nofx: false, btnSize: 'M', leftHand: false, stickMode: 'follow', haptics: true, autoRes: true, tipsSeen: false, a2hsSeen: false };
 export const settings = { ...defaults };
 
 try {
