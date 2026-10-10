@@ -12,6 +12,7 @@ export const REST = {
   py: 0, prx: 0, pry: 0, tx: 3, ty: 0, tz: 0, hx: 0, hy: 0,
   arx: 25, arz: 8, sw: 155, alx: -12, alz: 9, lrx: 0, rrx: 0,
   sl: 155, // [W] off-hand weapon pitch relative to the left arm (dual blades)
+  th: 1, // [G] two-hand grip blend (0 = left arm free, 1 = left hand on the hilt; only weapons with userData.twoHand)
 };
 
 const ss = (t) => t * t * (3 - 2 * t);
@@ -38,6 +39,17 @@ export function sampleTrack(track, t, out = {}) {
     }
   }
   return Object.assign(out, track[track.length - 1].pose);
+}
+
+/**
+ * [G] Mirror a pose left <-> right (bow: held in the LEFT hand, string hand = right). Swaps arm/weapon channels and
+ * flips the yaw-like channels. In place; returns the pose.
+ */
+export function mirrorPose(t) {
+  const sw = (a, b) => { const x = t[a]; t[a] = t[b]; t[b] = x; };
+  sw('arx', 'alx'); sw('arz', 'alz'); sw('sw', 'sl');
+  t.ty = -(t.ty ?? 0); t.tz = -(t.tz ?? 0); t.hy = -(t.hy ?? 0); t.pry = -(t.pry ?? 0);
+  return t;
 }
 
 export function blend(a, b, k, out = {}) {

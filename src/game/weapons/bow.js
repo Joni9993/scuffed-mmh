@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
-import { lambert } from '../../render/ps1.js';
-import { tex, registerTexture } from '../../render/textures.js';
+import { GearParts } from '../../render/gearfx.js'; // [G]
+import { buildBowLook, BOW_H } from '../gear/weaponLook.js'; // [G]
 import { angleDiff, stepAngle, yawOf } from '../../core/math.js';
 
 // Spannbogen (GDD 4.3): Spannen (A halten) in 3 Stufen, Rhythmus-Schnellschuss (A tippen), Ausweichspannen,
@@ -76,7 +76,7 @@ export function computeAim(p) {
     }
     if (target) yaw = yawOf(target.x - p.pos.x, target.z - p.pos.z);
   }
-  const f = fwd(yaw), r = { x: -Math.cos(yaw), z: Math.sin(yaw) };
+  const f = fwd(yaw), r = { x: Math.cos(yaw), z: -Math.sin(yaw) }; // [G] bow arm = left side
   const origin = { x: p.pos.x + f.x * 0.8 + r.x * 0.3, y: p.pos.y + 1.4, z: p.pos.z + f.z * 0.8 + r.z * 0.3 };
   const dist = target ? Math.hypot(target.x - p.pos.x, target.z - p.pos.z) : null;
   return { yaw, target, origin, dist };
@@ -261,50 +261,22 @@ const anims = {
 };
 
 // ---------- visuals
-registerTexture('bowwood', (g, n, rnd) => {
-  g.fillStyle = '#7a4d26';
-  g.fillRect(0, 0, n, n);
-  g.fillStyle = '#5a3418';
-  for (let y = 0; y < n; y += 3) g.fillRect(0, y, n, 1);
-  g.fillStyle = '#9a6a38';
-  for (let i = 0; i < n; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 2, 1);
-});
-export function buildBowMesh() {
-  const g = new THREE.Group();
-  const wood = lambert({ map: tex('bowwood', { size: 16 }) });
-  const wrap = lambert({ map: tex('leather', { size: 16 }) });
+/** [G] opts: { tier, branch } -> merged tier look (gear/weaponLook.js) + animated string and nocked arrow. Held in the LEFT hand. */
+export function buildBowMesh({ tier = 1, branch = null } = {}) {
+  const g = buildBowLook(tier, branch);
   const sinew = new THREE.LineBasicMaterial({ color: '#efe6c8', fog: false });
-  // limb: stack of boxes along a parabola, grip forward (+z), tips toward the archer
-  const H = 0.78, N = 7;
-  const pts = [];
-  for (let i = 0; i <= N; i++) {
-    const y = -H + (2 * H * i) / N;
-    pts.push({ y, z: 0.3 * (1 - (y / H) ** 2) });
-  }
-  for (let i = 0; i < N; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const len = Math.hypot(b.y - a.y, b.z - a.z) + 0.03;
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.075, len, 0.075), wood);
-    seg.position.set(0, (a.y + b.y) / 2, (a.z + b.z) / 2);
-    seg.rotation.x = Math.atan2(b.z - a.z, b.y - a.y) * -1;
-    g.add(seg);
-  }
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.24, 0.1), wrap);
-  grip.position.set(0, 0, 0.3);
-  const tipT = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.08), lambert({ map: tex('bone', { size: 16 }) }));
-  tipT.position.set(0, H, 0.0);
-  const tipB = tipT.clone();
-  tipB.position.y = -H;
-  g.add(grip, tipT, tipB);
+  const H = BOW_H;
   // string (Line: tipTop -> nock -> tipBottom) + nocked arrow, animated in updateMesh
   const sg = new THREE.BufferGeometry();
   sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
   const string = new THREE.Line(sg, sinew);
   string.frustumCulled = false;
-  const arrow = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.95), lambert({ color: '#d8c090' }));
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.14), lambert({ color: '#d8dde6' }));
-  head.position.z = 0.5;
-  arrow.add(head);
+  const A = new GearParts();
+  A.box(0.035, 0.035, 0.95, '#d8c090');
+  A.box(0.09, 0.09, 0.14, '#d8dde6', { z: 0.5 });
+  A.box(0.1, 0.012, 0.16, '#e8e0c8', { z: -0.4 });
+  A.box(0.012, 0.1, 0.16, '#e8e0c8', { z: -0.4 });
+  const arrow = new THREE.Mesh(A.merge(), g.userData.glow);
   arrow.visible = false;
   g.add(string, arrow);
   g.userData.bow = { string, arrow, H, k: 0 };
@@ -323,6 +295,7 @@ function setString(b, pull) {
 export const bow = {
   id: 'bow',
   name: 'Spannbogen',
+  hand: 'L', // [G] held in the left hand (poses are mirrored, see anim.mirrorPose); the right hand draws
   // A: Tipp = Schnellschuss, Halten = Spannen. B: Tipp = Bogenhieb (Finisher bei Wucht 100)
   holdThreshold: { A: 0.15, B: 0 },
   idle: {
