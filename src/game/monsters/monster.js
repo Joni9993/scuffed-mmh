@@ -11,7 +11,7 @@ import { ProjectileSet } from './mprojectiles.js';
 export const MREST = { bodyY: 0, bodyPitch: 0, bodyRoll: 0, neck: 0, head: 0, headYaw: 0, tailYaw: 0, tailPitch: 0, legL: 0, legR: 0, wing: 0, spread: 0, jaw: 0 };
 export const mTrack = (frames) => compileTrack(frames, MREST);
 
-const RAGE_DURATION = 45, RAGE_HP = 0.6, RAGE_BURST = 300, RAGE_BURST_WINDOW = 20, RAGE_COOLDOWN = 20;
+const RAGE_DURATION = 45, RAGE_HP = 0.6, RAGE_BURST_PCT = 0.075 /* of max HP within the window; was a flat 300 when Jaggo had 1800 HP */, RAGE_BURST_WINDOW = 20, RAGE_COOLDOWN = 20;
 const FLEE_HP = 0.3, STAGGER = 2.0, STUN_TIME = 6.0, STUN_BASE = 150, THREAT_WINDOW = 10;
 const POISON_THRESHOLD = 100, POISON_TIME = 15, POISON_PCT = 0.03, TRAP_TIME = 6, TRAP_COOLDOWN = 60, BLIND_TIME = 4, STINK_TIME = 4.5;
 export const LIMP_HP = 0.3;
@@ -242,7 +242,7 @@ export class Monster {
     this.burst.push({ t: this.time, dmg: total });
     if (!this.minor && this.authority) {
       if (!this.rageUsed && this.hp <= this.maxHp * RAGE_HP) { this.rageUsed = true; this._enrage(); }
-      else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= RAGE_BURST) this._enrage();
+      else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= this.maxHp * RAGE_BURST_PCT) this._enrage();
     }
     if (this.hp <= 0) { this._die(); ev.killed = true; return ev; }
     if (this.minor) this._flinch(pid, total);

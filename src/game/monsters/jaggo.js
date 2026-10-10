@@ -88,12 +88,12 @@ const rudelruf = {
 export const jaggo = {
   id: 'jaggo',
   name: 'Jaggo der Große',
-  hp: 1800,
+  hp: 7000,
   scale: SC,
   bodyRadius: 1.5,
   walk: 2.6, run: 6.2, detect: 30, prefer: 4.5,
   parts: [
-    { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 250, jitter: 0.07, elem: { fire: 25, shock: 5 }, blunt: true, stunPart: true,
+    { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 600, jitter: 0.07, elem: { fire: 25, shock: 5 }, blunt: true, stunPart: true,
       spheres: [{ node: 'head', offset: [0, 0.05, 0.4], r: 0.5 }] },
     { id: 'body', label: 'Körper', factor: 0.7, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'body', offset: [0, 0, 0.55], r: 0.68 }, { node: 'body', offset: [0, 0, -0.45], r: 0.68 }, { node: 'neck', offset: [0, 0.3, 0], r: 0.38 }] },

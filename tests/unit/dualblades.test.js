@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WeaponState } from '../../src/game/weapons/weapon.js';
-import { dualblades, RAUSCH_COST, DASH } from '../../src/game/weapons/dualblades.js';
+import { dualblades, RAUSCH_COST, DASH, DB_MV } from '../../src/game/weapons/dualblades.js';
 import { createVitals, spendStamina, tickStamina, ROLL } from '../../src/game/vitals.js';
 
 const DT = 1 / 60;
@@ -37,19 +37,19 @@ describe('Zwillingsklingen A-Kette (GDD 4.2)', () => {
     s.tap('A');
     expect(s.w.moveId).toBe('db_a1');
     expect(hitCount('db_a1')).toBe(2);
-    expect(new Set(dualblades.moves.db_a1.hits.map((h) => h.mv))).toEqual(new Set([12]));
+    expect(new Set(dualblades.moves.db_a1.hits.map((h) => h.mv))).toEqual(new Set([12 * DB_MV]));
     s.until(() => s.w.t >= 0.3);
     s.tap('A', 0.02);
     s.until(() => s.w.moveId !== 'db_a1', 1);
     expect(s.w.moveId).toBe('db_a2');
     expect(hitCount('db_a2')).toBe(2);
-    expect(dualblades.moves.db_a2.hits[0].mv).toBe(14);
+    expect(dualblades.moves.db_a2.hits[0].mv).toBeCloseTo(14 * DB_MV, 2);
     s.until(() => s.w.t >= 0.5);
     s.tap('A', 0.02);
     s.until(() => s.w.moveId !== 'db_a2', 1);
     expect(s.w.moveId).toBe('db_a3');
     expect(hitCount('db_a3')).toBe(3);
-    expect(dualblades.moves.db_a3.hits[0].mv).toBe(10);
+    expect(dualblades.moves.db_a3.hits[0].mv).toBeCloseTo(10 * DB_MV, 2);
     s.until(() => s.w.t >= 0.62);
     s.tap('A', 0.02);
     s.until(() => s.w.moveId !== 'db_a3', 1);
@@ -81,7 +81,7 @@ describe('Sprungschnitt', () => {
     s.tap('A');
     expect(s.w.moveId).toBe('db_jump');
     const m = s.w.move;
-    expect(new Set(m.hits.map((h) => h.mv))).toEqual(new Set([18]));
+    expect(new Set(m.hits.map((h) => h.mv))).toEqual(new Set([18 * DB_MV]));
     expect(new Set(m.hits.map((h) => h.group)).size).toBe(2);
     expect(m.lunge.dist).toBe(3);
   });

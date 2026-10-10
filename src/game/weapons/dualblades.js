@@ -8,6 +8,7 @@ import { VIT } from '../vitals.js';
 // Rolle wird kurzer Dash, kostet Puste. Finisher "Schrottwirbel" (B halten bei Wucht 100).
 
 export const RAUSCH_SPEED = 1.15;
+export const DB_MV = 1.18; // phase-3 balance: slash motion values x1.18 (db DPS ~90 % of gs)
 export const RAUSCH_COST = VIT.rauschCost; // Puste pro Sekunde
 export const DASH = { duration: 0.3, dist: 3.2 }; // Rolle im Rausch (gleiche i-Frames, siehe ROLL.iStart/iEnd)
 
@@ -39,7 +40,7 @@ function slash(s) {
     }
     const base = kind === 'horz' ? [sh[0], y, sh[2]] : sh;
     hits.push({
-      shape: 'capsule', radius, group, mv, wucht, hitstop, blunt: 0,
+      shape: 'capsule', radius, group, mv: r2(mv * DB_MV), wucht, hitstop, blunt: 0,
       t0: r2(t0 + ((t1 - t0) * i) / n), t1: r2(t0 + ((t1 - t0) * (i + 1)) / n + 0.016),
       from: base.map((v, j) => r2(v + d[j] * from)), to: base.map((v, j) => r2(v + d[j] * to)),
     });
