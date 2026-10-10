@@ -3,6 +3,7 @@ import { createBus } from '../core/events.js';
 import { createCameraRig } from '../render/camera.js';
 import { Player } from '../game/player.js';
 import { buildHunterRig } from '../game/rig.js';
+import { mountOnBack } from '../game/gear/backMount.js';
 import { createTown } from '../game/town/world.js';
 import { labelSprite } from '../game/town/npc.js';
 import { SPAWNS, pickStation, stationById } from '../game/town/layout.js';
@@ -55,13 +56,7 @@ function mountWeapon(p) {
   p.def = Object.assign(Object.create(base), { rest: {}, updateMesh: undefined, rollOverride: undefined, speedMul: undefined, hand: undefined, sprintArx: undefined, _town: true });
   p.rig.swapWeapon(null);
   if (p.backSlot) p.backSlot.parent?.remove(p.backSlot);
-  const back = new THREE.Group();
-  back.position.set(0.08, 0.95, -0.34);
-  back.rotation.set(Math.PI, 0, 0.9);
-  back.scale.setScalar(0.5);
-  if (p.weaponMesh) { back.add(p.weaponMesh); if (p.weaponMesh.userData.offhand) back.add(p.weaponMesh.userData.offhand); }
-  p.rig.torso.add(back);
-  p.backSlot = back;
+  p.backSlot = mountOnBack(p.rig, p.weaponMesh, p.weaponId); // real mesh at scale 1, per-weapon back socket
 }
 
 export const hubScene = {
