@@ -331,7 +331,7 @@ export const brathalos = {
   bodyRadius: 1.7,
   walk: 2.6, run: 6.2, detect: 32, prefer: 6, turn: 0.85,
   drops: ['brathalos_schuppe', 'brathalos_membran', 'glutsack', 'brathalos_rubin'],
-  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 21, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 11, speed: 9, angSpeed: 0.5, dropDamage: 250 },
+  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 21, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 9, speed: 9, angSpeed: 0.5, dropDamage: 250 },
   rageAttack: 'brathalos_bruellen',
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 700, jitter: 0.07, elem: { fire: 0, shock: 25 }, blunt: true, stunPart: true,

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { brathalos } from '../../src/game/monsters/brathalos.js';
 import { time } from '../../src/core/time.js';
 import { make, DT } from './p3helpers.js';
+import { monstersNear } from '../../src/game/effects.js';
 
 beforeEach(() => time.reset());
 
@@ -36,5 +37,27 @@ describe('fix 2: Brathalos does not live in the sky', () => {
     expect(mean).toBeGreaterThan(0.17);
     expect(mean).toBeLessThan(0.27);
     expect(minGap).toBeGreaterThanOrEqual(30);
+  });
+});
+
+describe('fix 6: Blendknolle can reach a circling Brathalos', () => {
+  it('a flash thrown 6 m toward the flier (range 6) catches it while it circles the hunter', () => {
+    const { m, p } = make(brathalos, 'combat', 0, 9, 4);
+    p.god = true;
+    m.recover = 0;
+    m.beginAttack('brathalos_aufflug');
+    for (let i = 0; i < 60 * 3; i++) m.update(DT);
+    expect(m.state).toBe('fly');
+    let worst = 0;
+    for (let i = 0; i < 60 * 3; i++) {
+      m.update(DT);
+      if (m.state !== 'fly' || m.attack) break;
+      const px = p.pos.x, pz = p.pos.z;
+      const d = Math.hypot(m.pos.x - px, m.pos.z - pz) || 1;
+      const t = Math.min(6, d);
+      const land = { x: px + ((m.pos.x - px) / d) * t, z: pz + ((m.pos.z - pz) / d) * t }; // lock-on throw, range 6
+      if (monstersNear([m], land, 3.6, { air: 3 }).length === 0) worst = Math.max(worst, d);
+    }
+    expect(worst).toBe(0);
   });
 });
