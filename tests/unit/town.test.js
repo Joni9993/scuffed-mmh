@@ -118,3 +118,18 @@ describe('town world', () => {
     expect(Math.hypot(p.x, p.z)).toBeGreaterThan(1.8);
   });
 });
+
+describe('scene lifecycle (singleton scenes)', () => {
+  it('resetLifecycle clears the dead/starting flags exit()/beginHunt left behind', async () => {
+    const { resetLifecycle } = await import('../../src/game/town/flow.js');
+    const scene = { dead: true, starting: true };
+    expect(resetLifecycle(scene)).toBe(scene);
+    expect(scene.dead).toBe(false);
+    expect(scene.starting).toBe(false);
+  });
+  it('hub enter() calls resetLifecycle (regression: panels dead after a hunt)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../../src/scenes/hub.js', import.meta.url), 'utf8');
+    expect(src.slice(src.indexOf('enter(app'), src.indexOf('exit() {'))).toContain('resetLifecycle(this)');
+  });
+});

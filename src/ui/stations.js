@@ -28,9 +28,8 @@ export function closeStation() {
   if (!current) return;
   const c = current;
   current = null;
-  c.panel.dispose?.();
-  c.root.remove();
-  c.onClose?.();
+  try { c.panel.dispose?.(); } finally { c.root.remove(); } // a throwing dispose must never leave the panel up
+  c.onClose?.(); // restores world input (touch controls)
 }
 
 export function openStation(id, app, { onClose, adapter, store = saveStore } = {}) {
