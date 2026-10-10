@@ -50,7 +50,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
     stunEligible: !!part.stunPart,
     wucht: hit.wucht || 0,
     partId: part.id, hitstop: HITSTOP[size], shake: SHAKE[size],
-    rostBuild: attacker.elems?.rost ?? 0, // Element 'rost' = Rost-Aufbau pro Treffer (kein Elementschaden, GDD 15.3)
+    rostBuild: attacker.elems?.rost ?? attacker.elems?.rust ?? 0, // Waffendaten nutzen 'rust' // Element 'rost' = Rost-Aufbau pro Treffer (kein Elementschaden, GDD 15.3)
   };
 }
 

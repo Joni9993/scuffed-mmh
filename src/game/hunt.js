@@ -124,6 +124,8 @@ export class Hunt {
     this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
     this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
+    // Macke „Überladung" (Voltaro-Set): nach Glitch-Konter dur s +atk Angriff
+    this.bus.on('glitchCounter', (e) => { const p = e?.player ?? this.player; if (p?.local && p.counterBuff) p.counterBuffUntil = this.time + p.counterBuff.dur; });
     this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
     this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) this.#onBossDead(); });
     this.bus.on('revierAlly', () => this.hud.center('Sie verbünden sich!', 2.2));
@@ -252,9 +254,10 @@ export class Hunt {
     const st = player.stats;
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
-    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) }; // x1,3 im Glitch-Modus // [KT] Schliff
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) * (player.counterBuffUntil > this.time ? 1 + player.counterBuff.atk : 1) }; // x1,3 im Glitch-Modus; Überladung // [KT] Schliff
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
+    if (st.partDmgMul) res.partDmgMul = st.partDmgMul; // Kroll-Ast: Teil-HP-Schaden
     res.attackerId = player.id;
     this.glitchSys.hitting = player; // damit 'partBreak' (feuert synchron in applyDamage) dem Schlag zugeordnet wird
     applyMonsterHit(monster, res, this);

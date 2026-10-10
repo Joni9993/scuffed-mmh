@@ -125,10 +125,11 @@ export function encodeHit(monsterId, res, attackerId, id = ++_hid) {
   if (res.crit) o.c = 1;
   if (res.weak) o.w = 1;
   if (res.rostBuild) o.r = Math.min(100, Math.round(res.rostBuild));
+  if (res.partDmgMul && res.partDmgMul !== 1) o.q = r1(res.partDmgMul); // Kroll-Ast: Teil-HP-Schaden
   return o;
 }
 export function decodeHit(o) {
-  return { id: o.i, monsterId: o.m, res: { partId: o.p, dmg: o.d, elemDmg: o.e ?? 0, blunt: o.b ?? 0, crit: !!o.c, weak: !!o.w, ...(o.r ? { rostBuild: o.r } : {}), attackerId: o.a } };
+  return { id: o.i, monsterId: o.m, res: { partId: o.p, dmg: o.d, elemDmg: o.e ?? 0, blunt: o.b ?? 0, crit: !!o.c, weak: !!o.w, ...(o.r ? { rostBuild: o.r } : {}), ...(o.q ? { partDmgMul: o.q } : {}), attackerId: o.a } };
 }
 export const MAX_HIT_DMG = 5000;
 export const validHit = (h) => Number.isFinite(h.res.dmg) && h.res.dmg > 0 && h.res.dmg <= MAX_HIT_DMG && typeof h.monsterId === 'string';

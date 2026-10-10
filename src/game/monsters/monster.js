@@ -293,7 +293,7 @@ export class Monster {
     const ev = { monster: this, part, dmg: total, res, broke: false, stunned: false, killed: false };
     if (part) {
       if (part.breakHp && !part.broken) {
-        part.hp -= total * (this.st.rustT > 0 ? RUST_PART_MUL : 1);
+        part.hp -= total * (this.st.rustT > 0 ? RUST_PART_MUL : 1) * (res.partDmgMul ?? 1); // partDmgMul: Kroll-Ast-Waffen
         const jit = clamp(1 - part.hp / part.breakHp, 0, 1) * (part.jitter ?? 0.05);
         for (const m of part.mats) m.userData.ps1.uJit.value = jit;
         if (part.hp <= 0) { this._breakPart(part); ev.broke = true; }
