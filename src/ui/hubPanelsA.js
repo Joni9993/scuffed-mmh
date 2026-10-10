@@ -17,24 +17,28 @@ const tabs = (cur, list) => `<div class="tabs">${list.map(([k, n]) => `<button c
 // ============================================================ Schmiede
 // Layout (fits 568x320 without scrolling to the button): left = tabs + selectable tree/grid (scrolls on its own),
 // right = big rotatable preview + pinned info (compare current vs new, costs, "Schmieden").
-const TREE = [{ tier: 1, branch: null }, { tier: 2, branch: null }, { tier: 3, branch: 'a' }, { tier: 3, branch: 'b' }, { tier: 4, branch: null }];
+const TREE = [{ tier: 1, branch: null }, { tier: 2, branch: null }, { tier: 3, branch: 'a' }, { tier: 3, branch: 'b' }, { tier: 4, branch: null },
+  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }];
+const BR_LABEL = { a: ' Jaggo', b: ' Barrotz', k: ' Kroll', g: ' Gorgo', v: ' Voltaro' };
+const BRANCHED = (t) => t === 3 || t >= 5; // Stufen mit Ast
 const nodeKey = (n) => `${n.tier}${n.branch ?? ''}`;
 
 export function createSchmiede(ctx) {
   let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null, wnode = null; // wnode = tree node key being looked at
   let pv = null;
 
-  const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k} ${v}`).join(', ') || '–';
-  const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${nxt.bluntMul ? '<span>Stumpf +30%</span>' : ''}${nxt.poisonMul ? '<span>Gift-Aufbau +</span>' : ''}</div>`;
+  const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k === 'rust' ? 'Rost' : k} ${v}`).join(', ') || '–';
+  const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${nxt.bluntMul ? '<span>Stumpf +30%</span>' : ''}${nxt.partDmgMul ? '<span>Teilbruch +25%</span>' : ''}${nxt.poisonMul ? '<span>Gift-Aufbau +</span>' : ''}</div>`;
 
   /** tree node state for the selected weapon: 'cur' | 'done' | 'next' | 'far' */
   function nodeState(n, w, opts) {
     if (opts.some((o) => o.tier === n.tier && o.branch === n.branch)) return 'next';
-    if (n.tier === w.tier && (n.tier !== 3 || n.branch === w.branch)) return 'cur';
-    if (n.tier < w.tier && (n.tier !== 3 || w.tier > 3 || n.branch === w.branch)) return 'done';
+    if (n.tier === w.tier && (!BRANCHED(n.tier) || n.branch === w.branch)) return 'cur';
+    if (n.tier === 5 && w.tier === 6) return n.branch === 'v' ? 'done' : 'far';
+    if (n.tier < w.tier && (!BRANCHED(n.tier) || (n.tier === 3 && w.tier > 3) || n.branch === w.branch)) return 'done';
     return 'far';
   }
-  const curNode = (w) => nodeKey({ tier: w.tier, branch: w.tier === 3 ? w.branch : null });
+  const curNode = (w) => nodeKey({ tier: w.tier, branch: BRANCHED(w.tier) ? w.branch : null });
 
   function weaponsView() {
     const s = ctx.save, w = s.weapons[wsel];
@@ -45,7 +49,7 @@ export function createSchmiede(ctx) {
     const tree = TREE.map((n) => {
       const st = nodeState(n, w, opts), name = weaponStats(wsel, n.tier, n.branch).name;
       const mark = st === 'cur' ? '★' : st === 'done' ? '✓' : st === 'next' ? '▶' : '·';
-      return `<button class="rowbtn tn t${n.tier}${n.branch ? ' br' : ''} ${st}${wnode === nodeKey(n) ? ' sel' : ''}" data-a="wnode" data-k="${nodeKey(n)}"><span class="mk">${mark}</span><span class="nm">${esc(name)}</span><small>St.${n.tier}${n.branch ? (n.branch === 'a' ? ' Jaggo' : ' Barrotz') : ''}</small></button>`;
+      return `<button class="rowbtn tn t${n.tier}${n.branch ? ' br' : ''} ${st}${wnode === nodeKey(n) ? ' sel' : ''}" data-a="wnode" data-k="${nodeKey(n)}"><span class="mk">${mark}</span><span class="nm">${esc(name)}</span><small>St.${n.tier}${n.branch ? BR_LABEL[n.branch] : ''}</small></button>`;
     }).join('');
     // right
     const node = TREE.find((n) => nodeKey(n) === wnode);

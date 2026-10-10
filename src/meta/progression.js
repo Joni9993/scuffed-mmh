@@ -4,7 +4,7 @@ import { rollReward, rollBreak } from '../data/drops.js';
 import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
 import { applyChestResult } from './huntChest.js';
 
-export const MAX_JR = 4;
+export const MAX_JR = 7; // 5 nach Brathalos, 6 nach Kroll/Gorgo, 7 nach Voltaro
 
 export const questUnlocked = (save, quest) => save.jr >= (quest.jr ?? 1);
 

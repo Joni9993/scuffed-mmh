@@ -10,6 +10,11 @@ export const SKILLS = {
   dickschaedel: { id: 'dickschaedel', name: 'Dickschädel', max: 3, desc: (l) => (l >= 3 ? 'Kein Zucken, kein Umwerfen' : l >= 2 ? 'Kein Zucken' : 'Ab Stufe 2: kein Zucken') },
   wuchtkopf: { id: 'wuchtkopf', name: 'Wuchtkopf', max: 3, desc: (l) => `+${8 * l} % Krit-Chance` },
   hitzefell: { id: 'hitzefell', name: 'Hitzefell', max: 3, desc: (l) => `Feuer-Resistenz ${Math.round(100 * (1 - 0.8 ** l))} %` },
+  // Rostwerke-Macken (GDD 15.8). Zahlen: meta/loadout.js skillEffects.
+  panzerhaut: { id: 'panzerhaut', name: 'Panzerhaut', max: 3, desc: (l) => `Rost-Dauer −${Math.round(50 * l / 3)} %, +${Math.round(10 * l / 3)} % Schutz` },
+  wuehler: { id: 'wuehler', name: 'Wühler', max: 3, desc: (l) => (l >= 2 ? 'Immun gegen Sog und Wind' : 'Ab Stufe 2: immun gegen Sog und Wind') },
+  ueberladung: { id: 'ueberladung', name: 'Überladung', max: 3, desc: (l) => `Nach Glitch-Konter 8 s +${5 * l} % Angriff` },
+  erdung: { id: 'erdung', name: 'Erdung', max: 3, desc: (l) => `Schock-Resistenz ${Math.round(100 * (1 - 0.8 ** l))} %` },
 };
 
 const set = (id, name, prot, skills, pieces) => ({ id, name, prot, skills, pieces });
@@ -45,8 +50,24 @@ export const ARMOR_SETS = {
     body: piece('Brathalos-Mieder', { schrott: 700, brathalos_schuppe: 4, glutsack: 1, brathalos_membran: 2 }, { wuchtkopf: 1, hitzefell: 1 }),
     legs: piece('Brathalos-Treter', { schrott: 600, brathalos_schuppe: 3, brathalos_membran: 1 }, { wuchtkopf: 1, hitzefell: 1 }),
   }),
+  // Rostwerke-Sets (GDD 15.8)
+  kroll: set('kroll', 'Kroll', 34, ['panzerhaut'], {
+    head: piece('Kroll-Kesselhelm', { schrott: 1000, kroll_panzer: 3, kroll_auge: 1, kupferdraht: 3 }, { panzerhaut: 1 }),
+    body: piece('Kroll-Kesselpanzer', { schrott: 1200, kroll_panzer: 5, kroll_schere: 2, kupferdraht: 4 }, { panzerhaut: 1 }),
+    legs: piece('Kroll-Scherenbeine', { schrott: 1000, kroll_panzer: 3, kroll_schere: 2, kupferdraht: 3 }, { panzerhaut: 1 }),
+  }),
+  gorgo: set('gorgo', 'Gorgo', 36, ['wuehler'], {
+    head: piece('Gorgo-Wurmhelm', { schrott: 1100, gorgo_segment: 3, gorgo_zahn: 2, schlacke: 4 }, { wuehler: 1 }),
+    body: piece('Gorgo-Segmentpanzer', { schrott: 1300, gorgo_segment: 5, gorgo_zahn: 1, gorgo_kern: 1, schlacke: 5 }, { wuehler: 1 }),
+    legs: piece('Gorgo-Grabbeine', { schrott: 1100, gorgo_segment: 4, gorgo_zahn: 2, schlacke: 4 }, { wuehler: 1 }),
+  }),
+  voltaro: set('voltaro', 'Voltaro', 40, ['ueberladung', 'erdung'], {
+    head: piece('Voltaro-Funkenkrone', { schrott: 1500, voltaro_kamm: 2, voltaro_fell: 2, funkenstein: 1 }, { ueberladung: 1, erdung: 1 }),
+    body: piece('Voltaro-Spulenharnisch', { schrott: 1800, voltaro_spule: 4, voltaro_fell: 3, voltaro_kamm: 1, funkenstein: 2 }, { ueberladung: 1, erdung: 1 }),
+    legs: piece('Voltaro-Blitzläufer', { schrott: 1500, voltaro_spule: 3, voltaro_fell: 3, funkenstein: 1 }, { ueberladung: 1, erdung: 1 }),
+  }),
 };
-export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos'];
+export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};

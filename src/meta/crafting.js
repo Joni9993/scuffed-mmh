@@ -39,7 +39,7 @@ export function weaponUpgradeOptions(save, type) {
   });
 }
 
-/** Upgrade a weapon. At tier 2 -> 3 pass the chosen branch ('a' | 'b'). Tier 4 keeps the tier-3 branch. */
+/** Upgrade a weapon. At tier 2 -> 3 pass the chosen branch ('a' | 'b'). Tier 4 keeps the tier-3 branch; tier 5 picks k|g|v (Kroll/Gorgo/Voltaro), tier 6 only from v. */
 export function upgradeWeapon(save, type, branch = null) {
   const w = save.weapons[type];
   if (!w) return { ok: false, reason: 'unknown' };
@@ -50,7 +50,7 @@ export function upgradeWeapon(save, type, branch = null) {
   const m = missing(save, opt.cost);
   if (m.length) return { ok: false, reason: 'mats', missing: m };
   pay(save, opt.cost);
-  save.weapons[type] = { tier: opt.tier, branch: opt.tier === 4 ? w.branch : opt.branch };
+  save.weapons[type] = { tier: opt.tier, branch: opt.tier === 4 ? w.branch : opt.branch }; // 5: k|g|v, 6: v
   save.stats.crafted = (save.stats.crafted ?? 0) + 1;
   return { ok: true, tier: opt.tier, branch: save.weapons[type].branch, name: opt.name };
 }

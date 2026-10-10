@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GearParts, gearMaterial, bar, spike, tri } from '../../render/gearfx.js';
 
 // [G] Tier/branch weapon looks (GDD 8.6): tier 1 rusty & small -> tier 2 bone -> tier 3 branch parts (a = Jaggo, b = Barrotz)
-// -> tier 4 huge, glowing, with element particles. Each builder returns ONE merged vertex-coloured mesh per weapon piece.
+// -> tier 4 huge, glowing, with element particles -> tier 5/6 (Rostwerke): Stufe-4-Basis + Ast-Aufbauten (k Rost-Platten, g Schlacke-Glut, v Funkenbögen). Each builder returns ONE merged vertex-coloured mesh per weapon piece.
 //   group.userData: glow (material for charge flashes), gearGlow (uGlow uniform), fx [{kind, rate, at, obj?}], twoHand, hand.
 // Weapon-local frame: grip at the origin, blade along -y (hilt +y), blade flat faces +-z (broad side visible from behind).
 
@@ -26,6 +26,53 @@ function finish(P, userData = {}) {
   return g;
 }
 
+
+// ------------------------------------------------------------------ Stufe 5/6 (Rostwerke): Kroll = Rost (k), Gorgo = Schlacke/Feuer (g), Voltaro = Funken (v)
+const RW = {
+  k: { base: '#8a4a2a', dark: '#5a2f1c', hi: '#d89a50', glow: '#ffb050', fx: 'ember' },
+  g: { base: '#3a3430', dark: '#241f1c', hi: '#ff6a1a', glow: '#ffb040', fx: 'fire' },
+  v: { base: '#b8642a', dark: '#1a1e2a', hi: '#5ad0ff', glow: '#fff0a0', fx: 'shock' },
+};
+/** Zickzack-Funkenbogen aus leuchtenden Balken. */
+function sparkArc(P, a, b, n, jag, color, seed = 0) {
+  let prev = a;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
+    const p = i === n ? b : [a[0] + (b[0] - a[0]) * t + (hash(i + seed) - 0.5) * jag, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t + (hash(i + seed + 5) - 0.5) * jag];
+    bar(P, prev, p, 0.03, 0.03, color, { glow: 1 });
+    prev = p;
+  }
+}
+/** Aufbauten ueber dem Stufe-4-Look. Klingen: ys = [oben, unten] entlang -y; Bogen (bow=true): Wirbel an beiden Wippen. */
+function rwAccent(P, fx, top, branch, { ys = [-0.2, -1.8], w = 0.3, bow = false, H = 0.78 } = {}) {
+  const key = top >= 6 ? 'v' : (RW[branch] ? branch : 'k'), c = RW[key], big = top >= 6 ? 1.5 : 1;
+  const len = Math.abs(ys[1] - ys[0]);
+  if (bow) {
+    for (const o of [-1, 1]) {
+      for (let i = 0; i < 3; i++) spike(P, [0, o * (0.3 + i * 0.16), 0.2], [0.05 * (i - 1), o * (0.36 + i * 0.16), 0.2 + 0.2 * big], 0.05 * big, i % 2 ? c.hi : c.base, { glow: 0.8 });
+      P.box(0.16, 0.12, 0.16, c.dark, { y: o * H, z: 0 });
+      P.box(0.07, 0.07, 0.07, c.glow, { y: o * (H + 0.1), glow: 1 });
+      if (key === 'v') sparkArc(P, [0.2, o * 0.3, 0.1], [-0.2, o * (H - 0.05), 0.1], 4, 0.14, c.hi, o + (top * 3));
+      if (key === 'g') P.box(0.04, 0.4, 0.04, c.hi, { y: o * 0.5, z: 0.22, glow: 1 });
+      if (key === 'k') for (let i = 0; i < 3; i++) P.box(0.2, 0.05, 0.14, c.base, { y: o * (0.4 + i * 0.14), z: 0.12 });
+      fx.push({ kind: c.fx, rate: top >= 6 ? 9 : 6, at: [0, o * (H + 0.08), 0] });
+    }
+    return;
+  }
+  const n = 4 + (top >= 6 ? 3 : 0);
+  P.box(0.05, len * 0.9, 0.12, c.dark, { y: (ys[0] + ys[1]) / 2 });
+  P.box(0.025, len * 0.85, 0.14, c.glow, { y: (ys[0] + ys[1]) / 2, glow: 1 });
+  for (let i = 0; i < n; i++) for (const o of [-1, 1]) {
+    const y = ys[0] - 0.2 - (i / n) * (len - 0.3);
+    if (key === 'k') P.box(w * 0.5, 0.1, 0.16, i % 2 ? c.base : c.dark, { x: o * w * 0.2, y }); // Panzerplatten
+    else spike(P, [o * w / 2, y, 0], [o * (w / 2 + 0.16 * big), y - 0.12, 0], 0.07 * big, i % 2 ? c.hi : c.base, { glow: key === 'g' ? 0.8 : 0.4 });
+  }
+  if (key === 'v') for (const o of [-1, 1]) sparkArc(P, [o * 0.05, ys[0] - 0.3, 0.08], [o * w * 0.9, ys[1] + 0.4, 0.08], 5, 0.2, c.hi, o * 7 + top);
+  if (key === 'g') for (let i = 0; i < 3; i++) P.box(w * 0.7, 0.03, 0.15, c.hi, { y: ys[0] - 0.4 - i * (len / 4), glow: 1 }); // Schlacke-Risse
+  P.cone(w * 0.35, 0.3 * big, 4, c.glow, { y: ys[1] - 0.12, rx: PI, ry: PI / 4, glow: 1 });
+  fx.push({ kind: c.fx, rate: top >= 6 ? 12 : 8, at: [0, ys[1], 0] }, { kind: c.fx, rate: 4, at: [0, (ys[0] + ys[1]) / 2, 0] });
+}
+
 // ------------------------------------------------------------------ greatsword
 const GS_LEN = [1.55, 1.75, 1.95, 2.05];
 const GS_W = [0.27, 0.32, 0.4, 0.62];
@@ -38,7 +85,8 @@ function gsHilt(P, tier, branch, wrap) {
 }
 
 export function buildGreatswordLook(tier = 1, branch = null) {
-  tier = Math.min(4, Math.max(1, tier));
+  const top = Math.min(6, Math.max(1, tier));
+  tier = Math.min(4, top);
   const P = new GearParts();
   const L = GS_LEN[tier - 1], W = GS_W[tier - 1], y0 = -0.2, body = L - 0.28;
   const fx = [];
@@ -103,6 +151,7 @@ export function buildGreatswordLook(tier = 1, branch = null) {
     for (let i = 0; i < 4; i++) P.box(W + 0.02, 0.03, 0.15, BR[1], { y: y0 - 0.5 - i * 0.4 });
     fx.push({ kind: 'fire', rate: 9, at: [0, y0 - body - 0.1, 0] }, { kind: 'ember', rate: 5, at: [0, y0 - body * 0.5, 0] });
   }
+  if (top >= 5) rwAccent(P, fx, top, branch, { ys: [y0, y0 - body], w: W });
   const g = finish(P, { twoHand: { lo: 0.2, hi: 0.5 }, fx, glowBase: tier === 4 ? 1 : tier === 3 ? 0.9 : 0.5 });
   return g;
 }
@@ -111,7 +160,8 @@ export function buildGreatswordLook(tier = 1, branch = null) {
 const DB_LEN = [0.62, 0.78, 0.9, 1.0];
 
 export function buildDualBladeLook(tier = 1, branch = null, flip = 1) {
-  tier = Math.min(4, Math.max(1, tier));
+  const top = Math.min(6, Math.max(1, tier));
+  tier = Math.min(4, top);
   const P = new GearParts();
   const L = DB_LEN[tier - 1], f = flip;
   const fx = [];
@@ -168,13 +218,15 @@ export function buildDualBladeLook(tier = 1, branch = null, flip = 1) {
     for (let i = 0; i < 4; i++) spike(P, [-f * 0.07 + f * i * 0.01, y0 - 0.2 - i * 0.2, 0], [-f * 0.18, y0 - 0.3 - i * 0.2, 0], 0.045, BR[2], { glow: 0.6 });
     fx.push({ kind: 'fire', rate: 5, at: [f * 0.1, y0 - L * 0.9, 0] }, { kind: 'ember', rate: 2.5, at: [f * 0.05, y0 - L * 0.5, 0] });
   }
+  if (top >= 5) rwAccent(P, fx, top, branch, { ys: [y0, y0 - (L - 0.2)], w: 0.2 });
   return finish(P, { fx, glowBase: tier === 4 ? 1 : tier === 3 ? 0.9 : 0.5 });
 }
 
 // ------------------------------------------------------------------ bow
 export const BOW_H = 0.78;
 export function buildBowLook(tier = 1, branch = null) {
-  tier = Math.min(4, Math.max(1, tier));
+  const top = Math.min(6, Math.max(1, tier));
+  tier = Math.min(4, top);
   const P = new GearParts();
   const H = BOW_H, N = 8, fx = [];
   const th = [0.062, 0.075, 0.085, 0.11][tier - 1];
@@ -216,6 +268,7 @@ export function buildBowLook(tier = 1, branch = null) {
     if (tier === 3 && branch === 'b') fx.push({ kind: 'shock', rate: 3.5, at: [0, o * (H + 0.06), 0] });
     if (tier === 4) fx.push({ kind: 'poison', rate: 4, at: [0, o * (H + 0.1), -0.05] });
   }
+  if (top >= 5) rwAccent(P, fx, top, branch, { bow: true, H });
   const g = finish(P, { fx, glowBase: tier >= 3 ? 0.9 : 0.4, hand: 'L' });
   return g;
 }

@@ -303,7 +303,166 @@ const brathalos = {
   },
 };
 
-const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos };
+// ======================================================================= KROLL (tier 5): Kesselpanzer-Platten, Nieten, Scheren-Schulter, Dampfrohre
+const KR = ['#8a4a2a', '#5a2f1c', '#b86a34', '#3e3a38', '#7a7570', '#d89a50', '#ffb050', '#1a1412'];
+/** Nietenreihe: n Nieten (x-Abstand dx) auf Höhe y, vorne bei z. */
+const rivets = (J, n, dx, y, z, color = KR[5], size = 0.05) => { for (let i = 0; i < n; i++) J.box(size, size, size, color, { x: (i - (n - 1) / 2) * dx, y, z }); };
+const kroll = {
+  head(c) {
+    const { head } = c.P, k = c.k;
+    head.box(0.6, 0.5, 0.6, KR[3], { y: 0.3 });
+    head.box(0.64, 0.1, 0.64, KR[0], { y: 0.56 });
+    head.box(0.64, 0.08, 0.64, KR[1], { y: 0.1 });
+    head.box(0.5, 0.15, 0.05, KR[7], { y: 0.3, z: 0.31 }); // Sichtschlitz
+    head.box(0.4, 0.05, 0.05, KR[6], { y: 0.3, z: 0.325, glow: 1 });
+    rivets(head, 5, 0.12, 0.56, 0.33); rivets(head, 5, 0.12, 0.1, 0.33);
+    for (const o of [-1, 1]) { // Augenstiele
+      bar(head, [o * 0.2, 0.6, 0.1], [o * 0.28 * k, 0.6 + 0.4 * k, 0.2], 0.05, 0.04, KR[4]);
+      head.box(0.1, 0.1, 0.1, KR[6], { x: o * 0.28 * k, y: 0.62 + 0.4 * k, z: 0.2, glow: 1 });
+      spike(head, [o * 0.3, 0.3, 0.1], [o * (0.55 + 0.15 * k), 0.34, 0.3 + 0.2 * k], 0.09, KR[2]); // Scheren-Wangen
+    }
+    head.box(0.14, 0.3 * k, 0.14, KR[4], { x: -0.12, y: 0.6 + 0.15 * k, z: -0.12 }); // Dampfrohr
+    head.box(0.18, 0.05, 0.18, KR[6], { x: -0.12, y: 0.62 + 0.3 * k, z: -0.12, glow: 0.8 });
+  },
+  body(c) {
+    const { torso } = c.P, k = c.k;
+    for (let i = 0; i < 3; i++) { // Kesselplatten
+      torso.box(0.88, 0.22, 0.54, i % 2 ? KR[1] : KR[0], { y: 0.28 + i * 0.22 });
+      torso.box(0.9, 0.03, 0.56, KR[3], { y: 0.39 + i * 0.22 });
+      rivets(torso, 6, 0.14, 0.3 + i * 0.22, 0.28);
+    }
+    torso.box(0.26, 0.26, 0.05, KR[3], { y: 0.58, z: 0.29 }); // Manometer
+    torso.box(0.18, 0.18, 0.05, KR[6], { y: 0.58, z: 0.31, glow: 1 });
+    torso.box(0.5, 0.6, 0.3, KR[3], { y: 0.5, z: -0.38 }); // Rücken-Kessel
+    torso.box(0.54, 0.05, 0.34, KR[0], { y: 0.28, z: -0.38 }); torso.box(0.54, 0.05, 0.34, KR[0], { y: 0.72, z: -0.38 });
+    for (const o of [-1, 1]) { bar(torso, [o * 0.18, 0.8, -0.4], [o * 0.32, 1.0 + 0.2 * k, -0.45], 0.05, 0.05, KR[4]); torso.box(0.12, 0.06, 0.12, KR[6], { x: o * 0.32, y: 1.02 + 0.2 * k, z: -0.45, glow: 0.8 }); }
+    arms(c, (a, o) => { // Scheren-Schulter
+      a.box(0.42, 0.1, 0.46, KR[0], { x: o * 0.05, y: 0.08 });
+      a.box(0.46, 0.08, 0.5, KR[1], { x: o * 0.07, y: 0.17 });
+      rivets(a, 3, 0.12, 0.22, 0.2, KR[5], 0.045);
+      spike(a, [o * 0.15, 0.2, 0.18], [o * (0.5 + 0.12 * k), 0.2 + 0.55 * k, 0.4 + 0.2 * k], 0.14 * k, KR[4]);
+      spike(a, [o * 0.15, 0.2, 0.0], [o * (0.7 + 0.1 * k), 0.15 + 0.35 * k, 0.1], 0.12 * k, KR[2]);
+      a.box(0.32, 0.34, 0.34, KR[3], { y: -0.5 }); a.box(0.34, 0.05, 0.36, KR[0], { y: -0.36 });
+    });
+  },
+  legs(c) {
+    const k = c.k;
+    legs(c, (l) => {
+      for (let i = 0; i < 3; i++) { l.box(0.38, 0.14, 0.4, i % 2 ? KR[1] : KR[0], { y: -0.28 - i * 0.15 }); rivets(l, 3, 0.1, -0.28 - i * 0.15, 0.21, KR[5], 0.04); }
+      l.box(0.3, 0.2, 0.12, KR[3], { y: -0.18, z: 0.22 }); // Knieplatte
+      spike(l, [0, -0.2, 0.26], [0, -0.1, 0.26 + 0.4 * k], 0.1, KR[4]);
+      l.box(0.4, 0.12, 0.5, KR[3], { y: -0.78, z: 0.05 });
+      for (const o of [-1, 1]) spike(l, [o * 0.1, -0.8, 0.28], [o * 0.2, -0.86, 0.28 + 0.3 * k], 0.06, KR[2]); // Zehenscheren
+      l.box(0.1, 0.22, 0.1, KR[6], { x: 0.17, y: -0.6, z: -0.05, glow: 0.6 }); // Dampfstutzen
+    });
+  },
+};
+
+// ======================================================================= GORGO (tier 5): Segment-Schuppen, Schlacke-Glühen, Wurmmaul-Helm
+const GO = ['#3a3430', '#241f1c', '#5a504a', '#ff6a1a', '#ffb040', '#d8c8a0', '#6a2a14', '#120e0c'];
+const gorgo = {
+  head(c) {
+    const { head } = c.P, k = c.k;
+    for (let i = 0; i < 3; i++) head.box(0.58 - i * 0.07, 0.17, 0.58 - i * 0.07, i % 2 ? GO[1] : GO[0], { y: 0.12 + i * 0.17 }); // Segmentringe
+    head.box(0.62, 0.04, 0.62, GO[3], { y: 0.21, glow: 0.9 }); head.box(0.55, 0.04, 0.55, GO[3], { y: 0.38, glow: 0.9 });
+    head.box(0.5, 0.14, 0.05, GO[7], { y: 0.3, z: 0.3 });
+    for (const o of [-1, 1]) head.box(0.1, 0.05, 0.05, GO[4], { x: o * 0.12, y: 0.3, z: 0.325, glow: 1 }); // Augen
+    for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.4; spike(head, [Math.sin(a) * 0.3, 0.5, Math.cos(a) * 0.3], [Math.sin(a) * (0.42 + 0.1 * k), 0.5 + 0.1, Math.cos(a) * (0.42 + 0.1 * k) + 0.2 * k], 0.06 + 0.02 * k, GO[5]); } // Zahnkranz
+    head.cone(0.2, 0.3 * k, 4, GO[2], { y: 0.7 + 0.1 * k, ry: PI / 4 });
+    head.box(0.08, 0.2, 0.08, GO[4], { y: 0.6, glow: 1 });
+  },
+  body(c) {
+    const { torso } = c.P, k = c.k;
+    for (let i = 0; i < 5; i++) {
+      torso.box(0.86 - Math.abs(i - 2) * 0.03, 0.15, 0.52, i % 2 ? GO[1] : GO[0], { y: 0.22 + i * 0.14 });
+      torso.box(0.88, 0.025, 0.54, GO[3], { y: 0.3 + i * 0.14, glow: 0.8 }); // glühende Fugen
+    }
+    torso.box(0.22, 0.4, 0.05, GO[4], { y: 0.5, z: 0.28, glow: 1 }); // Kern-Riss
+    for (let i = 0; i < 6; i++) { // Wurmschwanz-Umhang
+      const w = 0.7 - i * 0.09;
+      torso.box(w, 0.2, 0.2, i % 2 ? GO[1] : GO[2], { y: 0.7 - i * 0.2, z: -0.36 - i * 0.06 });
+      torso.box(w + 0.02, 0.025, 0.22, GO[3], { y: 0.8 - i * 0.2, z: -0.36 - i * 0.06, glow: 0.7 });
+    }
+    arms(c, (a, o) => {
+      a.box(0.4, 0.12, 0.44, GO[0], { x: o * 0.05, y: 0.08 }); a.box(0.36, 0.12, 0.4, GO[2], { x: o * 0.06, y: 0.19 });
+      a.box(0.42, 0.025, 0.46, GO[3], { x: o * 0.05, y: 0.14, glow: 0.8 });
+      spike(a, [o * 0.2, 0.2, 0.0], [o * (0.4 + 0.1 * k), 0.2 + 0.45 * k, -0.1], 0.1 * k, GO[5]);
+      lump(a, GO[1], 0, -0.5, 0.1, 0.34, 11); a.box(0.12, 0.03, 0.2, GO[3], { y: -0.5, z: 0.25, glow: 1 });
+    });
+  },
+  legs(c) {
+    const k = c.k;
+    legs(c, (l, o) => {
+      for (let i = 0; i < 3; i++) { l.box(0.38 - i * 0.02, 0.14, 0.4, i % 2 ? GO[1] : GO[0], { y: -0.28 - i * 0.15 }); l.box(0.4, 0.02, 0.42, GO[3], { y: -0.21 - i * 0.15, glow: 0.8 }); }
+      l.box(0.08, 0.4, 0.04, GO[4], { x: o * 0.05, y: -0.5, z: 0.2, glow: 1 });
+      for (let i = -1; i <= 1; i++) spike(l, [i * 0.1, -0.8, 0.28], [i * 0.16, -0.86, 0.28 + 0.34 * k], 0.07, GO[5]); // Grabkrallen
+      spike(l, [0, -0.2, 0.2], [0, -0.1, 0.2 + 0.3 * k], 0.09, GO[2]);
+    });
+  },
+};
+
+// ======================================================================= VOLTARO (tier 6): Kupfer-Spulen, Funkenbögen, Antennenkamm, Emissive
+const VO = ['#b8642a', '#7a3a18', '#e8a050', '#1a1e2a', '#5ad0ff', '#fff0a0', '#2a3050', '#0c0e16'];
+/** Funkenbogen: Zickzack-Blitz aus leuchtenden Balken zwischen a und b. */
+function arc(J, a, b, n, jag, color = VO[4], w = 0.035, i0 = 0) {
+  let prev = a;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, last = i === n;
+    const p = last ? b : [a[0] + (b[0] - a[0]) * t + (hash(i + i0) - 0.5) * jag, a[1] + (b[1] - a[1]) * t + (hash(i + i0 + 5) - 0.5) * jag, a[2] + (b[2] - a[2]) * t + (hash(i + i0 + 9) - 0.5) * jag];
+    bar(J, prev, p, w, w, color, { glow: 1 });
+    prev = p;
+  }
+}
+const voltaro = {
+  head(c) {
+    const { head } = c.P, k = c.k;
+    head.box(0.58, 0.46, 0.58, VO[3], { y: 0.3 });
+    head.box(0.6, 0.07, 0.6, VO[0], { y: 0.54 }); head.box(0.6, 0.07, 0.6, VO[0], { y: 0.1 });
+    head.box(0.48, 0.15, 0.05, VO[7], { y: 0.3, z: 0.295 });
+    head.box(0.4, 0.06, 0.05, VO[4], { y: 0.3, z: 0.31, glow: 1 }); // Visier
+    for (let i = -2; i <= 2; i++) { // Antennenkamm
+      const h = (0.28 + (2 - Math.abs(i)) * 0.14) * k;
+      bar(head, [i * 0.1, 0.56, -0.05], [i * 0.1 * 1.4, 0.56 + h, -0.12 - Math.abs(i) * 0.04], 0.06, 0.025, VO[2]);
+      head.box(0.07, 0.07, 0.07, i % 2 ? VO[5] : VO[4], { x: i * 0.14, y: 0.58 + h, z: -0.12 - Math.abs(i) * 0.04, glow: 1 });
+    }
+    arc(head, [-0.14, 0.58 + 0.5 * k, -0.12], [0.14, 0.58 + 0.5 * k, -0.12], 3, 0.1, VO[5], 0.03, 3);
+    for (const o of [-1, 1]) { head.box(0.14, 0.28, 0.24, VO[0], { x: o * 0.34, y: 0.3 }); head.box(0.15, 0.04, 0.25, VO[4], { x: o * 0.34, y: 0.3, glow: 1 }); } // Seiten-Spulen
+  },
+  body(c) {
+    const { torso } = c.P, k = c.k;
+    torso.box(0.84, 0.66, 0.5, VO[3], { y: 0.52 });
+    for (let i = 0; i < 5; i++) { torso.box(0.86, 0.07, 0.52, VO[0], { y: 0.28 + i * 0.13 }); torso.box(0.87, 0.02, 0.53, VO[4], { y: 0.33 + i * 0.13, glow: 1 }); } // Kupferspulen-Ringe
+    torso.box(0.22, 0.22, 0.05, VO[5], { y: 0.56, z: 0.28, glow: 1 }); torso.box(0.3, 0.3, 0.03, VO[6], { y: 0.56, z: 0.265 });
+    for (const o of [-1, 1]) { // Rückenspulen + Funkenbögen zu den Schulterspitzen
+      torso.box(0.24, 0.5, 0.24, VO[0], { x: o * 0.24, y: 0.62, z: -0.38 });
+      for (let i = 0; i < 4; i++) torso.box(0.27, 0.03, 0.27, VO[4], { x: o * 0.24, y: 0.42 + i * 0.12, z: -0.38, glow: 1 });
+      bar(torso, [o * 0.24, 0.88, -0.38], [o * 0.3, 1.1 + 0.35 * k, -0.42], 0.05, 0.025, VO[2]);
+      torso.box(0.08, 0.08, 0.08, VO[5], { x: o * 0.3, y: 1.12 + 0.35 * k, z: -0.42, glow: 1 });
+    }
+    arc(torso, [-0.3, 1.12 + 0.35 * k, -0.42], [0.3, 1.12 + 0.35 * k, -0.42], 4, 0.18, VO[5], 0.03, 7);
+    arc(torso, [-0.24, 0.7, -0.52], [0.24, 0.5, -0.52], 5, 0.16, VO[4], 0.03, 13);
+    arms(c, (a, o) => {
+      a.box(0.36, 0.08, 0.4, VO[3], { x: o * 0.03, y: 0.07 }); a.box(0.46, 0.08, 0.5, VO[0], { x: o * 0.07, y: 0.15 });
+      a.box(0.48, 0.03, 0.52, VO[4], { x: o * 0.07, y: 0.2, glow: 1 });
+      spike(a, [o * 0.2, 0.2, 0.1], [o * (0.4 + 0.12 * k), 0.2 + 0.6 * k, 0.1], 0.1 * k, VO[2], { glow: 0.5 });
+      spike(a, [o * 0.22, 0.16, -0.12], [o * (0.55 + 0.1 * k), 0.16 + 0.3 * k, -0.25 - 0.2 * k], 0.08 * k, VO[2], { glow: 0.5 });
+      arc(a, [o * (0.4 + 0.12 * k), 0.2 + 0.6 * k, 0.1], [o * (0.55 + 0.1 * k), 0.16 + 0.3 * k, -0.25 - 0.2 * k], 3, 0.1, VO[5], 0.025, o + 20);
+      for (let i = 0; i < 3; i++) { a.box(0.3, 0.07, 0.32, VO[0], { y: -0.4 - i * 0.1 }); a.box(0.31, 0.02, 0.33, VO[4], { y: -0.36 - i * 0.1, glow: 1 }); } // Spulen-Armschiene
+    });
+  },
+  legs(c) {
+    const k = c.k;
+    legs(c, (l, o) => {
+      for (let i = 0; i < 4; i++) { l.box(0.36, 0.1, 0.38, i % 2 ? VO[3] : VO[0], { y: -0.26 - i * 0.12 }); l.box(0.365, 0.02, 0.385, VO[4], { y: -0.21 - i * 0.12, glow: 1 }); }
+      arc(l, [0.02, -0.18, 0.2], [-0.02, -0.74, 0.2], 5, 0.1, VO[5], 0.03, o + 30); // Blitzspur am Schienbein
+      spike(l, [0, -0.2, 0.2], [0, -0.1, 0.2 + 0.4 * k], 0.09, VO[2], { glow: 0.4 });
+      l.box(0.4, 0.12, 0.5, VO[3], { y: -0.78, z: 0.05 }); l.box(0.41, 0.03, 0.51, VO[4], { y: -0.72, z: 0.05, glow: 1 });
+      for (let i = -1; i <= 1; i++) spike(l, [i * 0.1, -0.8, 0.28], [i * 0.12, -0.84, 0.28 + 0.26 * k], 0.05, VO[2]);
+    });
+  },
+};
+
+const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro };
 export const ARMOR_BUILDERS = SETS;
 export const SLOT_JOINTS = { head: ['head'], body: ['torso', 'armR', 'armL'], legs: ['legL', 'legR'] };
 

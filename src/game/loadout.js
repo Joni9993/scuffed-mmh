@@ -14,11 +14,13 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
   player.stats = stats;
   player.weaponTier = w.tier; player.weaponBranch = w.branch;
   if (w.branch && player.def.tierMesh) player.rebuildWeaponMesh(w.tier, w.branch); // [KT] branch-specific mesh (katana)
-  player.protect = armorProtection(lo.armor);
+  player.protect = Math.round(armorProtection(lo.armor) * sk.protectMul); // Panzerhaut
   player.flinkfuss = sk.flinkfuss;
   player.skills = skills;
   player.dmgMul = 1 + food.atk;
-  player.resist = { fire: Math.min(0.9, sk.fireResist), status: food.resist };
+  player.resist = { fire: Math.min(0.9, sk.fireResist), shock: Math.min(0.9, sk.shockResist), status: food.resist };
+  player.suctionImmune = sk.suctionImmune; player.windImmune = sk.windImmune; // Wühler (Gorgo-Sog / Turbinen-Wind lesen das)
+  player.counterBuff = sk.counterBuff; // Überladung: { atk, dur } nach Glitch-Konter (hunt.js wendet an)
   player.itemSpeed = food.itemSpeed;
 
   const v = player.v;
@@ -40,6 +42,7 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
       if (knock === 'flinch' && sk.flinchImmune) knock = 'none';
       let dmgMul = h.dmgMul ?? 1;
       if (h.element === 'fire' && player.resist.fire) dmgMul *= 1 - player.resist.fire;
+      if (h.element === 'shock' && player.resist.shock) dmgMul *= 1 - player.resist.shock; // Erdung
       return orig({ ...h, knock, dmgMul });
     };
     // status (burn/poison/mud) shortened by Pilzpfanne
@@ -47,6 +50,7 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
     if (addStatus) {
       player.addStatus = (type, opts = {}) => {
         const r = player.resist;
+        if ((type === 'rust' || type === 'rost') && opts.t && player._sk.rustDurMul < 1) opts = { ...opts, t: opts.t * player._sk.rustDurMul }; // Panzerhaut
         const k = (type === 'burn' ? 1 - r.fire : 1) * (type === 'burn' || type === 'poison' ? 1 - r.status : 1);
         return addStatus(type, opts.t ? { ...opts, t: opts.t * k } : opts);
       };

@@ -42,11 +42,49 @@ export const DROPS = {
     },
     reward: [{ id: 'brathalos_schuppe', n: [1, 2], chance: 1 }, { id: 'glutsack', n: 1, chance: 0.3 }, { id: 'glimmstein', n: 1, chance: 0.25 }],
   },
+  // Rostwerke (GDD 15.4-15.7). Break-Tags siehe partTag(): panzer, schere, auge, segment, kamm, pranke, spule, head, tail.
+  kroll: {
+    carve: [{ id: 'kroll_panzer', w: 46 }, { id: 'kroll_schere', w: 26 }, { id: 'kroll_auge', w: 12 }, { id: 'kupferdraht', w: 12 }, { id: 'altknochen', w: 4 }],
+    tail: [],
+    breaks: {
+      panzer: [{ id: 'kroll_panzer', n: [2, 3], chance: 1 }],
+      schere: [{ id: 'kroll_schere', n: 1, chance: 1 }],
+      auge: [{ id: 'kroll_auge', n: 1, chance: 0.5 }],
+    },
+    reward: [{ id: 'kroll_panzer', n: [1, 2], chance: 1 }, { id: 'kroll_schere', n: 1, chance: 0.5 }, { id: 'kroll_auge', n: 1, chance: 0.25 }],
+  },
+  gorgo: {
+    carve: [{ id: 'gorgo_segment', w: 50 }, { id: 'gorgo_zahn', w: 28 }, { id: 'schlacke', w: 14 }, { id: 'gorgo_kern', w: 4 }, { id: 'altknochen', w: 4 }],
+    tail: [],
+    breaks: {
+      segment: [{ id: 'gorgo_segment', n: 1, chance: 1 }],
+      head: [{ id: 'gorgo_zahn', n: [1, 2], chance: 1 }],
+    },
+    reward: [{ id: 'gorgo_segment', n: [1, 2], chance: 1 }, { id: 'gorgo_zahn', n: 1, chance: 0.5 }, { id: 'gorgo_kern', n: 1, chance: 0.2 }],
+  },
+  voltaro: {
+    carve: [{ id: 'voltaro_spule', w: 36 }, { id: 'voltaro_fell', w: 36 }, { id: 'voltaro_kamm', w: 12 }, { id: 'funkenstein', w: 12 }, { id: 'voltaro_herz', w: 4 }],
+    tail: [{ id: 'voltaro_fell', w: 60 }, { id: 'voltaro_spule', w: 30 }, { id: 'voltaro_herz', w: 10 }], // Schwanz abgetrennt: bessere Chance aufs Herz
+    breaks: {
+      kamm: [{ id: 'voltaro_kamm', n: 1, chance: 1 }],
+      pranke: [{ id: 'voltaro_fell', n: 1, chance: 1 }],
+      spule: [{ id: 'voltaro_spule', n: 1, chance: 0.5 }],
+      tail: [{ id: 'voltaro_fell', n: [1, 2], chance: 1 }, { id: 'voltaro_herz', n: 1, chance: 0.1 }],
+    },
+    reward: [{ id: 'voltaro_spule', n: [1, 2], chance: 1 }, { id: 'voltaro_fell', n: 1, chance: 0.5 }, { id: 'funkenstein', n: 1, chance: 0.4 }, { id: 'voltaro_herz', n: 1, chance: 0.12 }],
+  },
 };
 
 /** Break tag of a monster part id ('head', 'wingL', 'kopfplatte', 'tail' ...). */
 export function partTag(partId = '') {
   const s = String(partId).toLowerCase();
+  if (/panzer/.test(s)) return 'panzer';
+  if (/schere/.test(s)) return 'schere';
+  if (/auge/.test(s)) return 'auge';
+  if (/segment/.test(s)) return 'segment';
+  if (/kamm|antenne/.test(s)) return 'kamm';
+  if (/pranke/.test(s)) return 'pranke';
+  if (/spule/.test(s)) return 'spule';
   if (/head|kopf/.test(s)) return 'head';
   if (/wing|fl[uü]gel/.test(s)) return 'wing';
   if (/tail|schwanz/.test(s)) return 'tail';

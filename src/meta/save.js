@@ -68,7 +68,7 @@ export function sanitize(d) {
   s.name = typeof d.name === 'string' && d.name.trim() ? cleanName(d.name) : base.name;
   s.nameSet = !!d.nameSet;
   s.color = PLAYER_COLORS.includes(d.color) ? d.color : PLAYER_COLORS[0];
-  s.jr = int(d.jr, 1, 4, 1);
+  s.jr = int(d.jr, 1, 7, 1);
   s.schrott = int(d.schrott, 0, MAX_SCHROTT, 0);
   s.created = Number(d.created) || base.created;
   s.updated = Number(d.updated) || base.updated;
@@ -77,7 +77,7 @@ export function sanitize(d) {
     const w = d.weapons?.[type];
     if (!isObj(w)) continue;
     const tier = int(w.tier, 1, WEAPON_TYPES[type].tiers.length, 1);
-    s.weapons[type] = { tier, branch: tier === 3 ? (w.branch === 'b' ? 'b' : 'a') : (tier === 4 && (w.branch === 'a' || w.branch === 'b') ? w.branch : null) };
+    s.weapons[type] = { tier, branch: tier === 3 ? (w.branch === 'b' ? 'b' : 'a') : tier === 4 ? (w.branch === 'a' || w.branch === 'b' ? w.branch : null) : tier === 5 ? (w.branch === 'g' || w.branch === 'v' ? w.branch : 'k') : tier === 6 ? 'v' : null };
   }
   if (isObj(d.armorOwned)) for (const id of Object.keys(d.armorOwned)) if (ARMOR_PIECES[id] && d.armorOwned[id]) s.armorOwned[id] = true;
   const lo = d.loadout;

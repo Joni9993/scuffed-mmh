@@ -20,7 +20,7 @@ export const quests = {
     desc: 'Barrotz in der Schlammsenke. Schwer, langsam, harte Treffer.',
   },
   brathalos: {
-    id: 'brathalos', name: 'Feuer unterm Hintern', type: 'hunt', monster: 'brathalos', world: 'schotterklamm', timeLimit: 20 * 60, reward: 800, jr: 3, jrUp: 4,
+    id: 'brathalos', name: 'Feuer unterm Hintern', type: 'hunt', monster: 'brathalos', world: 'schotterklamm', timeLimit: 20 * 60, reward: 800, jr: 3, jrUp: 5,
     desc: 'Brathalos am Glutkamm. Fliegt und speit Feuer, Fernwaffe hilft.',
   },
   jaggo_rotglut: {
@@ -45,9 +45,46 @@ export const quests = {
     desc: 'Trainingspuppe: Leisten füllen sich dauernd, Glitch-Energie sehr schnell.',
   },
 };
+// Rostwerke-Aufträge (GDD 15.8). JR: erster Brathalos -> 5, erster Kroll/Gorgo -> 6, Voltaro -> 7.
+Object.assign(quests, {
+  kroll: {
+    id: 'kroll', name: 'Rauch am Horizont', type: 'hunt', monster: 'kroll', world: 'rostwerke', timeLimit: 20 * 60, reward: 1500, jr: 5, jrUp: 6,
+    desc: 'Kroll der Kesselkrebs in der Kesselhalle. Panzer brechen, Dampf meiden.',
+  },
+  gorgo: {
+    id: 'gorgo', name: 'Was da gräbt', type: 'hunt', monster: 'gorgo', world: 'rostwerke', timeLimit: 20 * 60, reward: 1600, jr: 5, jrUp: 6,
+    desc: 'Gorgo der Schlackwurm auf den Schlackehalden. Gräbt sich ein, zieht an.',
+  },
+  voltaro: {
+    id: 'voltaro', name: 'Der Funkenfürst', type: 'hunt', monster: 'voltaro', world: 'rostwerke', timeLimit: 25 * 60, reward: 2600, jr: 6, jrUp: 7,
+    desc: 'Voltaro auf der Turbinenkrone. Lädt an Blitzableitern, Kamm brechen.',
+  },
+  rostiger_ausflug: {
+    id: 'rostiger_ausflug', name: 'Rostiger Ausflug', type: 'gather', monster: null, world: 'rostwerke', timeLimit: 15 * 60, reward: 400, jr: 5,
+    gather: { id: 'kupferdraht', n: 8 },
+    desc: 'Sammle 8 Kupferdraht in den Rostwerken und gib sie ab. Kein Brocken.',
+  },
+  kroll_rotglut: {
+    id: 'kroll_rotglut', name: 'Rotglut: Kroll', type: 'hunt', monster: 'kroll', world: 'rostwerke', timeLimit: 20 * 60, reward: 2600, jr: 7,
+    variant: 'rotglut', mutators: ['rotglut'],
+    desc: 'Kroll, dauerwütend, 40 % mehr Leben. Doppelte Materialien.',
+  },
+  gorgo_rotglut: {
+    id: 'gorgo_rotglut', name: 'Rotglut: Gorgo', type: 'hunt', monster: 'gorgo', world: 'rostwerke', timeLimit: 20 * 60, reward: 2800, jr: 7,
+    variant: 'rotglut', mutators: ['rotglut'],
+    desc: 'Gorgo, dauerwütend, 40 % mehr Leben.',
+  },
+  voltaro_rotglut: {
+    id: 'voltaro_rotglut', name: 'Rotglut: Voltaro', type: 'hunt', monster: 'voltaro', world: 'rostwerke', timeLimit: 25 * 60, reward: 4400, jr: 7,
+    variant: 'rotglut', mutators: ['rotglut'],
+    desc: 'Voltaro, dauerwütend, 40 % mehr Leben.',
+  },
+});
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
+
+QUEST_ORDER.push('kroll', 'gorgo', 'rostiger_ausflug', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut');
 
 export function getQuest(id) {
   const q = quests[id];

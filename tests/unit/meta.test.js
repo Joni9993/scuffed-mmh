@@ -37,10 +37,10 @@ describe('save: versioning, migration, export/import', () => {
   });
   it('sanitizes invalid / hostile values', () => {
     const s = sanitize({ version: 1, name: '<b>Böse</b>', jr: 99, schrott: -5, box: { flickbrause: 500, nope: 3, altknochen: -1 }, weapons: { gs: { tier: 9, branch: 'x' } }, loadout: { weapon: 'axe', armor: { head: 'brathalos_head' }, items: [{ id: 'altknochen', n: 3 }, { id: 'flickbrause', n: 99 }] }, meal: 'gift' });
-    expect(s.jr).toBe(4);
+    expect(s.jr).toBe(7);
     expect(s.schrott).toBe(0);
     expect(s.box).toEqual({ flickbrause: 99 });
-    expect(s.weapons.gs.tier).toBe(4);
+    expect(s.weapons.gs.tier).toBe(6);
     expect(s.loadout.weapon).toBe('gs');
     expect(s.loadout.armor.head).toBe('lumpen_head'); // not owned
     expect(s.loadout.items).toEqual([{ id: 'flickbrause', n: 10 }]);
@@ -168,7 +168,7 @@ describe('crafting', () => {
     expect(s.box.jaggo_schuppe).toBe(4); // other branch's mats untouched
     give(s, { brathalos_schuppe: 4, brathalos_membran: 2, glutsack: 1, glimmstein: 2, schrott: 800 });
     expect(upgradeWeapon(s, 'gs')).toMatchObject({ ok: true, tier: 4 });
-    expect(upgradeWeapon(s, 'gs').reason).toBe('maxed');
+    expect(upgradeWeapon(s, 'gs').reason).toBe('branch');
   });
   it('weapon stats per branch (existing API intact)', () => {
     expect(weaponStats('gs', 1)).toMatchObject({ name: 'Rostplatte', power: 80, crit: 0.05 });
@@ -178,7 +178,7 @@ describe('crafting', () => {
     expect(weaponStats('db', 3, 'a').crit).toBe(0.15);
     expect(weaponStats('bow', 4).poisonMul).toBe(1.5);
     expect(weaponStats('gs', 4).elems.fire).toBe(25);
-    expect(upgradeOptions('bow', 4)).toEqual([]);
+    expect(upgradeOptions('bow', 4).length).toBe(3); expect(upgradeOptions('bow', 6)).toEqual([]);
   });
   it('armor crafting, ownership and equipping', () => {
     const s = defaultSave();
@@ -304,9 +304,9 @@ describe('progression: JR unlocks and rewards', () => {
     expect(s.jr).toBe(2);
     expect(win(quests.jaggo).jrUp).toBeNull();
     expect(win(quests.barrotz).jrUp).toBe(3);
-    expect(win(quests.brathalos).jrUp).toBe(4);
+    expect(win(quests.brathalos).jrUp).toBe(5);
     expect(win(quests.kraeuterlauf).jrUp).toBeNull();
-    expect(s.jr).toBe(4);
+    expect(s.jr).toBe(5);
     expect(s.clears.jaggo).toBe(2);
   });
   it('win pays Schrott, break bonus and quest drops; Rotglut doubles materials', () => {

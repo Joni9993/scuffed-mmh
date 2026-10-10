@@ -360,7 +360,7 @@ describe('Mondsichel (Finisher)', () => {
 describe('Daten: Stats, Baum, Kosten, Save', () => {
   it('Kraft laut GDD, Zweige in Stufe 3', () => {
     expect(WEAPON_ORDER).toContain('kt');
-    expect(WEAPON_TYPES.kt.tiers.map((t) => t.name)).toEqual(['Rostkatana', 'Knochenkatana', 'Jaggo-Reißzahn', 'Brathalos-Glutkatana']);
+    expect(WEAPON_TYPES.kt.tiers.map((t) => t.name)).toEqual(['Rostkatana', 'Knochenkatana', 'Jaggo-Reißzahn', 'Brathalos-Glutkatana', 'Panzerschnitt', 'Funkenfürst-Katana']);
     expect(weaponStats('kt', 1).power).toBe(78);
     expect(weaponStats('kt', 2).power).toBe(96);
     expect(weaponStats('kt', 3, 'a')).toMatchObject({ name: 'Jaggo-Reißzahn', power: 112, crit: 0.15 });
@@ -373,7 +373,7 @@ describe('Daten: Stats, Baum, Kosten, Save', () => {
       expect(opts.length).toBe(tier === 2 ? 2 : 1);
       for (const o of opts) for (const id of Object.keys(o.cost)) expect(id === 'schrott' || ITEMS[id], id).toBeTruthy();
     }
-    expect(upgradeOptions('kt', 4)).toEqual([]);
+    expect(upgradeOptions('kt', 4).length).toBe(3); // Stufe 5: Kroll/Gorgo/Voltaro (progression3.test.js)
     expect(Object.keys(WEAPON_UPGRADES[3].kt)).toEqual(['a', 'b']);
   });
   it('Schmiede: Rostkatana -> Knochenkatana -> Zweig b -> Glutkatana', () => {
@@ -393,7 +393,7 @@ describe('Daten: Stats, Baum, Kosten, Save', () => {
     expect(s.weapons.kt).toEqual({ tier: 1, branch: null });
     expect(s.weapons.gs).toEqual({ tier: 3, branch: 'b' });
     expect(sanitize({ ...old, loadout: { weapon: 'kt' } }).loadout.weapon).toBe('kt');
-    expect(sanitize({ weapons: { kt: { tier: 9, branch: 'b' } } }).weapons.kt).toEqual({ tier: 4, branch: 'b' });
+    expect(sanitize({ weapons: { kt: { tier: 9, branch: 'b' } } }).weapons.kt).toEqual({ tier: 6, branch: 'v' });
   });
 });
 

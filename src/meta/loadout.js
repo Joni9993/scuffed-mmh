@@ -15,6 +15,8 @@ export function armorProtection(armor) {
   for (const slot of SLOTS) sum += ARMOR_PIECES[armor?.[slot]]?.prot ?? 0;
   return sum;
 }
+/** Schutz inkl. Panzerhaut (+10 % bei 3 Teilen), gerundet. */
+export const armorProtectionEff = (armor) => Math.round(armorProtection(armor) * skillEffects(armorSkills(armor)).protectMul);
 
 /** Sum the Macken of all worn pieces, each capped at its max level. -> { skillId: level } */
 export function armorSkills(armor) {
@@ -38,6 +40,13 @@ export function skillEffects(skills = {}) {
     downImmune: lvl('dickschaedel') >= 3,
     crit: 0.08 * lvl('wuchtkopf'),
     fireResist: 1 - 0.8 ** lvl('hitzefell'),
+    // Rostwerke-Macken (GDD 15.8)
+    rustDurMul: 1 - (0.5 * lvl('panzerhaut')) / 3, // Status Rost: Dauer-Faktor (0.5 bei 3 Teilen)
+    protectMul: 1 + (0.1 * lvl('panzerhaut')) / 3, // Schutz-Faktor (+10 % bei 3 Teilen)
+    suctionImmune: lvl('wuehler') >= 2, // Gorgo-Sog
+    windImmune: lvl('wuehler') >= 2, // Turbinen-Wind
+    counterBuff: lvl('ueberladung') > 0 ? { atk: Math.round(5 * lvl('ueberladung')) / 100, dur: 8 } : null, // nach Glitch-Konter
+    shockResist: 1 - 0.8 ** lvl('erdung'),
   };
 }
 

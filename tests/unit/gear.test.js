@@ -40,7 +40,7 @@ describe('gear codes', () => {
   });
   it('mixed sets keep their slot; unknown / missing data falls back safely', () => {
     const g = makeGear({ weapon: { type: 'nope', tier: 99 }, armor: { head: 'brathalos_body', body: 'knochenkram_body' } });
-    expect(g.weapon).toEqual({ type: 'gs', tier: 4, branch: null });
+    expect(g.weapon).toEqual({ type: 'gs', tier: 6, branch: 'v' });
     expect(g.armor.head).toBe('lumpen_head'); // wrong slot piece rejected
     expect(armorSets(g.armor)).toEqual({ head: 'lumpen', body: 'knochenkram', legs: 'lumpen' });
     expect(decodeGear(undefined)).toBeNull();
