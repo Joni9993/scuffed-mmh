@@ -181,11 +181,12 @@ export function buildBrathalos({ scale = SC } = {}) {
 
 // ======================================================= Angriffe
 const BEAK_HEIGHT = 3.2;
+const wingBroken = (m) => !!(m.partById.wingL?.broken || m.partById.wingR?.broken);
 
 // ---- 1. Feuerspucke: Kopf zieht zurück, Maul glüht 0,6 s, Feuerball (28 + Brennen); Rotglut: 3er-Fächer
 const FIRE_SPEED = 18;
 const feuer = {
-  id: 'brathalos_feuer', range: [4.5, 30], weight: 5, cooldown: 5, telegraph: 0.6, flashParts: ['head'], duration: 1.9, hits: [], // damage comes from the fireball projectile
+  id: 'brathalos_feuer', range: [4.5, 30], weight: 5, cooldown: 5, stam: 8, cue: { color: '#ff8a20', tone: 'zisch' }, telegraph: 0.6, flashParts: ['head'], duration: 1.9, hits: [], // damage comes from the fireball projectile
   events: [{ t: 0.75, call: 'spit', all: true }],
   calls: {
     spit(m, ctx, inst, age = 0) {
@@ -210,10 +211,58 @@ const feuer = {
   ]),
 };
 
+// ---- 1b. Feuerteppich: 3 Feuerbälle nacheinander im Fächer (links, Mitte, rechts) auf die Zielposition
+const TEPPICH = [-0.34, 0.03, 0.34];
+const teppichBall = (i) => (m, ctx, inst, age = 0) => {
+  const o = inst.origin, yaw = inst.yaw0;
+  const from = { x: o.x + Math.sin(yaw) * 3.2, y: o.y + BEAK_HEIGHT, z: o.z + Math.cos(yaw) * 3.2 };
+  const aim = { x: inst.target.x, y: inst.target.y + 1.0, z: inst.target.z };
+  const a = Math.atan2(aim.x - from.x, aim.z - from.z) + TEPPICH[i];
+  const hd = Math.hypot(aim.x - from.x, aim.z - from.z);
+  const a2 = { x: from.x + Math.sin(a) * hd, y: aim.y, z: from.z + Math.cos(a) * hd };
+  m.projectiles.spawn(fireballDef({ from, aim: a2, speed: FIRE_SPEED, key: `${inst.key}:t${i}` }), age);
+  ctx.fx.spark(from, 10, '#ff5a20', 5);
+  ctx.bus.emit('sfx', { name: 'roar', pos: from, low: true });
+};
+const feuerteppich = {
+  id: 'brathalos_feuerteppich', range: [6, 30], weight: 3, cooldown: 9, telegraph: 0.8, flashParts: ['head'], duration: 2.7, hits: [], stam: 14, audit: [8, 14],
+  cue: { color: '#ff4020', tone: 'droehn' },
+  events: [{ t: 0.95, call: 'b0', all: true }, { t: 1.2, call: 'b1', all: true }, { t: 1.45, call: 'b2', all: true }],
+  calls: { b0: teppichBall(0), b1: teppichBall(1), b2: teppichBall(2) },
+  pose: mTrack([
+    [0, {}], [0.45, { neck: -0.6, head: -24, jaw: 30, bodyPitch: -9, bodyY: 0.1, tailPitch: 8 }], [0.8, { neck: -0.7, head: -28, jaw: 38, bodyPitch: -12 }],
+    [0.97, { neck: 0.35, head: 12, jaw: 6, bodyPitch: 6 }, 'lin'], [1.22, { neck: 0.3, head: 10, jaw: 10, bodyPitch: 5, headYaw: 14 }], [1.47, { neck: 0.3, head: 10, jaw: 8, bodyPitch: 5, headYaw: -14 }],
+    [1.9, { neck: 0.1, head: 2, jaw: 4 }], [2.7, {}],
+  ]),
+};
+
+// ---- 1c. Flammenstoß (Flügelbruch-Ersatz für die Böe): Nahbereich-Kegel, 24 Schaden + Brennen
+const flammenstoss = {
+  id: 'brathalos_flammenstoss', range: [0, 7.5], weight: 7, cooldown: 4, telegraph: 0.7, flashParts: ['head'], duration: 2.1, stam: 12,
+  cue: { color: '#ffd040', tone: 'knurr' }, audit: [2.5, 5],
+  cond: (m) => !!(m.partById.wingL?.broken || m.partById.wingR?.broken),
+  marker: { at: 'self', radius: 6.5 }, markerUntil: 0.95,
+  hits: [
+    { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.5, 2.8], radius: 2.0, dmg: 24, knock: 'flinch', status: { type: 'burn' } },
+    { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.6, 5.2], radius: 2.5, dmg: 24, knock: 'flinch', status: { type: 'burn' } },
+  ],
+  events: [{ t: 0.92, call: 'burst', all: true }],
+  calls: {
+    burst(m, ctx) {
+      for (let i = 0; i < 3; i++) ctx.fx.spark({ x: m.pos.x + Math.sin(m.rot) * (3 + i * 1.6), y: m.pos.y + 1.5, z: m.pos.z + Math.cos(m.rot) * (3 + i * 1.6) }, 12, '#ff8a20', 6);
+      ctx.fx.shake(0.25, 0.3);
+    },
+  },
+  pose: mTrack([
+    [0, {}], [0.4, { neck: -0.5, head: -20, jaw: 30, bodyPitch: -8, bodyY: 0.05 }], [0.7, { neck: -0.6, head: -24, jaw: 36, bodyPitch: -10 }],
+    [0.92, { neck: 0.4, head: 14, jaw: 40, bodyPitch: 7 }, 'lin'], [1.3, { neck: 0.35, head: 10, jaw: 36, bodyPitch: 6 }], [1.6, { neck: 0.1, head: 3, jaw: 6 }], [2.1, {}],
+  ]),
+};
+
 // ---- 2a. Aufflug: duckt sich, Flügel spreizen, Abheben (Flug-Zustand beginnt am Ende)
 const aufflug = {
   // Take-off cadence is driven by m.flyCd (see `tick`): one take-off every ~30-45 s (21-33 s of ground time + flight), picked sooner when the hunter is far away / in Rotglut.
-  id: 'brathalos_aufflug', range: [0, 40], cooldown: 0, telegraph: 0.6, flashParts: ['wingL', 'wingR'], duration: 1.8,
+  id: 'brathalos_aufflug', range: [0, 40], cooldown: 0, telegraph: 0.6, stam: 22, cue: { color: '#b09060', tone: 'brumm' }, flashParts: ['wingL', 'wingR'], duration: 1.8,
   weight: (m, dist) => (dist > 14 ? 5 : dist > 8 ? 3 : 1.5) + (m.rage ? 1.5 : 0),
   cond: (m) => m.flyCd <= 0 && !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
   hits: [],
@@ -228,7 +277,7 @@ const aufflug = {
 
 // ---- 2b. Krallensturz (nur aus dem Flug): Schatten auf dem Ziel 0,9 s, Sturzflug 26 Schaden + Gift
 const sturz = {
-  id: 'brathalos_sturz', range: [0, 60], weight: 0, internal: true, cooldown: 0, telegraph: 0.9, flashParts: ['body', 'wingL', 'wingR'], duration: 2.7,
+  id: 'brathalos_sturz', cue: { color: '#ffffff', tone: 'schrill' }, range: [0, 60], weight: 0, internal: true, cooldown: 0, telegraph: 0.9, flashParts: ['body', 'wingL', 'wingR'], duration: 2.7,
   marker: { at: 'target', radius: 3.2 }, markerUntil: 1.55,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
@@ -258,7 +307,7 @@ const sturz = {
 
 // ---- 3. Flügelböe: Wind schiebt 3 m zurück, kein Schaden, unterbricht Aufladen
 const boee = {
-  id: 'brathalos_boee', range: [0, 10], weight: 3, cooldown: 7, telegraph: 0.8, flashParts: ['wingL', 'wingR'], duration: 2.0,
+  id: 'brathalos_boee', range: [0, 10], weight: 3, cooldown: 7, telegraph: 0.8, cue: { color: '#d8d0b0', tone: 'brumm' }, cond: (m) => !wingBroken(m), flashParts: ['wingL', 'wingR'], duration: 2.0,
   marker: { at: 'self', radius: 7 }, markerUntil: 1.05,
   hits: [{ t0: 1.0, t1: 1.12, shape: 'sphere', at: [0, 1.2, 3.8], radius: 4.8, dmg: 0, knock: 'push', push: 3 }],
   events: [{ t: 1.0, call: 'gust', all: true }],
@@ -277,7 +326,7 @@ const boee = {
 
 // ---- 4. Schwanzhieb: 180° hinten, 20 Schaden
 const schwanz = tailSweep({
-  id: 'brathalos_schwanz', range: [0, 9], weight: 8, cooldown: 3, telegraph: 0.6, dmg: 20, len: 8.4, radius: 1.0, sweep: Math.PI * 0.95, y: 1.3, duration: 1.9, t0: 0.66, t1: 1.12,
+  id: 'brathalos_schwanz', cue: { color: '#a05030', tone: 'klick' }, range: [0, 9], weight: 8, cooldown: 3, telegraph: 0.6, dmg: 20, len: 8.4, radius: 1.0, sweep: Math.PI * 0.95, y: 1.3, duration: 1.9, t0: 0.66, t1: 1.12,
   cond: (m) => targetBehind(m, 1.6),
   pose: mTrack([
     [0, {}], [0.5, { tailYaw: 60, tailPitch: -6, bodyY: -0.08, bodyPitch: 3 }], [0.62, { tailYaw: 60 }], [0.82, { tailYaw: -60 }, 'lin'], [1.15, { tailYaw: -60 }], [1.9, {}],
@@ -286,7 +335,7 @@ const schwanz = tailSweep({
 
 // ---- 5. Rotglut-Brüllen: hält Pirscher im 9-m-Radius 1 s fest (Rolle im richtigen Moment = Glitch-Konter)
 const bruellen = {
-  id: 'brathalos_bruellen', range: [0, 99], weight: 0, internal: true, cooldown: 0, telegraph: 0.8, flashParts: ['head'], duration: 2.4,
+  id: 'brathalos_bruellen', cue: { color: '#ff3020', tone: 'schrill' }, range: [0, 99], weight: 0, internal: true, cooldown: 0, telegraph: 0.8, flashParts: ['head'], duration: 2.4,
   marker: { at: 'self', radius: 9 }, markerUntil: 1.15,
   hits: [{ t0: 1.0, t1: 1.1, shape: 'sphere', at: [0, 0.8, 0], radius: 9, dmg: 0, knock: 'pin' }],
   pose: mTrack([
@@ -346,7 +395,17 @@ export const brathalos = {
     { id: 'tail', label: 'Schwanz', factor: 0.7, breakHp: 900, jitter: 0.06, elem: { fire: 0, shock: 10 }, blunt: false,
       spheres: [{ node: 'tail2', offset: [0, 0, -0.7], r: 0.5 }, { node: 'tail3', offset: [0, 0, -0.5], r: 0.42 }, { node: 'tail3', offset: [0, 0, -1.2], r: 0.42 }] },
   ],
-  attacks: { brathalos_feuer: feuer, brathalos_aufflug: aufflug, brathalos_sturz: sturz, brathalos_boee: boee, brathalos_schwanz: schwanz, brathalos_bruellen: bruellen },
+  chains: {
+    brathalos_feuer: [{ atk: 'brathalos_feuerteppich', w: 3 }, { atk: 'brathalos_schwanz', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: null, w: 3 }],
+    brathalos_schwanz: [
+      { atk: 'brathalos_boee', w: 2, cond: (m) => !wingBroken(m) }, { atk: 'brathalos_flammenstoss', w: 2, cond: wingBroken },
+      { atk: 'brathalos_feuer', w: 2 }, { atk: null, w: 2 },
+    ],
+    brathalos_boee: [{ atk: 'brathalos_feuer', w: 3 }, { atk: null, w: 2 }],
+  },
+  phases: [{ at: 0.45, name: 'Glutsturm', cue: { color: '#ff4020', tone: 'droehn' }, special: 'brathalos_feuerteppich' }],
+  teachAttack: 'brathalos_feuer', stamina: true, flinchDmg: true,
+  attacks: { brathalos_feuer: feuer, brathalos_feuerteppich: feuerteppich, brathalos_flammenstoss: flammenstoss, brathalos_aufflug: aufflug, brathalos_sturz: sturz, brathalos_boee: boee, brathalos_schwanz: schwanz, brathalos_bruellen: bruellen },
   build: () => buildBrathalos({ scale: SC }),
   deadPose: { bodyY: -1.1, bodyRoll: 75, head: 20, neck: -0.3, legL: 40, legR: -30, spread: 0.5, wing: -40 },
   onBreak(m, part) {
