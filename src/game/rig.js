@@ -63,8 +63,28 @@ export function buildHunterRig({ tunic = 'cloth', weaponMesh = null, merged = fa
   // [W] off-hand slot: a weapon mesh may carry `userData.offhand` (second blade of the dual blades)
   const slotL = new THREE.Group();
   L.hand.add(slotL);
-  const setOff = (m) => { slotL.clear(); if (m?.userData.offhand) slotL.add(m.userData.offhand); };
+  // [KT] hip slot: a weapon mesh may carry `userData.hip` (scabbard on the belt, katana); `userData.grip2` = Object3D inside the
+  // weapon mesh where the OFF hand holds it -> the left arm is aimed at it in apply() (two-handed grip, reusable by any weapon).
+  const hipSlot = new THREE.Group();
+  torso.add(hipSlot);
+  const setOff = (m) => {
+    slotL.clear(); if (m?.userData.offhand) slotL.add(m.userData.offhand);
+    hipSlot.clear(); if (m?.userData.hip) hipSlot.add(m.userData.hip);
+    if (m) m.updateMatrix();
+  };
   setOff(weaponMesh);
+  R.hand.updateMatrix();
+  const _m = new THREE.Matrix4(), _v = new THREE.Vector3(), _dn = new THREE.Vector3(0, -1, 0);
+  const aimLeftArm = (wm) => { // [KT]
+    const g = wm?.userData.grip2;
+    if (!g) { L.a.scale.y = 1; return; }
+    R.a.updateMatrix(); slot.updateMatrix();
+    _m.copy(R.a.matrix).multiply(R.hand.matrix).multiply(slot.matrix).multiply(wm.matrix);
+    _v.copy(g.position).applyMatrix4(_m).sub(L.a.position);
+    const len = _v.length();
+    L.a.quaternion.setFromUnitVectors(_dn, _v.divideScalar(len || 1));
+    L.a.scale.y = Math.min(1.35, Math.max(0.7, len / 0.78));
+  };
 
   const mkLeg = (x) => {
     const l = new THREE.Group();
@@ -98,6 +118,7 @@ export function buildHunterRig({ tunic = 'cloth', weaponMesh = null, merged = fa
       slotL.rotation.set(-(p.sl ?? 155) * D, 0, 0);
       legL.rotation.x = -p.lrx * D;
       legR.rotation.x = -p.rrx * D;
+      aimLeftArm(rig.weaponMesh); // [KT]
     },
   };
   return rig;
