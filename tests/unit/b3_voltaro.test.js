@@ -21,7 +21,7 @@ const addPlayer = (ctx, x, z) => { const p = new Player({ ctx, id: 'q' + ctx.pla
 describe('Voltaro: Definition', () => {
   it('Registry, Werte, Teile, Brocken 2.0', () => {
     expect(monsters.voltaro).toBe(voltaro);
-    expect(voltaro.hp).toBe(22000);
+    expect(voltaro.hp).toBe(18500);
     expect(voltaro.scale).toBe(2.4);
     expect(voltaro.glitchSpots).toEqual(['antennenkamm', 'spulen']);
     const ids = voltaro.parts.map((p) => p.id);
@@ -54,6 +54,7 @@ describe('Voltaro: Ladung, Überladen, Moveset', () => {
     const base = m.speedMul;
     const atk = [];
     ctx.bus.on('monsterAttack', (e) => atk.push(e.attackId));
+    ctx.players.forEach((q) => { q.god = true; }); // Rohschaden JR6: ohne Rüstung wäre der Test-Pirscher sofort tot
     m.charge = 99.99; m._taught = true;
     run(m, ctx, 0.2, () => ctx.players.forEach((q) => q.pos.set(0, 0, 9)));
     expect(m.over).toBeGreaterThan(55);
@@ -65,6 +66,7 @@ describe('Voltaro: Ladung, Überladen, Moveset', () => {
   });
   it('ohne Überladen keine Blitzangriffe', () => {
     const { ctx, m } = make(def, 'combat', 0, 7);
+    ctx.players.forEach((q) => { q.god = true; });
     const atk = [];
     ctx.bus.on('monsterAttack', (e) => atk.push(e.attackId));
     run(m, ctx, 25, () => { ctx.players.forEach((q) => q.pos.set(0, 0, 7)); m.charge = Math.min(m.charge, 30); });
@@ -160,7 +162,7 @@ describe('Voltaro: Kettenblitz, Donnerschlag, Erdung', () => {
     ctx.groundingZones[0].until = 1; // abgelaufen
     expect(isGrounded(ctx, b)).toBe(false);
   });
-  it('Kettenblitz: 22 je Sprung auf Pirscher im Umkreis, geerdete bleiben verschont', () => {
+  it('Kettenblitz: 28 je Sprung auf Pirscher im Umkreis, geerdete bleiben verschont', () => {
     const { ctx, m, p } = make(def, 'combat', 0, 12);
     const b = addPlayer(ctx, 4, 12), far = addPlayer(ctx, -20, 12), g = addPlayer(ctx, 0, 17);
     ctx.time = 1; ctx.groundingZones = [{ x: 0, z: 17, r: 4, until: 50 }];
@@ -169,8 +171,8 @@ describe('Voltaro: Kettenblitz, Donnerschlag, Erdung', () => {
     m.startAttack({ attackId: 'voltaro_kettenblitz', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 12 }, seed: 3 });
     m.over = 30;
     run(m, ctx, 2.2, () => { m.recover = 99; });
-    expect(hp.map((h) => h.dmg)).toEqual([22]);
-    expect(hb.map((h) => h.dmg)).toEqual([22]);
+    expect(hp.map((h) => h.dmg)).toEqual([28]);
+    expect(hb.map((h) => h.dmg)).toEqual([28]);
     expect(hf).toEqual([]);
     expect(hg).toEqual([]);
   });
@@ -246,6 +248,7 @@ describe('Voltaro: Determinismus', () => {
   it('gleicher Seed + gleiche Spieler -> gleiche Angriffe und Ladung', () => {
     const sim = () => {
       const { ctx, m } = make(def, 'combat', 0, 9, 21);
+      ctx.players.forEach((q) => { q.god = true; });
       rodMock(ctx, [[18, 0]]);
       const ev = [];
       ctx.bus.on('monsterAttack', (e) => ev.push([e.attackId, e.t0, e.seed, e.targetPos?.x, e.targetPos?.z, e.chainIdx ?? 0]));
