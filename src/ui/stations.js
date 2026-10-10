@@ -7,6 +7,7 @@ import { sfx } from '../audio/sfx.js';
 import { esc } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { createSchmiede, createTruhe, createLaden } from './hubPanelsA.js';
+import { createHuntTruhe } from './huntTruhe.js';
 import { createKochtopf, createBrett, createSpiegel, createOptionen } from './hubPanelsB.js';
 
 export const STATIONS = {
@@ -16,9 +17,10 @@ export const STATIONS = {
   kochtopf: { title: 'Kochtopf', npc: 'Koch Brösel', icon: 'cake', make: createKochtopf },
   auftragsbrett: { title: 'Auftragsbrett', npc: 'Brettwart Ole', icon: 'trap', make: createBrett },
   spiegel: { title: 'Spiegel', npc: 'Der Spiegel', icon: 'gem', make: createSpiegel },
+  hunttruhe: { title: 'Lager-Truhe', npc: 'Deine Truhe (Lager)', icon: 'plate', make: createHuntTruhe }, // in a hunt only (adapter = HuntChest)
   optionen: { title: 'Optionen', npc: 'Kleingedrucktes', icon: 'bone', make: createOptionen },
 };
-export const STATION_IDS = Object.keys(STATIONS);
+export const STATION_IDS = Object.keys(STATIONS).filter((id) => id !== 'hunttruhe'); // town stations
 
 let current = null;
 
@@ -28,9 +30,8 @@ export function closeStation() {
   if (!current) return;
   const c = current;
   current = null;
-  c.panel.dispose?.();
-  c.root.remove();
-  c.onClose?.();
+  try { c.panel.dispose?.(); } finally { c.root.remove(); } // a throwing dispose must never leave the panel up
+  c.onClose?.(); // restores world input (touch controls)
 }
 
 export function openStation(id, app, { onClose, adapter, store = saveStore } = {}) {

@@ -10,10 +10,14 @@ import { rollCarve, rollCarveAll, CARVES_PER_PLAYER, TAIL_CARVES } from '../data
 import { createRng, hashSeed } from '../core/rng.js';
 import { itemName } from '../data/items.js';
 import { showOnboarding } from '../ui/onboarding.js';
+import { HuntChest } from '../meta/huntChest.js';
+import { saveStore, PLAYER_COLORS } from '../meta/save.js';
+import { makeGear, encodeGear } from '../data/gearlook.js';
 
 export const CARVE_HOLD = 0.8;
 export const CARVE_WINDOW = 45;
 export const FREE_SUPPLIES = { flickbrause: 2 };
+export const CHEST_RADIUS = 3.2; // how close to the camp chest the 'Truhe' context shows up
 
 export class HuntMeta {
   constructor(hunt, loadout) {
@@ -25,6 +29,7 @@ export class HuntMeta {
     this.items = new ItemSystem(hunt, p, this.inv);
     this.items.speedBonus = this.applied.food.itemSpeed;
     this.hud = createHuntHud(hunt.app.ui);
+    this.chest = new HuntChest(saveStore.get(), this.inv, loadout, { inCombat: () => this.inCombat(), apply: (lo) => this.applyGear(lo) });
     this.hud.onSlot((i) => this.inv.select(i));
     this.hud.onDone(() => this.proceed());
     hunt.toast = (t, id) => this.hud.toast(t, id);
@@ -50,7 +55,40 @@ export class HuntMeta {
 
   // ---- hooks from Hunt
   onItem(player, action, slot) { if (player === this.hunt.player) this.items.onItem(action, slot); }
-  onContext(player, kind) { if (player === this.hunt.player && kind === 'hold') this.holding = true; }
+  onContext(player, kind) {
+    if (player !== this.hunt.player) return;
+    if (kind === 'hold') this.holding = true;
+    else if (kind === 'press' && this.hunt.contextLabel === 'Truhe') this.openChest();
+  }
+
+  // ---- camp chest (Lager-Truhe)
+  chestPos() { return this.hunt.world?.layout?.campProps?.chest ?? null; }
+  nearChest() {
+    const c = this.chestPos(), p = this.hunt.player;
+    return !!c && p.state === 'free' && Math.hypot(c.x - p.pos.x, c.z - p.pos.z) <= CHEST_RADIUS;
+  }
+  openChest() {
+    const h = this.hunt;
+    if (h.result || this.phase === 'leaving' || h.panelOpen) return;
+    h.openPanel('hunttruhe', this.chest);
+  }
+  /** a Brocken (or pack) is actively fighting: no weapon swaps */
+  inCombat() {
+    const h = this.hunt;
+    return h.player.state !== 'free' || !!h.player.weapon?.move || h.monsters.some((m) => m.alive && !m.def.neutral && (m.state === 'combat' || m.state === 'enrage'));
+  }
+  /** chest changed weapon/armor: rebuild stats, rig and (co-op) tell the others */
+  applyGear(lo) {
+    const h = this.hunt, p = h.player, w = lo.weapon;
+    if (p.weaponId !== w.type || p.weaponTier !== w.tier || p.weaponBranch !== w.branch) p.setWeapon(w.type, w.tier, w.branch);
+    this.loadout = h.loadout = lo;
+    this.applied = applyLoadout(p, lo, { reapply: true });
+    this.items.speedBonus = this.applied.food.itemSpeed;
+    const gear = makeGear(lo);
+    p.setGear(gear);
+    const col = Math.max(0, PLAYER_COLORS.indexOf(lo.color));
+    h.net?.sendGear?.(encodeGear(gear, col));
+  }
 
   #onGathered({ items = [] }) {
     for (const it of items) {
@@ -108,6 +146,8 @@ export class HuntMeta {
   late(dt) {
     const h = this.hunt, p = h.player;
     const c = this.nearCorpse();
+    if (!c && this.phase !== 'leaving' && !h.result && this.nearChest()) h.contextLabel = 'Truhe';
+    else if (h.contextLabel === 'Truhe') h.contextLabel = null;
     if (c && this.phase !== 'leaving') {
       h.contextLabel = 'Zerlegen';
       if (this.holding && p.state === 'free' && p.speed < 1.5) {
@@ -181,7 +221,7 @@ export class HuntMeta {
     const h = this.hunt;
     return buildRewards({
       quest: h.quest, result, gathered: this.inv.gathered(), carved: this.inv.carved, breaks: this.breaks,
-      used: h.opts.loadout?.debug ? {} : this.inv.used(), rng: this.rng,
+      used: h.opts.loadout?.debug ? {} : this.inv.used(), chest: this.chest.result(), rng: this.rng,
     });
   }
 

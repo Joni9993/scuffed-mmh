@@ -182,10 +182,10 @@ export function createOptionen(ctx) {
         <div class="row"><span class="nm">Vibration</span><button class="btn small" data-a="hap">${on(settings.haptics)}</button></div>
         <div class="note">Lock: tippen = an/aus. Lock-Taste hoch/runter wischen = nächster/voriger Körperteil (Taste F/V, Pad: R3).</div>
         <div class="row"><span class="nm">Lautstärke</span><input id="st-vol" class="inp rng" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></div>
-        <div class="sub">Spielstand-Code (Schutz gegen gelöschten Browserspeicher)</div>
+        ${ctx.adapter?.hunt ? '' : `<div class="sub">Spielstand-Code (Schutz gegen gelöschten Browserspeicher)</div>
         <textarea id="st-code" class="inp code" rows="3" placeholder="Code hier einfügen" spellcheck="false">${esc(code)}</textarea>
         <div class="row"><button class="btn small" data-a="export">Exportieren</button><button class="btn small go" data-a="import">Importieren</button><button class="btn small" data-a="copy">Kopieren</button></div>
-        <div class="row"><button class="btn small ${confirm ? 'red' : ''}" data-a="reset">${confirm ? 'Wirklich alles löschen?' : 'Spielstand löschen'}</button></div>
+        <div class="row"><button class="btn small ${confirm ? 'red' : ''}" data-a="reset">${confirm ? 'Wirklich alles löschen?' : 'Spielstand löschen'}</button></div>`}
         <div class="sub">App installieren</div><div class="inst">${installHtml()}</div>
         <div class="note">Speicherschlüssel: ${SAVE_KEY}</div>`;
     },
@@ -196,6 +196,7 @@ export function createOptionen(ctx) {
     },
     click(a, ds) {
       const app = ctx.app;
+      if (ctx.adapter?.hunt && (a === 'import' || a === 'reset' || a === 'export' || a === 'copy')) return false; // never touch the save mid-hunt
       if (a !== 'reset') confirm = false;
       if (a === 'res') { // Auto -> 360 -> 480 -> 640 -> 800 -> Auto
         if (settings.autoRes) { settings.autoRes = false; app.renderer.setResolution(360); }

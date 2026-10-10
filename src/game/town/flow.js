@@ -36,3 +36,9 @@ export function flowNext(state, ev) {
     default: return state;
   }
 }
+
+/**
+ * Scenes are singletons: exit() flags the scene dead / "hunt starting", enter() MUST clear both again, otherwise a panel's
+ * onClose bails out (touch controls never come back) and board starts are ignored after returning from a hunt.
+ */
+export function resetLifecycle(scene) { scene.dead = false; scene.starting = false; return scene; }

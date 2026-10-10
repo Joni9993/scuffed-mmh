@@ -7,7 +7,7 @@ import { mountOnBack } from '../game/gear/backMount.js';
 import { createTown } from '../game/town/world.js';
 import { labelSprite } from '../game/town/npc.js';
 import { SPAWNS, pickStation, stationById } from '../game/town/layout.js';
-import { FLOW, flowStart, flowNext } from '../game/town/flow.js';
+import { FLOW, flowStart, flowNext, resetLifecycle } from '../game/town/flow.js';
 import { EMOTES, EMOTE_SECS, emoteWire, emoteText } from '../game/town/emotes.js';
 import { createTownHud } from '../ui/townHud.js';
 import { saveStore, PLAYER_COLORS } from '../meta/save.js';
@@ -70,6 +70,7 @@ export const hubScene = {
     this.colors = new Map();
     this.emoteN = 0; this.emoteUntil = 0; this.emoteId = 0;
     this.menuEl = null; this.choiceEl = null;
+    resetLifecycle(this); // hubScene is a singleton: exit() sets dead/starting, enter() must clear them
     this.busyPrev = new Set();
     this.prevMembers = null;
     this.lastCalls = 0;
@@ -275,17 +276,19 @@ export const hubScene = {
     };
   },
   openPanel(id) {
-    this.app.touch.setVisible(false);
-    this.app.input.reset();
     this.hud.closeWheel();
     openStation(id, this.app, {
       adapter: id === 'auftragsbrett' ? this.panelAdapter : undefined,
       onClose: () => {
         if (this.dead) return;
-        this.syncProfile();
+        this.app.input.reset();
         if (this.flow === FLOW.TOWN) this.app.touch.setVisible(true);
+        this.syncProfile();
       },
     });
+    // suspend world input AFTER openStation: it closes a previous panel first, whose onClose would re-enable the controls
+    this.app.touch.setVisible(false);
+    this.app.input.reset();
   },
   stationLabel(st) {
     if (!st) return null;

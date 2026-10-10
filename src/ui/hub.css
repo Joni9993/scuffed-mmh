@@ -210,4 +210,4 @@ small { opacity: .7; font-size: .88em; }
   .fg-l, .fg-r { padding: 6px 10px; } .fg-scroll { overflow: visible; }
   .fg-p .gpv-slot.big { height: 38vh; flex: none; } .fg.two { display: block; }
 }
-@media (max-height: 340px) { .fg-info .stats { font-size: 10px; } .tn, .fg-scroll .acell { min-height: 40px; } }
+@media (max-height: 340px) { .fg-info .stats { font-size: 10px; } .fg-scroll .acell { min-height: 44px; } }
