@@ -125,6 +125,17 @@ Fernkampf, Spannungsstufen, Rhythmus aus Schießen und Ausweichen.
 - **Finisher „Pfeilregen"** (B bei Wucht 100): 1,2 s Ziel markieren, dann 20 Pfeile à BW 9 auf Zielbereich.
 - Wucht: Treffer +3 (Durchschuss +2 pro Teil).
 
+### 4.4 Katana (Ronin-Klinge, Kürzel `kt`)
+Mittleres Tempo, präzise, belohnt **Konter-Timing**. Zweihändig geführt.
+- **A-Kette:** Schnitt (BW 20, 0,45 s) → Zugschnitt (BW 22) → Kreuzhieb (BW 28) → wiederholbar ab Zugschnitt. Gehen während der Kette langsam möglich.
+- **A halten = Ziehschnitt** (Klinge zurück in die Scheide, 0,6 s Spannung, Loslassen: schneller Vorwärts-Schnitt 4 m, BW 45, Wucht +8). Losgelassen im Fenster 0,6–0,75 s = „Blankgezogen!" (+20 % Schaden).
+- **B = Konterhaltung** (0,4 s Haltung). Trifft ein Brocken-Angriff in den ersten 0,25 s: kein Schaden, automatischer **Konterschnitt** (BW 60, Hitstop schwer) und **Schliff +1**. Fehlgeschlagen = 0,35 s Erholung (bestraft Spammen).
+- **Schliff-Stufen 0–3** (Klingenfarbe: blank → gelb → orange → weißglühend): +8 % Schaden je Stufe, hält 40 s, erneuert sich mit jedem Konter. HUD zeigt Stufe + Restzeit.
+- **Rolle → A:** Gleitschnitt (BW 24, 3 m nach vorne).
+- **Finisher „Mondsichel"** (B halten 0,3 s bei Wucht 100): Sprung-Drehschnitt BW 190, setzt Schliff auf 3.
+- Wucht: Treffer +3, Konter +15.
+- Baum: Rostkatana (Kraft 78) → Knochenkatana (96) → Jaggo-Reißzahn (112, Krit 15 %) / Barrotz-Schlickschneide (110, Schock 14) → Brathalos-Glutkatana (128, Feuer 22).
+
 ---
 
 ## 5. Brocken (Großmonster)
@@ -164,6 +175,15 @@ Angriffe:
 4. **Schwanzhieb:** 180° hinten, 20 Schaden.
 5. **Rotglut-Brüllen:** Hält Pirscher fest (wie Rudelruf).
 Im Flug: nur Bogen + Item „Blendknolle" holt ihn runter (stürzt ab, 4 s wehrlos).
+
+### 5.4 Neutrale Tiere (Leben auf der Map)
+Friedliche Herdentiere ziehen grasend durch die Zonen. Sie greifen nicht an, außer man ärgert sie.
+- **Mampfer** (großes, behäbiges Echsen-Rind, HP 120): Herden aus 3–5 Tieren in Zone 1 und 3, ziehen langsam zwischen Weideplätzen, fressen Gras (Kopf-runter-Animation). Bei Treffer: Herde flieht. Ein ausgewachsener Bulle stößt einmal zu, wenn ein Jungtier angegriffen wird (8 Schaden, wirft nicht um).
+- **Hoppler** (kleines Hüpfvieh, HP 20): Gruppen in Zone 1/2/4, flüchten bei Annäherung < 6 m.
+- **Glutkäfer-Schwärme / Vögel:** reine Deko (Partikel), fliegen auf, wenn man durchläuft.
+- Drops beim Zerlegen (1× pro Tier): Mampfer → `rohfleisch` ×2, `altknochen`, selten `mampfer_fell`; Hoppler → `rohfleisch`.
+- Brocken jagen gelegentlich Mampfer (Jaggo/Brathalos): kurzer „Fressen"-Zustand = Angriffsfenster für Pirscher.
+- Neue Rezepte: **Grillsteak** = `rohfleisch` + `glutbrocken` (Item: +40 HP und +25 Max-Puste für die Jagd, 1,2 s Nutzzeit, max 3). Kochtopf: **Mampfer-Ragout** (+30 Max-HP, 60 Schrott + `rohfleisch` ×2). Rüstung „Fellkluft" (Schutz 10, Macke „Zähe Socke") aus `mampfer_fell`.
 
 ---
 
@@ -265,6 +285,13 @@ Drop-Tabellen mit Gewichten in `src/data/drops.js`.
 
 JR-Aufstieg: JR 2 nach erstem Jaggo, JR 3 nach erstem Barrotz, JR 4 nach erstem Brathalos.
 Im Koop zählt der Auftrag des Hosts; Gäste bekommen Belohnungen, auch wenn der Auftrag für sie noch gesperrt ist.
+
+### 8.6 Gear-Optik (Ausrüstung muss man sehen)
+- Jedes Rüstungs-Set hat eigene Silhouette pro Slot (Kopf/Körper/Beine): Lumpen = Stoff + Flicken; Knochenkram = Knochen-Schulterstücke, Schädelhelm; Jaggo = Schuppen, Kamm-Helm in Orange/Lila; Barrotz = dicke Platten, Schlamm-Krusten, breite Schultern; Brathalos = rote Schuppen, Flügel-Umhang, Hörner, **Glut-Partikel**.
+- Je stärker, desto krasser: Stufe/Set-Rang skaliert Größe der Aufbauten, Stacheln, Emissive-Glühen; Stufe-4-Gear hat Aura-Partikel und leuchtende Augen-Schlitze.
+- Waffen pro Stufe sichtbar anders: Stufe 1 rostig & klein, Stufe 2 Knochen, Stufe 3 Brocken-Teile (Ast-spezifisch), Stufe 4 groß, glühend, mit Element-Partikeln (Feuer/Schock/Gift).
+- Großschwert und Katana zweihändig geführt; Zwillingsklingen je eine pro Hand; Bogen links, Pfeil rechts.
+- Gear ist für Mitspieler sichtbar (Stadt + Jagd): Presence/Snapshot übertragen Waffe (Typ, Stufe, Ast) und Rüstung (Set je Slot) + Farbe.
 
 ### 8.5 Speicherstand
 `localStorage` Key `scuffedhunter.save.v1`, JSON mit Versionsfeld + Migration. Export/Import als Base64-Code im Optionsmenü (Schutz gegen iOS-Löschung). Autosave nach jeder Jagd und jeder Schmiede-Aktion.
