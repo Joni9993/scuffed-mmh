@@ -32,7 +32,7 @@ describe('brocken attacks are deterministic', () => {
     const d = jaggo.attacks.jaggo_bissreihe;
     const a = new AttackInstance(d, params('b', { origin: { x: 0, y: 0, z: 0 } }));
     const b = new AttackInstance(d, params('b', { origin: { x: 10, y: 0, z: 5 } }));
-    const t = 0.66;
+    const t = a.wall(0.66); // Jaggo-Tempo 1,25: Def-Zeit -> Wandzeit
     const ha = a.hitsAt(t)[0].shape, hb = b.hitsAt(t)[0].shape;
     expect(hb.x - ha.x).toBeCloseTo(10, 6);
     expect(hb.z - ha.z).toBeCloseTo(5, 6);
@@ -41,7 +41,7 @@ describe('brocken attacks are deterministic', () => {
   it('Bissreihe bite sphere sits in front of the head (forward of origin along yaw)', () => {
     const d = jaggo.attacks.jaggo_bissreihe;
     const inst = new AttackInstance(d, params('b', { origin: { x: 0, y: 0, z: 0 }, yaw: 0 }));
-    const s = inst.hitsAt(0.66)[0].shape;
+    const s = inst.hitsAt(inst.wall(0.66))[0].shape;
     expect(s.z).toBeGreaterThan(2.5);
     expect(Math.abs(s.x)).toBeLessThan(0.01);
   });
@@ -53,7 +53,7 @@ describe('brocken attacks are deterministic', () => {
     const near = new AttackInstance(d, params('h', { origin: { x: 0, y: 0, z: 0 }, targetPos: { x: 0, y: 0, z: 6 }, yaw: 0 }));
     expect(near.sample(near.duration).z).toBeCloseTo(6, 5);
     // airborne in the middle of the jump, grounded afterwards, hit only on landing
-    expect(near.sample(near.tau(0) + 1.0).air).toBeGreaterThan(1);
+    expect(near.sample(near.wall(1.0)).air).toBeGreaterThan(1);
     expect(near.sample(near.duration).air).toBe(0);
   });
 });
@@ -75,7 +75,7 @@ describe('fairness: every hit is telegraphed >= 0.5 s', () => {
     });
   }
   it('Rotglut: telegraph 20 % shorter (not below 0.5 s), rest 1.2x faster', () => {
-    const d = jaggo.attacks.jaggo_huepfer;
+    const d = { ...jaggo.attacks.jaggo_huepfer, tempo: 1 }; // Rage-Regel ohne Brocken-Grundtempo prüfen
     const n = new AttackInstance(d, params('h')), r = new AttackInstance(d, params('h', { rage: true }));
     expect(n.tgWall).toBeCloseTo(0.7);
     expect(r.tgWall).toBeCloseTo(0.56);

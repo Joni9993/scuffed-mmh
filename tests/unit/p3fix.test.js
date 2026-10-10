@@ -73,7 +73,7 @@ describe('fix 8: feel', () => {
     p.spawnAt(0, 6, 0);
     m.attack = null;
     const z0 = m.pos.z;
-    m.applyDamage({ dmg: 700, elemDmg: 0, partId: 'head', blunt: 0 });
+    m.applyDamage({ dmg: 1300, elemDmg: 0, partId: 'head', blunt: 0 });
     expect(m.partById.head.broken).toBe(true);
     expect(m.kb).not.toBeNull();
     for (let i = 0; i < 20; i++) m.update(DT);

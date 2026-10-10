@@ -68,7 +68,7 @@ const schwanz = {
 
 // ---- Rudelruf: Brüllen, ruft 2 Jagglinge, hält Pirscher im 8-m-Radius 1 s fest
 const rudelruf = {
-  id: 'jaggo_rudelruf', range: [0, 30], weight: 2, cooldown: 22, telegraph: 0.8, flashParts: ['head'], duration: 2.4, cue: { color: '#c05cff', tone: 'droehn' }, lockedByBreak: 'head', stam: 12,
+  id: 'jaggo_rudelruf', range: [0, 30], weight: 2, cooldown: 22, telegraph: 0.8, flashParts: ['head'], duration: 2.4, cue: { color: '#c05cff', tone: 'droehn' }, stam: 12, // Rudel bleibt auch nach Kammbruch (Owner-Feedback)
   marker: { at: 'self', radius: 8 }, markerUntil: 1.15,
   cond: (m, ctx) => ctx.countMonsters('jaggling') < 3,
   hits: [{ t0: 1.0, t1: 1.1, shape: 'sphere', at: [0, 0.8, 0], radius: 8, dmg: 0, knock: 'pin' }],
@@ -93,7 +93,8 @@ const LEAN = (s) => ({ bodyRoll: 14 * s, tailYaw: 22 * s, neck: -0.2, bodyY: -0.
 const zickzack = {
   id: 'jaggo_zickzack', range: [2.5, 8], weight: 3, cooldown: 3.5, telegraph: 0.65, flashParts: ['legs'], duration: 2.3,
   cue: { color: '#38d6e8', tone: 'schrill' }, audit: [3, 6], stam: 10,
-  hits: [{ t0: 1.48, t1: 1.6, shape: 'sphere', at: [0, 2.3, 2.9], radius: 1.05, dmg: 14, knock: 'flinch' }],
+  // beisst durchgehend: nach jedem Seitenschritt + am Ende (4 Bisse)
+  hits: [0.88, 1.12, 1.36, 1.55].map((t0, i) => ({ t0, t1: t0 + 0.1, shape: 'sphere', at: [0, 2.3, 2.9], radius: 1.05, dmg: i === 3 ? 14 : 11, knock: 'flinch' })),
   motion(tau, a) {
     const s = a.r(0) < 0.5 ? 1 : -1, l = left(a);
     const L = s * 2.1 * (smooth(clamp01((tau - 0.65) / 0.3)) - 2 * smooth(clamp01((tau - 1.05) / 0.35)));
@@ -102,24 +103,30 @@ const zickzack = {
   },
   // bodyRoll/tailYaw sind relativ zur Startseite; poseHook (unten) spiegelt sie mit dem Seeded-Vorzeichen
   pose: mTrack([
-    [0, {}], [0.45, LEAN(1)], [0.65, LEAN(1)], [0.95, { ...LEAN(1), bodyRoll: 6 }], [1.05, { bodyRoll: 0, tailYaw: 0 }],
-    [1.4, { ...LEAN(-1), bodyRoll: -8, tailYaw: -18 }], [1.5, BITE_POSE, 'lin'], [1.8, { neck: -0.1, head: 0, bodyPitch: 2, bodyY: 0, bodyRoll: 0, tailYaw: 0 }], [2.3, {}],
+    [0, {}], [0.45, LEAN(1)], [0.65, LEAN(1)], [0.8, { ...LEAN(1), ...BITE_BACK }], [0.9, { ...LEAN(1), ...BITE_POSE }, 'lin'],
+    [1.04, { ...BITE_BACK, bodyRoll: 0, tailYaw: 0 }], [1.14, { ...BITE_POSE, bodyRoll: -4 }, 'lin'], [1.28, { ...LEAN(-1), ...BITE_BACK }],
+    [1.38, { ...LEAN(-1), ...BITE_POSE }, 'lin'], [1.47, { ...BITE_BACK, bodyRoll: -4 }], [1.57, BITE_POSE, 'lin'],
+    [1.85, { neck: -0.1, head: 0, bodyPitch: 2, bodyY: 0, bodyRoll: 0, tailYaw: 0 }], [2.3, {}],
   ]),
 };
 
-// ---- Rückhüpfer: Schwanzpeitsche vor dem Absprung (bestraft Dauer-Nahkampf), dann 4 m zurück
+// ---- Rückhüpfer: schneller 360°-Schwanzwirbel vor dem Absprung (bestraft Dauer-Nahkampf), dann 4 m zurück
 const rueckhuepfer = {
   id: 'jaggo_rueckhuepfer', range: [0, 4.5], weight: (m, d) => (d < 3.5 ? 4 : 1.5), cooldown: 4, telegraph: 0.6, flashParts: ['tail', 'legs'], duration: 2.1,
   cue: { color: '#ff4fa3', tone: 'knurr' }, audit: [1.5, 3.5], punishRoll: true, stam: 10,
-  hits: [{ t0: 0.66, t1: 0.86, shape: 'sphere', at: [0, 1.0, 2.0], radius: 1.8, dmg: 16, knock: 'flinch' }],
+  hits: [{ t0: 0.64, t1: 1.0, shape: 'capsule', from: [0, 1.4, -1.8], to: [0, 1.3, -6.8], radius: 0.95, dmg: 16, knock: 'flinch' }],
   motion(tau, a) {
-    const k = smooth(clamp01((tau - 0.85) / 0.55)), b = -4 * k;
-    return { x: a.origin.x + a.dir.x * b, z: a.origin.z + a.dir.z * b, air: 1.6 * 4 * clamp01((tau - 0.85) / 0.55) * (1 - clamp01((tau - 0.85) / 0.55)) };
+    const sign = a.r(0) < 0.5 ? 1 : -1;
+    const k = smooth(clamp01((tau - 1.0) / 0.5)), b = -4 * k, h = clamp01((tau - 1.0) / 0.5);
+    return {
+      x: a.origin.x + a.dir.x * b, z: a.origin.z + a.dir.z * b, air: 1.6 * 4 * h * (1 - h),
+      yaw: a.yaw0 + sign * Math.PI * 2 * smooth(clamp01((tau - 0.62) / 0.38)),
+    };
   },
   pose: mTrack([
     [0, {}], [0.4, { tailPitch: -20, tailYaw: 35, bodyY: -0.2, bodyPitch: 5, legL: 25, legR: 25 }], [0.62, { tailPitch: -20, tailYaw: 35, bodyY: -0.2 }],
-    [0.8, { tailPitch: 0, tailYaw: -40, bodyY: -0.1 }], [1.0, { tailYaw: -10, bodyY: 0.15, legL: -30, legR: -30, bodyPitch: -8 }],
-    [1.4, { bodyY: -0.25, bodyPitch: 6, legL: 40, legR: 40, tailYaw: 0 }], [1.9, { bodyY: -0.05, legL: 8, legR: 8 }], [2.1, {}],
+    [0.75, { tailPitch: 0, tailYaw: -30, bodyY: -0.1 }], [1.0, { tailYaw: -25, bodyY: -0.1 }], [1.12, { tailYaw: -10, bodyY: 0.15, legL: -30, legR: -30, bodyPitch: -8 }],
+    [1.5, { bodyY: -0.25, bodyPitch: 6, legL: 40, legR: 40, tailYaw: 0 }], [1.9, { bodyY: -0.05, legL: 8, legR: 8 }], [2.1, {}],
   ]),
 };
 
@@ -134,7 +141,11 @@ const hetzjagd = {
     a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
     a.sgn = a.r(0) < 0.5 ? 1 : -1;
   },
-  hits: [{ t0: 1.95, t1: 2.07, shape: 'sphere', at: [0, 2.2, 2.9], radius: 1.1, dmg: 17, knock: 'flinch' }],
+  hits: [
+    // Anlauf: der ganze Körper ist Hitbox – wer im Weg steht, wird überrannt (umgeworfen)
+    { t0: 0.85, t1: 1.8, shape: 'capsule', from: [0, 1.3, -2.2], to: [0, 1.7, 2.6], radius: 1.2, dmg: 22, knock: 'down' },
+    { t0: 1.95, t1: 2.07, shape: 'sphere', at: [0, 2.2, 2.9], radius: 1.1, dmg: 17, knock: 'flinch' },
+  ],
   motion(tau, a) {
     const pos = (t) => {
       const k = smooth(clamp01((t - 0.8) / 1.0)), l = left(a);
@@ -161,20 +172,21 @@ export const jaggo = {
   scale: SC,
   bodyRadius: 1.5,
   predator: true, // [L]
-  walk: 2.6, run: 6.2, detect: 30, prefer: 4.5,
+  walk: 3.25, run: 7.75, turn: 1.25, detect: 30, prefer: 4.5, // Owner-Feedback Okt 2026: +25 % (war 2,6 / 6,2 / 1)
+  // Owner-Feedback Okt 2026: Kopf bricht schwerer (600 -> 1200), Schwanz lohnender (Faktor 0,6 -> 0,8)
   parts: [
-    { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 600, jitter: 0.07, elem: { fire: 25, shock: 5 }, blunt: true, stunPart: true,
+    { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 1200, jitter: 0.07, elem: { fire: 25, shock: 5 }, blunt: true, stunPart: true,
       spheres: [{ node: 'head', offset: [0, 0.05, 0.4], r: 0.5 }] },
     { id: 'body', label: 'Körper', factor: 0.7, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'body', offset: [0, 0, 0.55], r: 0.68 }, { node: 'body', offset: [0, 0, -0.45], r: 0.68 }, { node: 'neck', offset: [0, 0.3, 0], r: 0.38 }] },
     { id: 'legs', label: 'Beine', factor: 0.8, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'legL', offset: [0, -0.6, 0.15], r: 0.5 }, { node: 'legR', offset: [0, -0.6, 0.15], r: 0.5 }] },
-    { id: 'tail', label: 'Schwanz', factor: 0.6, elem: { fire: 10, shock: 10 },
+    { id: 'tail', label: 'Schwanz', factor: 0.8, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'tail1', offset: [0, 0, -0.8], r: 0.45 }, { node: 'tail2', offset: [0, 0, -0.7], r: 0.35 }] },
   ],
   attacks: { jaggo_bissreihe: bissreihe, jaggo_huepfer: huepfer, jaggo_schwanz: schwanz, jaggo_rudelruf: rudelruf, jaggo_zickzack: zickzack, jaggo_rueckhuepfer: rueckhuepfer, jaggo_hetzjagd: hetzjagd },
   teachAttack: 'jaggo_bissreihe',
-  recoverAfter: (m) => (0.2 + m.rng() * 0.4) / m.speedMul, // Brocken 2.0: kürzere Grundpause gleicht Ketten-End-Erholung + Erschöpfung aus (nie leichter als vorher)
+  recoverAfter: (m) => (0.2 + m.rng() * 0.4) / (1.25 * m.speedMul), // Brocken 2.0: kürzere Grundpause gleicht Ketten-End-Erholung + Erschöpfung aus (nie leichter als vorher)
   stamina: true,
   flinchDmg: true,
   phases: [{ at: 0.5, name: 'Rudelführer', cue: { color: '#ff3b3b', tone: 'droehn' }, special: 'jaggo_hetzjagd' }],
@@ -201,3 +213,15 @@ export const jaggo = {
   },
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
 };
+
+// Owner-Feedback Okt 2026: Jaggo +25 % Angriffstempo, Treffer-Zonen +20 % (Rudelruf-Bann bleibt 8 m)
+const JAGGO_TEMPO = 1.25, JAGGO_SIZE = 1.2;
+for (const a of Object.values(jaggo.attacks)) {
+  if (a.tempo === undefined) a.tempo = JAGGO_TEMPO;
+  if (a.id === 'jaggo_rudelruf') continue;
+  for (const h of a.hits ?? []) {
+    h.radius *= JAGGO_SIZE;
+    if (h.shape === 'capsule') for (const p of [h.from, h.to]) { p[0] *= JAGGO_SIZE; p[2] *= JAGGO_SIZE; }
+  }
+  if (a.marker) a.marker = { ...a.marker, radius: a.marker.radius * JAGGO_SIZE };
+}

@@ -51,10 +51,10 @@ describe('monster replay determinism (host and client agree)', () => {
 });
 
 describe('monster parts, breaks, stun', () => {
-  it('head crest breaks at jaggo.parts head breakHp (600): stagger 2 s, factor -0.1, mesh hook', () => {
+  it('head crest breaks at jaggo.parts head breakHp (1200): stagger 2 s, factor -0.1, mesh hook', () => {
     const { ctx, m } = make();
     expect(m.partById.head.factor).toBe(1.0);
-    hit(m, 'head', 550);
+    hit(m, 'head', 1150);
     expect(m.partById.head.broken).toBe(false);
     hit(m, 'head', 60);
     expect(m.partById.head.broken).toBe(true);
