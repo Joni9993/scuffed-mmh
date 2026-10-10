@@ -12,6 +12,8 @@ import { settings, saveSettings, nextRes } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
 import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
+import { GearPreview, previewSlot } from './gearPreview.js';
+import { makeGear } from '../data/gearlook.js';
 
 // ============================================================ Kochtopf
 export function createKochtopf(ctx) {
@@ -104,16 +106,50 @@ export function createBrett(ctx) {
   };
 }
 
-// ============================================================ Spiegel (Name + Farbe)
+// ============================================================ Spiegel (Aussehen + Erfolge)
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const hhmm = (s) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min` : `${Math.floor(s / 60)} min`);
+
 export function createSpiegel(ctx) {
-  return {
-    render() {
-      const s = ctx.save;
-      return `<div class="note">„Na, wer ist denn das?“ – der Spiegel, zerkratzt, aber ehrlich.</div>
+  let tab = 'look', pv = null;
+
+  function look() {
+    const s = ctx.save;
+    return `<div class="fg two"><div class="fg-l"><div class="fg-tabs">${tabsHtml()}</div><div class="fg-scroll">
+        <div class="note">„Na, wer ist denn das?“ – der Spiegel, zerkratzt, aber ehrlich.</div>
         <div class="row"><label class="nm" for="st-name">Name</label><input id="st-name" class="inp" maxlength="12" value="${esc(s.name)}" autocomplete="off"></div>
-        <div class="sub">Farbe</div><div class="swatches">${PLAYER_COLORS.map((c) => `<button class="sw${c === s.color ? ' on' : ''}" style="background:${c}" data-a="color" data-k="${c}" aria-label="Farbe"></button>`).join('')}</div>
-        <div class="card" style="color:${s.color}"><b>${esc(s.name)}</b> <small>Jägerrang ${s.jr}</small></div>`;
+        <div class="sub">Farbe <small>(Vorschau live, Figur drehen per Wischen)</small></div><div class="swatches">${PLAYER_COLORS.map((c) => `<button class="sw${c === s.color ? ' on' : ''}" style="background:${c}" data-a="color" data-k="${c}" aria-label="Farbe"></button>`).join('')}</div>
+        </div></div>
+      <div class="fg-p">${previewSlot(true)}<div class="fi-h pn" style="color:${s.color}"><b>${esc(s.name)}</b> <small>JR ${s.jr}</small></div></div></div>`;
+  }
+
+  function statsView() {
+    const s = ctx.save, st = s.stats;
+    const tile = (k, v) => `<div class="stile"><b>${v}</b><small>${k}</small></div>`;
+    const tiles = [['Jagden', st.hunts], ['Siege', st.wins], ['Niederlagen', st.fails], ['KOs', st.kos], ['Zerlegt', st.carves], ['Hergestellt', st.crafted], ['Glitch-Konter', st.glitch], ['Spielzeit', hhmm(st.playtime)]];
+    const rows = questList().map((q) => {
+      const kills = q.monster ? (s.kills[q.monster] ?? 0) : (s.clears[q.id] ?? 0);
+      const best = s.best[q.id];
+      return `<div class="row srow"><span class="nm"><b>${esc(q.name)}</b><br><small>${q.monster ? esc(monsters[q.monster]?.name ?? q.monster) + ' besiegt' : 'Abgeschlossen'}</small></span><span class="num">×${kills}</span><span class="chip ${best ? 'ok' : ''}">${best ? mmss(best) : '–:––'}</span></div>`;
+    }).join('');
+    return `<div class="fg-tabs">${tabsHtml()}</div><div class="stile-grid">${tiles.map(([k, v]) => tile(k, v)).join('')}</div>
+      <div class="sub">Brocken &amp; Bestzeiten</div>${rows}`;
+  }
+
+  const tabsHtml = () => `<div class="tabs">${[['look', 'Aussehen'], ['stats', 'Erfolge']].map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
+
+  return {
+    render: () => (tab === 'look' ? look() : statsView()),
+    after(body) {
+      body.classList.toggle('fit', tab === 'look');
+      const slot = body.querySelector('[data-gpv]');
+      if (!slot) { pv?.dispose(); pv = null; return; }
+      if (pv?.dead) pv = null;
+      pv ??= new GearPreview({ big: true });
+      pv.set(makeGear(buildLoadout(ctx.save)));
+      pv.attach(slot);
     },
+    dispose() { pv?.dispose(); pv = null; },
     input(e) {
       if (e.target.id !== 'st-name') return false;
       ctx.save.nameSet = true;
@@ -122,7 +158,7 @@ export function createSpiegel(ctx) {
       return false; // do not re-render while typing
     },
     click(a, d) {
-      if (a === 'color') { ctx.save.color = d.k; ctx.commit(); }
+      if (a === 'color') { ctx.save.color = d.k; ctx.commit(); } else if (a === 'tab') tab = d.k;
     },
   };
 }
