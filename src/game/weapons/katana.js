@@ -174,10 +174,10 @@ const anims = {
 };
 
 // ---- visuals ---------------------------------------------------------------------------------------------------
-registerTexture('kt_rust', (g, n, rnd) => {
-  g.fillStyle = '#8a5a3a'; g.fillRect(0, 0, n, n);
-  const cols = ['#6a3e22', '#a8703c', '#7a4a2a', '#5a3a2a', '#b88a5a'];
-  for (let i = 0; i < n * n * 0.6; i++) { g.fillStyle = cols[(rnd() * cols.length) | 0]; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+registerTexture('kt_rust', (g, n, rnd) => { // Schrott: stumpfes Grau, rostige Flecken
+  g.fillStyle = '#a0a2a8'; g.fillRect(0, 0, n, n);
+  const cols = ['#84868c', '#b4b6bc', '#8a4a22', '#5a4a3a', '#a85a28'];
+  for (let i = 0; i < n * n * 0.5; i++) { g.fillStyle = cols[(rnd() * cols.length) | 0]; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1 + ((rnd() * 2) | 0), 1); }
   g.fillStyle = '#c9ced8'; g.fillRect(0, n >> 1, n, 1);
 });
 registerTexture('kt_bone', (g, n, rnd) => {
@@ -185,11 +185,15 @@ registerTexture('kt_bone', (g, n, rnd) => {
   for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#d2c3a0' : '#f4ecd6'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 2); }
   g.fillStyle = '#a89878'; g.fillRect(0, n - 2, n, 1);
 });
-registerTexture('kt_fang', (g, n, rnd) => { // Jaggo: violet-blue hide with orange stripes
-  g.fillStyle = '#4a3f9a'; g.fillRect(0, 0, n, n);
-  for (let i = 0; i < n * 2; i++) { g.fillStyle = '#3a3080'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
-  g.fillStyle = '#ff9a3a'; for (let y = 2; y < n; y += 5) g.fillRect(0, y, n, 1);
-  g.fillStyle = '#d8d0f0'; g.fillRect(0, n - 3, n, 1);
+registerTexture('kt_fang', (g, n, rnd) => { // Jaggo: violette Schuppen (Halbbogen-Reihen)
+  g.fillStyle = '#5a3aa8'; g.fillRect(0, 0, n, n);
+  for (let y = 0; y < n; y += 4) for (let x = (y >> 2) % 2 ? 0 : 2; x < n; x += 4) { g.fillStyle = '#7a56d0'; g.fillRect(x, y, 3, 2); g.fillStyle = '#2e1a70'; g.fillRect(x, y + 3, 3, 1); }
+  g.fillStyle = '#d8c8ff'; g.fillRect(0, n - 3, n, 1);
+});
+registerTexture('kt_horn', (g, n, rnd) => { // Barrotz: graue Horn-/Tonplatten
+  g.fillStyle = '#8c8870'; g.fillRect(0, 0, n, n);
+  for (let y = 0; y < n; y += 5) { g.fillStyle = '#a8a088'; g.fillRect(0, y, n, 2); g.fillStyle = '#4a4636'; g.fillRect(0, y + 3, n, 1); }
+  for (let i = 0; i < n; i++) { g.fillStyle = '#5a4a32'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 2, 2); }
 });
 registerTexture('kt_mud', (g, n, rnd) => { // Barrotz: layered clay
   g.fillStyle = '#5a4a32'; g.fillRect(0, 0, n, n);
@@ -197,39 +201,44 @@ registerTexture('kt_mud', (g, n, rnd) => { // Barrotz: layered clay
   for (let y = 0; y < n; y += 2) { g.fillStyle = cols[(rnd() * cols.length) | 0]; g.fillRect(0, y, n, 2); }
   for (let i = 0; i < n; i++) { g.fillStyle = '#8a8a6a'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
 });
-registerTexture('kt_char', (g, n, rnd) => { // Brathalos: charred scales with ember cracks
-  g.fillStyle = '#2a1816'; g.fillRect(0, 0, n, n);
-  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#3a2220' : '#1a0e0c'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
-  g.fillStyle = '#ff6a1a'; for (let i = 0; i < 6; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 2);
+registerTexture('kt_char', (g, n, rnd) => { // Brathalos: dunkelrote Fluegelmembran mit Adern
+  g.fillStyle = '#6a1010'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#9a2018' : '#4a0c0a'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#c02a14'; for (let x = 3; x < n; x += 6) g.fillRect(x, 0, 1, n);
 });
 
-registerTexture('kt_kessel', (g, n, rnd) => { // Kroll: Kesselstahl, rostig, genietet
-  g.fillStyle = '#6a5a52'; g.fillRect(0, 0, n, n);
-  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#7a4a2a' : '#4a3a34'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
-  g.fillStyle = '#9a8a7a'; for (let y = 3; y < n; y += 6) { g.fillRect(2, y, 1, 1); g.fillRect(n - 3, y, 1, 1); }
+registerTexture('kt_kessel', (g, n, rnd) => { // Kroll: Kesselstahl, blaugrau, genietet
+  g.fillStyle = '#7e8a96'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#98a4b0' : '#5a6672'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#d8e0e8'; for (let y = 3; y < n; y += 6) { g.fillRect(2, y, 1, 1); g.fillRect(n - 3, y, 1, 1); }
 });
 registerTexture('kt_slag', (g, n, rnd) => { // Gorgo: Schlacke mit Glutadern
   g.fillStyle = '#2a2420'; g.fillRect(0, 0, n, n);
   for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#3a322c' : '#1a1512'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
   g.fillStyle = '#ff6a1a'; for (let i = 0; i < 8; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 3);
 });
-registerTexture('kt_copper', (g, n, rnd) => { // Voltaro: Kupfer mit blauen Funkenpunkten
-  g.fillStyle = '#b8642a'; g.fillRect(0, 0, n, n);
-  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#c8783a' : '#8a4a20'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+registerTexture('kt_copper', (g, n, rnd) => { // Voltaro: blankes Kupfer mit blauen Funkenpunkten
+  g.fillStyle = '#e07a30'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#f09a50' : '#b05a20'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
   g.fillStyle = '#7ae0ff'; for (let i = 0; i < 5; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1);
+});
+registerTexture('kt_apex', (g, n, rnd) => { // Funkenfuerst: helles Stahlweiss mit blauen Leiterbahnen
+  g.fillStyle = '#d8ecf8'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#bcd8ee' : '#f4fbff'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#3ac0ff'; for (let y = 2; y < n; y += 5) { g.fillRect(0, y, n, 1); g.fillRect((rnd() * n) | 0, y, 1, 3); }
 });
 
 // Per-tier look. len = blade length (m), w = blade width, curve = sori, tipW = kissaki width factor.
 const LOOKS = {
-  1: { tex: 'kt_rust', len: 0.95, w: 0.13, curve: 0.05, tsuka: '#6a5a44', wrap: '#4a3a2a', tsuba: '#6a4a30', saya: '#6a4a2a', cord: '#7a6a4a' },
-  2: { tex: 'kt_bone', len: 1.02, w: 0.17, curve: 0.06, tsuka: '#d6c8a6', wrap: '#7a4a2a', tsuba: '#e8dcc0', saya: '#a8845a', cord: '#a8301c' },
-  3.1: { tex: 'kt_fang', len: 1.1, w: 0.17, curve: 0.08, tsuka: '#c0501a', wrap: '#ff9a3a', tsuba: '#ff8a2a', saya: '#3a30a0', cord: '#ff5a1a' },
-  3.2: { tex: 'kt_mud', len: 1.06, w: 0.19, curve: 0.04, tsuka: '#4a3a24', wrap: '#6a7a3a', tsuba: '#5a4a32', saya: '#6a5a3a', cord: '#6a7a3a' },
-  4: { tex: 'kt_char', len: 1.22, w: 0.19, curve: 0.09, tsuka: '#1a0e0c', wrap: '#8a1a10', tsuba: '#c0301a', saya: '#3a1a14', cord: '#ff6a1a' },
-  '5k': { tex: 'kt_kessel', len: 1.25, w: 0.21, curve: 0.06, tsuka: '#3a2a22', wrap: '#7a4a2a', tsuba: '#8a4a2a', saya: '#4a3a34', cord: '#d89a50' },
-  '5g': { tex: 'kt_slag', len: 1.28, w: 0.2, curve: 0.09, tsuka: '#1a1512', wrap: '#5a2412', tsuba: '#3a3430', saya: '#241f1c', cord: '#ff6a1a' },
-  '5v': { tex: 'kt_copper', len: 1.28, w: 0.19, curve: 0.08, tsuka: '#1a1e2a', wrap: '#2a3a5a', tsuba: '#b8642a', saya: '#1a1e2a', cord: '#5ad0ff' },
-  6: { tex: 'kt_copper', len: 1.36, w: 0.21, curve: 0.1, tsuka: '#10141e', wrap: '#5ad0ff', tsuba: '#e89a50', saya: '#10141e', cord: '#fff0a0' },
+  1: { id: 'rust', tex: 'kt_rust', len: 0.9, w: 0.12, curve: 0.04, thick: 0.04, spineW: 0.04, spineD: 0.025, tip: 'broken', tipTaper: 0.55, tsuka: '#5a4a3a', wrap: '#4a3a2a', tsuba: '#6a6a70', saya: '#4a3a2a', cord: '#a89870' },
+  2: { id: 'bone', tex: 'kt_bone', len: 1.02, w: 0.17, curve: 0.06, thick: 0.075, spineW: 0.06, spineD: 0.03, tip: 'kissaki', tipTaper: 0.8, wt: 0.1, tsuka: '#7a5a3a', wrap: '#5a3a22', tsuba: '#e8dcc0', saya: '#a8845a', cord: '#a8301c' },
+  3.1: { id: 'jaggo', tex: 'kt_fang', len: 1.12, w: 0.13, curve: 0.13, thick: 0.045, spineW: 0.03, spineD: 0.018, tip: 'kissaki', tipTaper: 0.6, wt: 0.2, tsuka: '#3a2a80', wrap: '#ff9a3a', tsuba: '#ece4d0', saya: '#4a30b0', cord: '#ff5a1a' },
+  3.2: { id: 'barrotz', tex: 'kt_horn', len: 0.98, w: 0.25, curve: 0.015, thick: 0.1, spineW: 0.08, spineD: 0.07, tip: 'flat', tipTaper: 0.9, tsuka: '#4a3a24', wrap: '#6a5a32', tsuba: '#7a6a4a', saya: '#6a5a3a', cord: '#6a7a3a' },
+  4: { id: 'brat', emb: [0.5, 0.1, 0.02], tex: 'kt_char', len: 1.25, w: 0.18, curve: 0.1, thick: 0.05, spineW: 0.035, spineD: 0.02, tip: 'kissaki', tipTaper: 0.55, wt: 0.12, tsuka: '#1a0e0c', wrap: '#b02018', tsuba: '#c0301a', saya: '#5a1410', cord: '#ff6a1a' },
+  '5k': { id: 'kroll', emb: [0, 0, 0], tex: 'kt_kessel', len: 1.18, w: 0.26, curve: 0.02, thick: 0.085, spineW: 0.07, spineD: 0.04, tip: 'flat', tipTaper: 0.85, tsuka: '#3a3e44', wrap: '#6a4a2a', tsuba: '#9aa4aa', saya: '#3a4650', cord: '#d89a50' },
+  '5g': { id: 'gorgo', emb: [0.25, 0.06, 0], tex: 'kt_slag', len: 1.3, w: 0.2, curve: 0.09, thick: 0.06, spineW: 0.045, spineD: 0.03, tip: 'kissaki', tipTaper: 0.6, gap: 0.12, stagger: 0.012, wt: 0.25, tsuka: '#1a1512', wrap: '#5a2412', tsuba: '#3a3430', saya: '#241f1c', cord: '#ff6a1a' },
+  '5v': { id: 'volt', emb: [0, 0.06, 0.2], tex: 'kt_copper', len: 1.25, w: 0.15, curve: 0.05, thick: 0.045, spineW: 0.035, spineD: 0.02, tip: 'fork', tipTaper: 0.8, tsuka: '#1a1e2a', wrap: '#2a3a5a', tsuba: '#b8642a', saya: '#1a1e2a', cord: '#5ad0ff' },
+  6: { id: 'apex', emb: [0.2, 0.6, 1], tex: 'kt_apex', len: 1.5, w: 0.19, curve: 0.07, thick: 0.05, spineW: 0.04, spineD: 0.022, tip: 'fork', tipTaper: 0.8, tsuka: '#10141e', wrap: '#5ad0ff', tsuba: '#e89a50', saya: '#10141e', cord: '#fff0a0' },
 };
 /** Stufe 5/6 -> Ast-Key ('k' Kroll, 'g' Gorgo, 'v' Voltaro; Stufe 6 immer Voltaro-Funkenfuerst). */
 export const katanaRwBranch = (tier, branch) => (tier >= 6 ? 'v' : branch === 'g' || branch === 'v' ? branch : 'k');
@@ -256,114 +265,164 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
   const mTsuka = lambert({ color: look.tsuka }), mWrap = lambert({ color: look.wrap }), mTsuba = lambert({ color: look.tsuba });
   const mSpine = lambert({ map: tex(look.tex, { size: 16 }), color: '#8a8a8a', emissive: new THREE.Color(0, 0, 0) });
 
+  const L = (c) => lambert({ color: c });
+  const lk = look.id;
+  const big = tier >= 6 ? 1.35 : 1;
+  const ex = [];
+  const addHalo = (col, wid) => {
+    const halo = new THREE.Mesh(new THREE.BoxGeometry(wid, look.len * 1.05, 0.05), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    halo.position.set(0, -0.16 - look.len * 0.5, -look.curve * 0.5);
+    bladeG.add(halo);
+    root.userData.halo = halo;
+  };
+
   // --- hilt (tsuka): right hand at the origin, off hand on grip2
   hilt.add(box(0.07, 0.5, 0.07, mTsuka, 0, 0.12, 0));
-  for (let i = 0; i < 5; i++) hilt.add(box(0.085, 0.04, 0.085, mWrap, 0, -0.06 + i * 0.1, 0));
-  hilt.add(box(0.1, 0.05, 0.1, mTsuba, 0, 0.38, 0)); // kashira (pommel)
   const guard = box(0.2, 0.035, 0.2, mTsuba, 0, -0.15, 0);
   hilt.add(guard);
+  const wrapN = lk === 'volt' || lk === 'apex' || lk === 'rust' ? 0 : 5;
+  for (let i = 0; i < wrapN; i++) hilt.add(box(0.085, 0.04, 0.085, mWrap, 0, -0.06 + i * 0.1, 0));
+  if (wrapN) hilt.add(box(0.1, 0.05, 0.1, mTsuba, 0, 0.38, 0)); // kashira (pommel)
 
-  // --- blade: segments along a curve
+  // --- blade: segments along a curve (per look: thickness, taper, stagger, slab gaps, tip style)
   const SEG = 5;
   const edges = [];
+  const th = look.thick, wAt = (s) => look.w * (1 - (look.wt || 0) * s), sl = (len) => len * (look.gap ? 1 - look.gap : 1) + 0.01;
   for (let i = 0; i < SEG; i++) {
     const s0 = i / SEG, s1 = (i + 1) / SEG;
     const f0 = bladeFrame(look, s0), f1 = bladeFrame(look, s1);
     const len = Math.hypot(f1.y - f0.y, f1.z - f0.z);
-    const taper = i === SEG - 1 ? 0.7 : 1;
-    const seg = box(0.055, len + 0.01, look.w * taper, bladeMat, 0, (f0.y + f1.y) / 2, (f0.z + f1.z) / 2);
-    seg.rotation.x = Math.atan2(-(f1.z - f0.z), -(f1.y - f0.y)); // bend toward -Z (the edge)
+    const taper = i === SEG - 1 ? look.tipTaper : 1;
+    const my = (f0.y + f1.y) / 2, mz = (f0.z + f1.z) / 2 + (look.stagger ? (i % 2 ? 1 : -1) * look.stagger : 0);
+    const sw = wAt((s0 + s1) / 2) * taper;
+    const seg = box(th, sl(len), sw, bladeMat, 0, my, mz);
+    seg.rotation.x = Math.atan2(-(f1.z - f0.z), -(f1.y - f0.y));
     bladeG.add(seg);
-    const sp = box(0.04, len + 0.01, 0.022, mSpine, 0, (f0.y + f1.y) / 2, (f0.z + f1.z) / 2 + look.w * taper * 0.5);
+    const sp = box(look.spineW, sl(len), look.spineD, mSpine, 0, my, mz + sw * 0.5);
     sp.rotation.x = seg.rotation.x;
     bladeG.add(sp);
-    edges.push({ f0, f1, mid: { y: (f0.y + f1.y) / 2, z: (f0.z + f1.z) / 2 }, rx: seg.rotation.x });
+    edges.push({ f0, f1, mid: { y: my, z: mz }, rx: seg.rotation.x, sw, len });
   }
   const tipF = bladeFrame(look, 1);
-  const kissaki = cone(look.w * 0.5, 0.16, 4, bladeMat, 0, tipF.y - 0.06, tipF.z - look.w * 0.12, 0, 0);
-  kissaki.rotation.set(Math.PI + 0.25, Math.PI / 4, 0);
-  kissaki.scale.set(0.35, 1, 1);
-  bladeG.add(kissaki);
+  const ex2 = [];
+  if (look.tip === 'kissaki') {
+    const kissaki = cone(look.w * 0.5, 0.16, 4, bladeMat, 0, tipF.y - 0.06, tipF.z - look.w * 0.12, 0, 0);
+    kissaki.rotation.set(Math.PI + 0.25, Math.PI / 4, 0);
+    kissaki.scale.set(th / 0.055 * 0.35, 1, 1);
+    bladeG.add(kissaki);
+  } else if (look.tip === 'flat') { // chisel / cleaver end: one slanted cap
+    const cap = box(th, 0.05, look.w * 0.7, bladeMat, 0, tipF.y - 0.03, tipF.z - look.w * 0.1);
+    cap.rotation.x = 0.35;
+    bladeG.add(cap);
+  } else if (look.tip === 'fork') { // Voltaro antenna tines
+    const n = tier >= 6 ? 3 : 2, tc = em(tier >= 6 ? '#aef0ff' : '#7ae0ff');
+    for (let i = 0; i < n; i++) {
+      const dz = n === 3 ? (i - 1) * 0.07 : (i ? 0.045 : -0.045);
+      const pr = box(0.03, 0.2 * big, 0.026, bladeMat, 0, tipF.y - 0.08, tipF.z + dz); pr.rotation.x = dz * -1.6;
+      bladeG.add(pr, box(0.034, 0.03, 0.034, tc, 0, tipF.y - 0.19 * big, tipF.z + dz * 1.5));
+    }
+    ex2.push(tc);
+  } // 'broken' (Rost): ragged cut, no cap
 
-  // --- tier decoration (stronger = more extreme)
-  const ex = [];
-  if (tier <= 1) { // Rostkatana: rusty, notched, frayed cord
-    const rustM = lambert({ color: '#7a3a14' }), dark = lambert({ color: '#2a1a10' });
-    for (const [s, w] of [[0.3, 0.03], [0.55, 0.04], [0.8, 0.03]]) { const f = bladeFrame(look, s); bladeG.add(box(0.034, 0.05, w, dark, 0, f.y, f.z - look.w * 0.5)); }
-    for (const s of [0.2, 0.45, 0.7]) { const f = bladeFrame(look, s); bladeG.add(box(0.034, 0.07, 0.05, rustM, 0, f.y, f.z + 0.01)); }
-    hilt.add(box(0.02, 0.2, 0.02, lambert({ color: look.cord }), 0.07, 0.42, 0.03));
-  } else if (tier === 2) { // Knochenkatana: serrated spine, vertebra guard, leather wrap
-    const boneM = lambert({ map: tex('bone', { size: 16 }) });
+  // hamon: a glowing hardening line along the edge (both flat sides)
+  const hamon = (col, wd = 0.022) => {
+    const m = em(col);
+    for (const e of edges) { const v = box(th + 0.008, sl(e.len), wd, m, 0, e.mid.y, e.mid.z - e.sw * 0.38); v.rotation.x = e.rx; bladeG.add(v); }
+    ex2.push(m);
+  };
+
+  // --- per-look silhouette + material language
+  if (lk === 'rust') { // Stufe 1: Schrottklinge, schartig, umwickelter Griff
+    const rustM = L('#8a4018'), dark = L('#24201c'), tape = L(look.cord);
+    for (const [s, w] of [[0.18, 0.04], [0.34, 0.05], [0.52, 0.04], [0.7, 0.05], [0.86, 0.04]]) { const f = bladeFrame(look, s); bladeG.add(box(th + 0.02, 0.045, w, dark, 0, f.y, f.z - look.w * 0.5 + 0.005)); } // Scharten
+    for (const [s, sx] of [[0.25, 1], [0.5, -1], [0.75, 1]]) { const f = bladeFrame(look, s); bladeG.add(box(0.012, 0.09, 0.06, rustM, sx * (th / 2 + 0.003), f.y, f.z + 0.01)); } // Rostflecken
+    { const f = bladeFrame(look, 0.97); bladeG.add(box(th + 0.02, 0.04, 0.12, dark, 0, f.y, f.z)); } // abgebrochene Spitze
+    guard.scale.set(1.0, 0.6, 1.0);
+    hilt.add(box(0.2, 0.025, 0.06, L('#6a4a30'), 0, -0.13, 0)); // angeschraubtes Blech
+    for (let i = 0; i < 8; i++) { const b = box(0.095, 0.02, 0.095, tape, 0, -0.1 + i * 0.06, 0); b.rotation.y = 0.5; hilt.add(b); } // Klebeband-Wicklung
+    hilt.add(box(0.1, 0.05, 0.1, L('#4a4a50'), 0, 0.38, 0), box(0.02, 0.22, 0.02, tape, 0.07, 0.42, 0.03), box(0.015, 0.14, 0.015, tape, -0.06, 0.4, -0.03)); // Fransen
+  } else if (lk === 'bone') { // Stufe 2: Knochenklinge, Wirbel-Tsuba
+    const boneM = lambert({ map: tex('bone', { size: 16 }) }), ring = L('#bca880');
     for (let i = 0; i < 6; i++) { const f = bladeFrame(look, 0.12 + i * 0.14); bladeG.add(cone(0.035, 0.09, 3, boneM, 0, f.y, f.z + look.w * 0.62, Math.PI / 2, 0)); }
-    guard.scale.set(1.5, 1.6, 1.1);
-    hilt.add(box(0.12, 0.1, 0.12, boneM, 0, -0.2, 0), cone(0.05, 0.12, 4, boneM, 0, 0.47, 0, 0, 0));
-    hilt.add(box(0.025, 0.28, 0.025, lambert({ color: look.cord }), 0.08, 0.5, 0));
-  } else if (tier === 3 && branch !== 'b') { // Jaggo-Reissahn: fang-shaped blade, crest spikes, red cord
-    const crest = lambert({ map: tex('crest', { size: 16 }) });
-    for (let i = 0; i < 6; i++) { const s = 0.1 + i * 0.14; const f = bladeFrame(look, s); bladeG.add(cone(0.05 - i * 0.004, 0.18 - i * 0.012, 3, crest, 0, f.y + 0.03, f.z + look.w * 0.66, 0.5, 0)); }
-    const fang = lambert({ map: tex('bone', { size: 16 }) });
-    bladeG.add(cone(0.07, 0.24, 4, fang, 0, tipF.y + 0.22, tipF.z - look.w * 0.5 + 0.02, Math.PI - 0.15, 0));
-    guard.scale.set(1.9, 1.4, 1.2);
-    hilt.add(cone(0.05, 0.2, 3, fang, 0.17, -0.1, 0, 0, -0.6), cone(0.05, 0.2, 3, fang, -0.17, -0.1, 0, 0, 0.6));
-    hilt.add(box(0.03, 0.34, 0.03, lambert({ color: look.cord }), 0.09, 0.5, 0), box(0.03, 0.22, 0.03, lambert({ color: look.cord }), 0.1, 0.72, 0.04));
-  } else if (tier === 3) { // Barrotz-Schlickschneide: thick mud-crusted edge, shock crystals
-    const clay = lambert({ map: tex('kt_mud', { size: 16 }) });
-    for (let i = 0; i < 6; i++) { const f = bladeFrame(look, 0.12 + i * 0.14); bladeG.add(box(0.06, 0.1, 0.07, clay, (i % 2 ? 0.01 : -0.01), f.y, f.z - look.w * 0.5)); }
-    for (let i = 0; i < 3; i++) { const f = bladeFrame(look, 0.25 + i * 0.25); bladeG.add(box(0.05, 0.13, 0.09, clay, 0, f.y, f.z + 0.02)); }
-    guard.scale.set(2.0, 2.0, 1.4);
-    hilt.add(box(0.2, 0.08, 0.24, clay, 0, -0.2, 0));
-    const shock = em('#9fe8ff');
+    for (let i = 0; i < 5; i++) { const f = bladeFrame(look, 0.14 + i * 0.17); bladeG.add(box(th + 0.012, 0.025, look.w * 0.9, ring, 0, f.y, f.z)); } // Wachstumsringe
+    guard.visible = false;
+    for (let i = 0; i < 5; i++) { const k = Math.abs(i - 2); hilt.add(box(0.075, 0.07 - k * 0.012, 0.1 - k * 0.015, boneM, (i - 2) * 0.075, -0.15, 0)); hilt.add(cone(0.02, 0.06, 3, boneM, (i - 2) * 0.075, -0.15, 0.065, Math.PI / 2, 0)); } // Wirbelkette
+    hilt.add(box(0.12, 0.08, 0.12, boneM, 0, 0.44, 0), cone(0.05, 0.12, 4, boneM, 0, 0.53, 0, 0, 0));
+    hilt.add(box(0.025, 0.28, 0.025, L(look.cord), 0.08, 0.5, 0));
+  } else if (lk === 'jaggo') { // Stufe 3a: Schuppenklinge, oranger Kamm, Zahn-Tsuba
+    const comb = L('#ff8a2a'), combD = L('#c04a10'), tooth = lambert({ map: tex('bone', { size: 16 }) });
+    for (let i = 0; i < 9; i++) { const f = bladeFrame(look, 0.04 + i * 0.1); const h = 0.26 - i * 0.02; bladeG.add(cone(0.05 - i * 0.003, h, 3, i % 2 ? combD : comb, 0, f.y + 0.02, f.z + look.w * 0.5 + h * 0.4, 0.55, 0)); } // gezackter Kamm
+    for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.15 + i * 0.2); bladeG.add(box(th + 0.012, 0.03, look.w * 0.7, comb, 0, f.y, f.z - 0.005)); } // Streifen
+    guard.scale.set(1.5, 0.9, 1.5);
+    const n = 8; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; const c = cone(0.035, 0.13, 3, tooth, Math.cos(a) * 0.15, -0.15, Math.sin(a) * 0.15); c.rotation.set(Math.sin(a) * Math.PI / 2, 0, -Math.cos(a) * Math.PI / 2); hilt.add(c); } // Zahnkranz-Tsuba
+    hilt.add(cone(0.06, 0.2, 4, comb, 0, 0.54, 0, 0, 0));
+  } else if (lk === 'barrotz') { // Stufe 3b: schwere Horn-/Plattenklinge, Schlickkruste, stumpfer Ruecken
+    const clay = lambert({ map: tex('kt_mud', { size: 16 }) }), horn = L('#c4b48c'), shock = em('#9fe8ff');
+    for (let i = 0; i < 3; i++) { const f = bladeFrame(look, 0.18 + i * 0.28); const b = box(th + 0.02, 0.2, look.w * 0.8, horn, 0, f.y, f.z + 0.01); b.rotation.z = (i - 1) * 0.06; bladeG.add(b); } // Hornplatten
+    for (let i = 0; i < 8; i++) { const f = bladeFrame(look, 0.1 + i * 0.1); bladeG.add(box(th + 0.03, 0.07 + (i % 3) * 0.02, 0.07, clay, (i % 2 ? 0.008 : -0.008), f.y, f.z - look.w * 0.5 + 0.02)); } // Schlickkruste an der Schneide
+    for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.2 + i * 0.2); bladeG.add(box(th + 0.025, 0.1, 0.09, clay, 0, f.y, f.z + look.w * 0.32)); }
+    guard.scale.set(2.3, 2.2, 1.6);
+    hilt.add(box(0.26, 0.1, 0.26, clay, 0, -0.21, 0), cone(0.07, 0.22, 4, horn, 0.17, -0.1, 0, 0, -0.5), cone(0.07, 0.22, 4, horn, -0.17, -0.1, 0, 0, 0.5));
     for (const [x, y] of [[0.12, 0.2], [-0.1, 0.28], [0.05, 0.44]]) hilt.add(cone(0.035, 0.12, 4, shock, x, y, 0.05, 0, x > 0 ? -0.5 : 0.5));
-    for (const s of [0.35, 0.75]) { const f = bladeFrame(look, s); bladeG.add(cone(0.03, 0.1, 4, shock, 0.03, f.y, f.z + look.w * 0.6)); }
+    for (const s of [0.35, 0.75]) { const f = bladeFrame(look, s); bladeG.add(cone(0.03, 0.1, 4, shock, 0.05, f.y, f.z + look.w * 0.45)); }
     ex.push(shock);
-  } else if (tier === 4) { // Brathalos-Glutkatana: charred blade with ember vein, wing-spike guard, fins, glow
-    const ember = em('#ff7a1a'), hot = em('#ffd060');
-    for (let i = 0; i < SEG; i++) { const e = edges[i]; const v = box(0.034, e.f1.y !== e.f0.y ? Math.hypot(e.f1.y - e.f0.y, e.f1.z - e.f0.z) : 0.2, 0.02, i % 2 ? ember : hot, 0, e.mid.y, e.mid.z); v.rotation.x = e.rx; bladeG.add(v); }
-    const fin = lambert({ map: tex('kt_char', { size: 16 }) });
-    for (let i = 0; i < 7; i++) { const f = bladeFrame(look, 0.08 + i * 0.12); bladeG.add(cone(0.06 - i * 0.004, 0.26 - i * 0.02, 3, fin, 0, f.y + 0.05, f.z + look.w * 0.72, 0.7, 0)); }
-    guard.scale.set(2.6, 1.6, 1.3);
+  } else if (lk === 'brat') { // Stufe 4: rote Fluegelmembran-Wicklung, Horn-Spitze, Glut-Hamon
+    const ember = em('#ff7a1a'), horn = L('#e8d8b0'), mem = L('#b02018'), memD = L('#6a100c');
+    hamon('#ff9a2a', 0.03);
+    bladeG.add(cone(0.05, 0.32, 4, horn, 0, tipF.y - 0.14, tipF.z - 0.03, Math.PI + 0.3, 0)); // Horn-Spitze
+    for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.15 + i * 0.2); bladeG.add(cone(0.04, 0.18, 3, horn, 0, f.y + 0.03, f.z + look.w * 0.62, 0.7, 0)); }
+    guard.scale.set(2.4, 1.2, 1.2);
     for (const sx of [-1, 1]) {
-      hilt.add(cone(0.06, 0.34, 3, fin, sx * 0.24, -0.08, 0, 0, -sx * 1.0), cone(0.04, 0.22, 3, ember, sx * 0.3, -0.2, 0.02, 0, -sx * 1.5));
+      hilt.add(cone(0.06, 0.34, 3, horn, sx * 0.24, -0.08, 0, 0, -sx * 1.0));
+      for (let j = 0; j < 3; j++) { const m = box(0.02, 0.22 - j * 0.04, 0.12 - j * 0.02, j % 2 ? memD : mem, sx * (0.1 + j * 0.07), -0.3 + j * 0.03, 0); m.rotation.z = sx * (0.25 + j * 0.15); hilt.add(m); } // Membran-Fetzen
     }
-    hilt.add(cone(0.07, 0.2, 4, ember, 0, 0.5, 0), box(0.03, 0.4, 0.03, lambert({ color: look.cord }), 0.09, 0.6, 0));
-    const halo = new THREE.Mesh(new THREE.BoxGeometry(0.2, look.len * 1.05, 0.05), new THREE.MeshBasicMaterial({ color: '#ff5a10', transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-    halo.position.set(0, -0.16 - look.len * 0.5, -look.curve * 0.5);
-    bladeG.add(halo);
-    root.userData.halo = halo;
-    ex.push(ember, hot);
+    for (let i = 0; i < 6; i++) { const m = box(0.09, 0.05, 0.09, i % 2 ? memD : mem, 0, -0.08 + i * 0.07, 0); m.rotation.y = 0.3 * (i % 2 ? 1 : -1); hilt.add(m); } // Membran-Wicklung
+    hilt.add(cone(0.07, 0.2, 4, ember, 0, 0.5, 0));
+    addHalo('#ff5a10', 0.2);
+    ex.push(ember);
+  } else if (lk === 'kroll') { // Stufe 5k: Kesselstahl, Nieten, Scheren-Tsuba, Ventil, Dampf
+    const rivet = L('#d8c8b0'), seam = L('#2e3238'), brass = L('#b8862a'), steam = new THREE.MeshBasicMaterial({ color: '#e8f0f0', transparent: true, opacity: 0.4, depthWrite: false, fog: false });
+    for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.2 + i * 0.2); bladeG.add(box(th + 0.012, 0.022, look.w * 1.0, seam, 0, f.y, f.z)); } // Plattennaehte
+    for (let i = 0; i < 10; i++) { const f = bladeFrame(look, 0.1 + (i >> 1) * 0.19); bladeG.add(box(th + 0.022, 0.03, 0.03, rivet, 0, f.y, f.z + (i % 2 ? 0.07 : -0.07))); } // Nietenreihen
+    bladeG.add(box(0.035, look.len * 0.8, 0.04, brass, 0, -0.16 - look.len * 0.45, bladeFrame(look, 0.45).z + look.w * 0.58)); // Dampfrohr am Ruecken
+    guard.visible = false;
+    for (const sx of [-1, 1]) { const b = box(0.3, 0.035, 0.07, L('#9aa4aa'), 0, -0.15, 0); b.rotation.y = sx * 0.55; hilt.add(b); } // Scheren-Tsuba (zwei gekreuzte Klingen)
+    hilt.add(box(0.04, 0.05, 0.1, seam, 0, -0.15, 0));
+    hilt.add(box(0.09, 0.04, 0.09, brass, 0, 0.4, 0), box(0.03, 0.1, 0.03, brass, 0, 0.47, 0), box(0.14, 0.025, 0.025, L('#a82a1a'), 0, 0.53, 0), box(0.025, 0.025, 0.14, L('#a82a1a'), 0, 0.53, 0)); // Ventil mit Handrad
+    for (const [x, y, z, s] of [[0.0, 0.7, 0.0, 0.1], [0.05, 0.84, 0.03, 0.13], [-0.03, 1.0, -0.02, 0.16]]) hilt.add(box(s, s * 0.8, s, steam, x, y, z)); // Dampf
+    ex.push(rivet);
+  } else if (lk === 'gorgo') { // Stufe 5g: segmentierte Schlackeklinge mit Glutrissen, Zahnkranz-Tsuba
+    const glow = em('#ff6a1a'), hot = em('#ffd060'), tooth = L('#d8c8a0'), slag = L('#2a2420');
+    bladeG.add(box(0.03, look.len * 0.98, 0.03, glow, 0, -0.16 - look.len * 0.5, -look.curve * 0.55)); // Glutkern zwischen den Segmenten
+    for (const e of edges) bladeG.add(box(th * 0.6, 0.04, look.w * 0.6, hot, 0, e.f0.y, e.f0.z)); // leuchtende Fugen
+    for (let i = 0; i < 5; i++) { const f = bladeFrame(look, 0.1 + i * 0.18); const r = box(0.012, 0.1, 0.015, glow, (i % 2 ? 1 : -1) * (th / 2 + 0.003), f.y, f.z - 0.02); r.rotation.x = 0.7; bladeG.add(r); } // Glutrisse
+    for (let i = 0; i < 6; i++) { const f = bladeFrame(look, 0.1 + i * 0.15); bladeG.add(cone(0.035, 0.12, 3, slag, 0, f.y + 0.02, f.z + look.w * 0.65, 0.8, 0)); }
+    guard.scale.set(1.3, 0.9, 1.3);
+    const n = 10; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; const c = cone(0.03, 0.12, 3, tooth, Math.cos(a) * 0.15, -0.15, Math.sin(a) * 0.15); c.rotation.set(Math.sin(a) * Math.PI / 2, 0, -Math.cos(a) * Math.PI / 2); hilt.add(c); } // Zahnkranz
+    for (let i = 0; i < 4; i++) hilt.add(box(0.092, 0.02, 0.092, glow, 0, -0.02 + i * 0.11, 0));
+    hilt.add(cone(0.06, 0.18, 4, glow, 0, 0.5, 0));
+    addHalo('#ff5a10', 0.2);
+    ex.push(glow, hot);
+  } else { // Stufe 5v/6: Kupferklinge, Spulen, Antennen, Funken (6 = Funkenfuerst: groesser, helle Klinge, mehr Spulen)
+    const apex = tier >= 6;
+    const cop = L(apex ? '#ffd8a0' : '#d8782c'), spark = em(apex ? '#aef0ff' : '#7ae0ff'), hot = em('#fff0a0');
+    hamon(apex ? '#7af0ff' : '#5ad8ff', apex ? 0.034 : 0.02);
+    const nC = apex ? 13 : 8, coil = [cop, apex ? spark : L('#8a4a20')];
+    for (let i = 0; i < nC; i++) hilt.add(box(0.112, 0.024, 0.112, coil[i % 2], 0, -0.1 + i * (apex ? 0.04 : 0.055), 0)); // Spulen-Wicklung am Griff
+    guard.scale.set(apex ? 1.8 : 1.2, 0.8, 1.0);
+    for (const sx of [-1, 1]) for (let j = 0; j < (apex ? 3 : 2); j++) { // Antennen-Zinken am Parier
+      const h = (0.26 + j * 0.06) * big, a = sx * (0.5 + j * 0.3), px = sx * (0.14 + j * 0.05);
+      const pr = box(0.02, h, 0.02, cop, px + Math.sin(a) * h * 0.5, -0.12 + Math.cos(a) * h * 0.5, 0); pr.rotation.z = -a;
+      hilt.add(pr, box(0.034, 0.034, 0.034, j ? hot : spark, px + Math.sin(a) * h, -0.12 + Math.cos(a) * h, 0));
+    }
+    for (let i = 0; i < (apex ? 4 : 2); i++) { const f = bladeFrame(look, 0.05 + i * (apex ? 0.045 : 0.05)); bladeG.add(box(th + 0.04, 0.026, look.w + 0.04, apex && i % 2 ? spark : cop, 0, f.y, f.z)); } // Spule um die Klingenwurzel
+    for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.25 + i * 0.2); bladeG.add(cone(0.02, 0.1 * big, 4, spark, (i % 2 ? 1 : -1) * 0.05, f.y, f.z + look.w * 0.5, 0, (i % 2 ? -1 : 1) * 0.9)); } // Funken
+    hilt.add(box(0.06, 0.08, 0.06, cop, 0, 0.42, 0), cone(0.03, 0.26 * big, 4, spark, 0, 0.6 * big, 0));
+    if (apex) for (const [x, y, z] of [[0.14, 0.15, 0.1], [-0.16, 0.35, -0.08], [0.1, 0.6, 0.08], [-0.12, 0.85, 0.02]]) hilt.add(box(0.04, 0.04, 0.04, hot, x, y, z));
+    addHalo(apex ? '#7af0ff' : '#5ad8ff', 0.2 * big);
+    ex.push(spark, hot);
   }
-
-  else { // Stufe 5/6 (Rostwerke): Kroll = Kesselstahl + Nieten, Gorgo = Schlacke-Glut, Voltaro = Kupfer + Funken (Stufe 6 staerker)
-    const key = katanaRwBranch(tier, branch), big = tier >= 6 ? 1.5 : 1;
-    const bright = em(key === 'g' ? '#ff6a1a' : key === 'v' ? '#7ae0ff' : '#ffb050'), hot = em(key === 'v' ? '#fff0a0' : '#ffd060');
-    const plate = lambert({ color: key === 'k' ? '#8a4a2a' : key === 'g' ? '#3a3430' : '#c8783a' });
-    if (key === 'k') {
-      for (let i = 0; i < 6; i++) { const f = bladeFrame(look, 0.1 + i * 0.15); bladeG.add(box(0.07, 0.07, 0.05, plate, 0, f.y, f.z - look.w * 0.5 - 0.01)); bladeG.add(box(0.02, 0.025, 0.03, hot, 0.04, f.y, f.z + 0.02)); } // Panzerplatten + Nieten
-      guard.scale.set(2.2, 1.8, 1.4);
-      hilt.add(box(0.2, 0.1, 0.22, plate, 0, -0.2, 0));
-      for (const sx of [-1, 1]) hilt.add(box(0.05, 0.05, 0.05, hot, sx * 0.16, -0.15, 0.1));
-      ex.push(hot);
-    } else {
-      for (let i = 0; i < SEG; i++) { const e = edges[i]; const v = box(0.034, Math.hypot(e.f1.y - e.f0.y, e.f1.z - e.f0.z), 0.02, i % 2 ? bright : hot, 0, e.mid.y, e.mid.z); v.rotation.x = e.rx; bladeG.add(v); }
-      const fins = key === 'g' ? 6 : 4;
-      for (let i = 0; i < fins; i++) { const f = bladeFrame(look, 0.1 + i * (0.8 / fins)); bladeG.add(cone(0.05 * big, 0.2 * big, 3, key === 'g' ? plate : bright, 0, f.y + 0.04, f.z + look.w * 0.7, 0.7, 0)); }
-      guard.scale.set(2.4, 1.5, 1.3);
-      for (const sx of [-1, 1]) {
-        hilt.add(cone(0.05 * big, 0.3 * big, 3, key === 'g' ? plate : bright, sx * 0.24, -0.08, 0, 0, -sx * 1.0));
-        if (key === 'v') for (let j = 0; j < 3; j++) hilt.add(box(0.025, 0.1, 0.025, hot, sx * (0.28 + j * 0.03), -0.05 - j * 0.1, 0.02 * (j % 2 ? 1 : -1))); // Funkenzacken
-      }
-      hilt.add(cone(0.06, 0.18, 4, bright, 0, 0.5, 0));
-      const halo = new THREE.Mesh(new THREE.BoxGeometry(0.2 * big, look.len * 1.05, 0.05), new THREE.MeshBasicMaterial({ color: key === 'g' ? '#ff5a10' : '#5ad8ff', transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-      halo.position.set(0, -0.16 - look.len * 0.5, -look.curve * 0.5);
-      bladeG.add(halo);
-      root.userData.halo = halo;
-      ex.push(bright, hot);
-    }
-    if (tier >= 6) { // Funkenfuerst: Funkenkranz um die Klinge
-      for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.15 + i * 0.22); bladeG.add(cone(0.035, 0.22, 4, hot, (i % 2 ? 1 : -1) * 0.08, f.y, f.z + look.w * 0.5, 0, (i % 2 ? -1 : 1) * 0.9)); }
-      hilt.add(box(0.05, 0.05, 0.05, hot, 0, 0.55, 0));
-    }
-  }
+  ex.push(...ex2);
 
   // Schliff glow shell (additive, scales with the level)
   const shellMat = new THREE.MeshBasicMaterial({ color: '#ffd040', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
@@ -562,7 +621,8 @@ export const katana = {
     // Brathalos: always glowing embers
     const t4 = d.tier >= 4;
     const emb = t4 ? 0.12 + (d.tier >= 6 ? 0.14 : 0) + 0.06 * Math.sin(d.t * 9) : 0; // Funkenfuerst (6) staerker
-    d.bladeMat.emissive.setRGB(Math.min(1, e[0] + emb), Math.min(1, e[1] + emb * 0.35), Math.min(1, e[2] + emb * 0.05));
+    const ec = d.look.emb ?? [1, 0.35, 0.05]; // Glutfarbe je Brocken (Voltaro blau, Kroll keiner)
+    d.bladeMat.emissive.setRGB(Math.min(1, e[0] + emb * ec[0]), Math.min(1, e[1] + emb * ec[1]), Math.min(1, e[2] + emb * ec[2]));
     d.mSpine.emissive.copy(d.bladeMat.emissive);
     d.bladeMat.color.setScalar(1 - 0.28 * d.k);
     const sh = (LEVEL_SHELL[lo] + (LEVEL_SHELL[hi] - LEVEL_SHELL[lo]) * f) * pulse;
