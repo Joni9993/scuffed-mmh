@@ -158,3 +158,56 @@ small { opacity: .7; font-size: .88em; }
 .hub-menu { padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
 .hub-wrap { max-height: 100dvh; overflow-y: auto; }
 .panel { max-height: 100vh; max-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; }
+
+/* ===== fit layout (Schmiede, Spiegel): left list scrolls on its own, right = big rotatable preview + pinned info/button ===== */
+.st-body.fit { overflow: hidden; padding: 0; }
+.fg { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .8fr) minmax(0, 1fr); height: 100%; min-height: 0; }
+.fg.two { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+.fg-p { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 6px 4px; gap: 4px; }
+.fg-l, .fg-r { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 6px 8px; }
+.fg-l { padding-left: max(10px, env(safe-area-inset-left, 0px)); border-right: 1px solid rgba(106, 106, 208, .35); }
+.fg-r { padding-right: max(10px, env(safe-area-inset-right, 0px)); gap: 6px; }
+.fg-tabs { flex: none; } .fg-tabs .tabs { margin-bottom: 4px; flex-wrap: nowrap; } .fg-tabs .tab { flex: 1; padding: .4vmin 1vmin; }
+.fg-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; }
+.fg-scroll .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; } .fg-scroll .chips .tab { min-height: 44px; padding: 2px 4px; font-size: max(11px, 2.1vmin); }
+.fg-scroll .arow { gap: 4px; margin: 3px 0; flex-wrap: nowrap; }
+.fg-scroll .aset { width: 17%; min-width: 0; font-size: max(10px, 2vmin); line-height: 1.1; }
+.fg-scroll .acell { flex: 1; min-width: 0; justify-content: center; padding: 2px 4px; min-height: 40px; }
+.fg-p .gpv-slot.big { flex: 1 1 0; min-height: 70px; width: 100%; aspect-ratio: auto; position: relative; }
+.gpv-slot.big .gpv-canvas { width: 100%; height: 100%; object-fit: contain; cursor: grab; }
+.fg-info { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; background: rgba(60, 50, 140, .3); border: 1px solid #6a6ad0; padding: 5px 8px; }
+.fg-info .btn.small { margin: auto 0 0; float: none; width: 100%; min-height: 44px; flex: none; }
+.fg-info .stats { flex-direction: column; } .fg-info .stats.mk { flex-direction: column; }
+.fi-h.pn { text-align: center; }
+.fg-info .stats { margin: 0; gap: 0 10px; } .fg-info .costs { margin: 0; gap: 3px; flex: none; }
+.fg-info .chip { min-height: 22px; padding: 0 5px; } .fg-info .chip .nm { overflow: hidden; text-overflow: ellipsis; max-width: 12ch; }
+.fg-info .note { margin: 0; } .fi-h { font-size: var(--f); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stats.mk span { white-space: nowrap; } .sk.up { color: #7dff7d; } .sk.dn { color: #ff6b6b; }
+.tree { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; }
+.fg-scroll .chips .tab { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: block; line-height: 1.1; }
+.tn { min-height: 44px; margin: 0; box-sizing: border-box; } .tn .mk { width: 1.2em; text-align: center; flex: none; } .tn small { white-space: nowrap; }
+.tn.t2 { margin-left: 6px; width: calc(100% - 6px); } .tn.t3 { margin-left: 12px; width: calc(100% - 12px); } .tn.t4 { margin-left: 18px; width: calc(100% - 18px); }
+.tn.done, .tn.far { opacity: .6; } .tn.cur { box-shadow: inset 0 0 0 2px #7dff7d; } .tn.next .mk { color: #ffd84a; }
+.tn.sel { box-shadow: inset 0 0 0 2px #ffd84a; }
+.fg-scroll .row { min-height: 40px; }
+
+/* Spiegel: stats */
+.stile-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 6px 0; }
+.stile { display: grid; gap: 0; padding: 4px 6px; background: rgba(60, 50, 140, .3); border: 1px solid #6a6ad0; text-align: center; }
+.stile b { font-size: calc(var(--f) * 1.25); color: #ffd84a; } .stile small { font-size: max(10px, 1.9vmin); }
+.srow .num { min-width: 4ch; }
+
+/* Truhe: item detail pop-up + tappable names */
+.st-panel { position: relative; }
+.tap { cursor: pointer; } .nm.tap small { text-decoration: underline dotted; } .chip.tap { cursor: pointer; text-decoration: underline dotted; }
+.pop { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(8, 6, 20, .72); padding: 8px; }
+.pop-c { width: min(100%, 520px); max-height: 100%; overflow-y: auto; background: #0e0a28; border: 2px solid var(--edge); box-shadow: 0 0 0 2px #000; }
+.idet-u { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: max(11px, 2.1vmin); } .idet-u b { color: #ffd84a; }
+
+@media (max-aspect-ratio: 1/1), (max-width: 520px) {
+  .st-body.fit { overflow-y: auto; }
+  .fg { display: block; height: auto; }
+  .fg-l, .fg-r { padding: 6px 10px; } .fg-scroll { overflow: visible; }
+  .fg-p .gpv-slot.big { height: 38vh; flex: none; } .fg.two { display: block; }
+}
+@media (max-height: 340px) { .fg-info .stats { font-size: 10px; } .fg-scroll .acell { min-height: 44px; } }

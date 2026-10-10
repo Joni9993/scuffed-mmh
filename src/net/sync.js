@@ -55,6 +55,8 @@ export class HuntNet {
   }
   /** Gast: eigener Pirscher ist umgekippt -> Host zählt. */
   sendKo() { this.net.sendHost(MSG.EV, { k: 'ko' }); }
+  /** [G] camp chest: my outfit changed mid-hunt -> compact gear code to everybody (remote rigs follow). */
+  sendGear(code) { this.net.sendAll(MSG.EV, { k: 'gear', g: String(code).slice(0, 8) }); }
   /** Host: Jagd ist entschieden -> alle. */
   sendEnd(result, reason) { this.ended = true; this.net.sendAll(MSG.END, { r: result, why: reason ?? '', tl: Math.round(this.hunt.timeLeft) }); }
   get rtt() { return this.net.rtt; }
@@ -149,6 +151,7 @@ export class HuntNet {
     const hunt = this.hunt;
     switch (d.k) {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
+      case 'gear': this.#onGear(from, d.g); break;
       case 'bye': if (from === this.net.hostId && this.isGuest) this.#hostGone(); else this.#removeRemote(from); break; // participant left the hunt (still in the room)
       case 'pb': {
         const m = this.#mon(d.m), part = m?.partById[d.p];
@@ -158,6 +161,14 @@ export class HuntNet {
       case 'st': { const m = this.#mon(d.m); if (this.isGuest && m) { m.attack = null; hunt.fx.clearMarker?.(m.id); } break; }
       case 'dead': { const m = this.#mon(d.m); if (this.isGuest && m && m.alive) this.#kill(m); break; }
     }
+  }
+
+  #onGear(from, code) {
+    const peer = this.peers.get(from), dg = decodeGear(code);
+    if (!peer || !dg) return;
+    const p = peer.player, w = dg.weapon;
+    if (p.weaponId !== w.type || p.gear?.weapon?.tier !== w.tier || p.gear?.weapon?.branch !== w.branch) p.setWeapon(w.type, w.tier, w.branch);
+    p.setGear(makeGear({ ...dg, color: p.gear?.color }));
   }
 
   #mon(id) { return this.hunt.monsters.find((m) => m.id === id); }

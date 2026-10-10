@@ -3,7 +3,7 @@
 import { weaponStats } from '../data/weapons.js';
 import { armorProtection, armorSkills, skillEffects, foodEffects } from '../meta/loadout.js';
 
-export function applyLoadout(player, lo) {
+export function applyLoadout(player, lo, { reapply = false } = {}) {
   const w = lo.weapon;
   const stats = weaponStats(w.type, w.tier, w.branch);
   const skills = armorSkills(lo.armor);
@@ -22,15 +22,19 @@ export function applyLoadout(player, lo) {
   player.itemSpeed = food.itemSpeed;
 
   const v = player.v;
-  v.maxStamina += sk.maxStamina + food.maxStamina;
-  v.stamina = v.maxStamina;
-  v.maxHp += food.maxHp;
-  v.hp = v.maxHp;
+  // absolute (base + bonus), so the camp chest can re-apply a changed set without stacking
+  player._baseMaxStamina ??= v.maxStamina; player._baseMaxHp ??= v.maxHp;
+  v.maxStamina = player._baseMaxStamina + sk.maxStamina + food.maxStamina;
+  v.maxHp = player._baseMaxHp + food.maxHp;
+  if (reapply) { v.stamina = Math.min(v.stamina, v.maxStamina); v.hp = Math.min(v.hp, v.maxHp); } // no free heal at the chest
+  else { v.stamina = v.maxStamina; v.hp = v.maxHp; }
+  player._sk = sk; // read by the takeHit wrapper below (stays current when the set changes)
 
   if (!player._loadoutWrapped) {
     player._loadoutWrapped = true;
     const orig = player.takeHit.bind(player);
     player.takeHit = (h) => {
+      const sk = player._sk;
       let knock = h.knock ?? 'flinch';
       if (knock === 'down' && sk.downImmune) knock = sk.flinchImmune ? 'none' : 'flinch';
       if (knock === 'flinch' && sk.flinchImmune) knock = 'none';

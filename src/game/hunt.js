@@ -22,6 +22,7 @@ import { HuntNet } from '../net/sync.js'; // [N]
 import { makeGear } from '../data/gearlook.js'; // [G]
 import { spawnFauna } from './fauna.js'; // [L]
 import { createAmbientFauna } from './ambientFauna.js'; // [L]
+import { openStation, closeStation } from '../ui/stations.js';
 
 const MAX_KO = 3;
 
@@ -45,10 +46,11 @@ export class Hunt {
     this.teamKo = 0;
     this.result = null; // 'win' | 'fail'
     this.paused = false;
+    this.panelOpen = false; // a station panel (camp chest / options) is up: world input is suspended
     this.net = null; // [N] HuntNet in coop (hunt.net: isHost, send, on, peers), null in solo
     this.players = [];
     this.monsters = [];
-    this.stats = { damage: 0, hits: 0, perfect: 0 };
+    this.stats = { damage: 0, hits: 0, perfect: 0, kos: 0 };
     this._n = 0;
     this._lastRender = performance.now();
 
@@ -96,7 +98,8 @@ export class Hunt {
     this.hud = createHud(app.ui);
     sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this.bus.on('playerDown', () => this.#onPlayerDown());
-    this.bus.on('glitchCounter', () => { this.stats.perfect++; });
+    this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
+    this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
     this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) this.#onBossDead(); });
     this.bus.on('monsterState', ({ monster, state }) => {
       if (monster === this.mainMonster && state === 'notice') this.hud.banner(monster.def.name, 3);
@@ -240,10 +243,11 @@ export class Hunt {
     if (this.result) return;
     const ov = document.createElement('div');
     ov.className = 'screen ui-hit';
-    ov.innerHTML = '<div class="panel"><h2>Jagd verlassen?</h2><button class="btn" data-a="go">Weiter</button><button class="btn red" data-a="quit">Verlassen</button></div>';
+    ov.innerHTML = '<div class="panel"><h2>Jagd verlassen?</h2><button class="btn" data-a="go">Weiter</button><button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">Verlassen</button></div>';
     ov.addEventListener('click', (e) => {
       const a = e.target.dataset?.a;
       if (a === 'go') this.#toggleLeave();
+      if (a === 'opt') this.#optionsFrom(ov);
       if (a === 'quit') this.#leave();
     });
     this.app.ui.appendChild(ov);
@@ -281,10 +285,11 @@ export class Hunt {
     if (v) {
       const ov = document.createElement('div');
       ov.className = 'screen ui-hit';
-      ov.innerHTML = '<div class="panel"><h2>Pause</h2><button class="btn" data-a="go">Weiter</button><button class="btn red" data-a="quit">Aufgeben</button></div>';
+      ov.innerHTML = '<div class="panel"><h2>Pause</h2><button class="btn" data-a="go">Weiter</button><button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">Aufgeben</button></div>';
       ov.addEventListener('click', (e) => {
         const a = e.target.dataset?.a;
         if (a === 'go') this.setPaused(false);
+        if (a === 'opt') this.#optionsFrom(ov);
         if (a === 'quit') this.abandon();
       });
       this.app.ui.appendChild(ov);
@@ -292,11 +297,40 @@ export class Hunt {
     } else { this.pauseEl?.remove(); this.pauseEl = null; }
   }
 
+  /** Pause / leave menu -> options panel (same panel as the town); the menu comes back when it closes. */
+  #optionsFrom(menuEl) {
+    sfx.unlock?.(); sfx.play?.('ui');
+    menuEl.style.display = 'none';
+    this.openPanel('optionen', { hunt: true }, () => { menuEl.style.display = ''; });
+  }
+
+  /** Open a station panel inside the hunt. World input is suspended while it is up and ALWAYS restored on close
+   *  (X button, scene change via dispose, opening another panel, hunt end). The hunt itself keeps running (co-op never pauses). */
+  openPanel(id, adapter, onClose) {
+    const app = this.app;
+    this.meta?.onboarding?.close(); // the controls tip must not float over the panel
+    openStation(id, app, {
+      adapter,
+      onClose: () => {
+        this.panelOpen = false;
+        this.input.reset();
+        if (!this.disposed) app.touch?.setVisible(true);
+        onClose?.();
+      },
+    });
+    // after openStation: it closes a previous panel first, whose onClose would otherwise re-enable the controls
+    this.panelOpen = true;
+    app.touch?.setVisible(false);
+    this.input.reset();
+  }
+
   #applyUiSettings() {
     document.body.classList.toggle('scan', this.app.settings.scanlines && !this.opts.nofx);
   }
 
   update(dt) {
+    if (this.panelOpen) this.input.reset(); // panel up: nothing reaches the player (also swallows stale key repeats)
+    if (this.panelOpen && (this.player.state === 'ko' || this.result)) closeStation(); // knocked out: back to the world
     this.input.poll(dt);
     if (this.input.b.menu.pressed) { if (this.opts.coop) this.#toggleLeave(); else this.setPaused(!this.paused); } // [N] coop never pauses
     if (this.paused) return;
@@ -347,6 +381,8 @@ export class Hunt {
   }
 
   dispose() {
+    this.disposed = true;
+    closeStation(); // restores nothing visible (touch is hidden below) but clears the module-level panel state
     this.app.renderer.onResize.delete(this._onResize);
     this.projectiles.dispose(); // [W]
     this.ambientFauna?.dispose(); // [L]

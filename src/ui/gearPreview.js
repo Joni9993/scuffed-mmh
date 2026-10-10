@@ -8,11 +8,12 @@ import './gearPreview.css';
 
 // [G] Rotating gear preview for the station panels (Truhe: what you wear, Schmiede: what you are about to craft).
 // One small canvas with its OWN tiny WebGL renderer (96x120, CSS-upscaled, pixelated); the rig is rebuilt only when the gear changes.
-const W = 96, H = 120;
+const W = 96, H = 120; // default (small) size; { big: true } renders 144x180
 const SHOW = { gs: { arx: 42, sw: 125 }, db: { arx: 35, sw: 130, alx: 35, sl: 130, arz: 14, alz: 14 }, bow: { arx: 20, sw: -20 } };
 
 export class GearPreview {
-  constructor() {
+  constructor({ big = false } = {}) {
+    const W = big ? 144 : 96, H = big ? 180 : 120;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'gpv-canvas';
     this.canvas.width = W; this.canvas.height = H;
@@ -34,8 +35,9 @@ export class GearPreview {
       this.renderer.setClearColor(0x000000, 0);
       this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     } catch { this.renderer = null; } // no WebGL: the slot just stays empty
-    this.rig = null; this.code = ''; this.yaw = 0.5; this.last = 0; this.raf = 0; this.dead = false;
+    this.rig = null; this.code = ''; this.yaw = 0.5; this.last = 0; this.raf = 0; this.dead = false; this.hold = 0; this.drag = null;
     this.snap = new THREE.Vector2(W / 3, H / 3.65);
+    this.#bindDrag();
   }
 
   /** gear: { weapon:{type,tier,branch}, armor:{head,body,legs}, color }. Rebuilds only when something changed. */
@@ -64,13 +66,27 @@ export class GearPreview {
     if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame((t) => this.#frame(t)); }
   }
 
+  /** drag (touch or mouse) rotates the figure; auto-spin resumes ~1.8 s after letting go */
+  #bindDrag() {
+    const c = this.canvas;
+    c.style.touchAction = 'none';
+    c.addEventListener('pointerdown', (e) => { this.drag = { id: e.pointerId, x: e.clientX }; this.hold = 1e9; try { c.setPointerCapture(e.pointerId); } catch { /* ignore */ } e.preventDefault(); });
+    c.addEventListener('pointermove', (e) => {
+      if (!this.drag || this.drag.id !== e.pointerId) return;
+      this.yaw += (e.clientX - this.drag.x) * 0.012; this.drag.x = e.clientX;
+      this.#draw();
+    });
+    const end = (e) => { if (this.drag && this.drag.id === e.pointerId) { this.drag = null; this.hold = 1.8; } };
+    c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+  }
+
   #frame(t) {
     this.raf = 0;
     if (this.dead) return;
     if (!this.canvas.isConnected) return; // panel closed / re-rendering: attach() restarts the loop
     const dt = Math.min(0.05, (t - this.last) / 1000);
     this.last = t;
-    this.yaw += dt * 0.9;
+    if (this.hold > 0) this.hold -= dt; else this.yaw += dt * 0.9;
     this.#draw(dt);
     this.raf = requestAnimationFrame((x) => this.#frame(x));
   }
@@ -98,4 +114,4 @@ export class GearPreview {
 }
 
 /** HTML for the preview column (the canvas is attached by `after`). */
-export const previewSlot = () => '<div class="gpv-slot" data-gpv></div>';
+export const previewSlot = (big = false) => `<div class="gpv-slot${big ? ' big' : ''}" data-gpv></div>`;

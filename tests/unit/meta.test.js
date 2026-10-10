@@ -23,7 +23,7 @@ describe('save: versioning, migration, export/import', () => {
   });
   it('migrates a v0 prototype save', () => {
     const m = migrate({ playerName: 'Ede', rank: 3, money: 420, inv: { glutbrocken: 5, bogus: 9 }, weapon: 'bow' });
-    expect(m.version).toBe(1);
+    expect(m.version).toBe(CURRENT_VERSION);
     expect(m.name).toBe('Ede');
     expect(m.jr).toBe(3);
     expect(m.schrott).toBe(420);

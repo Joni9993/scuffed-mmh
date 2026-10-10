@@ -2,6 +2,7 @@
 import { getQuest } from '../data/quests.js';
 import { rollReward, rollBreak } from '../data/drops.js';
 import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
+import { applyChestResult } from './huntChest.js';
 
 export const MAX_JR = 4;
 
@@ -19,7 +20,7 @@ export function bump(map, id, n = 1) {
  *  used: {id:n} consumables spent from the box, rng: seeded rng for the drop rolls.
  * Failure keeps only what was gathered. Gather quests hand in the target items on success.
  */
-export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks = [], used = {}, rng }) {
+export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks = [], used = {}, chest = null, rng }) {
   const win = result === 'win';
   const matMul = quest.matMul ?? 1;
   const parts = { gathered: { ...gathered }, carved: win ? { ...carved } : {}, breaks: {}, reward: {}, handedIn: {} };
@@ -36,14 +37,15 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
   }
   const items = {};
   for (const m of [parts.gathered, parts.carved, parts.breaks, parts.reward]) for (const [id, n] of Object.entries(m)) bump(items, id, n);
-  return { quest: quest.id, result, schrott: win ? quest.reward : 0, items, parts, used: { ...used } };
+  return { quest: quest.id, result, schrott: win ? quest.reward : 0, items, parts, used: { ...used }, chest: chest ?? null };
 }
 
 /**
  * Apply rewards + progression to the save. Idempotence is the caller's job (call once per hunt).
  * -> { schrott, added, sold, overflowSchrott, jrUp: newJr|null, firstClear }
  */
-export function applyHuntResult(save, quest, rewards) {
+export function applyHuntResult(save, quest, rewards, info = {}) {
+  applyChestResult(save, rewards.chest); // camp chest: crafted/spent stock + gear first, so crafted-and-used items net out
   for (const [id, n] of Object.entries(rewards.used ?? {})) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
   const r = boxAddAll(save, rewards.items ?? {});
   addSchrott(save, rewards.schrott ?? 0);
@@ -53,8 +55,16 @@ export function applyHuntResult(save, quest, rewards) {
     save.stats.wins++;
     firstClear = !save.clears[quest.id];
     save.clears[quest.id] = (save.clears[quest.id] ?? 0) + 1;
+    if (quest.monster) save.kills[quest.monster] = (save.kills[quest.monster] ?? 0) + 1;
+    const t = Math.floor(Number(info.time));
+    if (t > 0 && (!save.best[quest.id] || t < save.best[quest.id])) save.best[quest.id] = t;
     if (quest.jrUp && save.jr < quest.jrUp) { save.jr = Math.min(MAX_JR, quest.jrUp); jrUp = save.jr; }
   } else save.stats.fails++;
+  const st = save.stats;
+  st.playtime += Math.max(0, Math.min(86400, Math.floor(Number(info.time) || 0)));
+  st.kos += Math.max(0, Math.floor(Number(info.kos) || 0));
+  st.carves += Math.max(0, Math.floor(Number(info.carves) || 0));
+  st.glitch += Math.max(0, Math.floor(Number(info.glitch) || 0));
   save.meal = null; // one meal per hunt
   return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear };
 }
