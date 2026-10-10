@@ -1,5 +1,5 @@
 const KEY = 'scuffedhunter.settings.v1';
-const defaults = { res: 480, scanlines: true, dmgNumbers: true, volume: 0.6, nofx: false };
+const defaults = { res: 480, scanlines: true, dmgNumbers: true, volume: 0.6, nofx: false, btnSize: 'M', leftHand: false, haptics: true };
 export const settings = { ...defaults };
 
 try {
