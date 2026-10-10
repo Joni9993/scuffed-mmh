@@ -67,13 +67,13 @@ const moves = {
   kt_a1: {
     id: 'kt_a1', anim: 'kt_a1', duration: 0.5,
     hits: cut({ t0: 0.12, t1: 0.21, a0: 168, a1: 60, mv: 20, wucht: 3, hitstop: 'light', group: 'a1' }),
-    combo: { window: [0.25, 0.46], next: NEXT_FROM_CUT },
+    combo: { window: [0.23, 0.46], next: NEXT_FROM_CUT },
     rollCancelAt: 0.3, moveSpeed: 0.35, turnSpeed: 0.5,
   },
   kt_a2: { // Zugschnitt: waagrechter Zug nach links
     id: 'kt_a2', anim: 'kt_a2', duration: 0.55,
     hits: cut({ kind: 'horz', t0: 0.13, t1: 0.24, n: 5, p0: -80, p1: 80, mv: 22, wucht: 3, hitstop: 'light', group: 'a2' }),
-    combo: { window: [0.28, 0.5], next: { ...NEXT_FROM_CUT, A: 'kt_a3' } },
+    combo: { window: [0.25, 0.5], next: { ...NEXT_FROM_CUT, A: 'kt_a3' } },
     rollCancelAt: 0.32, moveSpeed: 0.35, turnSpeed: 0.5,
   },
   kt_a3: { // Kreuzhieb: zwei Diagonalen (X), 2 x BW 14 = BW 28
@@ -82,7 +82,7 @@ const moves = {
       ...cut({ t0: 0.13, t1: 0.22, a0: 168, a1: 45, tilt: 30, mv: 14, wucht: 1.5, hitstop: 'light', group: 'a3a' }),
       ...cut({ t0: 0.31, t1: 0.41, a0: 168, a1: 45, tilt: -30, mv: 14, wucht: 1.5, hitstop: 'medium', group: 'a3b' }),
     ],
-    combo: { window: [0.45, 0.7], next: { ...NEXT_FROM_CUT, A: 'kt_a2' } }, // wiederholbar ab Zugschnitt
+    combo: { window: [0.43, 0.7], next: { ...NEXT_FROM_CUT, A: 'kt_a2' } }, // wiederholbar ab Zugschnitt
     rollCancelAt: 0.5, moveSpeed: 0.3, turnSpeed: 0.5,
   },
 
@@ -96,8 +96,8 @@ const moves = {
     id: 'kt_zieh', anim: 'kt_zieh', duration: 0.62,
     hits: cut({ kind: 'horz', t0: 0.05, t1: 0.15, n: 5, p0: -55, p1: 60, y: 1.15, from: 0.5, to: 2.1, radius: 0.5, mv: 45, wucht: 8, hitstop: 'heavy', group: 'z', sauberMul: BLANK_MUL, sauberText: 'Blankgezogen!' }),
     lunge: { t0: 0.02, t1: 0.15, dist: 2.2 }, // reach 2.1 + lunge 2.2 = ~4 m
-    combo: { window: [0.24, 0.55], next: { A: 'kt_a2', holdA: 'kt_draw', B: 'kt_stance' } },
-    rollCancelAt: 0.34, moveSpeed: 0, turnSpeed: 0.3,
+    combo: { window: [0.2, 0.55], next: { A: 'kt_a2', holdA: 'kt_draw', B: 'kt_stance' } },
+    rollCancelAt: 0.3, moveSpeed: 0, turnSpeed: 0.3,
   },
 
   // Konterhaltung: 0,4 s Haltung, Treffer in den ersten 0,25 s werden gekontert (siehe def.counter). Scheitert sie: 0,35 s Erholung.
@@ -113,8 +113,8 @@ const moves = {
     hits: cut({ t0: 0.05, t1: 0.15, n: 5, a0: 170, a1: 40, from: 0.4, to: 2.4, radius: 0.75, mv: 60, wucht: 0, hitstop: 'heavy', group: 'k', shake: 0.45 }),
     lunge: { t0: 0.0, t1: 0.14, dist: 2.2 },
     superArmor: [0, 0.45, 'all'],
-    combo: { window: [0.3, 0.62], next: { A: 'kt_a2', holdA: 'kt_draw', B: 'kt_stance' } },
-    rollCancelAt: 0.38, moveSpeed: 0, turnSpeed: 0.3,
+    combo: { window: [0.26, 0.62], next: { A: 'kt_a2', holdA: 'kt_draw', B: 'kt_stance' } },
+    rollCancelAt: 0.34, moveSpeed: 0, turnSpeed: 0.3,
   },
   kt_gleit: { // Rolle -> A
     id: 'kt_gleit', anim: 'kt_gleit', duration: 0.55,
