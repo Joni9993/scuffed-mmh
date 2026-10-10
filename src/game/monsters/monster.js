@@ -451,7 +451,7 @@ export class Monster {
     if ((def.phase ?? 0) > this.phase) return false;
     return true;
   }
-  _clock() { return this.ctx.simTime ?? this.time; }
+  _clock() { return this.ctx.simTime ?? this.ctx.time ?? this.time; } // hunt.time = gemeinsame Uhr aller Brocken (Aggro-Budget)
   /** Anti-Rollen-Spam: Rollen des Ziels in den letzten 10 s ohne laufenden Angriff. */
   _rollCount() {
     const l = this._rollLog.get(this.target?.id);
