@@ -163,6 +163,9 @@ export function encodeTown(s, T) {
   const o = { T: Math.round(T * 1000), x: r2(s.x), y: r2(s.y), z: r2(s.z), r: r2(s.rot) };
   if (s.anim) o.a = s.anim;
   if (s.speed > 0.05) o.v = r1(s.speed);
+  if (s.emote) { o.e = s.emote; o.en = s.emoteN ?? 0; } // [T] emote id (1..6) + counter, repeated while the bubble is up
+  if (s.color !== undefined) o.c = s.color; // [T] colour index (save palette)
+  if (s.weapon) o.w = s.weapon; // [T] weapon type shown on the back
   return o;
 }
-export const decodeTown = (o) => ({ T: o.T / 1000, x: o.x, y: o.y, z: o.z, rot: o.r, anim: o.a ?? null, speed: o.v ?? 0 });
+export const decodeTown = (o) => ({ T: o.T / 1000, x: o.x, y: o.y, z: o.z, rot: o.r, anim: o.a ?? null, speed: o.v ?? 0, emote: o.e ?? 0, emoteN: o.en ?? 0, color: o.c ?? 0, weapon: o.w ?? 'gs' });

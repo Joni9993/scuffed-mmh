@@ -18,7 +18,7 @@ export function createKochtopf(ctx) {
     render() {
       const s = ctx.save;
       const cur = s.meal ? FOODS[s.meal] : null;
-      return `<div class="note">Brodel: „Eine Mahlzeit pro Jagd. Ich koche nicht für Nimmersatte.“</div>
+      return `<div class="note">Brösel: „Eine Mahlzeit pro Jagd. Ich koche nicht für Nimmersatte.“</div>
         <div class="card">${cur ? `Im Bauch für die nächste Jagd: <b>${esc(cur.name)}</b> <small>${esc(cur.desc)}</small>` : 'Noch nichts gekocht.'}</div>` +
         FOOD_ORDER.map((id) => {
           const f = FOODS[id], ok = !s.meal && !missing(s, f.cost).length;

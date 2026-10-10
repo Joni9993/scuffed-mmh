@@ -56,6 +56,7 @@ window.__SH = {
   get scene() { return app.sceneName; },
   get hunt() { return app.scene?.hunt ?? null; },
   get player() { return app.scene?.hunt?.player ?? null; },
+  get town() { return app.scene?.api ?? null; }, // [T] town debug API: teleport, toStation, open, stations, remotes, lastCalls
   get monsters() { return app.scene?.hunt?.monsters ?? []; },
   timeScale(x) { time.manual = x; },
   god(b = true) { const p = this.player; if (p) p.god = !!b; },
