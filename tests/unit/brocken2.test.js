@@ -5,7 +5,7 @@ import { getMonsterDef } from '../../src/game/monsters/index.js';
 import { AttackInstance } from '../../src/game/monsters/attack.js';
 import { encodeAtk, decodeAtk, encodeMonster, decodeMonster } from '../../src/net/protocol.js';
 
-const base = getMonsterDef('jaggo');
+const { chains: _c, phases: _p, teachAttack: _t, stamina: _s, flinchDmg: _f, ...base } = getMonsterDef('jaggo'); // Framework-Test: Jaggo ohne B2-Felder
 const atk = (id, o = {}) => ({ id, range: [0, 30], weight: 1, cooldown: 0, telegraph: 0.6, duration: 1.0, hits: [{ t0: 0.6, t1: 0.8, shape: 'sphere', at: [0, 1, 2], radius: 1, dmg: 1 }], ...o });
 function mk(over = {}, state = 'combat') {
   const def = { ...base, hp: 100000, attacks: { a: atk('a'), b: atk('b'), c: atk('c') }, ...over };
