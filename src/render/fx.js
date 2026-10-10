@@ -52,6 +52,17 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
   const rgbShift = document.getElementById('sh-rgb-r');
   const v = new THREE.Vector3();
 
+  // Glitch-Modus overlay (CSS only, no per-frame JS): frame noise + scanlines at the screen edge, tear on entry
+  let glEl = null, glTearT = 0;
+  const glOverlay = () => {
+    if (glEl || !layer) return glEl;
+    glEl = document.createElement('div');
+    glEl.id = 'glitchfx';
+    glEl.innerHTML = '<i class="gl-frame"></i><i class="gl-scan"></i><i class="gl-tear"></i><i class="gl-tear b"></i>';
+    layer.appendChild(glEl);
+    return glEl;
+  };
+
   const fx = {
     nofx,
     shakeOffset,
@@ -100,6 +111,23 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       canvas?.classList.add('glitch');
     },
 
+    /** Glitch-Modus an/aus: Randrahmen mit Pixelrauschen + Scanlines (CSS), ausserdem body.glitch-mode. */
+    glitchMode(on) {
+      if (nofx) return;
+      glOverlay()?.classList.toggle('on', !!on);
+      document.body.classList.toggle('glitch-mode', !!on);
+    },
+    /** Eintritts-Effekt: Bildriss (zwei versetzte Streifen) + RGB-Shift. */
+    glitchTear(dur = 0.45) {
+      if (nofx) return;
+      const e = glOverlay();
+      if (!e) return;
+      e.classList.remove('tear'); void e.offsetWidth; e.classList.add('tear');
+      glTearT = dur;
+      fx.glitch(Math.max(dur, 0.35));
+      fx.flash('rgba(90,216,255,.45)', 0.25);
+    },
+
     /** Ground ring/disc marker for telegraphs. key identifies the owner. */
     marker(key, p, radius, color = '#ff3030', disc = false) {
       let m = markers.get(key);
@@ -135,6 +163,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
         shakeOffset.set((Math.random() - 0.5) * k, (Math.random() - 0.5) * k, (Math.random() - 0.5) * k).multiplyScalar(0.9);
         trauma = Math.max(0, trauma - dt * 1.8);
       } else { shakeOffset.set(0, 0, 0); trauma = 0; }
+      if (glTearT > 0) { glTearT -= dt; if (glTearT <= 0) glEl?.classList.remove('tear'); }
       // glitch
       if (glitchT > 0) {
         glitchT -= dt;
@@ -164,6 +193,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       geo.dispose();
       for (const n of nums) n.el.remove();
       for (const m of markers.values()) scene.remove(m);
+      glEl?.remove(); glEl = null; document.body.classList.remove('glitch-mode');
       setSnapScale(1); setGlobalJitter(0);
       canvas?.classList.remove('glitch');
     },

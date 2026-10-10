@@ -28,4 +28,5 @@ export function pollGamepad(input) {
   input.set('lockNext', bt(11), 'pad'); // right stick click: next lock part
   input.set('item', bt(7), 'pad');
   input.set('menu', bt(9), 'pad');
+  input.set('glitch', bt(6) || bt(12), 'pad'); // LT oder D-Pad oben: Glitch-Modus
 }

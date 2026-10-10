@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MSG, encodeP, decodeP, encodeM, decodeM, encodeAtk, decodeAtk, encodeHit, decodeHit, applyHitOnce, Dedupe, ERR } from './protocol.js';
+import { MSG, encodeP, decodeP, encodeM, decodeM, encodeAtk, decodeAtk, encodeHit, decodeHit, applyHitOnce, Dedupe, ERR, encodeGlitch, decodeGlitch } from './protocol.js';
 import { SnapBuffer } from './interp.js';
 import { Player } from '../game/player.js';
 import { weapons } from '../game/weapons/index.js';
@@ -95,6 +95,9 @@ export class HuntNet {
     off.push(n.on(MSG.GATHER, (d, from) => this.#onGather(d, from)));
     off.push(n.on(MSG.FX, (d, from) => this.#onFx(d, from)));
     off.push(n.on(MSG.EV, (d, from) => this.#onEv(d, from)));
+    // Glitch-Modus des lokalen Pirschers -> alle (nur Optik; Schaden ist client-autoritativ)
+    off.push(hunt.bus.on('glitchStart', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeGlitch(true)); }));
+    off.push(hunt.bus.on('glitchEnd', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeGlitch(false)); }));
     // lokales Einsammeln (K) -> alle
     off.push(hunt.bus.on('gathered', (e) => {
       if (e?.remote) return;
@@ -153,6 +156,11 @@ export class HuntNet {
     switch (d.k) {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
       case 'gear': this.#onGear(from, d.g); break;
+      case 'glitch': {
+        const peer = this.peers.get(from), gl = decodeGlitch(d);
+        if (peer && gl) { peer.player.glitch.active = gl.on; peer.player.glitch.t = gl.on ? 9 : 0; }
+        break;
+      }
       case 'bye': if (from === this.net.hostId && this.isGuest) this.#hostGone(); else this.#removeRemote(from); break; // participant left the hunt (still in the room)
       case 'pb': {
         const m = this.#mon(d.m), part = m?.partById[d.p];

@@ -1,7 +1,7 @@
 const KEYS = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
 };
-const ACT = { Space: 'roll', KeyQ: 'lock', KeyF: 'lockNext', KeyV: 'lockPrev', KeyE: 'context', KeyR: 'item', Escape: 'menu', KeyP: 'menu' };
+const ACT = { Space: 'roll', KeyQ: 'lock', KeyF: 'lockNext', KeyV: 'lockPrev', KeyE: 'context', KeyR: 'item', Escape: 'menu', KeyP: 'menu', KeyG: 'glitch' };
 
 export function attachKeyboard(input, canvas) {
   const held = new Set();

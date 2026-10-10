@@ -13,6 +13,7 @@ const BUTTONS = [
   { act: 'special', key: 'special', label: 'B', cls: 'btn-b' },
   { act: 'lock', key: 'lock', label: '', cls: 'btn-lock' },
   { act: 'item', key: 'item', label: '', cls: 'btn-item' },
+  { act: 'glitch', key: 'glitch', label: 'GLITCH', cls: 'btn-glitch' },
   { act: 'context', key: 'ctx', label: '', cls: 'btn-ctx' },
   { act: 'bar', key: 'bar', label: '+', cls: 'btn-bar' },
 ];
@@ -42,10 +43,11 @@ export function attachTouch(input, root) {
   }
   const base = el.querySelector('.stick-base'), knob = el.querySelector('.stick-knob');
   const ctxBtn = el.querySelector('.btn-ctx'), itemBtn = el.querySelector('.btn-item'), lockBtn = el.querySelector('.btn-lock');
+  const glBtn = el.querySelector('.btn-glitch');
   const el$ = Object.fromEntries(BUTTONS.map((b) => [b.key, el.querySelector('.' + b.cls)]));
   el$.menu = el.querySelector('.tmenu');
   const ptrs = new Map();
-  let stickRadius = 44, active = true, layout = null, lastKey = '', lastCtx = null, lastItem = null;
+  let stickRadius = 44, active = true, layout = null, lastKey = '', lastCtx = null, lastItem = null, lastGl = null;
 
   const vmin = () => Math.min(window.innerWidth, window.innerHeight) / 100;
   const flag = () => { input.hasTouch = true; document.body.classList.add('touch'); };
@@ -65,7 +67,7 @@ export function attachTouch(input, root) {
     for (const [k, b] of Object.entries(layout.buttons)) {
       const node = el$[k];
       if (!node) continue;
-      node.style.display = b.visible && (k !== 'ctx' || input.contextLabel) ? '' : 'none';
+      node.style.display = b.visible && (k !== 'ctx' || input.contextLabel) && (k !== 'glitch' || input.glitchReady) ? '' : 'none';
       node.style.left = (b.cx - b.hit / 2).toFixed(1) + 'px';
       node.style.top = (b.cy - b.hit / 2).toFixed(1) + 'px';
       node.style.width = node.style.height = b.hit.toFixed(1) + 'px';
@@ -84,7 +86,7 @@ export function attachTouch(input, root) {
       else { rs.setProperty('--wheel-r', (w - (em.cx - em.hit / 2) + 8).toFixed(1) + 'px'); rs.setProperty('--wheel-l', 'auto'); }
     }
     document.body.classList.toggle('lefty', !!settings.leftHand);
-    lastCtx = lastItem = null; // re-fit labels
+    lastCtx = lastItem = lastGl = null; // re-fit labels
     lastKey = key();
   }
   const key = () => `${window.innerWidth}x${window.innerHeight}|${settings.btnSize}|${settings.leftHand}|${document.body.classList.contains('town')}`;
@@ -177,6 +179,8 @@ export function attachTouch(input, root) {
       if (key() !== lastKey) relayout();
       const c = input.contextLabel || null;
       ctxBtn.style.display = c ? '' : 'none';
+      const gr = !!input.glitchReady && !!layout.buttons.glitch?.visible;
+      if (gr !== lastGl) { lastGl = gr; glBtn.style.display = gr ? '' : 'none'; }
       if (c !== lastCtx) {
         lastCtx = c;
         const span = ctxBtn.querySelector('span');

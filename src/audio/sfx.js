@@ -8,6 +8,8 @@ import { settings } from '../core/settings.js';
 
 const VOICES = 16;
 let ctx = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null;
+let crushDry = null, crushWet = null; // Glitch-Modus: Bitcrush (WaveShaper-Treppe) parallel zum trockenen Pfad
+let crushOn = false;
 let voices = [];
 let dest = null; // where tone()/noise() currently connect (the voice's input)
 const lastPlay = {};
@@ -23,7 +25,15 @@ function ensure() {
   master.connect(comp).connect(ctx.destination);
   sfxBus = ctx.createGain();
   sfxBus.gain.value = settings.sfxVolume ?? 1;
-  sfxBus.connect(master);
+  // Bitcrush: sfxBus -> dry -> master  |  sfxBus -> staircase WaveShaper (~3 bit) -> highshelf cut -> wet -> master. Umschalten per Gain, kein Neuaufbau.
+  crushDry = ctx.createGain(); crushWet = ctx.createGain(); crushWet.gain.value = 0;
+  const shaper = ctx.createWaveShaper();
+  const N = 16, curve = new Float32Array(1024);
+  for (let i = 0; i < curve.length; i++) { const x = (i / (curve.length - 1)) * 2 - 1; curve[i] = Math.round(x * N) / N; }
+  shaper.curve = curve;
+  const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 5200;
+  sfxBus.connect(crushDry).connect(master);
+  sfxBus.connect(shaper).connect(lpf).connect(crushWet).connect(master);
   ambBus = ctx.createGain();
   ambBus.gain.value = settings.ambientVolume ?? 1;
   ambBus.connect(master);
@@ -112,6 +122,14 @@ const SOUNDS = {
   heavy: () => { noise({ dur: 0.2, vol: 0.5, f0: 1800, f1: 200 }); tone({ f0: 110, f1: 32, dur: 0.3, vol: 0.55 }); tone({ f0: 60, f1: 30, dur: 0.4, vol: 0.4, delay: 0.03 }); },
   swing: (o) => noise({ dur: o?.heavy ? 0.28 : 0.16, vol: 0.12, f0: 600, f1: o?.heavy ? 1800 : 3000, type: 'bandpass', q: 0.8 }),
   roll: () => noise({ dur: 0.28, vol: 0.14, f0: 500, f1: 2500, type: 'bandpass', q: 0.6 }),
+  glitchOn: () => { // lauter Eintritts-Sound: Riss + Absturz + Bass-Schlag
+    for (let i = 0; i < 14; i++) tone({ f0: 150 + Math.random() * 3000, dur: 0.025, type: i % 2 ? 'square' : 'sawtooth', vol: 0.2, delay: i * 0.018 });
+    noise({ dur: 0.5, vol: 0.4, f0: 9000, f1: 200, type: 'highpass' });
+    tone({ f0: 1400, f1: 70, dur: 0.5, type: 'sawtooth', vol: 0.22 });
+    tone({ f0: 70, f1: 32, dur: 0.6, vol: 0.55, delay: 0.1 });
+    tone({ f0: 440, f1: 880, dur: 0.15, type: 'square', vol: 0.12, delay: 0.25 });
+  },
+  glitchOff: () => { noise({ dur: 0.3, vol: 0.2, f0: 4000, f1: 150, type: 'highpass' }); tone({ f0: 600, f1: 60, dur: 0.35, type: 'sawtooth', vol: 0.14 }); },
   glitch: () => {
     for (let i = 0; i < 9; i++) tone({ f0: 200 + Math.random() * 2200, dur: 0.03, type: i % 2 ? 'square' : 'sawtooth', vol: 0.12, delay: i * 0.035 });
     noise({ dur: 0.38, vol: 0.22, f0: 7000, f1: 300, type: 'highpass' });
@@ -190,8 +208,8 @@ const SOUNDS = {
   },
 };
 
-const DUR = { tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
-const PRIO = { windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
+const DUR = { tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
+const PRIO = { windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
 const MIN_GAP = { windup: 0.05, step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
 
 // ------------------------------------------------------------------ ambient (per zone)
@@ -250,6 +268,15 @@ export const sfx = {
   },
   /** true when the AudioContext exists and is not running (suspended / interrupted) */
   get blocked() { return !!ctx && ctx.state !== 'running'; },
+  /** Glitch-Modus: Bitcrush-Filter auf alle SFX (Ambient bleibt sauber). */
+  setCrush(on) {
+    crushOn = !!on;
+    if (!ctx || !crushDry) return;
+    const t = ctx.currentTime;
+    crushDry.gain.setTargetAtTime(on ? 0.15 : 1, t, 0.02);
+    crushWet.gain.setTargetAtTime(on ? 0.95 : 0, t, 0.02);
+  },
+  get crushing() { return crushOn; },
   /** master volume 0..1 */
   setVolume(v) { settings.volume = v; if (master) master.gain.value = v; },
   setSfxVolume(v) { settings.sfxVolume = v; if (sfxBus) sfxBus.gain.value = v; },
@@ -292,6 +319,9 @@ export const sfx = {
   attach(hunt) {
     const b = hunt.bus, offs = [];
     offs.push(b.on('sfx', (e) => this.playAt(e, hunt.player?.pos, hunt.cameraYaw ?? 0)));
+    offs.push(b.on('glitchStart', (e) => { if (e?.player?.local !== false) { this.setCrush(true); this.play('glitchOn', { vol: 1 }); } }));
+    offs.push(b.on('glitchEnd', (e) => { if (e?.player?.local !== false) { this.setCrush(false); this.play('glitchOff', { vol: 0.8 }); } }));
+    offs.push(() => this.setCrush(false));
     offs.push(b.on('questComplete', () => this.play('questComplete', { vol: 1 })));
     offs.push(b.on('questFailed', () => this.play('questFail', { vol: 1 })));
     offs.push(b.on('itemUsed', () => this.play('itemUse', { vol: 0.8 })));

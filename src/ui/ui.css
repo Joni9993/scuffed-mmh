@@ -131,6 +131,12 @@ body.touch #touch { display: block; }
 /* context button: own reserved slot, pulsing, bright */
 .btn-ctx .tv { background: rgba(214,170,28,.9); border-color: #fff6c0; color: #1a1200; text-shadow: none; box-shadow: 0 0 0 2px #000, 0 0 12px 3px rgba(255,216,74,.65); opacity: 1; font-weight: bold; animation: pulse .9s steps(2) infinite; }
 .btn-ctx.down .tv { background: #fff2a0; }
+/* Glitch button: only shown at 100 energy, pulsing cyan/magenta */
+.btn-glitch .tv { background: rgba(10,10,30,.9); border-color: #5ad8ff; color: #fff; opacity: 1; font-weight: bold; text-shadow: 2px 0 #ff2bd6, -2px 0 #00e5ff;
+  box-shadow: 0 0 0 2px #000, 0 0 12px 3px rgba(90,216,255,.8); animation: glpulse .5s steps(2) infinite; }
+.btn-glitch .tv span { font-size: .5em; max-width: 96%; letter-spacing: -.5px; }
+.btn-glitch.down .tv { background: #5ad8ff; color: #000; text-shadow: none; }
+@keyframes glpulse { 50% { box-shadow: 0 0 0 2px #000, 0 0 18px 7px rgba(255,43,214,.9); border-color: #ff2bd6; } }
 .btn-bar { display: none; } body.has-bar .btn-bar { display: block; }
 .btn-bar .tv, .tmenu .tv { font-size: 14px; border-radius: 4px; }
 body.strip-open .btn-bar .tv { border-color: #ffd84a; background: rgba(90,58,192,.8); }
@@ -162,3 +168,28 @@ body.strip-open .btn-bar .tv { border-color: #ffd84a; background: rgba(90,58,192
   text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; will-change: transform; line-height: 1.2; }
 .wlabel.sm { font-size: max(9px, 1.9vmin); padding: .15em .4em; }
 .wlabel.bub { font-size: max(11px, 2.6vmin); border: 1px solid rgba(244, 240, 208, .6); }
+
+/* ---------------------------------------------------------------- Glitch-Modus (GDD 16.2) */
+.dmg.gbig { color: #5ad8ff; font-size: max(14px, 5.2vmin); text-shadow: 2px 0 #ff2bd6, -2px 0 #00ffe5, 0 2px 0 #000; z-index: 2; }
+#glitchfx { position: absolute; inset: 0; pointer-events: none; display: none; }
+#glitchfx.on { display: block; }
+#glitchfx i { position: absolute; display: block; }
+#glitchfx .gl-frame { inset: 0; box-shadow: inset 0 0 0 .8vmin rgba(90,216,255,.8), inset 0 0 7vmin 1vmin rgba(255,43,214,.55), inset .5vmin 0 0 .4vmin rgba(0,255,229,.5);
+  animation: glframe .18s steps(2) infinite; }
+#glitchfx .gl-scan { inset: 0; background: repeating-linear-gradient(rgba(0,255,229,.07) 0 2px, rgba(255,43,214,.06) 2px 4px); mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 45%, #000 100%); mask-image: radial-gradient(ellipse at center, transparent 45%, #000 100%); animation: glscan .6s steps(6) infinite; }
+#glitchfx .gl-tear { left: 0; right: 0; top: 38%; height: 9%; background: rgba(90,216,255,.0); opacity: 0; }
+#glitchfx .gl-tear.b { top: 61%; height: 5%; }
+#glitchfx.tear .gl-tear { opacity: 1; backdrop-filter: invert(.35) hue-rotate(90deg); background: linear-gradient(90deg, rgba(255,43,214,.55), rgba(0,255,229,.55)); animation: gltear .45s steps(5) forwards; }
+@keyframes glframe { 50% { box-shadow: inset 0 0 0 .8vmin rgba(255,43,214,.8), inset 0 0 6vmin .6vmin rgba(90,216,255,.6), inset -.5vmin 0 0 .4vmin rgba(255,43,214,.5); } }
+@keyframes glscan { to { background-position: 0 24px; } }
+@keyframes gltear { 0% { transform: translateX(-9%) scaleY(1.6); } 40% { transform: translateX(11%); } 70% { transform: translateX(-5%) scaleY(.6); } 100% { transform: translateX(0); opacity: 0; } }
+/* HUD: Glitch-Leiste + Modus-Balken */
+.bar.gl { height: .9vmin; width: 70%; }
+.bar.gl .fill { background: #8a5cff; }
+.bar.gl.full .fill { background: #5ad8ff; animation: blink .4s steps(1) infinite; }
+.hud-glitch { display: none; position: relative; width: 70%; height: 2.6vmin; margin-top: .4vmin; border: 1px solid #000; outline: 1px solid #5ad8ff; background: rgba(10,10,30,.8); overflow: hidden; }
+.hud-glitch.on { display: block; animation: glframe .2s steps(2) infinite; }
+.hud-glitch .fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff2bd6, #5ad8ff); }
+.hud-glitch span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 1vmin; font-size: max(7px, 1.7vmin); color: #fff; text-shadow: 1px 0 #ff2bd6, -1px 0 #00ffe5, 0 1px 0 #000; }
+body.glitch-mode .hud-name { text-shadow: 2px 0 #ff2bd6, -2px 0 #00ffe5; }

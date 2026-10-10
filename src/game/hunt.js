@@ -25,6 +25,7 @@ import { makeGear } from '../data/gearlook.js'; // [G]
 import { spawnFauna } from './fauna.js'; // [L]
 import { createAmbientFauna } from './ambientFauna.js'; // [L]
 import { openStation, closeStation } from '../ui/stations.js';
+import { attachGlitch, GLITCH } from './glitch.js';
 
 const MAX_KO = 3;
 
@@ -52,7 +53,7 @@ export class Hunt {
     this.net = null; // [N] HuntNet in coop (hunt.net: isHost, send, on, peers), null in solo
     this.players = [];
     this.monsters = [];
-    this.stats = { damage: 0, hits: 0, perfect: 0, kos: 0 };
+    this.stats = { damage: 0, hits: 0, perfect: 0, kos: 0, glitchDmg: 0 }; // glitchDmg: Schaden im Glitch-Modus (lokal)
     this._n = 0;
     this._lastRender = performance.now();
 
@@ -110,6 +111,18 @@ export class Hunt {
     });
     this.bus.on('partBreak', ({ monster, part }) => this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5));
     this.bus.on('glitchCounter', () => this.hud.center('Glitch-Konter!', 1));
+    this.glitchSys = attachGlitch(this); // Glitch-Energie / -Modus (GDD 16.2)
+    this.bus.on('glitchReady', (e) => { if (e?.player?.local) this.hud.center('GLITCH BEREIT!', 1.6); });
+    this.bus.on('glitchStart', (e) => {
+      const lp = e?.player;
+      this.fx.glitchMode(true);
+      if (lp?.local) { // Eintritt: 0,2 s Frame-Freeze (Hitstop) + Bildriss; Freeze ist rein lokal
+        lp.hitstop = Math.max(lp.hitstop, GLITCH.FREEZE);
+        this.fx.glitchTear(); this.fx.shake(0.4, 0.3);
+        this.hud.center('GLITCH-MODUS!', 1.4);
+      }
+    });
+    this.bus.on('glitchEnd', () => { if (!this.players.some((q) => q.local && q.glitch?.active)) this.fx.glitchMode(false); });
     // forward to app bus for other modules (net, meta)
     this.bus.on('*', (payload, type) => app.bus?.emit(type, payload));
     this.#applyUiSettings();
@@ -197,14 +210,16 @@ export class Hunt {
     const st = player.stats;
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
-    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (player.def.dmgMul?.(player.weapon) ?? 1) }; // [KT] Schliff
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) }; // x1,3 im Glitch-Modus // [KT] Schliff
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     res.attackerId = player.id;
+    this.glitchSys.hitting = player; // damit 'partBreak' (feuert synchron in applyDamage) dem Schlag zugeordnet wird
     applyMonsterHit(monster, res, this);
+    this.glitchSys.hitting = null;
     const at = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z };
     this.fx.spark(at, res.weak ? 14 : 9, res.weak ? '#ffe14d' : '#ffffff', 5);
-    this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
+    this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, player.glitching ? 'gbig' : res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
     if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, ah.hit.sauberText ?? 'Sauber!', 'weak'); } // [KT]
     this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at, kind: res.weak ? 'weak' : res.crit ? 'crit' : undefined }); // [K] kind
@@ -371,6 +386,7 @@ export class Hunt {
     this.app.input.contextLabel = this.contextLabel ?? null;
     this.app.input.itemLabel = this.itemLabel ?? '';
     this.app.input.lockOn = !!p.lock;
+    this.app.input.glitchReady = !!p.glitch && !p.glitch.active && p.glitch.energy >= 100 && p.alive;
   }
 
   render() {
@@ -405,7 +421,8 @@ export class Hunt {
     this.net?.dispose(); // [N]
     this.app.touch?.setVisible(false);
     this.input.reset();
-    this.input.contextLabel = null; this.input.lockOn = false;
+    this.input.contextLabel = null; this.input.lockOn = false; this.input.glitchReady = false;
+    this.glitchSys?.detach();
     time.reset();
     this._detachCues?.();
     this.bus.clear();
