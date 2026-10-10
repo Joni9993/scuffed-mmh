@@ -91,4 +91,49 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 ---
 
 ## 6. Kritiker-Urteil & Synthese
-_(folgt unten)_
+
+**Kritik an den Monster-Ideen:** Diagnose stimmt und ist der eigentliche Wert. Ketten (1), Teilbruch-Reaktion (9), Ausdauer (7), Koop-Zielwechsel (11) = billig und sofort wirksam. **Überengineered:** adaptive Gewichte + Stimmungen + Persönlichkeit + Finten sind vier überlappende, unsichtbare „Zufall-mit-Gedächtnis"-Systeme – schwer testbar, Spieler merken sie nicht. Mastery/Ökologie/Weltevents = Content-Tretmühle (daran sind Dauntless/Wild Hearts gestorben). Gelände (8) und Multi-Jagden sind eher L als S–M.
+**Lesbarkeit auf 6 Zoll:** Pose-Deltas für Varianten sind bei PS1-Low-Res + Daumen im Bild kaum erkennbar → Varianten über **Windup-Dauer, Farbe, Ton** statt Feinposen. Delay/Finte nur mit klarem Halte-Cue (Touch hat ~100 ms Latenz). Koop: globales „Aggro-Token"-Budget statt nur 0,6 s pro Spieler.
+**Netz:** KI bleibt strikt host-autoritativ; Gäste sehen Halte-Cues sonst verkürzt → Pose früh senden.
+
+**Die 5 Dinge für 80 % von „unberechenbar, aber fair":** 1) Ketten 2–3 Glieder mit Telegraph je Glied + lange End-Erholung · 2) Teilbruch ändert Moveset · 3) Erschöpfungsfenster · 4) Phasenwechsel mit sichtbarem Cue + 1 Sondermove pro Phase (ersetzt Stimmungen) · 5) Variation über Timing/Windup-Länge (Seed pro Jagd) + Koop-Zielwechsel. Adaptiv nur EINE Regel: Anti-Rollen-Spam.
+**Was fehlt laut Kritiker:** Wundsystem (gleiche Stelle mehrfach treffen → Wunde nimmt mehr Schaden), **„Lehrangriff"** in den ersten ~30 s jeder Jagd (langsam, klar) statt Tutorial-Text, eigener Windup-**Ton pro Angriff** + Farbredundanz + Haptik, **Kamera-Auto-Framing**/Zoom-out bei Ketten, lokales **Tod-Log** (welcher Angriff tötet wie oft → Unfairness finden, exportierbar).
+
+**Kritik an der USP-Recherche:** Einzig wirklich einzigartig: **Glitch als Kernmechanik** (A+B) – verbindet den Scuff-Look mit Regeln. Aber „verbotene Moves" (Zeitstopp, Duplikat, Wand-Phasing) = Scope-Bomben im P2P → auf EINEN reduzieren. **Hunt-Link ist ein Feature, kein Burggraben** (kopierbar), aber der wichtigste Wachstumshebel (jede Session = Einladungslink). Chaos-Koop (E) nur als Mutator. Lokale Legende (F) billig & stark, wenn Monster-Code = Seed + Mutatoren + Namen der Besieger. Mutatoren (D) = billigstes Wiederspielwert-Werkzeug, wenn Zahlen/Flags. Extraktion nur als Run-Layer. Streichen: G, H, J.
+
+**Vision (Vorschlag Kritiker):**
+> *Scuffed Hunter ist der 5-Minuten-Monsterjäger für dich und deine Freunde, der per Link startet: Die Monster sind kaputte Daten – wer ihre Fehler im richtigen Moment ausnutzt, wird zur Legende.*
+
+**Säulen:** 1) **Lesbar-gefährlich** (Telegraph + Ton + Erholung; jeder Tod erklärbar) · 2) **Fehler sind Waffen** (Glitch-Konter + sichtbare Glitch-Stellen als Schwachpunkte) · 3) **Jede Jagd ist anders** (Seed + Mutatoren + Persönlichkeit; Vielfalt aus Regeln statt Content) · 4) **Link und los** (10 s bis zur Jagd, 3–6 min, teilbare Monster-Codes, kein Account/Server/Tageslimit).
+**Verzahnung:** Jede Kette endet in einem Konterfenster; Erschöpfung = „Absturz"; Glitch-Stellen = brechbare Teile (ein Mechanismus, zwei Funktionen); Persönlichkeits-Seed = teilbarer Monster-Code; Quest-Modifier und Mutatoren = EIN System („Gravitation.dll fehlt").
+
+**Roadmap (Kritiker):**
+- **Phase 1 – Fundament:** Ketten für alle 3 Brocken · Flinch/Abbruch der Kette bei Konter · Erschöpfung · Teilbruch ändert 1 Move/Brocken · Windup-Töne + Farbcues · Kamera-Framing · Hunt-Link · Lehrangriff · lokales Tod-Log. *Metrik:* Tester erklären nach 3 Jagden ihre Tode; „unfaire" Tode im Log < 10 %; Jagd 3–6 min.
+- **Phase 2 – USP:** Glitch-Energie aus Perfekt-Ausweichen/Konter + **eine** Sonderfähigkeit (Vorschlag: lokales Zeitfenster) · sichtbare Glitch-Stellen · 6–8 Mutatoren · Persönlichkeits-Seed + teilbarer Monster-Code · Koop-Zielwechsel · lustige End-Auszeichnungen · Anti-Rollen-Spam. *Metrik:* ≥ 40 % lösen in Jagd 2 eine Glitch-Fähigkeit aus; jede 3. Session wird geteilt.
+- **Phase 3 – Breite:** Kroll/Gorgo/Voltaro direkt mit Phase-1/2-Mechaniken · wöchentlicher Seed („Feldstudie", Datum = Seed) · erste Multi-Jagd nur „Revierstreit" · Rotglut+ als Mutator-Preset.
+**Kill-Liste:** Stimmungssystem & Finten als eigene Systeme · Ökologie/Weltevents/Hunger-Revier · 5-stufige Mastery & Journal (höchstens Statistik) · Gelände für alle (max. 1 Objekt für Barrotz) · Chaos-Koop als Standard · Begleiter, Deckbau, Rhythmus · mehrere verbotene Fähigkeiten · Extraktion als Kern · Uralt-Varianten mit eigenem Moveset · Multi-Jagd mit Element-Interaktion vor „Revierstreit".
+
+### Anmerkungen des Lead-Agents (Fakten-Check gegen den Code)
+- **Schon vorhanden** (Kritiker nahm teils an, es fehlt): Hitstop (40/70/120 ms) + Screenshake, Teilbruch-Taumeln 2 s + Rückstoß, Betäubung durch stumpfe Kopftreffer, Glitch-Konter mit Zeitlupe/+50 %, Katana-Konter, Statistik im Spiegel (Kills, Bestzeiten). Was wirklich fehlt: **Flinch bei normalen Treffern / Kette bricht durch Spieler ab**, Wunden, Windup-Töne pro Angriff, Kamera-Zoom bei Ketten, Tod-Log.
+- **Hunt-Link ist fast da:** Räume haben 4-Buchstaben-Codes, die URL `?scene=hub&mode=join&code=ABCD` existiert bereits (Debug). Fehlt nur: „Link teilen"-Button (Web Share API / Kopieren) + saubere Einstiegs-URL. Aufwand S.
+- **Persönlichkeits-Seed/Monster-Code passt technisch perfekt:** Angriffe sind bereits seed-deterministisch; ein Code = `{monster, seed, mutatoren, narben}` als Base64, wie der Speicher-Export.
+- Mutatoren lassen sich an `quests.js`-Varianten (`hpMul`, `rage:'always'`) anschließen.
+- Meine Empfehlung: **Kritiker-Roadmap übernehmen**, Phase 1 an den 3 bestehenden Brocken, Rostwerke (Issue #4) erst in Phase 3 – dann direkt mit Ketten/Glitch-Stellen bauen.
+
+---
+
+## 7. Offene Entscheidungen für den Owner (mit Empfehlung)
+1. **Bessere Brocken vor neuen Brocken?** → Ja: Phase 1 an Jaggo/Barrotz/Brathalos, Rostwerke danach.
+2. **Vision/USP „Kaputte Daten / Fehler sind Waffen" annehmen?** → Empfehlung ja (einziger echter Alleinstellungsfaktor, passt zum Look & zum Namen). Alternativen: reine Link-Koop-Kurzjagd (Feature, kein USP) oder Chaos-Koop (kollidiert mit Skill-Kampf).
+3. **Wie stark dominiert Glitch-Konter den Schaden?** → ca. 40–50 %, nicht 100 % (Einsteiger nicht ausschließen).
+4. **Welche EINE „verbotene" Fähigkeit?** → lokales Zeitfenster (Zeitlupe existiert, netz-freundlich). Duplizieren/Wand-Phasing streichen.
+5. **KI strikt host-autoritativ?** → Ja, ohne Ausnahme.
+6. **Progression:** bestehende Ausrüstungsspirale behalten + Mutatoren/Monster-Narben/Codes als neue Motivation? → Ja, lokal + Export-Code, keine Accounts.
+7. **Solo-Pfad:** HP-Skalierung statt KI-Begleiter → ja.
+8. **Multi-Brocken-Jagden:** frühestens nach Phase 2, zuerst nur „Revierstreit".
+9. **Kurze Jagden (3–6 min) als Ziel?** Aktuell ~5–6 min solo; mit Mutatoren/Seeds evtl. kürzere „Feldstudien" zusätzlich anbieten.
+
+## 8. So geht's weiter (für den nächsten Agent)
+1. `docs/HANDOFF.md` lesen, dann dieses Dokument mit dem Owner durchgehen (Abschnitt 7 abfragen, Kennzahlen/Vergleiche anbieten – Owner entscheidet intuitiv, will Daten dazu).
+2. Entscheidungen in `docs/GDD.md` übernehmen (neuer Abschnitt „Brocken 2.0" + „Vision/Säulen"), GitHub-Issue(s) pro Phase anlegen.
+3. Bauen wie bisher: Lead plant + verifiziert, Sonnet-Sub-Agents im Caveman-Modus in Worktrees mit Datei-Zuständigkeit; jede neue Brocken-Mechanik mit Fairness-Test (`tests/unit/p3fairness.test.js` erweitern) und Determinismus-Test (Netz).
