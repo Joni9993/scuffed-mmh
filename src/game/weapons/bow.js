@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
 import { buildBowLook, BOW_H } from '../gear/weaponLook.js'; // [G]
 import { angleDiff, stepAngle, yawOf } from '../../core/math.js';
+import { createDebugWorld } from './glitchfx2.js';
 
 // Spannbogen (GDD 4.3): Spannen (A halten) in 3 Stufen, Rhythmus-Schnellschuss (A tippen), Ausweichspannen,
 // Sweet Spot 8-16 m, Spitzen (Brenn/Gift/Bumm), Bogenhieb (B), Finisher Pfeilregen (B bei Wucht 100).
@@ -104,16 +105,25 @@ function takeTip(p) {
   return tip;
 }
 
+export const DEBUG_CRIT = 1.5;
+/** Debug-Modus: Trefferzone auf die staerkste Zone des Brocken anheben (zaehlt dann als Schwachstelle, combat.WEAK_THRESHOLD). */
+function weakHp(m, hp) {
+  let f = Math.max(hp.part.factor, 1);
+  for (const pt of m.parts ?? []) if (!pt.gone && pt.factor > f) f = pt.factor;
+  return { ...hp, part: { ...hp.part, factor: f } };
+}
+
 /** Resolve one arrow hit through the regular player hit path. */
 export function arrowHit(p, info, spec, dist) {
   const ctx = p.ctx;
   const tip = spec.tip ? TIPS[spec.tip] : null;
   const m = info.monster;
-  const mv = spec.mv * (spec.dmgMul ?? 1) * (spec.fixedMv ? 1 : sweetMul(dist));
+  const dbg = !!p.glitching; // Debug-Modus (GDD 16.2): Schwachstelle + kritisch (x1,5) + Sweet Spot immer
+  const mv = spec.mv * (spec.dmgMul ?? 1) * (spec.fixedMv || dbg ? 1 : sweetMul(dist)) * (dbg ? DEBUG_CRIT : 1);
   const hit = { mv, wucht: spec.wucht, hitstop: 'none', shake: 0, blunt: 0 };
   if (tip?.stun && typeof m.applyStatus !== 'function') hit.blunt = tip.stun; // fallback: stun via blunt buildup
   const ah = { hit, group: 'arrow', instance: 0, sauber: false, glitch: false, elems: tip?.elems };
-  ctx.playerHit(p, m, info.hp, ah);
+  ctx.playerHit(p, m, dbg ? weakHp(m, info.hp) : info.hp, ah);
   if (tip?.poison) m.applyStatus?.('poison', { buildup: tip.poison });
   if (tip?.stun && typeof m.applyStatus === 'function') m.applyStatus('stun', { buildup: tip.stun });
   if (tip?.boom) explode(ctx, info.pos);
@@ -295,8 +305,21 @@ function setString(b, pull) {
   a.needsUpdate = true;
 }
 
+/** Waffen-Glitch Debug-Modus (Hook-API glitch.js): Optik = Drahtgitter-Welt + Trefferzonen; Wirkung in arrowHit. */
+const glitch = {
+  name: 'Debug-Modus',
+  onStart(p) {
+    if (!p.ctx?.scene) return;
+    p._dbgWorld ??= createDebugWorld(p.ctx);
+    p._dbgWorld.start();
+  },
+  onEnd(p) { p._dbgWorld?.stop(); },
+  tick(p) { p._dbgWorld?.update(p, performance.now() / 1000); },
+};
+
 export const bow = {
   id: 'bow',
+  glitch,
   name: 'Spannbogen',
   hand: 'L', // [G] held in the left hand (poses are mirrored, see anim.mirrorPose); the right hand draws
   // A: Tipp = Schnellschuss, Halten = Spannen. B: Tipp = Bogenhieb (Finisher bei Wucht 100)
