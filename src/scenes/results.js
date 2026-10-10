@@ -25,7 +25,7 @@ export const resultsScene = {
     const { quest, rewards, result = 'fail' } = opts;
     let sum = null, jrBefore = 1;
     if (quest && rewards) {
-      sum = saveStore.update((s) => { jrBefore = s.jr; return applyHuntResult(s, quest, rewards); });
+      sum = saveStore.update((s) => { jrBefore = s.jr; return applyHuntResult(s, quest, rewards, { time: opts.time, kos: opts.stats?.kos, glitch: opts.stats?.perfect, carves: opts.carves }); });
     }
     const win = result === 'win';
     const p = rewards?.parts ?? {};

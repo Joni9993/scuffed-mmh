@@ -43,7 +43,7 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
  * Apply rewards + progression to the save. Idempotence is the caller's job (call once per hunt).
  * -> { schrott, added, sold, overflowSchrott, jrUp: newJr|null, firstClear }
  */
-export function applyHuntResult(save, quest, rewards) {
+export function applyHuntResult(save, quest, rewards, info = {}) {
   for (const [id, n] of Object.entries(rewards.used ?? {})) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
   const r = boxAddAll(save, rewards.items ?? {});
   addSchrott(save, rewards.schrott ?? 0);
@@ -53,8 +53,16 @@ export function applyHuntResult(save, quest, rewards) {
     save.stats.wins++;
     firstClear = !save.clears[quest.id];
     save.clears[quest.id] = (save.clears[quest.id] ?? 0) + 1;
+    if (quest.monster) save.kills[quest.monster] = (save.kills[quest.monster] ?? 0) + 1;
+    const t = Math.floor(Number(info.time));
+    if (t > 0 && (!save.best[quest.id] || t < save.best[quest.id])) save.best[quest.id] = t;
     if (quest.jrUp && save.jr < quest.jrUp) { save.jr = Math.min(MAX_JR, quest.jrUp); jrUp = save.jr; }
   } else save.stats.fails++;
+  const st = save.stats;
+  st.playtime += Math.max(0, Math.min(86400, Math.floor(Number(info.time) || 0)));
+  st.kos += Math.max(0, Math.floor(Number(info.kos) || 0));
+  st.carves += Math.max(0, Math.floor(Number(info.carves) || 0));
+  st.glitch += Math.max(0, Math.floor(Number(info.glitch) || 0));
   save.meal = null; // one meal per hunt
   return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear };
 }
