@@ -261,3 +261,12 @@ Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert,
 - Netz: Neutrale gehen mit 5 Hz, nur <= 75 m um einen Pirscher, ohne Teile, Gast-Puffer 0,3 s. Bullenstoss laeuft als normales `atk`.
 - Zerlegen: `huntmeta` `#addFaunaCorpse` (1 Zerlegen pro Leiche/Pirscher, `rollCarveAll`), zaehlt nicht fuer das End-Zerlegefenster.
 - Tools: `tools/fauna-e2e.mjs` (2-Peer-Divergenz).
+
+## Glitch-Kern: Hook-API (src/game/glitch.js, GDD 16.2)
+
+- `player.glitch = { energy, active, t }` (0-100, Modus 8 s, `t` = Restzeit); Getter `p.glitching` (bool), `p.glitchDmgMul` (1 | 1,3, in `hunt.playerHit` in `dmgMul` eingerechnet).
+- Energie: Glitch-Konter +35 (Bus `glitchCounter`), Katana-Konterhaltung +25 (Bus `counter`), Teilbruch durch eigenen Treffer +15 (`partBreak` + `hunt.glitchSys.hitting`/Treffer <= 1 s zuvor), eigener Treffer +1 (`hit`). Multiplikator `hunt.mods?.player?.glitchGainMul ?? 1`. Kein Abbau, im Modus kein Sammeln.
+- Start per Button `glitch` (Taste G, Gamepad LT/D-Pad oben, Touch-Button nur bei 100 sichtbar). API: `addGlitchEnergy(p, n, src)`, `activateGlitch(p)`, `endGlitch(p)`, `tickGlitch(p, dt)`.
+- **Waffen-Glitch** = optionales Feld `glitch` am Waffen-Def (`p.def.glitch`): `{ name, onStart(p), onEnd(p), tick(p, dt), onHit(p, res, monster) }`. `onHit` nur fuer eigene Treffer im Modus (`res` = `hit`-Event: dmg, crit, weak, partId, ...).
+- Bus: `glitchStart` / `glitchEnd` / `glitchReady` mit `{ player }`. Stats: `hunt.stats.glitchDmg` (lokal) neben `hunt.stats.damage`.
+- Optik: `fx.glitchMode(on)`, `fx.glitchTear()`, Zahlen-Kind `gbig`, `sfx.setCrush(on)` (Bitcrush auf SFX), `glitchVisual(p, t)` (Emissive-Flackern am Mesh, keine neuen Materialien). Netz: `MSG.EV {k:'glitch', on}` (`encodeGlitch/decodeGlitch`), setzt `peer.player.glitch.active`.

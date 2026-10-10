@@ -14,6 +14,8 @@ export function createHud(root) {
       <div class="bar hp"><i class="bruise"></i><i class="fill"></i></div>
       <div class="bar st"><i class="fill"></i></div>
       <div class="bar wu"><i class="fill"></i></div>
+      <div class="bar gl"><i class="fill"></i></div><!-- Glitch-Energie -->
+      <div class="hud-glitch"><i class="fill"></i><span><b>GLITCH</b><b class="gt"></b></span></div>
       <div class="wstat"></div>
       <div class="hud-status"></div><!-- [M] -->
     </div>
@@ -30,7 +32,7 @@ export function createHud(root) {
   root.appendChild(el);
   const q = (s) => el.querySelector(s);
   const refs = {
-    name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'),
+    name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
     wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
@@ -65,6 +67,15 @@ export function createHud(root) {
       const wu = Math.round(p.weapon.wucht);
       set('wu', wu, (x) => (refs.wuFill.style.width = x + '%'));
       set('wufull', wu >= 100, (x) => refs.wu.classList.toggle('full', x));
+      const gs = p.glitch;
+      if (gs) { // Glitch-Energie (Leiste) + Modus-Balken mit Restzeit
+        const ge = Math.round(gs.energy);
+        set('gl', ge, (x) => { refs.glFill.style.width = x + '%'; refs.gl.classList.toggle('full', x >= 100 && !gs.active); });
+        set('glon', gs.active, (x) => { refs.glMode.classList.toggle('on', x); refs.gl.style.display = x ? 'none' : ''; });
+        if (gs.active) {
+          set('glt', Math.ceil(gs.t * 10), (x) => { refs.glTime.textContent = (x / 10).toFixed(1) + 's'; refs.glModeFill.style.width = Math.max(0, (gs.t / 8) * 100).toFixed(0) + '%'; });
+        }
+      }
       const stat = p.def.status?.(p.weapon);
       const sk = stat ? `${stat.text}|${stat.level}|${stat.max}|${stat.sauber}` : '';
       set('stat', sk, () => {

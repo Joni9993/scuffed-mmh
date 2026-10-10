@@ -10,6 +10,7 @@ import {
   rollPhase, rollSpeed, ROLL, VIT, HIT_REACTION,
 } from './vitals.js';
 import { protectReduction } from './combat.js';
+import { initGlitch, tickGlitch, activateGlitch, glitchVisual, glitchDmgMul } from './glitch.js';
 import { REST, sampleTrack, mirrorPose } from './anim.js';
 import { buildHunterRig } from './rig.js';
 import { stepLock } from '../input/lock.js';
@@ -47,6 +48,7 @@ export class Player {
     this.invuln = 0;
     this.glitchT = 0;
     this.glitchCd = 0;
+    initGlitch(this); // Glitch-Modus: this.glitch = {energy, active, t}
     this.perfectKeys = new Set();
     this.rollT = 0;
     this.rollDir = { x: 0, z: 1 };
@@ -78,6 +80,10 @@ export class Player {
   get maxHp() { return this.v.maxHp; }
   get stamina() { return this.v.stamina; }
   get alive() { return this.state !== 'ko'; }
+  /** Glitch-Modus aktiv? (Waffen-Glitches / HUD) */
+  get glitching() { return !!this.glitch?.active; }
+  /** Grundbonus im Glitch-Modus (x1,3), von hunt.playerHit in dmgMul eingerechnet */
+  get glitchDmgMul() { return glitchDmgMul(this); }
   get iframeExtend() { return Math.min(2, this.flinkfuss) * ROLL.flinkfussPerLevel; }
 
   setWeapon(id, tier = 1, branch = null) {
@@ -415,6 +421,7 @@ export class Player {
     this.invuln = Math.max(0, this.invuln - dt);
     this.glitchT = Math.max(0, this.glitchT - dt);
     this.glitchCd = Math.max(0, this.glitchCd - dt);
+    if (this.local) { if (input.b.glitch?.pressed && this.alive) activateGlitch(this); tickGlitch(this, dt); }
     this.sinceRoll += dt;
     this.rollBuf = Math.max(0, this.rollBuf - dt);
     this.flash = Math.max(0, this.flash - dt);
@@ -601,6 +608,7 @@ export class Player {
     this.time += dt;
     this.lastState = this.state;
     if (this.state !== r.state) { this.state = r.state; this.stateT = 0; } else this.stateT += dt;
+    if (this.glitch.active && (this.glitch.t -= dt) <= 0) { this.glitch.active = false; this.glitch.t = 0; } // [N] Sicherheitsnetz, falls das Ende-Event fehlt
     this.rollT = r.rollT;
     this.sprinting = r.sprint;
     this.speed = r.speed;
@@ -670,6 +678,7 @@ export class Player {
       glow.emissive.setRGB(e[0] + this.flash * 2, e[1] + this.flash * 2, e[2] + this.flash * 2);
     }
     this.mesh.visible = true;
+    glitchVisual(this, this.time); // RGB-Versatz / Flackern (auch fremde Pirscher, p.glitch.active per Netz-Event)
   }
 
   /** Network/Hud-facing snapshot */

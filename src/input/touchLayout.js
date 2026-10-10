@@ -24,7 +24,7 @@ export const MIN_HIT_PRIMARY = 56;
 const SMALL_VIS = new Set(['menu', 'bar']); // small secondary buttons: 36 visual, 44 hit
 export const MIN_GAP = 8; // visible gap between two buttons
 const PAD = 6, PAD_A = 8, GAP_HIT = 2;
-const ANG = { roll: 182, b: 132, lock: 82 };
+const ANG = { roll: 182, b: 132, lock: 82, glitch: 107 }; // glitch sits on the outer ring above B/Lock (only shown at 100 Glitch energy)
 export const STICK_ZONE = 0.4; // dynamic stick: outer 40 % of the width on the thumb side
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -53,7 +53,8 @@ export function solveLayout(w, h, opt = {}) {
   const rightEdge = w - edgeIns - margin, bottomEdge = h - ins.b - margin;
   const A = { cx: rightEdge - hitA / 2, cy: bottomEdge - hitA / 2 };
   const arc = Math.max(hitA / 2 + hitO / 2 + GAP_HIT, (hitO + GAP_HIT) / (2 * Math.sin(rad((ANG.roll - ANG.b) / 2))) + 1);
-  const at = (deg) => ({ cx: A.cx + arc * Math.cos(rad(deg)), cy: A.cy - arc * Math.sin(rad(deg)) });
+  const outer = arc + hitO + GAP_HIT; // second ring radius
+  const at = (deg, r = arc) => ({ cx: A.cx + r * Math.cos(rad(deg)), cy: A.cy - r * Math.sin(rad(deg)) });
 
   const raw = {};
   const put = (k, p, vis, hit, visible = true) => { raw[k] = { cx: p.cx, cy: p.cy, vis, hit, visible }; };
@@ -65,12 +66,14 @@ export function solveLayout(w, h, opt = {}) {
     put('emote', at(ANG.lock), visO, hitO);
     put('attack', A, visA, hitA, false); put('special', at(ANG.b), visO, hitO, false);
     put('lock', at(ANG.lock), visO, hitO, false); put('item', item, visO, hitO, false);
+    put('glitch', at(ANG.glitch, outer), visO, hitO, false);
   } else {
     put('attack', A, visA, hitA);
     put('roll', roll, visO, hitO);
     put('special', at(ANG.b), visO, hitO);
     put('lock', at(ANG.lock), visO, hitO);
     put('item', item, visO, hitO);
+    put('glitch', at(ANG.glitch, outer), visO, hitO); // layout slot is always reserved; touch.js only shows it while Glitch is ready
     put('ctx', { cx: item.cx, cy: item.cy - hitO / 2 - hitC / 2 - GAP_HIT }, visC, hitC); // reserved slot, never shared
   }
   // item strip (quick select): collapsed by default, a small toggle sits left of the item button (same row);
