@@ -494,7 +494,7 @@ export class Monster {
   }
 
   _nextWanderPoint() {
-    const route = routeOf(this);
+    const route = this.def.homeWander ? null : routeOf(this);
     if (route?.length) {
       const p = route[this.routeIdx % route.length];
       this.routeIdx = (this.routeIdx + 1 + (this.rng() < 0.25 ? 1 : 0)) % route.length;

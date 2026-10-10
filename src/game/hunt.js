@@ -9,6 +9,7 @@ import { createHud } from '../ui/hud.js';
 import { Player } from './player.js';
 import { Monster } from './monsters/monster.js';
 import { getMonsterDef } from './monsters/index.js';
+import { spawnPack } from './monsters/jaggling.js';
 import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
@@ -79,6 +80,8 @@ export class Hunt {
     // [P] gather quests have no Brocken (quest.monster = null)
     this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster }) : null;
     if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
+    // [B] ambient Jagglinge packs in zones 1 + 2 (host/solo only; guests get them through the monster snapshots)
+    if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
     if (opts.aggro && this.mainMonster) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
@@ -101,6 +104,29 @@ export class Hunt {
     this.meta = new HuntMeta(this, lo);
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
     if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); }
+  }
+
+  /** [B] 2 packs (2-3 Jagglinge) in each of zone 1 (Wackelwiese) and zone 2 (Knochengrube); never near camp / spawns / the Brocken. */
+  #spawnAmbient(bossSpawn) {
+    const w = this.world, L = w.layout;
+    if (w.id !== 'schotterklamm' || !w.zones) return;
+    const rng = createRng((this.seed ^ 0xa11b) >>> 0);
+    const placed = [];
+    const far = (x, z, o, d) => !o || Math.hypot(x - o.x, z - o.z) >= d;
+    for (const zone of [1, 1, 2, 2]) {
+      const zc = w.zones[zone - 1];
+      if (!zc) continue;
+      for (let t = 0; t < 60; t++) {
+        const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 42;
+        const x = zc.x + Math.cos(a) * r, z = zc.z + Math.sin(a) * r;
+        if (w.zoneAt(x, z) !== zone) continue;
+        if (L && !(L.walkable(x, z, 1.5) && L.reachable(x, z))) continue;
+        if (!far(x, z, w.campPoint, 26) || !far(x, z, bossSpawn, 22) || w.spawnPoints.some((sp) => !far(x, z, sp, 26)) || placed.some((q) => !far(x, z, q, 28))) continue;
+        placed.push({ x, z });
+        spawnPack(this, { x, z }, 2 + (rng() < 0.4 ? 1 : 0), { state: 'wander', ambient: true });
+        break;
+      }
+    }
   }
 
   // [P] Rotglut variants: more HP, permanent rage
