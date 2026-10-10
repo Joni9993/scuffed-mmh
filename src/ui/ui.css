@@ -12,19 +12,22 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 img { -webkit-user-drag: none; user-drag: none; }
 button { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font: inherit; }
+/* Edge-to-edge: NO padding / safe-area on html/body and no explicit 100dvh heights (they can disagree with the real
+   viewport while Android toolbars animate and leave a strip at the edge). Fixed + inset:0 always tracks the real viewport;
+   only HUD elements add the --sa* insets. */
 html, body {
-  margin: 0; padding: 0; position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh;
+  margin: 0; padding: 0; position: fixed; inset: 0; width: 100%; height: 100%;
   overflow: hidden; overscroll-behavior: none; touch-action: none; background: #0c0816; color: var(--ink);
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; font-family: var(--font);
 }
-#stage { position: fixed; inset: 0; width: 100%; height: 100dvh; background: #0c0816; }
+#stage { position: fixed; inset: 0; background: #0c0816; }
 #game {
   position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; touch-action: none;
   image-rendering: pixelated; image-rendering: crisp-edges;
 }
 #game.glitch { filter: url(#sh-rgb) contrast(1.15) saturate(1.4); }
-#fxlayer { position: fixed; inset: 0; height: 100dvh; pointer-events: none; overflow: hidden; z-index: 5; }
-#ui { position: fixed; inset: 0; height: 100dvh; pointer-events: none; z-index: 10; }
+#fxlayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+#ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 #ui .ui-hit, #ui button, #ui .btn { pointer-events: auto; }
 
 /* scanlines + vignette */

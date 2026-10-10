@@ -23,15 +23,21 @@ if (params.get('res')) settings.res = RES_STEPS.includes(Number(params.get('res'
 initInstall();
 
 // first tap: Fullscreen API + landscape lock (Android; iOS has neither, ignore errors)
+let lockedLandscape = false;
 function goFullscreen() {
   try {
     const d = document.documentElement;
-    if (!document.fullscreenElement && d.requestFullscreen && !window.matchMedia?.('(display-mode: fullscreen)').matches) {
+    const isFs = !!document.fullscreenElement || !!window.matchMedia?.('(display-mode: fullscreen)').matches;
+    if (!isFs && d.requestFullscreen) {
       Promise.resolve(d.requestFullscreen({ navigationUI: 'hide' })).then(() => screen.orientation?.lock?.('landscape')?.catch(() => {})).catch(() => {});
-    } else screen.orientation?.lock?.('landscape')?.catch?.(() => {});
+    } else if (!lockedLandscape) { lockedLandscape = true; screen.orientation?.lock?.('landscape')?.catch?.(() => {}); }
   } catch { /* unsupported */ }
 }
-if (navigator.maxTouchPoints > 0 && !params.get('nofs')) document.addEventListener('pointerup', goFullscreen, { once: true });
+// retry on every tap until it sticks, and again after the user/OS left fullscreen (app switch, back gesture)
+if (navigator.maxTouchPoints > 0 && !params.get('nofs')) {
+  document.addEventListener('pointerup', goFullscreen);
+  document.addEventListener('touchend', goFullscreen);
+}
 
 const stage = document.getElementById('stage');
 const ui = document.getElementById('ui');
