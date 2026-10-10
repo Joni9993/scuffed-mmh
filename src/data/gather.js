@@ -33,6 +33,27 @@ export const GATHER_KINDS = {
     name: 'Sprudelquelle', zones: { 1: 2, 3: 2 }, uses: [1, 3], sparkle: '#8fd8ff',
     drops: [{ id: 'sprudelwasser', w: 100, n: [1, 1] }],
   },
+  // ---- Rostwerke (world: 'rostwerke' -> only that map places them; Schotterklamm ignores these)
+  kupferdraht: {
+    name: 'Kupferdraht-Rolle', world: 'rostwerke', zones: { 2: 8 }, uses: [1, 3], sparkle: '#ffb070',
+    drops: [{ id: 'kupferdraht', w: 100, n: [1, 2] }],
+  },
+  schlacke: {
+    name: 'Schlackehaufen', world: 'rostwerke', zones: { 1: 8 }, uses: [1, 3], sparkle: '#ff8a40',
+    drops: [{ id: 'schlacke', w: 100, n: [1, 2] }],
+  },
+  rostkaefer: {
+    name: 'Rostkäfer-Nest', world: 'rostwerke', zones: { 3: 5 }, uses: [1, 3], sparkle: '#d8b050',
+    drops: [{ id: 'rostkaefer', w: 100, n: [1, 2] }],
+  },
+  giftschlamm: {
+    name: 'Giftschlamm-Pfütze', world: 'rostwerke', zones: { 3: 4 }, uses: [1, 2], sparkle: '#80ff50',
+    drops: [{ id: 'giftschlamm', w: 100, n: [1, 1] }],
+  },
+  funkenstein: {
+    name: 'Funkenstein', world: 'rostwerke', zones: { 4: 3 }, uses: [1, 2], sparkle: '#a8e8ff',
+    drops: [{ id: 'funkenstein', w: 100, n: [1, 1] }],
+  },
 };
 
 /** German display names of the gatherable materials (for floating pickup text). */
@@ -40,6 +61,7 @@ export const GATHER_ITEM_NAMES = {
   knisterkraut: 'Knisterkraut', blaublatt: 'Blaublatt', wabbelpilz: 'Wabbelpilz', stinkmorchel: 'Stinkmorchel',
   schrotterz: 'Schrotterz', glimmstein: 'Glimmstein', altknochen: 'Altknochen', grossknochen: 'Großknochen',
   brummkaefer: 'Brummkäfer', blitzkaefer: 'Blitzkäfer', glutbrocken: 'Glutbrocken', sprudelwasser: 'Sprudelwasser',
+  kupferdraht: 'Kupferdraht', schlacke: 'Schlacke', rostkaefer: 'Rostkäfer', giftschlamm: 'Giftschlamm', funkenstein: 'Funkenstein',
 };
 
 export const GATHER_TIME = 0.8; // seconds of holding the context button
