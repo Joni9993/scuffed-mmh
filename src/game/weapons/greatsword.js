@@ -1,7 +1,5 @@
-import * as THREE from 'three';
-import { compileTrack } from '../anim.js';
-import { lambert } from '../../render/ps1.js';
-import { tex } from '../../render/textures.js';
+import { compileTrack, REST } from '../anim.js';
+import { buildGreatswordLook } from '../gear/weaponLook.js'; // [G]
 
 // ---- helpers: hit shapes that follow the blade so hitboxes match the visuals.
 // Right shoulder in player-local coords (x+ = character's left, z+ = forward).
@@ -113,19 +111,21 @@ const moves = {
 };
 
 // ---- animation tracks (see anim.js). Blade pitch = arx + sw.
-const A = (frames) => compileTrack(frames);
+// [G] two-handed ready stance: arms forward-down, blade pointing up-forward (pitch 120); the left hand follows the hilt (rig two-hand solver)
+export const GS_REST = { arx: 55, sw: 65 };
+const A = (frames) => compileTrack(frames, { ...REST, ...GS_REST });
 const anims = {
   overhead: A([
     [0, {}], [0.16, { arx: 150, sw: 55, tx: -6, py: -0.04 }], [0.38, { arx: 172, sw: 38, tx: -10, py: 0.02, lrx: 12, rrx: -10 }],
-    [0.4, { arx: 172, sw: 33 }, 'lin'], [0.52, { arx: 62, sw: -2, tx: 30, py: -0.1 }, 'lin'], [0.7, { arx: 62, sw: -2, tx: 30, py: -0.1 }], [0.9, { arx: 25, sw: 155, tx: 3, py: 0, lrx: 0, rrx: 0 }],
+    [0.4, { arx: 172, sw: 33 }, 'lin'], [0.52, { arx: 62, sw: -2, tx: 30, py: -0.1 }, 'lin'], [0.7, { arx: 62, sw: -2, tx: 30, py: -0.1 }], [0.9, { arx: GS_REST.arx, sw: GS_REST.sw, tx: 3, py: 0, lrx: 0, rrx: 0 }],
   ]),
   sweep: A([
     [0, {}], [0.22, { ty: -85, arx: 80, sw: 10, alx: 50, tx: 5, py: -0.05 }], [0.32, { ty: -90, arx: 80, sw: 10 }, 'lin'],
-    [0.46, { ty: 90, arx: 80, sw: 10, tx: 8 }, 'lin'], [0.6, { ty: 92 }], [0.8, { ty: 0, arx: 25, sw: 155, alx: -12, tx: 3, py: 0 }],
+    [0.46, { ty: 90, arx: 80, sw: 10, tx: 8 }, 'lin'], [0.6, { ty: 92 }], [0.8, { ty: 0, arx: GS_REST.arx, sw: GS_REST.sw, alx: -12, tx: 3, py: 0 }],
   ]),
   upper: A([
     [0, {}], [0.3, { py: -0.28, tx: 22, arx: -35, sw: 0, lrx: 20, rrx: -15 }], [0.38, { arx: -35, sw: 0 }, 'lin'],
-    [0.5, { arx: 150, sw: 25, tx: -14, py: 0.04 }, 'lin'], [0.7, { arx: 150, sw: 25 }], [1.0, { arx: 25, sw: 155, tx: 3, py: 0, lrx: 0, rrx: 0 }],
+    [0.5, { arx: 150, sw: 25, tx: -14, py: 0.04 }, 'lin'], [0.7, { arx: 150, sw: 25 }], [1.0, { arx: GS_REST.arx, sw: GS_REST.sw, tx: 3, py: 0, lrx: 0, rrx: 0 }],
   ]),
   charge: A([
     [0, {}], [0.25, { py: -0.2, tx: 14, arx: -20, sw: 30, alx: 30, lrx: 24, rrx: -18, ty: -25 }],
@@ -133,34 +133,23 @@ const anims = {
   smash: A([
     [0, { py: -0.2, tx: 14, arx: -20, sw: 30, alx: 30, lrx: 24, rrx: -18, ty: -25 }], [0.3, { arx: 170, sw: 45, tx: -12, py: 0.02, ty: 0 }],
     [0.42, { arx: 172, sw: 43 }, 'lin'], [0.56, { arx: 62, sw: -2, tx: 34, py: -0.14, lrx: 14, rrx: -8 }, 'lin'], [0.8, { arx: 62, sw: -2, tx: 34 }],
-    [1.1, { arx: 25, sw: 155, tx: 3, py: 0, lrx: 0, rrx: 0, ty: 0, alx: -12 }],
+    [1.1, { arx: GS_REST.arx, sw: GS_REST.sw, tx: 3, py: 0, lrx: 0, rrx: 0, ty: 0, alx: -12 }],
   ]),
   bump: A([
     [0, {}], [0.1, { tx: 12, ty: -20, py: -0.1, arx: 70, sw: 90, alx: 70, lrx: 20, rrx: -20 }], [0.26, { tx: 40, ty: 25, py: -0.12, lrx: 25, rrx: -10 }],
-    [0.45, { tx: 30 }], [0.6, { tx: 3, ty: 0, py: 0, arx: 25, sw: 155, alx: -12, lrx: 0, rrx: 0 }],
+    [0.45, { tx: 30 }], [0.6, { tx: 3, ty: 0, py: 0, arx: GS_REST.arx, sw: GS_REST.sw, alx: -12, lrx: 0, rrx: 0 }],
   ]),
   block: A([[0, {}], [0.1, { arx: 85, sw: 95, alx: 80, alz: -5, py: -0.1, tx: 8, lrx: 14, rrx: -10 }]]),
   finisher: A([
     [0, {}], [0.2, { py: -0.35, tx: 25, arx: 160, sw: 40, alx: 120, lrx: 25, rrx: -20 }], [0.4, { py: 0.2, tx: -10, lrx: -15, rrx: -15, arx: 175, sw: 30 }],
     [0.76, { py: 0.1, arx: 175, sw: 30 }], [0.84, { py: -0.1, arx: 60, sw: -2, tx: 40, alx: 40, lrx: 20, rrx: -10 }], [1.3, { arx: 60, sw: -2, tx: 40 }],
-    [1.9, { arx: 25, sw: 155, tx: 3, py: 0, alx: -12, lrx: 0, rrx: 0 }],
+    [1.9, { arx: GS_REST.arx, sw: GS_REST.sw, tx: 3, py: 0, alx: -12, lrx: 0, rrx: 0 }],
   ]),
 };
 
-export function buildGreatswordMesh() {
-  const g = new THREE.Group();
-  const metal = lambert({ map: tex('metal', { size: 16 }) });
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.0, 0.1), metal);
-  blade.position.y = -1.2;
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.0, 0.14), lambert({ map: tex('bone', { size: 16 }) }));
-  edge.position.set(0.17, -1.2, 0);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.16), lambert({ map: tex('leather', { size: 16 }) }));
-  guard.position.y = -0.18;
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), guard.material);
-  grip.position.y = 0.05;
-  g.add(blade, edge, guard, grip);
-  g.userData.glow = metal; // emissive tint during charge
-  return g;
+/** [G] opts: { tier, branch } -> tier-specific look (see gear/weaponLook.js); the grip is two-handed (userData.twoHand) */
+export function buildGreatswordMesh({ tier = 1, branch = null } = {}) {
+  return buildGreatswordLook(tier, branch);
 }
 
 export const greatsword = {
@@ -170,6 +159,8 @@ export const greatsword = {
   idle: { A: 'gs_hieb', holdA: 'gs_charge', B: 'gs_rempler', holdB: 'gs_block' },
   moves,
   anims,
+  rest: GS_REST, // [G]
+  sprintArx: 45,
   // Wucht 100 + B = Finisher "Schrottbrecher"
   overrideEvent: (w, type) => ((type === 'B' || type === 'holdB') && w.wucht >= 100 ? 'gs_finisher' : undefined),
   buildMesh: buildGreatswordMesh,

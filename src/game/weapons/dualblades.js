@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
-import { lambert } from '../../render/ps1.js';
-import { tex } from '../../render/textures.js';
+import { buildDualBladeLook } from '../gear/weaponLook.js'; // [G]
 import { VIT } from '../vitals.js';
 
 // Zwillingsklingen (GDD 4.2): schnelle Kette aus kleinen Treffern, Rausch (B) = +1 Treffer pro Move, +15 % Tempo,
@@ -172,26 +171,12 @@ anims.db_finisher = compileTrack([
 ], BASE);
 
 // ---- visuals
-function bladeMesh(mats, flip) {
-  const g = new THREE.Group();
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.82, 0.035), mats.metal);
-  blade.position.y = -0.62;
-  const tip = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.26, 0.035), mats.metal);
-  tip.position.set(0.045 * flip, -1.15, 0);
-  tip.rotation.z = 0.35 * flip;
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.8, 0.05), mats.bone);
-  edge.position.set(0.075 * flip, -0.62, 0);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.12), mats.brass);
-  guard.position.y = -0.17;
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), mats.leather);
-  grip.position.y = 0.0;
-  const pommel = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.1), mats.brass);
-  pommel.position.y = 0.17;
-  g.add(blade, tip, edge, guard, grip, pommel);
-  // Rausch halo: additive red ghosts fanned around the grip
+// [G] static blade = one merged tier/branch mesh (gear/weaponLook.js); the Rausch halo ghosts stay separate (hidden unless Rausch)
+function bladeMesh(look, auras) {
+  const g = look;
   const halo = [];
   for (let i = 0; i < 3; i++) {
-    const hm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.3, 0.05), mats.aura[i]);
+    const hm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.3, 0.05), auras[i]);
     hm.position.y = -0.68;
     const piv = new THREE.Group();
     piv.add(hm);
@@ -203,16 +188,11 @@ function bladeMesh(mats, flip) {
   return g;
 }
 
-export function buildDualBladesMesh() {
-  const mats = {
-    metal: lambert({ map: tex('metal', { size: 16 }), emissive: new THREE.Color(0, 0, 0) }),
-    bone: lambert({ map: tex('bone', { size: 16 }) }),
-    brass: lambert({ color: '#b8862e' }),
-    leather: lambert({ map: tex('leather', { size: 16 }) }),
-    aura: [0.28, 0.2, 0.12].map((o) => new THREE.MeshBasicMaterial({ color: '#ff2a1a', transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })),
-  };
-  const right = bladeMesh(mats, 1);
-  const left = bladeMesh(mats, -1);
+export function buildDualBladesMesh({ tier = 1, branch = null } = {}) {
+  const aura = [0.28, 0.2, 0.12].map((o) => new THREE.MeshBasicMaterial({ color: '#ff2a1a', transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  const right = bladeMesh(buildDualBladeLook(tier, branch, 1), aura);
+  const left = bladeMesh(buildDualBladeLook(tier, branch, -1), aura);
+  const mats = { metal: right.userData.glow, metalL: left.userData.glow, aura };
   right.userData.offhand = left;
   right.userData.db = { mats, halos: [...right.userData.halo, ...left.userData.halo], k: 0, t: 0 };
   return right;
@@ -260,6 +240,7 @@ export const dualblades = {
     const pulse = 0.75 + 0.25 * Math.sin(d.t * 22);
     const k = d.k * pulse;
     d.mats.metal.emissive.setRGB(0.95 * k, 0.12 * k, 0.05 * k);
+    d.mats.metalL.emissive.setRGB(0.95 * k, 0.12 * k, 0.05 * k);
     const hot = w.busy && w.move.hits?.length ? 1 : 0.35;
     for (let i = 0; i < d.halos.length; i++) {
       const piv = d.halos[i], j = i % 3;

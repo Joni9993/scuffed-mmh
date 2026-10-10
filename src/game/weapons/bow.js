@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
-import { lambert } from '../../render/ps1.js';
-import { tex, registerTexture } from '../../render/textures.js';
+import { buildBowLook, BOW_H } from '../gear/weaponLook.js'; // [G]
 import { angleDiff, stepAngle, yawOf } from '../../core/math.js';
 
 // Spannbogen (GDD 4.3): Spannen (A halten) in 3 Stufen, Rhythmus-Schnellschuss (A tippen), Ausweichspannen,
@@ -76,7 +75,7 @@ export function computeAim(p) {
     }
     if (target) yaw = yawOf(target.x - p.pos.x, target.z - p.pos.z);
   }
-  const f = fwd(yaw), r = { x: -Math.cos(yaw), z: Math.sin(yaw) };
+  const f = fwd(yaw), r = { x: Math.cos(yaw), z: -Math.sin(yaw) }; // [G] bow arm = left side
   const origin = { x: p.pos.x + f.x * 0.8 + r.x * 0.3, y: p.pos.y + 1.4, z: p.pos.z + f.z * 0.8 + r.z * 0.3 };
   const dist = target ? Math.hypot(target.x - p.pos.x, target.z - p.pos.z) : null;
   return { yaw, target, origin, dist };
@@ -261,68 +260,45 @@ const anims = {
 };
 
 // ---------- visuals
-registerTexture('bowwood', (g, n, rnd) => {
-  g.fillStyle = '#7a4d26';
-  g.fillRect(0, 0, n, n);
-  g.fillStyle = '#5a3418';
-  for (let y = 0; y < n; y += 3) g.fillRect(0, y, n, 1);
-  g.fillStyle = '#9a6a38';
-  for (let i = 0; i < n; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 2, 1);
-});
-export function buildBowMesh() {
-  const g = new THREE.Group();
-  const wood = lambert({ map: tex('bowwood', { size: 16 }) });
-  const wrap = lambert({ map: tex('leather', { size: 16 }) });
-  const sinew = new THREE.LineBasicMaterial({ color: '#efe6c8', fog: false });
-  // limb: stack of boxes along a parabola, grip forward (+z), tips toward the archer
-  const H = 0.78, N = 7;
-  const pts = [];
-  for (let i = 0; i <= N; i++) {
-    const y = -H + (2 * H * i) / N;
-    pts.push({ y, z: 0.3 * (1 - (y / H) ** 2) });
-  }
-  for (let i = 0; i < N; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const len = Math.hypot(b.y - a.y, b.z - a.z) + 0.03;
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.075, len, 0.075), wood);
-    seg.position.set(0, (a.y + b.y) / 2, (a.z + b.z) / 2);
-    seg.rotation.x = Math.atan2(b.z - a.z, b.y - a.y) * -1;
-    g.add(seg);
-  }
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.24, 0.1), wrap);
-  grip.position.set(0, 0, 0.3);
-  const tipT = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.08), lambert({ map: tex('bone', { size: 16 }) }));
-  tipT.position.set(0, H, 0.0);
-  const tipB = tipT.clone();
-  tipB.position.y = -H;
-  g.add(grip, tipT, tipB);
-  // string (Line: tipTop -> nock -> tipBottom) + nocked arrow, animated in updateMesh
+/**
+ * [G] opts: { tier, branch } -> merged tier look (gear/weaponLook.js) + ONE LineSegments for string and nocked arrow (1 draw call).
+ * Held in the LEFT hand. Vertices 0-3 = string (tipTop -> nock -> tipBottom), 4+ = arrow (shaft, head, fletching); the arrow is shown via drawRange.
+ */
+export function buildBowMesh({ tier = 1, branch = null } = {}) {
+  const g = buildBowLook(tier, branch);
   const sg = new THREE.BufferGeometry();
-  sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
-  const string = new THREE.Line(sg, sinew);
+  const N = 4 + 2 + 8 + 8;
+  sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  const col = new Float32Array(N * 3), c = new THREE.Color();
+  const paint = (a, b, hex) => { c.set(hex); for (let k = a; k < b; k++) { col[k * 3] = c.r; col[k * 3 + 1] = c.g; col[k * 3 + 2] = c.b; } };
+  paint(0, 4, '#efe6c8'); paint(4, 6, '#d8c090'); paint(6, 14, '#d8dde6'); paint(14, N, '#e8e0c8');
+  sg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const string = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ vertexColors: true, fog: false }));
   string.frustumCulled = false;
-  const arrow = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.95), lambert({ color: '#d8c090' }));
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.14), lambert({ color: '#d8dde6' }));
-  head.position.z = 0.5;
-  arrow.add(head);
+  const arrow = { set visible(v) { sg.setDrawRange(0, v ? N : 4); }, get visible() { return sg.drawRange.count > 4; } };
+  g.add(string);
+  g.userData.bow = { string, arrow, H: BOW_H, k: 0 };
   arrow.visible = false;
-  g.add(string, arrow);
-  g.userData.bow = { string, arrow, H, k: 0 };
   setString(g.userData.bow, 0);
   return g;
 }
 function setString(b, pull) {
   const a = b.string.geometry.attributes.position;
-  a.setXYZ(0, 0, b.H, 0);
-  a.setXYZ(1, 0, 0, -pull);
-  a.setXYZ(2, 0, -b.H, 0);
+  let v = 0;
+  const put = (x, y, z) => a.setXYZ(v++, x, y, z);
+  put(0, b.H, 0); put(0, 0, -pull);
+  put(0, 0, -pull); put(0, -b.H, 0);
+  const z0 = -pull - 0.1, z1 = -pull + 0.88;
+  put(0, 0, z0); put(0, 0, z1); // shaft
+  for (const [x, y] of [[0.06, 0], [-0.06, 0], [0, 0.06], [0, -0.06]]) { put(0, 0, z1); put(x, y, z1 - 0.13); } // head
+  for (const [x, y] of [[0.07, 0], [-0.07, 0], [0, 0.07], [0, -0.07]]) { put(0, 0, z0 + 0.02); put(x, y, z0 - 0.1); } // fletching
   a.needsUpdate = true;
-  b.arrow.position.set(0, 0, -pull + 0.38);
 }
 
 export const bow = {
   id: 'bow',
   name: 'Spannbogen',
+  hand: 'L', // [G] held in the left hand (poses are mirrored, see anim.mirrorPose); the right hand draws
   // A: Tipp = Schnellschuss, Halten = Spannen. B: Tipp = Bogenhieb (Finisher bei Wucht 100)
   holdThreshold: { A: 0.15, B: 0 },
   idle: {

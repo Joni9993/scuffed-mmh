@@ -149,7 +149,7 @@ export class Net {
     const id = 'p' + n;
     const rec = { id, name: String(d.name ?? 'Pirscher').slice(0, 12), conn, rtt: 0, lastRx: now() };
     this.peers.set(id, rec);
-    this.roster.push({ id, name: rec.name, weapon: d.weapon ?? 'gs', tier: d.tier ?? 1, ready: false });
+    this.roster.push({ id, name: rec.name, weapon: d.weapon ?? 'gs', tier: d.tier ?? 1, ready: false, ...(typeof d.gear === 'string' ? { gear: d.gear.slice(0, 8) } : {}) }); // [G] gear code
     conn.on('close', () => this.#dropPeer(id, ERR.lost));
     conn.on('error', () => this.#dropPeer(id, ERR.lost));
     reply({ you: id, code: this.code });
@@ -184,7 +184,7 @@ export class Net {
   /** Host: Jagd starten. Liefert die Spielerliste mit Slots; schickt `start` an alle Gäste. */
   startGame({ quest, seed }) {
     this.started = true;
-    const players = this.roster.map((r, slot) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, slot }));
+    const players = this.roster.map((r, slot) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, slot }));
     this.send(MSG.START, { seed, quest, players, t: Date.now() });
     return { seed, quest, players };
   }
@@ -218,7 +218,7 @@ export class Net {
 // ---------- Fabriken
 
 /** Host: Raum erzeugen (4-Buchstaben-Code, bei belegter ID neuer Versuch). */
-export function hostRoom({ name = 'Pirscher', weapon = 'gs', tier = 1, quest = 'jaggo', code: fixed } = {}) {
+export function hostRoom({ name = 'Pirscher', weapon = 'gs', tier = 1, gear, quest = 'jaggo', code: fixed } = {}) { // [G] gear = compact gear code
   return new Promise((resolve, reject) => {
     let tries = 0;
     const attempt = () => {
@@ -229,7 +229,7 @@ export function hostRoom({ name = 'Pirscher', weapon = 'gs', tier = 1, quest = '
         clearTimeout(to);
         const net = new Net({ isHost: true, peer, code, name });
         net.quest = quest;
-        net.roster = [{ id: 'p0', name, weapon, tier, ready: true }];
+        net.roster = [{ id: 'p0', name, weapon, tier, ready: true, ...(gear ? { gear } : {}) }];
         peer.on('connection', (conn) => {
           conn.on('data', (w) => {
             const rec = [...net.peers.values()].find((p) => p.conn === conn);
@@ -251,7 +251,7 @@ export function hostRoom({ name = 'Pirscher', weapon = 'gs', tier = 1, quest = '
 }
 
 /** Gast: Raum betreten. Rejects mit deutschem Fehlertext. */
-export function joinRoom(codeIn, { name = 'Pirscher', weapon = 'gs', tier = 1 } = {}) {
+export function joinRoom(codeIn, { name = 'Pirscher', weapon = 'gs', tier = 1, gear } = {}) {
   const code = normalizeCode(codeIn);
   return new Promise((resolve, reject) => {
     if (!isValidCode(code)) { reject(new Error(ERR.badCode)); return; }
@@ -269,7 +269,7 @@ export function joinRoom(codeIn, { name = 'Pirscher', weapon = 'gs', tier = 1 } 
       net.hostConn = conn;
       net._joinFail = fail;
       net._joinOk = () => { if (done) return; done = true; clearTimeout(to); resolve(net); };
-      conn.on('open', () => conn.send(wrap(MSG.HELLO, 'x', 0, { name, weapon, tier })));
+      conn.on('open', () => conn.send(wrap(MSG.HELLO, 'x', 0, { name, weapon, tier, ...(gear ? { gear } : {}) })));
       conn.on('data', (w) => net._dispatch(conn, w, null));
       conn.on('close', () => { if (!done) fail(ERR.notFound); else net._lost(ERR.lost); });
       conn.on('error', () => { if (!done) fail(ERR.timeout); else net._lost(ERR.lost); });

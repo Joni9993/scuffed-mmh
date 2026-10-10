@@ -19,7 +19,7 @@ export function defaultSave() {
     name: 'Pirscher', nameSet: false, color: PLAYER_COLORS[0],
     jr: 1, schrott: 0,
     box: {},
-    weapons: { gs: { tier: 1, branch: null }, db: { tier: 1, branch: null }, bow: { tier: 1, branch: null } },
+    weapons: { gs: { tier: 1, branch: null }, db: { tier: 1, branch: null }, bow: { tier: 1, branch: null }, kt: { tier: 1, branch: null } }, // [KT] sanitize() starts from defaults -> old saves get a starter Rostkatana
     armorOwned,
     loadout: { weapon: 'gs', armor: { ...DEFAULT_ARMOR }, items: [] },
     meal: null,

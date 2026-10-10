@@ -19,6 +19,12 @@ export const ARMOR_SETS = {
   lumpen: set('lumpen', 'Lumpen', 5, [], {
     head: piece('Lumpenkappe', null, {}), body: piece('Lumpenhemd', null, {}), legs: piece('Lumpenhose', null, {}),
   }),
+  // [G] Fellkluft (GDD 8.6 / neutral animals): made from `mampfer_fell` (the item is added by the animals content)
+  fellkluft: set('fellkluft', 'Fellkluft', 10, ['zaehe_socke'], {
+    head: piece('Fellmütze', { schrott: 60, mampfer_fell: 2 }, { zaehe_socke: 1 }),
+    body: piece('Fellweste', { schrott: 90, mampfer_fell: 4 }, { zaehe_socke: 1 }),
+    legs: piece('Fellstiefel', { schrott: 70, mampfer_fell: 3 }, { zaehe_socke: 1 }),
+  }),
   knochenkram: set('knochenkram', 'Knochenkram', 12, ['zaehe_socke'], {
     head: piece('Knochenkappe', { schrott: 100, altknochen: 2, grossknochen: 1 }, { zaehe_socke: 1 }),
     body: piece('Knochenweste', { schrott: 150, altknochen: 4, grossknochen: 2 }, { zaehe_socke: 1 }),
@@ -40,7 +46,7 @@ export const ARMOR_SETS = {
     legs: piece('Brathalos-Treter', { schrott: 600, brathalos_schuppe: 3, brathalos_membran: 1 }, { wuchtkopf: 1, hitzefell: 1 }),
   }),
 };
-export const SET_ORDER = ['lumpen', 'knochenkram', 'jaggo', 'barrotz', 'brathalos'];
+export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};

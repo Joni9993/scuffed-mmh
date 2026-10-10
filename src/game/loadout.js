@@ -13,6 +13,7 @@ export function applyLoadout(player, lo) {
   stats.crit += sk.crit;
   player.stats = stats;
   player.weaponTier = w.tier; player.weaponBranch = w.branch;
+  if (w.branch && player.def.tierMesh) player.rebuildWeaponMesh(w.tier, w.branch); // [KT] branch-specific mesh (katana)
   player.protect = armorProtection(lo.armor);
   player.flinkfuss = sk.flinkfuss;
   player.skills = skills;

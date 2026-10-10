@@ -19,6 +19,7 @@ import { HuntMeta, resolveLoadout } from './huntmeta.js';
 import { Effects } from './effects.js';
 import { Projectiles } from './projectiles.js'; // [W]
 import { HuntNet } from '../net/sync.js'; // [N]
+import { makeGear } from '../data/gearlook.js'; // [G]
 
 const MAX_KO = 3;
 
@@ -69,7 +70,7 @@ export class Hunt {
     // [P] loadout from the hub (or standard gear for the debug URL)
     const lo = resolveLoadout(opts);
     this.loadout = lo;
-    const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, ctx: this });
+    const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, branch: lo.weapon.branch, gear: makeGear(lo), ctx: this }); // [G] gear looks
     p.god = !!opts.god;
     p.spawnAt(sp.x, sp.z, sp.yaw);
     this.players.push(p);
@@ -163,7 +164,7 @@ export class Hunt {
     const st = player.stats;
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
-    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul };
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (player.def.dmgMul?.(player.weapon) ?? 1) }; // [KT] Schliff
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping });
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     res.attackerId = player.id;
@@ -172,7 +173,7 @@ export class Hunt {
     this.fx.spark(at, res.weak ? 14 : 9, res.weak ? '#ffe14d' : '#ffffff', 5);
     this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
-    if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, 'Sauber!', 'weak'); }
+    if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, ah.hit.sauberText ?? 'Sauber!', 'weak'); } // [KT]
     this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at, kind: res.weak ? 'weak' : res.crit ? 'crit' : undefined }); // [K] kind
     player.afterHit(res, ah);
     this.stats.damage += res.dmg;
