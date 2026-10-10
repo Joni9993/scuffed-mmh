@@ -1,5 +1,7 @@
 import { hostRoom, joinRoom } from './net.js';
 import { MSG, ERR } from './protocol.js';
+import { resolveColorIdx, gearColorIdx } from './colors.js';
+import { PLAYER_COLORS } from '../meta/save.js';
 
 export const MEMBER_COLORS = ['#5ad8ff', '#ff9a3a', '#7dff7d', '#ff6bd6'];
 ERR.roomClosed = 'Der Raum-Host ist weg. Du jagst jetzt in deinem eigenen Rostnest.';
@@ -36,7 +38,7 @@ export class Session {
     Object.assign(this.profile, p);
     const me = this.member(this.myId);
     if (me) Object.assign(me, p);
-    this.net?.updateSelf?.(p); // Host: sofort an alle; Gäste: gilt ab dem nächsten Beitritt
+    this.net?.updateSelf?.(p); // Host: sofort an alle; Gast: 'prof' an den Host, der das Roster neu verteilt
     this.emit('members', this.members);
   }
 
@@ -91,7 +93,8 @@ export class Session {
   }
   #syncMembers(roster, notify) {
     const old = this.members;
-    this.members = roster.map((r, i) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, color: MEMBER_COLORS[Number(r.id.slice(1)) % 4] ?? MEMBER_COLORS[i % 4], you: r.id === this.myId }));
+    const idx = resolveColorIdx(roster.map((r) => gearColorIdx(r.gear))); // Standardfarbe -> je Slot eindeutige Farbe
+    this.members = roster.map((r, i) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, colorIdx: idx[i], color: PLAYER_COLORS[idx[i]] ?? MEMBER_COLORS[i % 4], you: r.id === this.myId }));
     if (!notify) return;
     if (this.role === 'guest') for (const m of old) if (!this.members.some((x) => x.id === m.id)) this.emit('peer-leave', { id: m.id, name: m.name });
     this.emit('members', this.members);

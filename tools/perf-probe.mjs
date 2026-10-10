@@ -7,7 +7,7 @@ const quest = process.argv[2] || 'brathalos', weapon = process.argv[3] || 'bow';
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--js-flags=--expose-gc', '--enable-precise-memory-info'] });
 const page = await browser.newPage({ viewport: { width: 844, height: 390 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
-await page.goto(`${process.env.SH_URL || 'http://127.0.0.1:5173/'}?scene=hunt&quest=${quest}&weapon=${weapon}&seed=1&god=1${process.env.NOAMB ? '&noambient=1' : ''}`);
+await page.goto(`${process.env.SH_URL || 'http://127.0.0.1:5173/'}?scene=hunt&quest=${quest}&weapon=${weapon}&seed=1&god=1${process.env.NOAMB ? '&noambient=1' : ''}${process.env.NOFAUNA ? '&nofauna=1' : ''}`);
 await page.waitForFunction(() => window.__SH && window.__SH.hunt, null, { timeout: 30000 });
 await page.evaluate(() => window.__SH.pause(true));
 const info = () => page.evaluate(() => {

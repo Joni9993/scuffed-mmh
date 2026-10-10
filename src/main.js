@@ -10,6 +10,7 @@ import { appBus } from './core/events.js';
 import { settings } from './core/settings.js';
 import { scenes } from './scenes/index.js';
 import { sfx } from './audio/sfx.js';
+import { AutoQuality } from './core/autoquality.js';
 import { saveStore } from './meta/save.js'; // [P]
 
 const params = new URLSearchParams(location.search);
@@ -45,9 +46,20 @@ const app = {
   },
 };
 
+const aq = new AutoQuality();
+let lastRender = 0, aqScene = null;
 const loop = createLoop({
   update: (dt) => { pollGamepad(input); app.scene?.update(dt); },
-  render: (alpha) => app.scene?.render(alpha),
+  render: (alpha) => {
+    app.scene?.render(alpha);
+    const t = performance.now(), dt = (t - lastRender) / 1000;
+    lastRender = t;
+    if (app.sceneName !== aqScene) { aqScene = app.sceneName; aq.t = 0; aq.n = 0; }
+    if (app.sceneName === 'hunt' && settings.autoRes && settings.res > 360 && !document.hidden && aq.sample(dt)) {
+      renderer.setResolution(360); // session only (not saved)
+      app.scene?.hunt?.toast?.('Grafik reduziert');
+    }
+  },
 });
 
 // Debug / test API (docs/ARCHITECTURE.md "Debug")
@@ -82,6 +94,7 @@ const startOpts = {
   nofx: flag('nofx'),
   aggro: flag('aggro'),
   noAmbient: flag('noambient'), // [B] ?noambient=1 disables the ambient Jagglinge packs
+  noFauna: flag('nofauna'), // [L] ?nofauna=1 disables Mampfer/Hoppler + ambient decoration
   mode: params.get('mode') || undefined, // [N] lobby: host | join
   code: params.get('code') || undefined,
   name: params.get('name') || undefined,

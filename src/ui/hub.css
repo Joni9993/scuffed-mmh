@@ -93,3 +93,10 @@ small { opacity: .7; font-size: .88em; }
 .hh-carve i { display: block; height: 100%; background: #ffd84a; } .hh-carve span { position: absolute; inset: 0; display: grid; place-items: center; font-size: max(8px, 1.9vmin); color: #fff; text-shadow: 1px 1px 0 #000; }
 .hh-window { position: absolute; left: 50%; top: calc(var(--sat) + 1.6vmin); transform: translateX(-50%); display: none; align-items: center; gap: 2vmin; background: rgba(10, 8, 40, .8); border: 2px solid #ffd84a; padding: .6vmin 1.4vmin; pointer-events: auto; font-size: max(10px, 2.5vmin); }
 .seg { display: inline-flex; gap: .8vmin; } .seg .btn { margin: 0; min-width: 44px; }
+
+/* first-hunt onboarding */
+.ob { position: absolute; left: 50%; top: 6vmin; transform: translateX(-50%); max-width: min(78vw, 560px); padding: 1.2vmin 2vmin; font-size: max(10px, 2.1vmin); background: rgba(10, 8, 40, .86); border: 1px solid rgba(244, 240, 208, .55); text-shadow: 1px 1px 0 #000; z-index: 30; }
+.ob b { color: #ffd84a; }
+.ob ul { margin: .6vmin 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: .2vmin 2vmin; }
+.ob li i { font-style: normal; color: #5ad8ff; margin-right: .6vmin; }
+.ob p { margin: .6vmin 0; color: #ffd84a; }

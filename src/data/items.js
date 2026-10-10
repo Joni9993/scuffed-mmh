@@ -36,6 +36,10 @@ export const ITEMS = {
   glutsack: mat('glutsack', 'Glutsack', 'Hier drin wohnt das Feuer.', 'ember', '#ff9a2a', 55),
   brathalos_rubin: mat('brathalos_rubin', 'Brathalos-Rubin', 'Extrem selten. Extrem rot. Extrem teuer.', 'gem', '#ff2a4a', 250),
 
+  // ---- [L] neutral fauna drops (Mampfer / Hoppler)
+  rohfleisch: mat('rohfleisch', 'Rohfleisch', 'Roh, rosa und leicht vorwurfsvoll. Dringend braten.', 'meat', '#e0607a', 7),
+  mampfer_fell: mat('mampfer_fell', 'Mampfer-Fell', 'Zottelig, warm und riecht nach Wiese.', 'fur', '#c9a878', 18),
+
   // ---- consumables
   flickbrause: { id: 'flickbrause', name: 'Flickbrause', desc: '+35 HP über 1 s. Schmeckt nach Pfefferminz und Eisen.', kind: 'consumable', max: 10, time: 0.9, applyAt: 0.45, icon: { shape: 'potion', color: '#58e060' }, value: 8, effect: { type: 'heal', hp: 35, over: 1 } },
   dicke_flickbrause: { id: 'dicke_flickbrause', name: 'Dicke Flickbrause', desc: '+80 HP über 1 s, heilt die Prellung komplett.', kind: 'consumable', max: 5, time: 1.1, applyAt: 0.45, icon: { shape: 'potion', color: '#20c0a0' }, value: 20, effect: { type: 'heal', hp: 80, over: 1, bruise: true } },
@@ -46,6 +50,8 @@ export const ITEMS = {
   klebefalle: { id: 'klebefalle', name: 'Klebefalle', desc: 'Platzieren. Brocken klebt 6 s fest (1× pro Brocken pro 60 s).', kind: 'consumable', max: 1, time: 1.5, applyAt: 0.8, icon: { shape: 'trap', color: '#d0a050' }, value: 25, effect: { type: 'place', fx: 'trap' } },
   knallgurke: { id: 'knallgurke', name: 'Knallgurke', desc: 'Platzieren. 3 s Lunte, dann 120 Schaden + Betäubung.', kind: 'consumable', max: 2, time: 1.0, applyAt: 0.7, icon: { shape: 'cuke', color: '#4ac040' }, value: 25, effect: { type: 'place', fx: 'bomb' } },
 
+  grillsteak: { id: 'grillsteak', name: 'Grillsteak', desc: '+40 HP und +25 Max-Puste für den Rest der Jagd. Zischt noch.', kind: 'consumable', max: 3, time: 1.2, applyAt: 0.55, icon: { shape: 'meat', color: '#c8683a' }, value: 25, effect: { type: 'grill', hp: 40, over: 1, maxStamina: 25 } }, // [L]
+
   // ---- bow tips (crafted in packs of 10)
   brennspitze: { id: 'brennspitze', name: 'Brennspitze', desc: 'Bogen-Munition mit Feuer (+12). Wechsel dauert 0,4 s.', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ff7a30' }, value: 2, effect: { type: 'tip' } },
   giftspitze: { id: 'giftspitze', name: 'Giftspitze', desc: 'Bogen-Munition, baut Gift auf (20).', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#a050e0' }, value: 2, effect: { type: 'tip' } },
@@ -53,7 +59,7 @@ export const ITEMS = {
 };
 
 // baseValue = Schrott value per piece (shop sells at 40 % of it, see meta/shop.js). Defaults to 2x `value`.
-const BASE = { flickbrause: 30, knisterkraut: 8, sprudelwasser: 10, blaublatt: 15, altknochen: 12, brennspitze: 6, giftspitze: 6, klebefalle: 120, blendknolle: 70 };
+const BASE = { flickbrause: 30, knisterkraut: 8, sprudelwasser: 10, blaublatt: 15, altknochen: 12, brennspitze: 6, giftspitze: 6, klebefalle: 120, blendknolle: 70, rohfleisch: 14, mampfer_fell: 36, grillsteak: 60 };
 for (const it of Object.values(ITEMS)) it.baseValue = BASE[it.id] ?? Math.max(1, it.value * 2);
 
 export const ITEM_IDS = Object.keys(ITEMS);

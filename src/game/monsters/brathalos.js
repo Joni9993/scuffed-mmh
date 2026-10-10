@@ -329,6 +329,7 @@ export const brathalos = {
   hp: 12000,
   scale: SC,
   bodyRadius: 1.7,
+  predator: true, // [L]
   walk: 2.6, run: 6.2, detect: 32, prefer: 6, turn: 0.85,
   drops: ['brathalos_schuppe', 'brathalos_membran', 'glutsack', 'brathalos_rubin'],
   fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 21, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 9, speed: 9, angSpeed: 0.5, dropDamage: 250 },

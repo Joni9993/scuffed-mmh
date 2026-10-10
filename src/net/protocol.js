@@ -2,7 +2,7 @@
 // Reine Funktionen (kein DOM/THREE) -> unit-getestet in tests/unit/net.test.js.
 
 export const MSG = {
-  HELLO: 'hello', LOBBY: 'lobby', READY: 'ready', START: 'start',
+  HELLO: 'hello', PROFILE: 'prof', LOBBY: 'lobby', READY: 'ready', START: 'start',
   P: 'p', M: 'm', ATK: 'atk', HIT: 'hit', GATHER: 'gather', FX: 'fx', EV: 'ev', END: 'end', PING: 'ping',
   QB: 'qb', TP: 'tp', // Auftragsbrett (Raum-Ebene), Stadt-Präsenz
 };
@@ -152,7 +152,7 @@ export const ERR = {
   started: 'Jagd läuft schon',
   lost: 'Verbindung verloren',
   server: 'Server nicht erreichbar',
-  timeout: 'Verbindung fehlgeschlagen',
+  timeout: 'Verbindung blockiert – anderes Netz/WLAN probieren',
   hostLeft: 'Host hat die Jagd verlassen',
   badCode: 'Code: 4 Buchstaben',
 };

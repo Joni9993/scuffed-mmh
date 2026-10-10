@@ -13,6 +13,19 @@ export const DROPS = {
     carve: [{ id: 'jaggling_schuppe', w: 1 }],
     tail: [], breaks: {}, reward: [],
   },
+  // [L] neutral fauna: ONE carve per corpse gives the whole `once` list (guaranteed entries chance 1, rare ones < 1)
+  mampfer: {
+    carve: [{ id: 'rohfleisch', w: 1 }], tail: [], breaks: {}, reward: [],
+    once: [{ id: 'rohfleisch', n: 2, chance: 1 }, { id: 'altknochen', n: 1, chance: 1 }, { id: 'mampfer_fell', n: 1, chance: 0.22 }],
+  },
+  mampferkalb: {
+    carve: [{ id: 'rohfleisch', w: 1 }], tail: [], breaks: {}, reward: [],
+    once: [{ id: 'rohfleisch', n: 1, chance: 1 }, { id: 'mampfer_fell', n: 1, chance: 0.08 }],
+  },
+  hoppler: {
+    carve: [{ id: 'rohfleisch', w: 1 }], tail: [], breaks: {}, reward: [],
+    once: [{ id: 'rohfleisch', n: 1, chance: 1 }],
+  },
   barrotz: {
     carve: [{ id: 'barrotz_kruste', w: 55 }, { id: 'barrotz_schwanzleder', w: 30 }, { id: 'barrotz_platte', w: 6 }, { id: 'altknochen', w: 9 }],
     tail: [{ id: 'barrotz_schwanzleder', w: 100 }],
@@ -58,6 +71,15 @@ export function rollCarve(monsterId, rng, { tail = false, matMul = 1 } = {}) {
   const table = tail && d.tail.length ? d.tail : d.carve;
   const id = pickWeighted(table, rng);
   return id ? { id, n: matMul } : null;
+}
+
+/** [L] Whole-corpse carve of neutral animals (one carve, several items) -> [{id, n}] ; null for monsters without a `once` table. */
+export function rollCarveAll(monsterId, rng) {
+  const d = DROPS[monsterId];
+  if (!d?.once) return null;
+  const out = [];
+  for (const e of d.once) if (e.chance >= 1 || rng() < e.chance) out.push({ id: e.id, n: countOf(e.n, rng) });
+  return out;
 }
 
 /** Bonus for a broken part -> [{id, n}] */

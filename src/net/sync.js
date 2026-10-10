@@ -7,8 +7,10 @@ import { clamp } from '../core/math.js';
 import { rollGather } from '../data/gather.js';
 import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
 import { PLAYER_COLORS } from '../meta/save.js';
+import { monsters as MONDEFS } from '../game/monsters/index.js';
 
 export const RATE_P = 15;   // Hz  Pirscher
+export const NEUTRAL_R = 75; // [L] neutral animals farther than this from every hunter are not replicated
 export const RATE_M = 10;   // Hz  Brocken
 const nowS = () => performance.now() / 1000;
 const atkKey = (t0) => Math.round(t0 * 1000) + 1;
@@ -62,7 +64,7 @@ export class HuntNet {
     const hunt = this.hunt;
     const weapon = weapons[info.weapon] ? info.weapon : 'gs';
     const dg = decodeGear(info.gear); // [G] remote outfit; old clients send no code -> default armor, weapon type/tier as before
-    const gear = dg ? makeGear({ ...dg, color: PLAYER_COLORS[dg.colorIdx] }) : null;
+    const gear = dg ? makeGear({ ...dg, color: PLAYER_COLORS[this.net.session?.member(info.id)?.colorIdx ?? dg.colorIdx] }) : null;
     const p = new Player({ id: info.id, name: info.name, weapon: dg?.weapon.type ?? weapon, tier: dg?.weapon.tier ?? info.tier ?? 1, branch: dg?.weapon.branch ?? null, gear, local: false, ctx: hunt });
     const sp = hunt.world.spawnPoints[(info.slot ?? 1) % hunt.world.spawnPoints.length];
     p.spawnAt(sp.x, sp.z, sp.yaw);
@@ -171,7 +173,7 @@ export class HuntNet {
     }
     for (const s of q.monsters) {
       let buf = this.monBuf.get(s.id);
-      if (!buf) { buf = new SnapBuffer({ angleKeys: ['rot'] }); this.monBuf.set(s.id, buf); }
+      if (!buf) { buf = new SnapBuffer({ angleKeys: ['rot'], delay: MONDEFS[s.def]?.neutral ? 0.3 : 0.1 }); this.monBuf.set(s.id, buf); } // [L] neutrals arrive at 5 Hz
       buf.push(q.T, { ...s, T: q.T }, nowS());
     }
   }
@@ -214,6 +216,7 @@ export class HuntNet {
       const s = sm.s, c = sm.cur;
       let m = this.#mon(id);
       if (!m) {
+        if (c.state === 'dead') continue; // already reaped here
         m = hunt.spawnMonster(c.def, { x: s.x, z: s.z, yaw: s.rot, state: c.state === 'dead' ? 'wander' : c.state, id });
         m.authority = false;
       }
@@ -365,7 +368,11 @@ export class HuntNet {
       this.accM += dt;
       if (this.accM >= 1 / RATE_M) {
         this.accM = Math.min(this.accM - 1 / RATE_M, 1 / RATE_M);
-        this.net.sendAll(MSG.M, encodeM(t, hunt.timeLeft, hunt.teamKo, hunt.monsters.map((m) => this.#monSnap(m))));
+        // [L] neutral fauna: every 2nd snapshot (5 Hz) and only when within NEUTRAL_R of any hunter; no part data
+        this._mTick = (this._mTick ?? 0) + 1;
+        const withN = this._mTick % 2 === 0, list = [];
+        for (const m of hunt.monsters) if (!m.def.neutral || (withN && this.#nearAny(m))) list.push(this.#monSnap(m));
+        this.net.sendAll(MSG.M, encodeM(t, hunt.timeLeft, hunt.teamKo, list));
         this.stats.txM++;
       }
     } else this.#applyMonsters(dt);
@@ -396,11 +403,15 @@ export class HuntNet {
       speed: p.speed, sprint: p.sprinting, air: w.airOffset(), hp: p.v.hp, maxHp: p.v.maxHp,
     };
   }
+  #nearAny(m) {
+    for (const p of this.hunt.players) { const dx = p.pos.x - m.pos.x, dz = p.pos.z - m.pos.z; if (dx * dx + dz * dz < NEUTRAL_R * NEUTRAL_R) return true; }
+    return false;
+  }
   #monSnap(m) {
     return {
       id: m.id, def: m.def.id, x: m.pos.x, y: m.pos.y, z: m.pos.z, rot: m.rot, state: m.state, hpPct: m.hp / m.maxHp,
       rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0,
-      atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
+      atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.def.neutral ? [] : m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
     };
   }
 

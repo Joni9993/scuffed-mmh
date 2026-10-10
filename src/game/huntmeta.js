@@ -6,9 +6,10 @@ import { applyLoadout } from './loadout.js';
 import { createHuntHud } from '../ui/hubHuntHud.js';
 import { defaultLoadout } from '../meta/loadout.js';
 import { buildRewards } from '../meta/progression.js';
-import { rollCarve, CARVES_PER_PLAYER, TAIL_CARVES } from '../data/drops.js';
+import { rollCarve, rollCarveAll, CARVES_PER_PLAYER, TAIL_CARVES } from '../data/drops.js';
 import { createRng, hashSeed } from '../core/rng.js';
 import { itemName } from '../data/items.js';
+import { showOnboarding } from '../ui/onboarding.js';
 
 export const CARVE_HOLD = 0.8;
 export const CARVE_WINDOW = 45;
@@ -27,6 +28,7 @@ export class HuntMeta {
     this.hud.onSlot((i) => this.inv.select(i));
     this.hud.onDone(() => this.proceed());
     hunt.toast = (t, id) => this.hud.toast(t, id);
+    if (typeof document !== 'undefined' && hunt.app?.ui) this.onboarding = showOnboarding(hunt.app.ui, p.weaponId);
 
     this.rng = createRng(hunt.opts.lootSeed ?? hashSeed(`${hunt.seed}:${Date.now()}`));
     this.corpses = [];
@@ -41,7 +43,7 @@ export class HuntMeta {
 
     const on = (type, fn) => hunt.bus.on(type, fn);
     on('gathered', (e) => this.#onGathered(e));
-    on('monsterDead', ({ monster }) => { if (monster === hunt.mainMonster) this.#addCorpse(monster, false); });
+    on('monsterDead', ({ monster }) => { if (monster === hunt.mainMonster) this.#addCorpse(monster, false); else if (monster.def.carve) this.#addFaunaCorpse(monster); });
     on('tailSevered', (e) => this.#addCorpse(e.monster, true, e.pos));
     on('partBreak', ({ part }) => { this.breaks.push(part); });
   }
@@ -70,6 +72,12 @@ export class HuntMeta {
     this.corpses.push({ monster, tail, pos: pos ?? monster.pos, left: tail ? TAIL_CARVES : CARVES_PER_PLAYER });
   }
 
+  /** [L] neutral animals (Mampfer, Hoppler): one carve per corpse and player, whole drop list at once; not part of the end-of-hunt carve window */
+  #addFaunaCorpse(monster) {
+    if (this.corpses.some((c) => c.monster === monster)) return;
+    this.corpses.push({ monster, tail: false, fauna: true, dropId: monster.def.dropId ?? monster.def.id, pos: monster.pos, left: 1 });
+  }
+
   nearCorpse() {
     const p = this.hunt.player;
     for (const c of this.corpses) {
@@ -88,7 +96,7 @@ export class HuntMeta {
     this.items.update(dt);
     if (this.phase === 'carve') {
       this.carveT -= dt;
-      const left = this.corpses.reduce((s, c) => s + c.left, 0);
+      const left = this.corpses.reduce((s, c) => s + (c.fauna ? 0 : c.left), 0);
       if (this.carveT <= 0 || (left === 0 && this.carveT < CARVE_WINDOW - 1)) { this.#leaveSoon(left === 0 ? 1.0 : 0); }
     }
     if (this.endT > 0) { this.endT -= dt; if (this.endT <= 0) this.proceed(); }
@@ -117,6 +125,7 @@ export class HuntMeta {
 
   #carve(c) {
     c.left--;
+    if (c.fauna) { this.#carveFauna(c); return; }
     this.carveCount++;
     const q = this.hunt.quest;
     const r = rollCarve(q.monster, this.rng, { tail: c.tail, matMul: q.matMul ?? 1 });
@@ -127,6 +136,19 @@ export class HuntMeta {
     hp.fx.spark({ x: c.pos.x + (Math.random() - 0.5), y: c.pos.y + 1, z: c.pos.z + (Math.random() - 0.5) }, 10, '#ffe0a0', 4);
     hp.bus.emit('sfx', { name: 'hit', pos: c.pos });
     hp.bus.emit('carved', { player: hp.player, item: r.id, n });
+  }
+
+  #carveFauna(c) {
+    const hp = this.hunt;
+    const list = rollCarveAll(c.dropId, this.rng) ?? [];
+    for (const r of list) {
+      const n = this.inv.add(r.id, r.n, { carve: true });
+      this.hud.toast(n > 0 ? `Zerlegt: ${n}x ${itemName(r.id)}` : `${itemName(r.id)}: Beutel voll`, r.id);
+      hp.bus.emit('carved', { player: hp.player, item: r.id, n });
+    }
+    hp.fx.spark({ x: c.pos.x + (Math.random() - 0.5), y: c.pos.y + 0.6, z: c.pos.z + (Math.random() - 0.5) }, 8, '#ffb0a0', 3);
+    hp.bus.emit('sfx', { name: 'hit', pos: c.pos });
+    c.monster.carved = true;
   }
 
   render() {
@@ -140,7 +162,7 @@ export class HuntMeta {
     this.finalResult = { result, reason };
     const h = this.hunt;
     if (h.opts.noOverlay) return false;
-    if (result === 'win' && this.corpses.some((c) => !c.tail) && h.quest.type !== 'gather') {
+    if (result === 'win' && this.corpses.some((c) => !c.tail && !c.fauna) && h.quest.type !== 'gather') {
       this.phase = 'carve';
       this.carveT = CARVE_WINDOW;
       h.hud.center('Auftrag erfüllt! Zerlegen!', 3);
@@ -172,7 +194,7 @@ export class HuntMeta {
     queueMicrotask(() => h.app.goto('results', payload));
   }
 
-  dispose() { this.hud.dispose(); }
+  dispose() { this.onboarding?.close(); this.hud.dispose(); }
 }
 
 export function resolveLoadout(opts) {
