@@ -64,14 +64,13 @@ export function attachTouch(input, root) {
     for (const [k, b] of Object.entries(layout.buttons)) {
       const node = el$[k];
       if (!node) continue;
-      node.style.display = b.visible ? '' : 'none';
+      node.style.display = b.visible && (k !== 'ctx' || input.contextLabel) ? '' : 'none';
       node.style.left = (b.cx - b.hit / 2).toFixed(1) + 'px';
       node.style.top = (b.cy - b.hit / 2).toFixed(1) + 'px';
       node.style.width = node.style.height = b.hit.toFixed(1) + 'px';
       node.style.setProperty('--vis', b.vis.toFixed(1) + 'px');
       node.style.setProperty('--fs', Math.max(9, Math.min(b.vis * 0.26, 22)).toFixed(1) + 'px');
     }
-    if (el$.ctx && !input.contextLabel) el$.ctx.style.display = 'none';
     const rs = document.documentElement.style, S = layout.strip, em = layout.buttons.emote;
     rs.setProperty('--strip-x', S.x.toFixed(1) + 'px'); rs.setProperty('--strip-y', S.y.toFixed(1) + 'px');
     rs.setProperty('--strip-w', S.w.toFixed(1) + 'px'); rs.setProperty('--strip-h', S.h.toFixed(1) + 'px'); rs.setProperty('--strip-cols', String(S.cols));

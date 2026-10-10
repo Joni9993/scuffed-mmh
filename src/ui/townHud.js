@@ -13,7 +13,7 @@ export function createTownHud(root, handlers) {
   el.innerHTML = `
     <div class="th-tl"><div class="th-chip"></div><div class="th-members"></div></div>
     <button class="th-menu ui-hit" data-a="menu" aria-label="Menü">=</button>
-    <button class="th-emote ui-hit" data-a="emote" aria-label="Emotes">...</button>
+    <button class="th-emote ui-hit" data-a="emote" aria-label="Emotes"><span>···</span></button>
     <div class="th-wheel ui-hit">${EMOTES.map((t, i) => `<button class="ui-hit" data-a="e${i}">${esc(t)}</button>`).join('')}</div>
     <div class="th-toast"></div>
     <div class="th-hint"></div>`;

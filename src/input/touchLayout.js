@@ -41,7 +41,7 @@ export function solveLayout(w, h, opt = {}) {
   const ins = { l: 0, r: 0, t: 0, b: 0, ...(opt.insets || {}) };
   const s = SIZE_SCALE[size], fl = FLOOR[size];
   const vm = Math.min(w, h) / 100;
-  const u = clamp(vm, 3.2, 5.4); // units are capped so tablets do not get giant buttons
+  const u = clamp(vm, 3.2, 6.4); // units are capped so tablets do not get giant buttons
   const margin = Math.max(12, 2.4 * u);
 
   const visA = Math.max(fl.a, 15.5 * u * s), visO = Math.max(fl.o, 10.8 * u * s), visC = Math.max(fl.c, 13.5 * u * s);

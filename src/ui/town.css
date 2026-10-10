@@ -13,9 +13,9 @@
 /* emote button + wheel sit on the thumb arc (positions from touchLayout.js via CSS vars, mirrored for left-handed) */
 .th-emote { position: absolute; left: var(--emote-x, auto); top: var(--emote-y, auto); right: auto; bottom: auto; width: var(--emote-s, 56px); height: var(--emote-s, 56px); padding: 0; border: 0; background: transparent; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; color: var(--ink); font: inherit; cursor: pointer; }
-.th-emote::before { content: '...'; display: flex; align-items: center; justify-content: center; width: var(--emote-vis, 48px); height: var(--emote-vis, 48px); border-radius: 50%; padding-bottom: .35em; line-height: 1; font-size: max(14px, 3vmin);
+.th-emote span { display: flex; align-items: center; justify-content: center; width: var(--emote-vis, 48px); height: var(--emote-vis, 48px); border-radius: 50%; line-height: 1; font-size: max(14px, 3vmin);
   background: rgba(150, 90, 20, .62); border: 2px solid rgba(244, 240, 208, .7); opacity: .85; }
-.th-emote:active::before { opacity: 1; background: rgba(210, 140, 40, .9); }
+.th-emote:active span { opacity: 1; background: rgba(210, 140, 40, .9); }
 .th-wheel { position: absolute; right: var(--wheel-r, 15vmin); left: var(--wheel-l, auto); bottom: var(--wheel-b, 18vmin); display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px; background: rgba(10, 8, 40, .8); border: 2px solid var(--edge); }
 .th-wheel.open { display: grid; }
 .th-wheel button { display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; padding: 0 4px; font: inherit; font-size: max(10px, 2.4vmin); color: var(--ink); background: #22226a; border: 2px solid #000; box-shadow: inset 0 0 0 1px #6a6ad0; min-width: max(56px, 14vmin); min-height: max(48px, 9vmin); cursor: pointer; touch-action: manipulation; }

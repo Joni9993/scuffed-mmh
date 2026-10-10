@@ -66,7 +66,8 @@ Scheitern: 3× Umgekippt (Team gesamt) oder Zeit abgelaufen. Gesammeltes bleibt 
 - Macke „Flinkfuß" verlängert i-Frames um 40 ms pro Stufe (max. 2 Stufen).
 
 ### 3.4 Lock-On & Kamera
-- Lock-Taste: Ziel = nächster Brocken im Blickfeld; erneut tippen: zwischen Teilen des Brockens wechseln (Kopf, Körper, Schwanz…); lange halten = Lock aus.
+- **Lock ist ein Schalter:** Lock-Taste antippen (aus) = Lock auf den besten Brocken (nächster im Blickfeld); erneut antippen (an) = Lock aus. Die Taste zeigt den Zustand deutlich (rot + „AN" / „aus"). Stirbt der Brocken oder ist er >70 m weg, geht der Lock von selbst aus.
+- **Teilwechsel (Kopf, Körper, Schwanz…):** Wischen auf der Lock-Taste, hoch = nächstes Teil, runter = voriges (nur bei aktivem Lock). Tastatur: Q Lock an/aus, F/V nächstes/voriges Teil. Gamepad: RB Lock an/aus, R3 (Stick-Klick) nächstes Teil. Steht auch im Optionen-Panel als Hinweis.
 - Gelockt: Kamera hält Pirscher + Ziel im Bild, Angriffe richten sich automatisch grob aufs Ziel aus (max. 35° Korrektur).
 - Ohne Lock: Wischen auf freier rechter Bildschirmhälfte dreht Kamera. Kamera folgt automatisch langsam hinter den Pirscher, wenn man läuft.
 
@@ -302,8 +303,9 @@ Im Koop zählt der Auftrag des Hosts; Gäste bekommen Belohnungen, auch wenn der
 
 ### Touch (primär)
 - **Links:** Virtueller Stick (erscheint dort, wo der Daumen aufsetzt, linke 40 % des Bildschirms).
-- **Rechts unten:** A (groß), B, Rolle, Lock. Darüber klein: Item-Taste (zeigt aktuelles Item + Anzahl; Wischen links/rechts = wechseln).
-- **Kontext-Taste** (erscheint über A nur nahe Sammelpunkt/Zerlegen): „Sammeln"/„Zerlegen".
+- **Rechts unten (Daumenbogen um A):** A (groß), Rolle links daneben, B und Lock im Bogen darüber. Item-Taste links von Rolle (zeigt aktuelles Item + Anzahl; Wischen links/rechts = wechseln). Lock: tippen = an/aus, Wischen hoch/runter = Teil wechseln (§3.4).
+- **Kontext-Taste** (pulsierend gelb, nur nahe Sammelpunkt/Zerlegen/Station): „Sammeln"/„Zerlegen"/Stationsname. Hat einen **eigenen reservierten Platz** über der Item-Taste (links von B), überlappt nie A/B/Rolle/Lock/Item und liegt außerhalb der Stick-Zone.
+- **Layout-Option** (Optionen-Station): Tastengröße S/M/L, Linkshänder-Spiegelung (Stick rechts, Tasten links), Vibration. Wird in den Einstellungen gespeichert. Trefferflächen siehe docs/ARCHITECTURE.md „Touch-Regeln".
 - **Rechte freie Fläche:** Wischen dreht Kamera.
 - Menü-Taste oben rechts (Pause gibt es im Koop nicht, nur Overlay).
 
@@ -321,7 +323,7 @@ Regel: **HUD nimmt max. ~15 % der Bildfläche ein**. Alle Größen relativ zur k
 - Oben links (max. 180 × 60 px): Name klein, HP-Balken (Prellung dunkelrot), Puste-Balken, Wucht-Meter (dünn), Waffen-Status (Bogen-Stufe / Aufladestufe / Rausch).
 - Party (unter Spieler, nur Gäste): je 1 Zeile 10 px Schrift, Name + Mini-HP.
 - Oben rechts: Timer + Minimap 64 px (Tap = groß).
-- Rechts unten: A 64 px, B/Rolle/Lock 44 px, Item 40 px. Halbtransparent (Alpha 0,55), beim Drücken voll.
+- Rechts unten (sichtbar / Trefferfläche): A 66 / 82 px, B/Rolle/Lock/Item 48 / 60 px, Kontext 62 / 74 px. Halbtransparent, beim Drücken voll. Trefferflächen sind immer größer als die Optik und überlappen nie.
 - Links unten: Stick erscheint dynamisch, 90 px.
 - Brocken-HP wird **nicht** angezeigt (man liest den Zustand am Brocken: Hinken, Sabbern, Teilbrüche). Brocken-Name kurz eingeblendet beim Entdecken.
 - Schadenszahlen: klein, pixelig, steigen auf, Option zum Abschalten.
