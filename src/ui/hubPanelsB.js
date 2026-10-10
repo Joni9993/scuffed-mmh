@@ -18,7 +18,7 @@ export function createKochtopf(ctx) {
     render() {
       const s = ctx.save;
       const cur = s.meal ? FOODS[s.meal] : null;
-      return `<div class="note">Brodel: „Eine Mahlzeit pro Jagd. Ich koche nicht für Nimmersatte.“</div>
+      return `<div class="note">Brösel: „Eine Mahlzeit pro Jagd. Ich koche nicht für Nimmersatte.“</div>
         <div class="card">${cur ? `Im Bauch für die nächste Jagd: <b>${esc(cur.name)}</b> <small>${esc(cur.desc)}</small>` : 'Noch nichts gekocht.'}</div>` +
         FOOD_ORDER.map((id) => {
           const f = FOODS[id], ok = !s.meal && !missing(s, f.cost).length;
@@ -135,6 +135,11 @@ export function createOptionen(ctx) {
       return `<div class="row"><span class="nm">Auflösung</span><button class="btn small" data-a="res">${settings.res} px</button></div>
         <div class="row"><span class="nm">Scanlines</span><button class="btn small" data-a="scan">${on(settings.scanlines)}</button></div>
         <div class="row"><span class="nm">Schadenszahlen</span><button class="btn small" data-a="dmg">${on(settings.dmgNumbers)}</button></div>
+        <div class="sub">Layout (Touch)</div>
+        <div class="row"><span class="nm">Tastengröße</span><span class="seg">${['S', 'M', 'L'].map((k) => `<button class="btn small ${settings.btnSize === k ? 'on' : ''}" data-a="bsz" data-v="${k}">${k}</button>`).join('')}</span></div>
+        <div class="row"><span class="nm">Linkshänder (spiegeln)</span><button class="btn small" data-a="lefty">${on(settings.leftHand)}</button></div>
+        <div class="row"><span class="nm">Vibration</span><button class="btn small" data-a="hap">${on(settings.haptics)}</button></div>
+        <div class="note">Lock: tippen = an/aus. Lock-Taste hoch/runter wischen = nächster/voriger Körperteil (Taste F/V, Pad: R3).</div>
         <div class="row"><span class="nm">Lautstärke</span><input id="st-vol" class="inp rng" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></div>
         <div class="sub">Spielstand-Code (Schutz gegen gelöschten Browserspeicher)</div>
         <textarea id="st-code" class="inp code" rows="3" placeholder="Code hier einfügen" spellcheck="false">${esc(code)}</textarea>
@@ -147,11 +152,14 @@ export function createOptionen(ctx) {
       if (e.target.id === 'st-code') code = e.target.value;
       return false;
     },
-    click(a) {
+    click(a, ds) {
       const app = ctx.app;
       if (a !== 'reset') confirm = false;
       if (a === 'res') { app.renderer.setResolution(settings.res === 480 ? 360 : 480); saveSettings(); }
       else if (a === 'scan') { settings.scanlines = !settings.scanlines; document.body.classList.toggle('scan', settings.scanlines); saveSettings(); }
+      else if (a === 'bsz') { settings.btnSize = ds?.v === 'S' || ds?.v === 'L' ? ds.v : 'M'; saveSettings(); app.touch?.relayout(); }
+      else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
+      else if (a === 'hap') { settings.haptics = !settings.haptics; saveSettings(); if (settings.haptics) navigator.vibrate?.(15); }
       else if (a === 'dmg') { settings.dmgNumbers = !settings.dmgNumbers; saveSettings(); }
       else if (a === 'export') { code = exportCode(ctx.save); ctx.toast('Code erzeugt. Gut aufbewahren.'); }
       else if (a === 'copy') { try { navigator.clipboard?.writeText(code || exportCode(ctx.save)); ctx.toast('Kopiert.'); } catch { ctx.toast('Kopieren ging nicht – markiere den Code.', true); } }

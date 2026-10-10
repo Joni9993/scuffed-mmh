@@ -15,8 +15,8 @@ export const BOW = {
   sweetMin: 8, sweetMax: 16, farMul: 0.7,
   autoAimCone: 10,            // Grad
   dodgeWindow: 0.5,           // Ausweichspannen: Sekunden nach der Rolle
-  quickMul: 1.0,              // Schnellschuss (Tipp): volle BW der Stufe, dafuer langsamer Takt (0.45 s)
-  chargedMul: [1.5, 2.0, 2.5], // gespannter Schuss je Stufe (Spannen kostet Zeit und Puste)
+  quickMul: 1.08,              // Schnellschuss (Tipp): volle BW der Stufe, dafuer langsamer Takt (0.45 s)
+  chargedMul: [1.7, 2.6, 3.6], // gespannter Schuss je Stufe (Spannen kostet Zeit und Puste)
   rain: { mark: 1.2, arrows: 20, radius: 3.5, mv: 9, height: 16, speed: 34 },
 };
 export const SHOTS = {

@@ -212,8 +212,10 @@ const feuer = {
 
 // ---- 2a. Aufflug: duckt sich, Flügel spreizen, Abheben (Flug-Zustand beginnt am Ende)
 const aufflug = {
-  id: 'brathalos_aufflug', range: [0, 40], weight: 2, cooldown: 14, telegraph: 0.6, flashParts: ['wingL', 'wingR'], duration: 1.8,
-  cond: (m) => !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
+  // Take-off cadence is driven by m.flyCd (see `tick`): one take-off every ~30-45 s (21-33 s of ground time + flight), picked sooner when the hunter is far away / in Rotglut.
+  id: 'brathalos_aufflug', range: [0, 40], cooldown: 0, telegraph: 0.6, flashParts: ['wingL', 'wingR'], duration: 1.8,
+  weight: (m, dist) => (dist > 14 ? 5 : dist > 8 ? 3 : 1.5) + (m.rage ? 1.5 : 0),
+  cond: (m) => m.flyCd <= 0 && !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
   hits: [],
   events: [{ t: 0.7, call: 'dust', all: true }],
   calls: { dust(m) { m.ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.4, z: m.pos.z }, 22, '#a08a60', 6); m.ctx.fx.shake(0.15, 0.4); } },
@@ -324,23 +326,23 @@ function severTail(m) {
 export const brathalos = {
   id: 'brathalos',
   name: 'Brathalos',
-  hp: 4200,
+  hp: 12000,
   scale: SC,
   bodyRadius: 1.7,
   walk: 2.6, run: 6.2, detect: 32, prefer: 6, turn: 0.85,
   drops: ['brathalos_schuppe', 'brathalos_membran', 'glutsack', 'brathalos_rubin'],
-  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, attack: 'brathalos_sturz', radius: 11, speed: 9, angSpeed: 0.5, dropDamage: 250 },
+  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 21, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 9, speed: 9, angSpeed: 0.5, dropDamage: 250 },
   rageAttack: 'brathalos_bruellen',
   parts: [
-    { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 350, jitter: 0.07, elem: { fire: 0, shock: 25 }, blunt: true, stunPart: true,
+    { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 700, jitter: 0.07, elem: { fire: 0, shock: 25 }, blunt: true, stunPart: true,
       spheres: [{ node: 'head', offset: [0, 0.08, 0.6], r: 0.58 }] },
-    { id: 'wingL', label: 'Linker Flügel', factor: 0.8, breakHp: 300, jitter: 0.06, elem: { fire: 0, shock: 20 }, blunt: false,
+    { id: 'wingL', label: 'Linker Flügel', factor: 0.8, breakHp: 600, jitter: 0.06, elem: { fire: 0, shock: 20 }, blunt: false,
       spheres: [{ node: 'wingL', offset: [0.9, 0.1, -0.6], r: 0.78 }, { node: 'wingL', offset: [2.1, 0.12, -0.8], r: 0.78 }, { node: 'wingL', offset: [3.0, 0.18, -0.9], r: 0.62 }] },
-    { id: 'wingR', label: 'Rechter Flügel', factor: 0.8, breakHp: 300, jitter: 0.06, elem: { fire: 0, shock: 20 }, blunt: false,
+    { id: 'wingR', label: 'Rechter Flügel', factor: 0.8, breakHp: 600, jitter: 0.06, elem: { fire: 0, shock: 20 }, blunt: false,
       spheres: [{ node: 'wingR', offset: [0.9, 0.1, -0.6], r: 0.78 }, { node: 'wingR', offset: [2.1, 0.12, -0.8], r: 0.78 }, { node: 'wingR', offset: [3.0, 0.18, -0.9], r: 0.62 }] },
     { id: 'body', label: 'Körper', factor: 0.6, elem: { fire: 0, shock: 10 },
       spheres: [{ node: 'body', offset: [0, 0, 0.55], r: 0.85 }, { node: 'body', offset: [0, 0, -0.5], r: 0.8 }, { node: 'neck', offset: [0, 0.4, 0], r: 0.42 }, { node: 'legL', offset: [0, -0.8, 0.15], r: 0.5 }, { node: 'legR', offset: [0, -0.8, 0.15], r: 0.5 }] },
-    { id: 'tail', label: 'Schwanz', factor: 0.7, breakHp: 450, jitter: 0.06, elem: { fire: 0, shock: 10 }, blunt: false,
+    { id: 'tail', label: 'Schwanz', factor: 0.7, breakHp: 900, jitter: 0.06, elem: { fire: 0, shock: 10 }, blunt: false,
       spheres: [{ node: 'tail2', offset: [0, 0, -0.7], r: 0.5 }, { node: 'tail3', offset: [0, 0, -0.5], r: 0.42 }, { node: 'tail3', offset: [0, 0, -1.2], r: 0.42 }] },
   ],
   attacks: { brathalos_feuer: feuer, brathalos_aufflug: aufflug, brathalos_sturz: sturz, brathalos_boee: boee, brathalos_schwanz: schwanz, brathalos_bruellen: bruellen },
@@ -361,6 +363,16 @@ export const brathalos = {
   onAttackEnd(m, id) {
     if (id === 'brathalos_aufflug') m.beginFly();
     else if (id === 'brathalos_sturz') { m.air = 0; m.setState('combat'); m.recover = 0.9; }
+  },
+  init(m) { m.flyCd = m.def.fly.firstGap; m._wasUp = false; },
+  /** Flight cadence: the gap timer only runs on the ground; a fresh 21-33 s ground gap is rolled each time he comes down. */
+  tick(m, dt) {
+    const up = m.flying || m.attack?.id === 'brathalos_aufflug';
+    if (up) m._wasUp = true;
+    else if (m._wasUp) {
+      m._wasUp = false;
+      if (m.authority) { const f = m.def.fly; m.flyCd = f.gapMin + m.rng() * (f.gapMax - f.gapMin); }
+    } else if (m.state === 'combat' || m.state === 'enrage') m.flyCd -= dt;
   },
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
   poseHook(m, t) {

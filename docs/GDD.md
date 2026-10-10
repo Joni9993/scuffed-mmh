@@ -66,7 +66,8 @@ Scheitern: 3× Umgekippt (Team gesamt) oder Zeit abgelaufen. Gesammeltes bleibt 
 - Macke „Flinkfuß" verlängert i-Frames um 40 ms pro Stufe (max. 2 Stufen).
 
 ### 3.4 Lock-On & Kamera
-- Lock-Taste: Ziel = nächster Brocken im Blickfeld; erneut tippen: zwischen Teilen des Brockens wechseln (Kopf, Körper, Schwanz…); lange halten = Lock aus.
+- **Lock ist ein Schalter:** Lock-Taste antippen (aus) = Lock auf den besten Brocken (nächster im Blickfeld); erneut antippen (an) = Lock aus. Die Taste zeigt den Zustand deutlich (rot + „AN" / „aus"). Stirbt der Brocken oder ist er >70 m weg, geht der Lock von selbst aus.
+- **Teilwechsel (Kopf, Körper, Schwanz…):** Wischen auf der Lock-Taste, hoch = nächstes Teil, runter = voriges (nur bei aktivem Lock). Tastatur: Q Lock an/aus, F/V nächstes/voriges Teil. Gamepad: RB Lock an/aus, R3 (Stick-Klick) nächstes Teil. Steht auch im Optionen-Panel als Hinweis.
 - Gelockt: Kamera hält Pirscher + Ziel im Bild, Angriffe richten sich automatisch grob aufs Ziel aus (max. 35° Korrektur).
 - Ohne Lock: Wischen auf freier rechter Bildschirmhälfte dreht Kamera. Kamera folgt automatisch langsam hinter den Pirscher, wenn man läuft.
 
@@ -125,18 +126,29 @@ Fernkampf, Spannungsstufen, Rhythmus aus Schießen und Ausweichen.
 - **Finisher „Pfeilregen"** (B bei Wucht 100): 1,2 s Ziel markieren, dann 20 Pfeile à BW 9 auf Zielbereich.
 - Wucht: Treffer +3 (Durchschuss +2 pro Teil).
 
+### 4.4 Katana (Ronin-Klinge, Kürzel `kt`)
+Mittleres Tempo, präzise, belohnt **Konter-Timing**. Zweihändig geführt.
+- **A-Kette:** Schnitt (BW 20, 0,45 s) → Zugschnitt (BW 22) → Kreuzhieb (BW 28) → wiederholbar ab Zugschnitt. Gehen während der Kette langsam möglich.
+- **A halten = Ziehschnitt** (Klinge zurück in die Scheide, 0,6 s Spannung, Loslassen: schneller Vorwärts-Schnitt 4 m, BW 45, Wucht +8). Losgelassen im Fenster 0,6–0,75 s = „Blankgezogen!" (+20 % Schaden).
+- **B = Konterhaltung** (0,4 s Haltung). Trifft ein Brocken-Angriff in den ersten 0,25 s: kein Schaden, automatischer **Konterschnitt** (BW 60, Hitstop schwer) und **Schliff +1**. Fehlgeschlagen = 0,35 s Erholung (bestraft Spammen).
+- **Schliff-Stufen 0–3** (Klingenfarbe: blank → gelb → orange → weißglühend): +8 % Schaden je Stufe, hält 40 s, erneuert sich mit jedem Konter. HUD zeigt Stufe + Restzeit.
+- **Rolle → A:** Gleitschnitt (BW 24, 3 m nach vorne).
+- **Finisher „Mondsichel"** (B halten 0,3 s bei Wucht 100): Sprung-Drehschnitt BW 190, setzt Schliff auf 3.
+- Wucht: Treffer +3, Konter +15.
+- Baum: Rostkatana (Kraft 78) → Knochenkatana (96) → Jaggo-Reißzahn (112, Krit 15 %) / Barrotz-Schlickschneide (110, Schock 14) → Brathalos-Glutkatana (128, Feuer 22).
+
 ---
 
 ## 5. Brocken (Großmonster)
 
 Gemeinsame KI-Struktur: Zustände **Umherziehen → Bemerken (Brüllen) → Kampf → (Rotglut) → Flucht (bei 30 % HP, Zone wechseln) → Schlafen im Nest (regeneriert 1 % HP/s, Treffer auf Schlafenden ×2)**.
 Jeder Angriff hat: **Ankündigung (Telegraph) ≥ 0,5 s** (Körper-Haltung + Teil blinkt rot/weiß + Sound), **aktive Hitbox-Phase**, **Erholung** (Strafe-Fenster für Pirscher).
-Rotglut: ab 60 % HP oder nach 300 Schaden in 20 s; dauert 45 s; +20 % Tempo, +15 % Schaden, Ankündigungen 20 % kürzer, glühende Augen + roter Dampf.
+Rotglut: ab 60 % HP oder nach 7,5 % der Max-HP als Schaden in 20 s (Phase 3: war flach 300); dauert 45 s; +20 % Tempo, +15 % Schaden, Ankündigungen 20 % kürzer, glühende Augen + roter Dampf.
 Zielwahl: Pirscher mit höchster „Bedrohung" (Schaden der letzten 10 s), gelegentlich zufällig.
 
 ### 5.1 Jaggo der Große (JR 1) – Rudel-Raptor
-HP 1800 · Größe 2,1× · Schwäche: Feuer (Kopf 25, Körper 10), Schock 10.
-Teile: Kopf (Kamm brechbar, 250 Teil-HP, Faktor 1,0), Körper 0,7, Beine 0,8, Schwanz 0,6.
+HP 7000 (Phase 3 Balancing, vorher 1800) · Größe 2,1× · Schwäche: Feuer (Kopf 25, Körper 10), Schock 10.
+Teile: Kopf (Kamm brechbar, 600 Teil-HP, Faktor 1,0), Körper 0,7, Beine 0,8, Schwanz 0,6.
 Angriffe:
 1. **Bissreihe:** 3 Bisse vorwärts, je 12 Schaden (Telegraph: Kopf zurück 0,5 s).
 2. **Hüpfer:** Sprung auf Ziel bis 10 m, 22 Schaden, wirft um (Telegraph: duckt sich, Beine blinken 0,7 s).
@@ -145,8 +157,8 @@ Angriffe:
 Kleine Monster **Jagglinge:** HP 80, Biss 6 Schaden, sterben schnell, droppen Jaggling-Schuppe beim Zerlegen.
 
 ### 5.2 Barrotz (JR 2) – Rammbock-Dino, Schlamm
-HP 3200 · Größe 2,4× · Schwäche: Schock (Kopf 20), Feuer nur wenn ohne Schlammpanzer (sonst 0).
-Teile: Kopfplatte (brechbar, 400 Teil-HP, Faktor 0,5 → nach Bruch 0,9), Vorderbeine 0,9, Körper 0,7, Schwanz (brechbar) 0,8.
+HP 9000 (vorher 3200) · Größe 2,4× · Schwäche: Schock (Kopf 20), Feuer nur wenn ohne Schlammpanzer (sonst 0).
+Teile: Kopfplatte (brechbar, 800 Teil-HP, Faktor 0,5 → nach Bruch 0,9), Vorderbeine 0,9, Körper 0,7, Schwanz (brechbar) 0,8.
 Angriffe:
 1. **Rammsturm:** Anlauf 0,9 s (scharrt mit Fuß, Staub), rennt 15 m geradeaus, 30 Schaden, wirft um; dreht und rennt nochmal in Rotglut.
 2. **Plattenhammer:** Kopf hebt sich 0,7 s, Schlag nach vorne + Schlamm-Schockwelle 4 m, 25 Schaden.
@@ -155,15 +167,29 @@ Angriffe:
 5. **Schwanzfeger:** Halbkreis hinten, 18 Schaden.
 
 ### 5.3 Brathalos (JR 3) – Feuerwyvern
-HP 4200 · Größe 2,6× · Schwäche: Schock (Kopf 25, Flügel 20), Feuer 0.
-Teile: Kopf (brechbar, 350, 1,0), Flügel L/R (brechbar, je 300, 0,8), Körper 0,6, Schwanz (abtrennbar, 450, 0,7 → abgetrennter Schwanz liegt in der Welt, kann einmal zerlegt werden).
+HP 12000 (vorher 4200) · Größe 2,6× · Schwäche: Schock (Kopf 25, Flügel 20), Feuer 0.
+Teile: Kopf (brechbar, 700, 1,0), Flügel L/R (brechbar, je 600, 0,8), Körper 0,6, Schwanz (abtrennbar, 900, 0,7 → abgetrennter Schwanz liegt in der Welt, kann einmal zerlegt werden).
 Angriffe:
 1. **Feuerspucke:** Kopf zieht zurück, Maul glüht 0,6 s → Feuerball, 28 Schaden + Brennen (3 Schaden/s, 3× rollen löscht). Rotglut: 3er-Fächer.
 2. **Krallensturz:** Hebt ab (Flug-Zustand 4–8 s), Schatten auf Ziel 0,9 s, Sturzflug 26 Schaden + Gift.
 3. **Flügelböe:** Wind schiebt Pirscher 3 m zurück, keine Schaden, unterbricht Aufladen.
 4. **Schwanzhieb:** 180° hinten, 20 Schaden.
 5. **Rotglut-Brüllen:** Hält Pirscher fest (wie Rudelruf).
-Im Flug: nur Bogen + Item „Blendknolle" holt ihn runter (stürzt ab, 4 s wehrlos).
+Im Flug: nur Bogen + Item „Blendknolle" holt ihn runter (stürzt ab, 4 s wehrlos). Abheben höchstens alle ~30–45 s (21–33 s Bodenzeit + 4–8 s Flug; bei großer Distanz/Rotglut früher gewählt) → ca. 20 % der Kampfzeit in der Luft; beim Abheben und nach dem Sturz ist er für Nahkämpfer ca. 6 s pro Flug erreichbar.
+
+---
+
+### 5.4 Balancing-Stand (Phase 3)
+Idealer DPS (Stufe-1-Waffe, ruhender Brocken, beste Zone, Skript-Spieler): Plattmacher ≈ 50, Zwillingsklingen ≈ 45 (90 %, Zwillingsklingen-BW ×1,18), Spannbogen ≈ 45 (88 %, Schnellschuss ×1,08, gespannt ×1,7/2,6/3,6). Kampfdauer bei ~45 % Uptime und passender Waffenstufe (Jaggo St. 1, Barrotz St. 2, Brathalos St. 3): ca. 5–8 min, daher die HP-Werte oben. Teil-HP wurden ~×2 mitskaliert.
+
+### 5.4 Neutrale Tiere (Leben auf der Map)
+Friedliche Herdentiere ziehen grasend durch die Zonen. Sie greifen nicht an, außer man ärgert sie.
+- **Mampfer** (großes, behäbiges Echsen-Rind, HP 120): Herden aus 3–5 Tieren in Zone 1 und 3, ziehen langsam zwischen Weideplätzen, fressen Gras (Kopf-runter-Animation). Bei Treffer: Herde flieht. Ein ausgewachsener Bulle stößt einmal zu, wenn ein Jungtier angegriffen wird (8 Schaden, wirft nicht um).
+- **Hoppler** (kleines Hüpfvieh, HP 20): Gruppen in Zone 1/2/4, flüchten bei Annäherung < 6 m.
+- **Glutkäfer-Schwärme / Vögel:** reine Deko (Partikel), fliegen auf, wenn man durchläuft.
+- Drops beim Zerlegen (1× pro Tier): Mampfer → `rohfleisch` ×2, `altknochen`, selten `mampfer_fell`; Hoppler → `rohfleisch`.
+- Brocken jagen gelegentlich Mampfer (Jaggo/Brathalos): kurzer „Fressen"-Zustand = Angriffsfenster für Pirscher.
+- Neue Rezepte: **Grillsteak** = `rohfleisch` + `glutbrocken` (Item: +40 HP und +25 Max-Puste für die Jagd, 1,2 s Nutzzeit, max 3). Kochtopf: **Mampfer-Ragout** (+30 Max-HP, 60 Schrott + `rohfleisch` ×2). Rüstung „Fellkluft" (Schutz 10, Macke „Zähe Socke") aus `mampfer_fell`.
 
 ---
 
@@ -266,6 +292,13 @@ Drop-Tabellen mit Gewichten in `src/data/drops.js`.
 JR-Aufstieg: JR 2 nach erstem Jaggo, JR 3 nach erstem Barrotz, JR 4 nach erstem Brathalos.
 Im Koop zählt der Auftrag des Hosts; Gäste bekommen Belohnungen, auch wenn der Auftrag für sie noch gesperrt ist.
 
+### 8.6 Gear-Optik (Ausrüstung muss man sehen)
+- Jedes Rüstungs-Set hat eigene Silhouette pro Slot (Kopf/Körper/Beine): Lumpen = Stoff + Flicken; Knochenkram = Knochen-Schulterstücke, Schädelhelm; Jaggo = Schuppen, Kamm-Helm in Orange/Lila; Barrotz = dicke Platten, Schlamm-Krusten, breite Schultern; Brathalos = rote Schuppen, Flügel-Umhang, Hörner, **Glut-Partikel**.
+- Je stärker, desto krasser: Stufe/Set-Rang skaliert Größe der Aufbauten, Stacheln, Emissive-Glühen; Stufe-4-Gear hat Aura-Partikel und leuchtende Augen-Schlitze.
+- Waffen pro Stufe sichtbar anders: Stufe 1 rostig & klein, Stufe 2 Knochen, Stufe 3 Brocken-Teile (Ast-spezifisch), Stufe 4 groß, glühend, mit Element-Partikeln (Feuer/Schock/Gift).
+- Großschwert und Katana zweihändig geführt; Zwillingsklingen je eine pro Hand; Bogen links, Pfeil rechts.
+- Gear ist für Mitspieler sichtbar (Stadt + Jagd): Presence/Snapshot übertragen Waffe (Typ, Stufe, Ast) und Rüstung (Set je Slot) + Farbe.
+
 ### 8.5 Speicherstand
 `localStorage` Key `scuffedhunter.save.v1`, JSON mit Versionsfeld + Migration. Export/Import als Base64-Code im Optionsmenü (Schutz gegen iOS-Löschung). Autosave nach jeder Jagd und jeder Schmiede-Aktion.
 
@@ -275,8 +308,9 @@ Im Koop zählt der Auftrag des Hosts; Gäste bekommen Belohnungen, auch wenn der
 
 ### Touch (primär)
 - **Links:** Virtueller Stick (erscheint dort, wo der Daumen aufsetzt, linke 40 % des Bildschirms).
-- **Rechts unten:** A (groß), B, Rolle, Lock. Darüber klein: Item-Taste (zeigt aktuelles Item + Anzahl; Wischen links/rechts = wechseln).
-- **Kontext-Taste** (erscheint über A nur nahe Sammelpunkt/Zerlegen): „Sammeln"/„Zerlegen".
+- **Rechts unten (Daumenbogen um A):** A (groß), Rolle links daneben, B und Lock im Bogen darüber. Item-Taste links von Rolle (zeigt aktuelles Item + Anzahl; Wischen links/rechts = wechseln). Lock: tippen = an/aus, Wischen hoch/runter = Teil wechseln (§3.4).
+- **Kontext-Taste** (pulsierend gelb, nur nahe Sammelpunkt/Zerlegen/Station): „Sammeln"/„Zerlegen"/Stationsname. Hat einen **eigenen reservierten Platz** über der Item-Taste (links von B), überlappt nie A/B/Rolle/Lock/Item und liegt außerhalb der Stick-Zone.
+- **Layout-Option** (Optionen-Station): Tastengröße S/M/L, Linkshänder-Spiegelung (Stick rechts, Tasten links), Vibration. Wird in den Einstellungen gespeichert. Trefferflächen siehe docs/ARCHITECTURE.md „Touch-Regeln".
 - **Rechte freie Fläche:** Wischen dreht Kamera.
 - Menü-Taste oben rechts (Pause gibt es im Koop nicht, nur Overlay).
 
@@ -294,7 +328,7 @@ Regel: **HUD nimmt max. ~15 % der Bildfläche ein**. Alle Größen relativ zur k
 - Oben links (max. 180 × 60 px): Name klein, HP-Balken (Prellung dunkelrot), Puste-Balken, Wucht-Meter (dünn), Waffen-Status (Bogen-Stufe / Aufladestufe / Rausch).
 - Party (unter Spieler, nur Gäste): je 1 Zeile 10 px Schrift, Name + Mini-HP.
 - Oben rechts: Timer + Minimap 64 px (Tap = groß).
-- Rechts unten: A 64 px, B/Rolle/Lock 44 px, Item 40 px. Halbtransparent (Alpha 0,55), beim Drücken voll.
+- Rechts unten (sichtbar / Trefferfläche): A 66 / 82 px, B/Rolle/Lock/Item 48 / 60 px, Kontext 62 / 74 px. Halbtransparent, beim Drücken voll. Trefferflächen sind immer größer als die Optik und überlappen nie.
 - Links unten: Stick erscheint dynamisch, 90 px.
 - Brocken-HP wird **nicht** angezeigt (man liest den Zustand am Brocken: Hinken, Sabbern, Teilbrüche). Brocken-Name kurz eingeblendet beim Entdecken.
 - Schadenszahlen: klein, pixelig, steigen auf, Option zum Abschalten.

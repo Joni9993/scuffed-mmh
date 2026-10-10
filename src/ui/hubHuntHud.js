@@ -21,7 +21,7 @@ export function createHuntHud(root) {
   // icon decoration inside the phase-1 item button
   const btn = document.querySelector('.btn-item');
   let ico = null;
-  if (btn) { ico = document.createElement('img'); ico.className = 'hh-btnico'; ico.draggable = false; btn.appendChild(ico); }
+  if (btn) { ico = document.createElement('img'); ico.className = 'hh-btnico'; ico.draggable = false; (btn.querySelector('.tv') || btn).appendChild(ico); }
 
   const cache = {};
   const set = (k, v, fn) => { if (cache[k] !== v) { cache[k] = v; fn(v); } };
@@ -45,7 +45,7 @@ export function createHuntHud(root) {
       const bar = inv.items;
       const key = bar.map((b) => `${b.id}${b.n}`).join() + '|' + inv.sel + '|' + (items?.using?.id ?? '');
       set('strip', key, () => {
-        strip.style.display = bar.length > 1 ? 'flex' : 'none';
+        strip.style.display = bar.length > 1 ? 'grid' : 'none';
         strip.innerHTML = bar.map((b, i) => `<button class="hh-slot${i === inv.sel ? ' sel' : ''}${b.n <= 0 ? ' empty' : ''}" data-i="${i}"><img src="${iconUrl(b.id)}" alt=""><b>${b.n}</b></button>`).join('');
       });
       const cur = inv.selectedId;

@@ -200,7 +200,7 @@ world = {
 `input.b.<name>` = `{down, pressed, released, heldMs, lastHeldMs}` für `attack, special, roll, lock, context, item, itemNext, itemPrev, menu`; `input.move {x,y}`, `input.sprint`, `input.takeCamera()`, `input.takeSlot()`. Quellen schreiben mit `input.set(name, down, sourceId)` / `input.setStick(x, y, sourceId)`; Kanten (`pressed/released`) gelten genau einen Sim-Schritt (`input.poll(dt)` am Anfang jedes Schritts, macht `Hunt.update`). Touch-Layout/Größen: `ui/ui.css` (`.btn-a` usw.), Touch-UI erscheint automatisch auf Touch-Geräten (oder `?touch=1`).
 
 ## Debug-/Test-API (`window.__SH`, Lead nutzt das für e2e)
-`scene` (Name), `hunt`, `player`, `monsters` (Getter), `timeScale(x)`, `god(bool)`, `press(action, ms)` (`'A'|'B'|'attack'|'special'|'roll'|'lock'|'context'|'item'|'itemNext'|'itemPrev'|'menu'`, ms = **simulierte** Zeit), `stick(x, y)`, `camera(dx, dy)`, `save` (Platzhalter-Objekt, Meta-Agent hängt Save-API ein), `goto(scene, opts)`, `step(n)` (n Sim-Schritte + Render), `sim(n)` (n Sim-Schritte **ohne** Render, schnell), `pause(bool)` (stoppt/startet die rAF-Schleife → danach deterministisch mit `step`/`sim`), `debugHitboxes(bool)` (gelb = Spieler, rot = Brocken), `input`, `app`, `time`.
+`scene` (Name), `hunt`, `player`, `monsters` (Getter), `timeScale(x)`, `god(bool)`, `press(action, ms)` (`'A'|'B'|'attack'|'special'|'roll'|'lock'|'lockNext'|'lockPrev'|'context'|'item'|'itemNext'|'itemPrev'|'menu'`, ms = **simulierte** Zeit), `stick(x, y)`, `camera(dx, dy)`, `save` (Platzhalter-Objekt, Meta-Agent hängt Save-API ein), `goto(scene, opts)`, `step(n)` (n Sim-Schritte + Render), `sim(n)` (n Sim-Schritte **ohne** Render, schnell), `pause(bool)` (stoppt/startet die rAF-Schleife → danach deterministisch mit `step`/`sim`), `debugHitboxes(bool)` (gelb = Spieler, rot = Brocken), `input`, `app`, `time`.
 URL-Parameter: `?scene=hunt&quest=jaggo&weapon=gs&seed=1&god=1&nofx=1` plus `aggro=1` (Brocken startet sofort im Kampf), `res=360`, `touch=1`, `peerhost=&peerport=` (Netz-Agent). `nofx=1` schaltet Funken/Shake/Glitch/Scanlines ab (Schadenszahlen bleiben als DOM `.dmg`).
 
 ## Neues Hinzufügen – Kurzrezepte
@@ -209,3 +209,29 @@ URL-Parameter: `?scene=hunt&quest=jaggo&weapon=gs&seed=1&god=1&nofx=1` plus `agg
 - **Item:** Daten in `data/items.js`, Nutzung über `Hunt.onItem`; Heilung `healVitals`, Statusentfernung/Buffs als Felder am Player (`v.costMul`, `dmgMul`, `protect`).
 - **Szene:** Datei in `src/scenes/`, Zeile in `scenes/index.js`, DOM in `app.ui`.
 - **Sound:** `SOUNDS`-Eintrag + `bus.emit('sfx', {name})`.
+
+
+## Touch-Regeln (src/input/touch.js, touchLayout.js, lock.js)
+Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert, Kontext-Taste überlappte, Lock-Zyklus unklar):
+1. **Optik < Trefferfläche.** Jede Taste = unsichtbarer Kreis `.tbtn` (Trefferfläche) mit sichtbarem `.tv` darin. Sichtbar >= 44 px (A 66, Rest 48, Kontext 62 bei Größe M; S/M/L skalieren), Trefferfläche = sichtbar + 12 px (A: +16), A >= 56 px.
+2. **Abstand:** Trefferkreise zweier Tasten überlappen nie (>= 2 px), sichtbarer Abstand >= 8 px. Ein Tap neben eine Taste gehört höchstens einer Taste. Der Solver `solveLayout(w, h, {size, mirror, insets, mode})` ist rein (kein DOM), `checkLayout` prüft alle Regeln (Tests: `tests/unit/touchLayout.test.js`, 844x390, 932x430, 740x360, 1024x500, 1180x820, 667x375, 568x320, jeweils S/M/L, beide Händigkeiten, mit/ohne Notch-Insets).
+3. **Daumenbogen:** um den Mittelpunkt von A bei 182 Grad Rolle, 132 Grad B, 82 Grad Lock; Item links von Rolle; Kontext-Taste hat einen **eigenen, immer reservierten** Platz über Item (links von B). Item-Leiste (4x2 Slots à 44 px) links von Item. Nichts liegt in der Stick-Zone (äußere 40 % der Breite, min. 30 %).
+4. **Safe-Area:** Insets werden per CSS `env(safe-area-inset-*)` (Probe-Element) gelesen; Tasten bleiben innerhalb. `viewport-fit=cover` in index.html. Neu berechnet bei resize/orientationchange und wenn Größe/Händigkeit/Town-Modus wechselt.
+5. **Pointer Events mit Capture:** Ein Finger gehört dem Steuerelement, auf dem er begann (`setPointerCapture`, Zuordnung per pointerId). Auf eine andere Taste rutschen löst diese nicht aus; Halten (A aufladen, B-Finisher) läuft weiter. Stick + Tasten gleichzeitig (Multi-Touch) getestet per CDP `Input.dispatchTouchEvent`.
+6. **Sofortiges Feedback:** Klasse `.down` im pointerdown (kein :active/Hover, kein 300-ms-Delay: `touch-action: none` auf Spiel-UI, `manipulation` auf Buttons), optional `navigator.vibrate` (Einstellung „Vibration", iOS ignoriert es).
+7. **iOS:** `user-select:none`, `-webkit-touch-callout:none`, `-webkit-tap-highlight-color: transparent`, gesture*/dblclick/touchmove preventDefault (main.js), keine Bild-Drags.
+8. **Lock = Schalter:** Tippen an/aus (Taste feuert beim Loslassen, damit Wischen nicht auch toggelt); Wischen hoch/runter auf Lock = nächstes/voriges Teil (`lockNext`/`lockPrev`); Zustand sichtbar auf der Taste (`input.lockOn`). Logik als reine State-Machine `stepLock` (src/input/lock.js), vom Spieler jeden Sim-Schritt in jedem Zustand aufgerufen (kein verlorener Tap im Angriff/Hitstop). Tot/>70 m = Lock aus. Q / RB = Toggle, F,V / R3 = Teil.
+9. **Text in Buttons:** alle Buttons `display:flex` + `align-items/justify-content:center`, `line-height:1.2`, `text-align:center`, `white-space:normal`, `overflow-wrap:anywhere`, `text-wrap:balance`; Kontext-/Item-Label schrumpfen per `fitText` bis sie in den Kreis passen. Mindesthöhe 44 px für alle UI-Buttons.
+10. **Layout-Option:** `settings.btnSize` ('S'|'M'|'L'), `settings.leftHand`, `settings.haptics` (localStorage `scuffedhunter.settings.v1`), UI im Optionen-Panel; `app.touch.relayout()` wendet sie sofort an. CSS-Variablen `--strip-*`, `--emote-*`, `--wheel-*` koppeln Item-Leiste und Stadt-Emote-Button an den Solver.
+
+---
+
+# Phase 3 (Balancing & Bugfixes) – Änderungen an Verträgen
+
+- **Schaden:** `resolvePlayerHit(...).dmg` ist der **Gesamtschaden inkl. Element**; `elemDmg` ist nur der Elementanteil (Anzeige/Statistik). `Monster.applyDamage` zieht genau `res.dmg` ab.
+- **Brocken-Angriffsgewicht:** `AttackDef.weight` darf eine Funktion `(monster, dist) => Zahl` sein. Brathalos-Aufflug nutzt `monster.flyCd` (nur am Boden herunterzählend, 21–33 s nach jeder Landung).
+- **Kleinmonster-Culling:** `minor`-Monster weiter als 65 m von jedem lokalen Pirscher werden weder gezeichnet noch gepost; `hurtParts()`/`lockPoints()` liefern dann `[]`. `hurtParts()`/`lockPoints()` sind gepoolt und pro Pose-Update gecacht – Einträge nicht über Sim-Schritte hinweg aufbewahren.
+- **Ambient-Packs:** `Hunt` spawnt beim Start (nur Host/Solo, `?noambient=1` schaltet ab) je 2 Rudel Jagglinge in Zone 1 und 2 (`spawnPack(..., {ambient:true})`, zählt nicht gegen das Rudelruf-Limit von 3). Gäste bekommen sie über die Brocken-Snapshots.
+- **Netz:** Gast-Pfeile werden per `fx {k:'arrow'}` gespiegelt (nur Optik, Schaden bleibt Gast-`hit`). Sammeln im Koop ist host-arbitriert: Gast sendet `gather {id, c:1}`, Host antwortet an den Absender mit `{id,u,it:[…]}` (oder `deny`) und meldet den neuen Stand an die übrigen. Gameplay-Item-Effekte (`flash/stink/trap/bomb`) wirken nur beim Host/Solo, Gäste spielen die Optik.
+- **Kamera:** `createCameraRig(camera, getGroundY, collide)` – Kollision gegen Gelände/Wände; `update({lockSize})` skaliert Abstand/Neigung mit `monster.bodyRadius`.
+- **Tools:** `tools/weapon-dps.mjs` (DPS-Sweep), `tools/net-e2e.mjs` (2-Peer-Test, braucht PeerJS-Server auf :9000), `tools/perf-probe.mjs` (renderer.info + Allokationen). `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js` = volles Fairness-Audit (~2 min).

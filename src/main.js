@@ -51,11 +51,12 @@ const loop = createLoop({
 });
 
 // Debug / test API (docs/ARCHITECTURE.md "Debug")
-const ACTIONS = { A: 'attack', B: 'special', attack: 'attack', special: 'special', roll: 'roll', lock: 'lock', context: 'context', item: 'item', itemNext: 'itemNext', itemPrev: 'itemPrev', menu: 'menu' };
+const ACTIONS = { A: 'attack', B: 'special', attack: 'attack', special: 'special', roll: 'roll', lock: 'lock', lockNext: 'lockNext', lockPrev: 'lockPrev', context: 'context', item: 'item', itemNext: 'itemNext', itemPrev: 'itemPrev', menu: 'menu' };
 window.__SH = {
   get scene() { return app.sceneName; },
   get hunt() { return app.scene?.hunt ?? null; },
   get player() { return app.scene?.hunt?.player ?? null; },
+  get town() { return app.scene?.api ?? null; }, // [T] town debug API: teleport, toStation, open, stations, remotes, lastCalls
   get monsters() { return app.scene?.hunt?.monsters ?? []; },
   timeScale(x) { time.manual = x; },
   god(b = true) { const p = this.player; if (p) p.god = !!b; },
@@ -80,6 +81,7 @@ const startOpts = {
   god: flag('god'),
   nofx: flag('nofx'),
   aggro: flag('aggro'),
+  noAmbient: flag('noambient'), // [B] ?noambient=1 disables the ambient Jagglinge packs
   mode: params.get('mode') || undefined, // [N] lobby: host | join
   code: params.get('code') || undefined,
   name: params.get('name') || undefined,

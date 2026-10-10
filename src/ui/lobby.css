@@ -14,7 +14,7 @@
 .lobby .row .rd.no { color: #8a8aa8; }
 .lobby .row.empty { opacity: .35; }
 .lobby .actions { display: flex; flex-wrap: wrap; gap: 1vmin; margin-top: 1.4vmin; }
-.lobby .btn { margin: 0; min-height: 40px; }
+.lobby .btn { margin: 0; min-height: 44px; }
 .lobby .btn[disabled] { opacity: .4; pointer-events: none; }
 .lobby input.codein {
   width: 8.4em; font: inherit; font-size: max(22px, 9vmin); letter-spacing: .12em; text-align: center; text-transform: uppercase;

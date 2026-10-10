@@ -11,10 +11,12 @@ import { ProjectileSet } from './mprojectiles.js';
 export const MREST = { bodyY: 0, bodyPitch: 0, bodyRoll: 0, neck: 0, head: 0, headYaw: 0, tailYaw: 0, tailPitch: 0, legL: 0, legR: 0, wing: 0, spread: 0, jaw: 0 };
 export const mTrack = (frames) => compileTrack(frames, MREST);
 
-const RAGE_DURATION = 45, RAGE_HP = 0.6, RAGE_BURST = 300, RAGE_BURST_WINDOW = 20, RAGE_COOLDOWN = 20;
+const RAGE_DURATION = 45, RAGE_HP = 0.6, RAGE_BURST_PCT = 0.075 /* of max HP within the window; was a flat 300 when Jaggo had 1800 HP */, RAGE_BURST_WINDOW = 20, RAGE_COOLDOWN = 20;
 const FLEE_HP = 0.3, STAGGER = 2.0, STUN_TIME = 6.0, STUN_BASE = 150, THREAT_WINDOW = 10;
 const POISON_THRESHOLD = 100, POISON_TIME = 15, POISON_PCT = 0.03, TRAP_TIME = 6, TRAP_COOLDOWN = 60, BLIND_TIME = 4, STINK_TIME = 4.5;
 export const LIMP_HP = 0.3;
+const MINOR_CULL_R2 = 65 * 65; // [B] perf: small monsters farther than this from every local hunter are neither posed nor drawn (nor hittable)
+const NO_PARTS = Object.freeze([]);
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 
@@ -70,6 +72,8 @@ export class Monster {
     this.st = { blind: 0, trap: 0, trapCd: 0, poisonBuild: 0, poisonT: 0, poisonAcc: 0, stink: 0, stinkFrom: null };
     this.flyT = 0; this.fallV = 0; this.flyAng = 0; this.flyDir = 1; this.flyDamage = 0; this.helpless = 4;
     this.pose = { ...MREST };
+    this._tgt = { ...MREST };
+    this._stamp = 0; this._hpStamp = -1; this._lpStamp = -1;
     this.marker = null;
 
     const built = def.build();
@@ -116,26 +120,48 @@ export class Monster {
 
   // ---------- hurtboxes
   /** [{part, sphere:{type,x,y,z,r}, pos:Vector3}] in world space (uses current pose). */
+  // [B] perf: the lists (and their entries) are pooled and cached until the monster's next pose update (`_stamp`).
+  // Callers must not keep entries across sim steps (all current callers use them immediately).
   hurtParts() {
-    const out = [];
+    if (this.culled) return NO_PARTS;
+    if (this._hpList && this._hpStamp === this._stamp) return this._hpList;
+    const out = (this._hpList ??= []);
     const sc = this.def.scale;
+    let n = 0;
     for (const part of this.parts) {
       if (part.gone) continue;
       for (const sp of part.sph) {
+        let e = out[n];
+        if (!e) e = out[n] = { part, pos: new THREE.Vector3(), sphere: { type: 'sphere', x: 0, y: 0, z: 0, r: 0 }, key: '' };
+        if (e.part !== part) { e.part = part; e.key = this.id + '|' + part.id; }
         _v.set(sp.offset[0], sp.offset[1], sp.offset[2]);
         sp.node.localToWorld(_v);
-        out.push({ part, pos: _v.clone(), sphere: { type: 'sphere', x: _v.x, y: _v.y, z: _v.z, r: sp.r * sc } });
+        e.pos.copy(_v);
+        e.sphere.x = _v.x; e.sphere.y = _v.y; e.sphere.z = _v.z; e.sphere.r = sp.r * sc;
+        n++;
       }
     }
+    out.length = n;
+    this._hpStamp = this._stamp;
     return out;
   }
   lockPoints() {
-    const pts = [];
+    if (this.culled) return NO_PARTS;
+    if (this._lpList && this._lpStamp === this._stamp) return this._lpList;
+    const pts = (this._lpList ??= []);
+    let n = 0;
     for (const part of this.parts) {
       if (part.lock === false || part.gone) continue;
       const sp = part.sph[0];
-      pts.push({ partId: part.id, pos: sp.node.localToWorld(new THREE.Vector3(sp.offset[0], sp.offset[1], sp.offset[2])) });
+      let e = pts[n];
+      if (!e) e = pts[n] = { partId: part.id, pos: new THREE.Vector3() };
+      e.partId = part.id;
+      e.pos.set(sp.offset[0], sp.offset[1], sp.offset[2]);
+      sp.node.localToWorld(e.pos);
+      n++;
     }
+    pts.length = n;
+    this._lpStamp = this._stamp;
     return pts;
   }
 
@@ -220,7 +246,7 @@ export class Monster {
   applyDamage(res) {
     if (!this.alive) return null;
     const part = this.partById[res.partId];
-    const total = res.dmg + (res.elemDmg || 0);
+    const total = res.dmg; // res.dmg already INCLUDES elemDmg (combat.resolvePlayerHit); elemDmg is informational only
     const wasSleeping = this.sleeping;
     this.hp = Math.max(0, this.hp - total);
     this.hitFlash = 0.12;
@@ -242,7 +268,7 @@ export class Monster {
     this.burst.push({ t: this.time, dmg: total });
     if (!this.minor && this.authority) {
       if (!this.rageUsed && this.hp <= this.maxHp * RAGE_HP) { this.rageUsed = true; this._enrage(); }
-      else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= RAGE_BURST) this._enrage();
+      else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= this.maxHp * RAGE_BURST_PCT) this._enrage();
     }
     if (this.hp <= 0) { this._die(); ev.killed = true; return ev; }
     if (this.minor) this._flinch(pid, total);
@@ -282,8 +308,14 @@ export class Monster {
     part.factor = Math.max(0, part.baseFactor - 0.1);
     for (const m of part.mats) m.userData.ps1.uJit.value = 0.01;
     if (this.state !== 'fly') this.stagT = STAGGER;
+    this.hitFlash = 0.3;
+    if (this.authority && this.state !== 'fly' && !this.attack) { // [B] part break: visible recoil away from the hunter
+      const { p } = this._nearestPlayer();
+      if (p) { const dx = this.pos.x - p.pos.x, dz = this.pos.z - p.pos.z, l = Math.hypot(dx, dz) || 1; this.kb = { x: (dx / l) * 1.1 / 0.3, z: (dz / l) * 1.1 / 0.3, t: 0.3 }; }
+    }
     this._interrupt();
     this.def.onBreak?.(this, part);
+    this._hpStamp = this._lpStamp = -1; // parts may be gone now (severed tail)
     const p = part.sph[0].node.getWorldPosition(new THREE.Vector3());
     this.ctx.fx.spark(p, 24, '#ffffff', 6);
     this.ctx.fx.shake(0.35, 0.3);
@@ -355,13 +387,16 @@ export class Monster {
       if (dist < def.range[0] || dist > def.range[1]) continue;
       if (def.cond && !def.cond(this, this.ctx)) continue;
       cands.push(def);
-      total += def.weight ?? 1;
+      total += this._weightOf(def, dist);
     }
     if (!cands.length) return null;
     let r = this.rng() * total;
-    for (const c of cands) { r -= c.weight ?? 1; if (r <= 0) return c; }
+    for (const c of cands) { r -= this._weightOf(c, dist); if (r <= 0) return c; }
     return cands[cands.length - 1];
   }
+
+  /** Attack weight; defs may use a function (m, dist) -> number. */
+  _weightOf(def, dist) { const w = def.weight; return typeof w === 'function' ? w(this, dist) : (w ?? 1); }
 
   // ---------- targeting
   _pickTarget() {
@@ -491,7 +526,7 @@ export class Monster {
   }
 
   _nextWanderPoint() {
-    const route = routeOf(this);
+    const route = this.def.homeWander ? null : routeOf(this);
     if (route?.length) {
       const p = route[this.routeIdx % route.length];
       this.routeIdx = (this.routeIdx + 1 + (this.rng() < 0.25 ? 1 : 0)) % route.length;
@@ -716,9 +751,27 @@ export class Monster {
   _clampWorld() { if (!this.attack && !this.flying) this.pos.y = this.ctx.world.heightAt(this.pos.x, this.pos.z) + this.air; }
 
   // ---------- visuals
+  /** Small monsters far from all local hunters: skip posing + drawing (ambient packs would add ~15 draw calls each). */
+  _cullMinor() {
+    let near = false;
+    for (const pl of this.ctx.players) {
+      if (!pl.local) continue;
+      const dx = pl.pos.x - this.pos.x, dz = pl.pos.z - this.pos.z;
+      if (dx * dx + dz * dz <= MINOR_CULL_R2) { near = true; break; }
+    }
+    if (!near && this.state !== 'dead') {
+      if (!this.culled) { this.culled = true; this.mesh.visible = false; this.shadow.visible = false; this.ctx.fx.clearMarker?.(this.id); }
+      return true;
+    }
+    if (this.culled) { this.culled = false; this.mesh.visible = true; this.shadow.visible = true; this._hpStamp = this._lpStamp = -1; }
+    return false;
+  }
+
   _visuals(dt) {
+    if (this.minor && this._cullMinor()) return;
     const p = this.pose;
-    const target = { ...MREST };
+    const target = this._tgt;
+    for (const k in MREST) target[k] = MREST[k];
     let tele = null;
     const spd = Math.hypot(this.vel.x, this.vel.z);
     if (!this.authority && !this.attack) this.air = Math.max(0, this.pos.y - this.ctx.world.heightAt(this.pos.x, this.pos.z));
@@ -770,6 +823,7 @@ export class Monster {
     const k = 1 - Math.exp(-(this.attack ? 40 : 10) * dt);
     for (const key in target) p[key] += (target[key] - p[key]) * k;
     this.rigApply(p);
+    this._stamp++; // hurtbox caches are stale now
 
     // flash: telegraph red/white blink, hit flash white, rage glow, poison/trap tint
     const blink = Math.floor(this.time * 10) % 2 === 0;

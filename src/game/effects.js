@@ -8,10 +8,13 @@ const THROW_TIME = 0.6;
 const FLASH_R = 3.6, STINK_R = 3.6, TRAP_R = 2.0, BOMB_R = 4.0;
 const BOMB_DMG = 120, BOMB_STUN = 50;
 
+/** [B] gameplay effects (status, damage) are applied by the host / solo only; guests replay the visuals. */
+const auth = (h) => !h.net || h.net.isHost;
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 /** monsters whose body is within r (+ their radius) of a ground point */
-export function monstersNear(monsters, pt, r, { alive = true } = {}) {
-  return monsters.filter((m) => (!alive || m.alive) && flat(m.pos, pt) <= r + (m.bodyRadius ?? 0) * 0.8);
+export function monstersNear(monsters, pt, r, { alive = true, air = 0 } = {}) {
+  // air: extra reach against flyers (the flash bursts in the air, the flier circles high above the ground point)
+  return monsters.filter((m) => (!alive || m.alive) && flat(m.pos, pt) <= r + (m.bodyRadius ?? 0) * 0.8 + (m.air > 2 ? air : 0));
 }
 
 export class Effects {
@@ -80,7 +83,7 @@ const KINDS = {
       h.fx.spark({ x: at.x, y: at.y + 0.5, z: at.z }, 36, '#fffbd0', 9);
       h.fx.flash?.('rgba(255,255,220,.35)', 0.25);
       h.bus.emit('sfx', { name: 'break', pos: at });
-      for (const m of monstersNear(h.monsters, at, FLASH_R)) m.applyStatus?.('blind', { duration: 4, pos: at });
+      if (auth(h)) for (const m of monstersNear(h.monsters, at, FLASH_R, { air: 3 })) m.applyStatus?.('blind', { duration: 4, pos: at });
     },
   }),
 
@@ -88,7 +91,7 @@ const KINDS = {
     color: '#8ab030',
     onLand(h, at) {
       h.bus.emit('sfx', { name: 'hit', pos: at });
-      for (const m of monstersNear(h.monsters, at, STINK_R)) m.applyStatus?.('stink', { pos: at });
+      if (auth(h)) for (const m of monstersNear(h.monsters, at, STINK_R)) m.applyStatus?.('stink', { pos: at });
       // lingering cloud
       h.effects.list.push(cloud(h, at, 4));
     },
@@ -106,6 +109,7 @@ const KINDS = {
         age += dt;
         if (age > 120) return false;
         if (age < 0.5) return true; // arming
+        if (!auth(h)) return true;
         for (const m of monstersNear(h.monsters, p.pos, TRAP_R)) {
           if (m.minor) continue;
           if (m.applyStatus?.('trap', { duration: 6, pos: p.pos })) {
@@ -156,6 +160,7 @@ export function explode(h, at, owner = 'p1') {
   h.fx.spark({ x: at.x, y: at.y + 0.5, z: at.z }, 50, '#ffb040', 9);
   h.fx.shake?.(0.4, 0.3);
   h.bus.emit('sfx', { name: 'heavy', pos: at });
+  if (!auth(h)) return;
   for (const m of monstersNear(h.monsters, at, BOMB_R)) {
     const part = m.parts?.find((p) => p.stunPart) ?? m.parts?.[0];
     if (!part) continue;

@@ -24,6 +24,7 @@ export function calcDamage({ power, mv, zone = 1, crit = false, glitch = false, 
 
 /**
  * Resolve one player hit against one monster part.
+ * Result contract: `dmg` is the TOTAL damage (physical + element); `elemDmg` is the element share of it, for display/stats only.
  * attacker: {power, critChance, elems:{fire,shock,...}, glitch, sauber, dmgMul}
  * hit: move hit def {mv, blunt, wucht, hitstop}   part: monster part (factor, elem, blunt)
  * opts: {sleeping, zoneOverride}

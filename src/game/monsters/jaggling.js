@@ -40,8 +40,10 @@ const dart = {
 };
 
 /** Spawn up to n Jagglinge around pos (respects the max of 3 alive). Returns the spawned monsters. */
-export function spawnPack(ctx, pos, n = 2, { state = 'wander', spread = 3.2, target = null } = {}) {
-  const k = Math.min(n, MAX_JAGGLINGE - ctx.countMonsters('jaggling'));
+export function spawnPack(ctx, pos, n = 2, { state = 'wander', spread = 3.2, target = null, ambient = false } = {}) {
+  // ambient packs (hunt start) live outside the Rudelruf cap of 3 so they never block Jaggo's call
+  const active = ctx.monsters ? ctx.monsters.filter((o) => o.alive && o.def.id === 'jaggling' && !o.ambient).length : ctx.countMonsters('jaggling');
+  const k = ambient ? n : Math.min(n, MAX_JAGGLINGE - active);
   const out = [];
   const a0 = (ctx.rng ? ctx.rng() : Math.random()) * Math.PI * 2;
   for (let i = 0; i < k; i++) {
@@ -50,6 +52,7 @@ export function spawnPack(ctx, pos, n = 2, { state = 'wander', spread = 3.2, tar
     const m = ctx.spawnMonster('jaggling', { x, z, yaw: a + Math.PI, state });
     if (!m) continue;
     m.home = { x: pos.x, z: pos.z };
+    m.ambient = ambient;
     if (target) { m.target = target; m.discovered = true; }
     m.recover = 0.6 + i * 0.25;
     ctx.fx?.spark?.({ x, y: ctx.world.heightAt(x, z) + 0.4, z }, 10, '#a08a60', 4);
@@ -75,6 +78,13 @@ export const jaggling = {
   ],
   attacks: { jaggling_biss: bite, jaggling_sprung: dart },
   build: () => buildRaptor({ scale: SC, skin: 'scale', crest: false }),
+  homeWander: true, // wander around the pack's home instead of the Brocken routes
+  /** ambient packs give up the chase when the hunter is far away */
+  tick(m, dt) {
+    if (!m.ambient || !m.authority || m.state !== 'combat' || !m.target) return;
+    const t = m.target;
+    if (Math.hypot(t.pos.x - m.pos.x, t.pos.z - m.pos.z) > 38) { m.target = null; m.attack = null; m.discovered = false; m.setState('wander'); m.wanderTo = null; m.wanderT = 1; }
+  },
   init(m) { m.jx = { dartCd: 1.2 + m.rng() * 2, retreatT: 0, dir: m.rng() < 0.5 ? 1 : -1 }; },
   recoverAfter: () => 0.25,
   onAttackEnd(m) { m.jx.retreatT = 0.9 + m.rng() * 0.8; m.jx.dartCd = 1.8 + m.rng() * 2.4; },

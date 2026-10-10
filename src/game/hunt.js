@@ -9,6 +9,7 @@ import { createHud } from '../ui/hud.js';
 import { Player } from './player.js';
 import { Monster } from './monsters/monster.js';
 import { getMonsterDef } from './monsters/index.js';
+import { spawnPack } from './monsters/jaggling.js';
 import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
@@ -25,6 +26,7 @@ const MAX_KO = 3;
  * A hunt session. Also serves as the `ctx` for entities (see docs/ARCHITECTURE.md "Hunt context").
  * opts: { quest:'jaggo', weapon:'gs', seed:1, god:false, nofx:false, aggro:false, solo:true, name }
  */
+const _lockV = new THREE.Vector3(); // [B] perf: no per-frame allocation
 export class Hunt {
   constructor(app, opts = {}) {
     this.app = app;
@@ -54,7 +56,7 @@ export class Hunt {
     this.scene.add(this.world.mesh);
 
     this.camera = new THREE.PerspectiveCamera(60, app.renderer.aspect, 0.1, 170);
-    this.rig = createCameraRig(this.camera, (x, z) => this.world.heightAt(x, z));
+    this.rig = createCameraRig(this.camera, (x, z) => this.world.heightAt(x, z), (pt, r) => this.world.collide(pt, r));
     this.fx = createFx({ scene: this.scene, camera: this.camera, nofx: !!opts.nofx });
     this.viz = createDebugViz(this.scene);
     // [W] generic projectile system (arrows, later monster projectiles)
@@ -79,6 +81,8 @@ export class Hunt {
     // [P] gather quests have no Brocken (quest.monster = null)
     this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster }) : null;
     if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
+    // [B] ambient Jagglinge packs in zones 1 + 2 (host/solo only; guests get them through the monster snapshots)
+    if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
     if (opts.aggro && this.mainMonster) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
@@ -101,6 +105,29 @@ export class Hunt {
     this.meta = new HuntMeta(this, lo);
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
     if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); }
+  }
+
+  /** [B] 2 packs (2-3 Jagglinge) in each of zone 1 (Wackelwiese) and zone 2 (Knochengrube); never near camp / spawns / the Brocken. */
+  #spawnAmbient(bossSpawn) {
+    const w = this.world, L = w.layout;
+    if (w.id !== 'schotterklamm' || !w.zones) return;
+    const rng = createRng((this.seed ^ 0xa11b) >>> 0);
+    const placed = [];
+    const far = (x, z, o, d) => !o || Math.hypot(x - o.x, z - o.z) >= d;
+    for (const zone of [1, 1, 2, 2]) {
+      const zc = w.zones[zone - 1];
+      if (!zc) continue;
+      for (let t = 0; t < 60; t++) {
+        const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 42;
+        const x = zc.x + Math.cos(a) * r, z = zc.z + Math.sin(a) * r;
+        if (w.zoneAt(x, z) !== zone) continue;
+        if (L && !(L.walkable(x, z, 1.5) && L.reachable(x, z))) continue;
+        if (!far(x, z, w.campPoint, 26) || !far(x, z, bossSpawn, 22) || w.spawnPoints.some((sp) => !far(x, z, sp, 26)) || placed.some((q) => !far(x, z, q, 28))) continue;
+        placed.push({ x, z });
+        spawnPack(this, { x, z }, 2 + (rng() < 0.4 ? 1 : 0), { state: 'wander', ambient: true });
+        break;
+      }
+    }
   }
 
   // [P] Rotglut variants: more HP, permanent rage
@@ -271,11 +298,12 @@ export class Hunt {
     this.fx.update(dt);
     this.rig.update(dt, {
       playerPos: p.pos, playerYaw: p.rot, moving: p.speed > 1, camInput: this.input.takeCamera(),
-      lockPos: p.lockPoint(), shake: this.fx.shakeOffset,
+      lockPos: p.lockPoint(), lockSize: p.lock?.monster?.bodyRadius, shake: this.fx.shakeOffset,
     });
     this.viz.end();
     this.app.input.contextLabel = this.contextLabel ?? null;
     this.app.input.itemLabel = this.itemLabel ?? '';
+    this.app.input.lockOn = !!p.lock;
   }
 
   render() {
@@ -287,7 +315,7 @@ export class Hunt {
     this.meta.render(); // [P]
     const lp = this.player.lockPoint();
     if (lp) {
-      const v = new THREE.Vector3(lp.x, lp.y, lp.z).project(this.camera);
+      const v = _lockV.set(lp.x, lp.y, lp.z).project(this.camera);
       this.hud.lock(v.z < 1 ? { x: v.x * 0.5 + 0.5, y: -v.y * 0.5 + 0.5 } : null);
     } else this.hud.lock(null);
     this.app.touch?.update();
@@ -307,7 +335,7 @@ export class Hunt {
     this.net?.dispose(); // [N]
     this.app.touch?.setVisible(false);
     this.input.reset();
-    this.input.contextLabel = null;
+    this.input.contextLabel = null; this.input.lockOn = false;
     time.reset();
     this.bus.clear();
     this.scene.traverse((o) => { o.geometry?.dispose?.(); });

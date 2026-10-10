@@ -43,7 +43,7 @@ export const resultsScene = {
         ${Object.keys(rewards?.used ?? {}).length ? list('Verbraucht', rewards.used) : ''}
         ${sum?.jrUp ? `<div class="rs-jr">Jägerrang ${jrBefore} → ${sum.jrUp}! Neue Aufträge am Brett.</div>` : ''}
         ${!Object.keys(rewards?.items ?? {}).length && !rewards?.schrott ? '<div class="note">Mit leeren Händen. Mindestens sauber.</div>' : ''}
-      </div><div class="rs-foot"><button class="btn red" data-a="hub">Zurück ins Rostnest</button></div></div>`;
+      </div><div class="rs-foot"><button class="btn red" data-a="hub">Weiter</button> <!-- [T] --></div></div>`;
     el.addEventListener('click', (e) => { if (e.target.closest('[data-a="hub"]')) { sfx.play('ui'); app.goto('hub'); } });
     app.ui.appendChild(el);
     this.el = el;
