@@ -77,7 +77,7 @@ export class Player {
   get alive() { return this.state !== 'ko'; }
   get iframeExtend() { return Math.min(2, this.flinkfuss) * ROLL.flinkfussPerLevel; }
 
-  setWeapon(id, tier = 1) {
+  setWeapon(id, tier = 1, branch = null) {
     this.weaponId = id;
     this.def = getWeapon(id);
     this.stats = weaponStats(id, tier);
@@ -95,10 +95,16 @@ export class Player {
       exhausted: () => this.v.exhaust > 0,
       onChargeLevel: (lvl) => { this.ctx.bus.emit('sfx', { name: 'charge', pos: this.pos, level: lvl }); this.flash = 0.12; },
     });
-    this.weaponMesh = this.def.buildMesh?.() ?? null;
+    this.weaponMesh = this.def.buildMesh?.({ tier, branch }) ?? null; // [KT] tier / branch visuals (katana)
     if (this.rig) this.rig.swapWeapon(this.weaponMesh);
     else this.rig = buildHunterRig({ weaponMesh: this.weaponMesh });
     this.anims = this.def.anims;
+  }
+
+  /** [KT] rebuild the weapon mesh once the branch is known (applyLoadout) */
+  rebuildWeaponMesh(tier, branch) {
+    this.weaponMesh = this.def.buildMesh?.({ tier, branch }) ?? null;
+    this.rig.swapWeapon(this.weaponMesh);
   }
 
   spawnAt(x, z, yaw = 0) {
@@ -167,6 +173,12 @@ export class Player {
       this.ctx.bus.emit('sfx', { name: 'swing', pos: this.pos, heavy: true });
       return 'hit';
     }
+    // [KT] Konterhaltung (katana): a monster hit inside the counter window is negated and answered with a Konterschnitt
+    const ctr = w.def.counter;
+    if (ctr && (h.monster || h.attackId) && ctr.active(w)) {
+      const sp = h.sourcePos;
+      if (!sp || Math.abs(angleDiff(this.rot, yawOf(sp.x - this.pos.x, sp.z - this.pos.z))) <= ctr.arc * D2R) return this.#counter(h, ctr);
+    }
     const sa = w.superArmor();
     let dmg = h.dmg * (1 - protectReduction(this.protect)) * (h.dmgMul ?? 1);
 
@@ -206,6 +218,20 @@ export class Player {
     if (knock === 'down') { this.#enter('down'); w.cancel(); this.#push(h, 3); return 'hit'; }
     if (knock === 'flinch' && sa !== 'flinch') { this.#enter('flinch'); w.cancel(); this.#push(h, 1); }
     return 'hit';
+  }
+  /** [KT] returns 'block' so monsters / projectiles mark the hit as consumed. */
+  #counter(h, ctr) {
+    const w = this.weapon, sp = h.sourcePos;
+    if (sp) this.rot = yawOf(sp.x - this.pos.x, sp.z - this.pos.z);
+    this.invuln = Math.max(this.invuln, ctr.invuln ?? 0.35);
+    ctr.onCounter(w, h, this);
+    this.hitstop = Math.max(this.hitstop, 0.09);
+    this.ctx.fx.number(this.#top(), 'Konter!', 'weak');
+    this.ctx.fx.spark(this.#front(), 12, '#ffe14d', 5);
+    this.ctx.fx.shake(0.16, 0.18);
+    this.ctx.bus.emit('sfx', { name: 'block', pos: this.pos });
+    this.ctx.bus.emit('counter', { player: this, key: h.key });
+    return 'block';
   }
   #push(h, d) {
     if (!h.sourcePos) return;

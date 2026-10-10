@@ -62,15 +62,17 @@ export class WeaponState {
       const btn = inp[x];
       if (!btn) continue;
       const th = this.def.holdThreshold?.[x] ?? 0;
+      // [KT] def.earlyTap[x]: the tap event fires on PRESS (reaction-timed moves like the Konterhaltung); 'hold'+x still follows after the threshold
+      const early = !!this.def.earlyTap?.[x];
       if (btn.pressed) {
-        if (th > 0) this.pend[x] = { t: 0, fired: false };
-        else this.events.push({ type: x, age: 0, btn: x });
+        if (th > 0) this.pend[x] = { t: 0, fired: false, early };
+        if (th <= 0 || early) this.events.push({ type: x, age: 0, btn: x });
       }
       const p = this.pend[x];
       if (p) {
         p.t += dt;
         if (!p.fired && p.t >= th) { p.fired = true; this.events.push({ type: 'hold' + x, age: 0, btn: x, heldT: p.t }); }
-        else if (!p.fired && btn.released) { this.events.push({ type: x, age: 0, btn: x }); this.pend[x] = null; }
+        else if (!p.fired && btn.released) { if (!p.early) this.events.push({ type: x, age: 0, btn: x }); this.pend[x] = null; }
         if (p.fired && !btn.down) this.pend[x] = null;
       }
     }
@@ -122,6 +124,9 @@ export class WeaponState {
     this.sauberOpen = false;
     this.hooks.onMoveEnd?.(m, this);
   }
+
+  /** [KT] Force a move (counter -> Konterschnitt). */
+  startMove(id) { this.#start(id, null); }
 
   /** Abort the current move (roll, hit reaction). */
   cancel() { if (this.move) this.#end(); this.events.length = 0; }
@@ -234,7 +239,7 @@ export class WeaponState {
   pose() {
     const m = this.move;
     if (!m) return null;
-    return { name: m.anim, t: this.t, dur: m.duration ?? 1, level: this.chargeLevel, sauber: this.sauberOpen, charging: m.kind === 'charge', move: m };
+    return { name: m.anim, t: this.t, dur: m.duration ?? 1, level: this.def.poseLevel ? this.def.poseLevel(this) : this.chargeLevel, sauber: this.sauberOpen, charging: m.kind === 'charge', move: m };
   }
   reset() {
     this.move = null; this.t = 0; this.events.length = 0; this.pend.A = this.pend.B = null;

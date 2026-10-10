@@ -29,8 +29,18 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Brathalos-Schwingbogen', power: 130, crit: 0.05, elems: {}, poisonMul: 1.5 },
   ] },
+  // [KT] Katana (GDD 4.4): Zweig a = Jaggo-Reißzahn (Krit 15 %), Zweig b = Barrotz-Schlickschneide (Schock 14)
+  kt: { name: 'Katana', tiers: [
+    { name: 'Rostkatana', power: 78, crit: 0.05, elems: {} },
+    { name: 'Knochenkatana', power: 96, crit: 0.05, elems: {} },
+    { name: 'Jaggo-Reißzahn', power: 112, crit: 0.15, elems: {}, branches: [
+      { id: 'a', name: 'Jaggo-Reißzahn', power: 112, crit: 0.15, elems: {} },
+      { id: 'b', name: 'Barrotz-Schlickschneide', power: 110, crit: 0.05, elems: { shock: 14 } },
+    ] },
+    { name: 'Brathalos-Glutkatana', power: 128, crit: 0.05, elems: { fire: 22 } },
+  ] },
 };
-export const WEAPON_ORDER = ['gs', 'db', 'bow'];
+export const WEAPON_ORDER = ['gs', 'db', 'bow', 'kt'];
 
 /** Stats of (type, tier, branch). branch only matters at tier 3 (default 'a'). */
 export function weaponStats(type, tier = 1, branch = null) {
@@ -51,6 +61,7 @@ export const WEAPON_UPGRADES = {
     gs: { a: { cost: { schrott: 400, jaggo_schuppe: 4, jaggo_fell: 2, schrotterz: 3 } }, b: { cost: { schrott: 500, barrotz_kruste: 4, barrotz_platte: 1, schrotterz: 3 } } },
     db: { a: { cost: { schrott: 400, jaggo_schuppe: 3, jaggo_fell: 3, jaggo_kamm: 1 } }, b: { cost: { schrott: 500, barrotz_kruste: 3, barrotz_schwanzleder: 2, schrotterz: 2 } } },
     bow: { a: { cost: { schrott: 400, jaggo_kamm: 1, jaggo_schuppe: 3, jaggo_fell: 2 } }, b: { cost: { schrott: 500, barrotz_platte: 1, barrotz_kruste: 3, barrotz_schwanzleder: 1 } } },
+    kt: { a: { cost: { schrott: 400, jaggo_schuppe: 3, jaggo_fell: 2, jaggo_kamm: 1, schrotterz: 2 } }, b: { cost: { schrott: 500, barrotz_kruste: 3, barrotz_platte: 1, barrotz_schwanzleder: 1, schrotterz: 2 } } }, // [KT]
   },
   4: { cost: { schrott: 800, brathalos_schuppe: 4, brathalos_membran: 2, glutsack: 1, glimmstein: 2 } },
 };

@@ -15,8 +15,8 @@ export const protectReduction = (protect) => protect / (protect + 80);
  * Schaden = Waffenkraft x Bewegungswert x Trefferzonen-Faktor x Krit x Bonus + Elementkraft x Elementzonen-Faktor.
  * mv in percent; zone/elemZone are factors (elemZone already /100).
  */
-export function calcDamage({ power, mv, zone = 1, crit = false, glitch = false, sauber = false, extra = 1, elem = 0, elemZone = 0 }) {
-  const bonus = (glitch ? GLITCH_MUL : 1) * (sauber ? SAUBER_MUL : 1) * extra;
+export function calcDamage({ power, mv, zone = 1, crit = false, glitch = false, sauber = false, sauberMul = SAUBER_MUL, extra = 1, elem = 0, elemZone = 0 }) { // [KT] sauberMul per hit (Blankgezogen +20 %)
+  const bonus = (glitch ? GLITCH_MUL : 1) * (sauber ? sauberMul : 1) * extra;
   const phys = power * (mv / 100) * zone * (crit ? CRIT_MUL : 1) * bonus;
   const elemDmg = elem * elemZone;
   return { phys, elemDmg, total: phys + elemDmg };
@@ -36,7 +36,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
   for (const [k, v] of Object.entries(attacker.elems || {})) { const e = v * ((part.elem?.[k] ?? 0) / 100); elemSum += e; elemBy[k] = Math.round(e); }
   const dmg = calcDamage({
     power: attacker.power, mv: hit.mv, zone, crit,
-    glitch: attacker.glitch, sauber: attacker.sauber,
+    glitch: attacker.glitch, sauber: attacker.sauber, sauberMul: hit.sauberMul,
     extra: (attacker.dmgMul ?? 1) * (opts.sleeping ? SLEEP_MUL : 1),
     elem: elemSum, elemZone: 1,
   });
