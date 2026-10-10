@@ -144,15 +144,15 @@ export function createTown() {
   group.add(fireLight);
 
   // ---- Schmiede: forge glow, anvil, grindstone
-  { const f = frame(lit, -17.4, 5, Math.PI / 2, H(-17.4, 5));
+  { const f = frame(lit, -16.7, 5, Math.PI / 2, H(-16.7, 5));
     f.box(2.4, 1.1, 1.8, '#4a4450', 0, 0.55, 0); f.cyl(0.5, 0.7, 2.4, 6, '#3a3640', 0, 2.3, 0);
-    const g = frame(glow, -17.4, 5, Math.PI / 2, H(-17.4, 5));
+    const g = frame(glow, -16.7, 5, Math.PI / 2, H(-16.7, 5));
     g.box(1.6, 0.25, 1.1, '#ff7a20', 0, 1.14, 0); g.box(0.9, 0.12, 0.7, '#ffd060', 0, 1.2, 0);
     lit.slab(0.5, 0.45, 0.5, '#2a2830', { x: -13.2, y: H(-13.2, 2.6), z: 2.6 });
     lit.slab(0.9, 0.22, 0.34, '#4a4a54', { x: -13.2, y: H(-13.2, 2.6) + 0.45, z: 2.6, ry: 0.4 });
     lit.slab(0.3, 0.9, 1.7, '#7a5634', { x: -13.0, y: H(-13.0, 7.6), z: 7.6 }); }
   const forgeLight = new THREE.PointLight('#ff6a20', 1.4, 10);
-  forgeLight.position.set(-16.4, 1.8, 5);
+  forgeLight.position.set(-15.8, 1.8, 5);
   group.add(forgeLight);
 
   // ---- Krämerladen: counter, awning, goods

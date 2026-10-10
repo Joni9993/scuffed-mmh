@@ -23,15 +23,15 @@ export const STATIONS = [
 
 /** Solid huts / stalls as rotated boxes: front is local +z (yaw maps local +z to (sin yaw, cos yaw)). h = height (camera clipping). */
 export const BOXES = [
-  { id: 'forge', x: -20, z: 5, w: 5.2, d: 7.4, h: 3.6, yaw: Math.PI / 2 },
-  { id: 'shop', x: 19.6, z: 6, w: 4.8, d: 7.4, h: 3.6, yaw: -Math.PI / 2 },
-  { id: 'counter', x: 13.2, z: 6, w: 1.0, d: 4.2, h: 1.1, yaw: -Math.PI / 2 },
-  { id: 'cookhut', x: -19.6, z: -10.5, w: 5, d: 6.4, h: 3.4, yaw: Math.PI / 2 },
+  { id: 'forge', x: -20, z: 5, w: 7.4, d: 5.2, h: 3.6, yaw: Math.PI / 2 },
+  { id: 'shop', x: 19.6, z: 6, w: 7.4, d: 4.8, h: 3.6, yaw: -Math.PI / 2 },
+  { id: 'counter', x: 13.2, z: 6, w: 4.2, d: 1.0, h: 1.1, yaw: -Math.PI / 2 },
+  { id: 'cookhut', x: -19.6, z: -10.5, w: 6.4, d: 5, h: 3.4, yaw: Math.PI / 2 },
   { id: 'tent', x: 16.6, z: -10, w: 4.2, d: 4.2, h: 3, yaw: -Math.PI / 2 },
   { id: 'board', x: -7.6, z: 22.2, w: 6.4, d: 0.7, h: 4.4, yaw: Math.PI },
   { id: 'mirrorhut', x: 14.8, z: 21.4, w: 4.2, d: 4.4, h: 3.4, yaw: Math.PI },
-  { id: 'hutA', x: -23.4, z: -1.4, w: 3.6, d: 4.6, h: 3.2, yaw: Math.PI / 2 },
-  { id: 'hutB', x: 23.2, z: -1.6, w: 3.6, d: 4.8, h: 3.2, yaw: -Math.PI / 2 },
+  { id: 'hutA', x: -23.4, z: -1.4, w: 4.6, d: 3.6, h: 3.2, yaw: Math.PI / 2 },
+  { id: 'hutB', x: 23.2, z: -1.6, w: 4.8, d: 3.6, h: 3.2, yaw: -Math.PI / 2 },
   { id: 'hutC', x: -21.6, z: 17.5, w: 4, d: 4, h: 3.2, yaw: 2.2 },
   { id: 'hutD', x: 22.6, z: -18.6, w: 4.4, d: 4.4, h: 3.4, yaw: -2.3 },
   { id: 'hutE', x: -8.6, z: -22.6, w: 4.6, d: 3.8, h: 3.2, yaw: 0.3 },
@@ -85,7 +85,7 @@ export function pushOutOfBox(pos, radius, b) {
 
 /** Collide a circle against the town: plateau edge + boxes + circles. Mutates pos. */
 export function collideTown(pos, radius, boxes = BOXES, circles = CIRCLES) {
-  for (let it = 0; it < 2; it++) {
+  for (let it = 0; it < 4; it++) {
     for (const b of boxes) pushOutOfBox(pos, radius, b);
     for (const k of circles) {
       const dx = pos.x - k.x, dz = pos.z - k.z, d = Math.hypot(dx, dz), min = k.r + radius;
