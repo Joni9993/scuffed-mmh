@@ -11,8 +11,9 @@ const collect = (ctx, m, secs) => { const out = []; const off = ctx.bus.on('mons
 describe('Kroll', () => {
   it('Registry, Teile und Werte (GDD 15.4)', () => {
     expect(getMonsterDef('kroll')).toBe(monsters.kroll);
-    expect(kroll.hp).toBe(15000);
-    expect(kroll.scale).toBe(2.6);
+    expect(kroll.hp).toBe(13500);
+    expect(kroll.scale).toBe(1.9);
+    expect(kroll.bodyRadius).toBe(2.2);
     const p = Object.fromEntries(kroll.parts.map((x) => [x.id, x]));
     expect(p.kesselpanzer).toMatchObject({ factor: 0.35, breakHp: 1400 });
     expect(p.scherenL).toMatchObject({ factor: 0.7, breakHp: 700 });
@@ -21,7 +22,8 @@ describe('Kroll', () => {
     expect(p.beine.factor).toBe(0.8);
     expect(p.beine.elem.shock).toBe(25);
     expect(kroll.glitchSpots).toEqual(['kesselpanzer', 'scherenL', 'scherenR']);
-    expect(kroll.run).toBeLessThan(kroll.walk); // vorwaerts langsam, seitwaerts schnell
+    expect(kroll.run).toBeGreaterThanOrEqual(6.5); // Nachsetzen im Rennen (nicht wegrennbar)
+    expect(kroll.prefer).toBeLessThanOrEqual(5.5);
     const { m } = mk();
     for (const id of Object.keys(p)) expect(m.partById[id].mats.length, id).toBeGreaterThan(0);
   });
@@ -34,12 +36,12 @@ describe('Kroll', () => {
       expect(inst.firstHitTime(), a.id).toBeGreaterThanOrEqual(0.5 - 1e-9);
     }
     const z = kroll.attacks.kroll_zange, w = kroll.attacks.kroll_wirbel, d = kroll.attacks.kroll_dampf;
-    expect(z.hits).toHaveLength(2); expect(z.hits[0].dmg).toBe(22);
-    expect(w.hits).toHaveLength(3); expect(w.hits[0].dmg).toBe(18);
-    expect(d.hits.length).toBe(8); expect(d.hits[0].status.type).toBe('rost'); expect(d.hits[0].dmg).toBe(8);
-    expect(kroll.attacks.kroll_seitrammer.hits[0].dmg).toBe(28);
-    expect(kroll.attacks.kroll_druck.hits[0].dmg).toBe(35);
-    expect(kroll.attacks.kroll_sprung.hits[0].dmg).toBe(30);
+    expect(z.hits).toHaveLength(2); expect(z.hits[0].dmg).toBe(26);
+    expect(w.hits).toHaveLength(3); expect(w.hits[0].dmg).toBe(22);
+    expect(d.hits.length).toBe(8); expect(d.hits[0].status.type).toBe('rost'); expect(d.hits[0].dmg).toBe(10);
+    expect(kroll.attacks.kroll_seitrammer.hits[0].dmg).toBe(32);
+    expect(kroll.attacks.kroll_druck.hits[0].dmg).toBe(40);
+    expect(kroll.attacks.kroll_sprung.hits[0].dmg).toBe(34);
   });
 
   it('Seitrammer: 12 m seitwaerts (quer zur Blickrichtung)', () => {
