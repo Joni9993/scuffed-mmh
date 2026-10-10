@@ -51,7 +51,7 @@ const loop = createLoop({
 });
 
 // Debug / test API (docs/ARCHITECTURE.md "Debug")
-const ACTIONS = { A: 'attack', B: 'special', attack: 'attack', special: 'special', roll: 'roll', lock: 'lock', context: 'context', item: 'item', itemNext: 'itemNext', itemPrev: 'itemPrev', menu: 'menu' };
+const ACTIONS = { A: 'attack', B: 'special', attack: 'attack', special: 'special', roll: 'roll', lock: 'lock', lockNext: 'lockNext', lockPrev: 'lockPrev', context: 'context', item: 'item', itemNext: 'itemNext', itemPrev: 'itemPrev', menu: 'menu' };
 window.__SH = {
   get scene() { return app.sceneName; },
   get hunt() { return app.scene?.hunt ?? null; },

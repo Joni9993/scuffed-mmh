@@ -12,6 +12,7 @@ import {
 import { protectReduction } from './combat.js';
 import { REST, sampleTrack } from './anim.js';
 import { buildHunterRig } from './rig.js';
+import { stepLock } from '../input/lock.js';
 
 const D2R = Math.PI / 180;
 const WALK = 4, RUN = 6, SPRINT = 8.5;
@@ -126,7 +127,7 @@ export class Player {
     if (!l.monster.alive) { this.lock = null; return null; }
     return l.monster.lockPoints()[l.idx % l.monster.lockPoints().length].pos;
   }
-  #acquireLock() {
+  #pickLockTarget() {
     let best = null, bd = 1e9;
     const fx = Math.sin(this.rot), fz = Math.cos(this.rot);
     for (const m of this.ctx.monsters) {
@@ -137,7 +138,17 @@ export class Player {
       const score = d * (2 - facing);
       if (score < bd) { bd = score; best = m; }
     }
-    if (best) this.lock = { monster: best, idx: 0 };
+    return best;
+  }
+  /** Lock is a toggle (tap on/off); next/prev cycle the part. Runs every step in every state so taps are never lost. */
+  #stepLock(input) {
+    const b = input.b;
+    this.lock = stepLock(this.lock, {
+      toggle: b.lock.pressed, next: !!b.lockNext?.pressed, prev: !!b.lockPrev?.pressed,
+      acquire: () => this.#pickLockTarget(),
+      valid: (m) => m.alive && Math.hypot(m.pos.x - this.pos.x, m.pos.z - this.pos.z) <= 70,
+      parts: (m) => m.lockPoints().length,
+    });
   }
 
   // ---- hit reception
@@ -352,6 +363,7 @@ export class Player {
   update(dt) {
     const ctx = this.ctx, input = ctx.input;
     this.lastState = this.state;
+    if (this.local) this.#stepLock(input);
     if (consumeHitstop(this, dt)) {
       // [W] keep buffering button edges during hitstop (a press landing in a freeze frame must not be lost: B-hold finishers)
       if (this.state === 'free') this.weapon.feed(dt, { A: input.b.attack, B: input.b.special });
@@ -411,13 +423,6 @@ export class Player {
 
   #updateFree(dt, inp) {
     const ctx = this.ctx, input = ctx.input, w = this.weapon, v = this.v;
-    // lock handling
-    const lk = input.b.lock;
-    if (this.local) {
-      if (lk.pressed) { if (!this.lock) this.#acquireLock(); else this.lock.idx++; }
-      if (lk.released && lk.lastHeldMs >= 500) this.lock = null;
-      if (this.lock && (!this.lock.monster.alive || Math.hypot(this.lock.monster.pos.x - this.pos.x, this.lock.monster.pos.z - this.pos.z) > 70)) this.lock = null;
-    }
     // [P] item use commits the hunter: rooted, no attacks; a roll cancels only once the effect landed (Items sets itemUse)
     if (this.itemUse) {
       if (this.rollBuf > 0 && canRoll(v) && this.itemUse.t >= this.itemUse.cancelAt) { this.itemUse = null; this.#startRoll(); return 0; }

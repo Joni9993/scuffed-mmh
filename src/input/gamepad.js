@@ -25,6 +25,7 @@ export function pollGamepad(input) {
   input.set('attack', bt(2), 'pad');
   input.set('special', bt(3), 'pad');
   input.set('lock', bt(5), 'pad');
+  input.set('lockNext', bt(11), 'pad'); // right stick click: next lock part
   input.set('item', bt(7), 'pad');
   input.set('menu', bt(9), 'pad');
 }

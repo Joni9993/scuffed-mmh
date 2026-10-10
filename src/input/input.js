@@ -4,12 +4,14 @@
  *  input.move   {x, y}      y>0 = forward (screen up). Magnitude 0..1.
  *  input.sprint boolean     explicit sprint held (keyboard Shift). Touch/pad sprint by full push (>=0.4 s).
  *  input.b[name]            {down, pressed, released, heldMs}  for attack, special, roll, lock, context,
- *                           item, itemNext, itemPrev, menu. pressed/released are edges for exactly one sim step.
+ *                           item, itemNext, itemPrev, menu, lockNext, lockPrev. pressed/released are edges for exactly one sim step.
+ *                           lock is a TOGGLE (pressed edge); lockNext/lockPrev cycle the locked part.
+ *  input.lockOn             boolean set by the game each frame (touch Lock button shows the state)
  *  input.takeCamera()       -> {dx, dy} accumulated look delta in CSS px since last call
  *  input.takeSlot()         -> 0..7 or -1 (keyboard 1-8 item select)
  *  input.contextLabel / input.itemLabel   strings set by the game for touch button labels
  */
-export const BUTTONS = ['attack', 'special', 'roll', 'lock', 'context', 'item', 'itemNext', 'itemPrev', 'menu'];
+export const BUTTONS = ['attack', 'special', 'roll', 'lock', 'lockNext', 'lockPrev', 'context', 'item', 'itemNext', 'itemPrev', 'menu'];
 
 export function createInput() {
   const b = {};
@@ -23,7 +25,7 @@ export function createInput() {
   let camDx = 0, camDy = 0, slot = -1;
 
   const input = {
-    b, move: { x: 0, y: 0 }, sprint: false, contextLabel: null, itemLabel: '', hasTouch: false, locked: false,
+    b, move: { x: 0, y: 0 }, sprint: false, contextLabel: null, itemLabel: '', hasTouch: false, locked: false, lockOn: false,
     sprintSrc: new Set(),
 
     set(name, down, src = 'x') {

@@ -276,6 +276,7 @@ export class Hunt {
     this.viz.end();
     this.app.input.contextLabel = this.contextLabel ?? null;
     this.app.input.itemLabel = this.itemLabel ?? '';
+    this.app.input.lockOn = !!p.lock;
   }
 
   render() {
@@ -307,7 +308,7 @@ export class Hunt {
     this.net?.dispose(); // [N]
     this.app.touch?.setVisible(false);
     this.input.reset();
-    this.input.contextLabel = null;
+    this.input.contextLabel = null; this.input.lockOn = false;
     time.reset();
     this.bus.clear();
     this.scene.traverse((o) => { o.geometry?.dispose?.(); });

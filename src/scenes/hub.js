@@ -34,7 +34,7 @@ function townInput(input, blocked) {
   return {
     get move() { return blocked() ? ZERO : input.move; },
     get sprint() { return !blocked() && input.sprint; },
-    b: { attack: IDLE, special: IDLE, lock: IDLE, item: IDLE, itemNext: IDLE, itemPrev: IDLE, context: IDLE, menu: IDLE, get roll() { return blocked() ? IDLE : input.b.roll; } },
+    b: { attack: IDLE, special: IDLE, lock: IDLE, lockNext: IDLE, lockPrev: IDLE, item: IDLE, itemNext: IDLE, itemPrev: IDLE, context: IDLE, menu: IDLE, get roll() { return blocked() ? IDLE : input.b.roll; } },
     takeSlot: () => -1,
     takeCamera: () => input.takeCamera(),
   };
