@@ -1,6 +1,6 @@
 # Scuffed Hunter – Game Design Document
 
-Arbeitstitel: **Scuffed Hunter**. Koop-Monsterjagd für 1–4 Spieler im Browser (iPhone 16 / Pixel 10 als Zielgeräte, Querformat).
+Arbeitstitel: **Scuffed Hunter** → neuer Name **Glitch Hunter** (Okt 2026, siehe §16). Koop-Monsterjagd für 1–4 Spieler im Browser (iPhone 16 / Pixel 10 als Zielgeräte, Querformat).
 Inspiriert vom Genre „Monsterjagd", aber mit **eigener Welt, eigenen Begriffen und eigenen Mechaniken**. Nichts 1:1 übernehmen.
 
 **Grundsatz:** Abstriche nur beim Aussehen (PS1-Look: Low-Poly, 32-px-Texturen, Vertex-Wackeln, Nebel). Gameplay ist präzise, fair, skillbasiert. Jeder Treffer, den der Spieler kassiert, muss vorher lesbar angekündigt worden sein.
@@ -457,6 +457,71 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 - **Waffen-Stufe 5** für alle 4 Waffen (Plattmacher, Zwillingsklingen, Spannbogen, Katana) mit drei Ästen: **Kroll-Ast** (Rost-Element, hohe Teilbruch-Wirkung), **Gorgo-Ast** (Feuer/Schlacke, Krit), **Voltaro-Ast** (Schock, Stufe 6 nur über Voltaro-Herz: „Funkenfürst-Waffe").
 - **Rüstungs-Sets:** **Kroll** (Schutz 34, Macke „Panzerhaut": −50 % Rost-Dauer, +10 % Schutz), **Gorgo** (36, „Wühler": Sog/Wind-Immunität ab 2), **Voltaro** (40, „Überladung": nach Glitch-Konter 8 s +15 % Angriff; „Erdung": Schock-Res). Optik extrem (Gear-Optik §8.6): Voltaro-Set mit Funkenbögen und Spulen.
 - **Aufträge:** „Rauch am Horizont" (Kroll, JR 5), „Was da gräbt" (Gorgo, JR 5), „Der Funkenfürst" (Voltaro, JR 6), „Rostiger Ausflug" (Sammelauftrag Rostwerke), Rotglut-Varianten (JR 7).
+
+---
+
+## 16. Glitch Hunter 2.0 – Vision, Glitch-Waffen, Brocken 2.0, Mutatoren (Owner-Entscheidungen Okt 2026)
+
+> Herleitung & Brainstorming: `docs/NEXT.md`. Dieser Abschnitt ist **autoritativ**. Zahlen mit „Start" sind Startwerte fürs Tuning.
+
+### 16.1 Vision & Name
+- **Neuer Name: Glitch Hunter** (ersetzt „Scuffed Hunter"; Umbenennung in Code/Manifest/Titel steht noch aus).
+- *Glitch Hunter ist der Koop-Monsterjäger für dich und deine Freunde: Die Brocken sind kaputte Daten – wer ihre Fehler im richtigen Moment ausnutzt, wird zur Legende.*
+- **Säulen:** 1) **Lesbar-gefährlich** (Telegraph + Ton + Farbe + Erholung; jeder Tod erklärbar) · 2) **Fehler sind Waffen** (Glitch-Konter → Glitch-Modus pro Waffe) · 3) **Jede Jagd ist anders** (Ketten, Teilbruch-Reaktionen, Mutatoren – Vielfalt aus Regeln statt Content) · 4) **Kurz & Koop** (Jagddauer wie bisher ~5–6 min solo).
+- **Leitregel Schwierigkeit:** Jede Änderung an Brocken macht sie **abwechslungsreicher UND schwerer, nie leichter**. Spannung kommt aus Verhalten, **nicht aus mehr HP** (Solo bekommt keine HP-Erhöhung und keinen KI-Begleiter).
+- **Netz:** Brocken-KI strikt host-autoritativ, ohne Ausnahme. Jede Zufallsentscheidung (Ketten-Glied, Variante, Delay) wird bei `beginAttack` in `params` mitgeschickt.
+
+### 16.2 Glitch-System
+- **Glitch-Energie** 0–100 (eigene Leiste im HUD). Start: Glitch-Konter +35, Katana-Konterhaltung erfolgreich +25, Teilbruch durch eigenen Treffer +15, normale Treffer +1. Kein Abbau.
+- Bei 100 → **Glitch-Modus** per eigenem Button (nicht automatisch), Dauer Start **8 s**. Ausgelöst wird lokal (eigene Treffer sind client-autoritativ) + Event an alle für die Optik.
+- **Ziel-Anteil am Gesamtschaden: 40–50 %.** Rechnung: bei ~25–30 % Glitch-Zeit und effektiv ×2 Schaden im Modus → 40–46 %. Messung über Statistik (`glitchDmg / damage`) im Jagdbericht.
+- **Pflicht-Optik (alle Waffen gleich):** RGB-Versatz + Scanlines am eigenen Pirscher, Pixelrauschen/Glitch-Rahmen am Bildrand, Bitcrush-Filter auf dem Ton, HUD-Balken „GLITCH" mit Restzeit, Eintritts-Effekt (0,2 s Frame-Freeze + Bildriss). Mitspieler sehen den Pirscher flackern. Man muss **sofort sehen, dass man im Modus und deutlich stärker ist**.
+- **Ein Glitch pro Waffe:**
+
+| Waffe | Glitch | Optik | Wirkung (Start) |
+|---|---|---|---|
+| Plattmacher | **Frame-Skip** | Aufladung „springt" Frames (Stotter-Animation, Bildsprünge), Klinge mit Doppelkontur | Aufladeschläge sind sofort auf voller Stufe (Aufladezeit übersprungen), +20 % Schaden |
+| Zwillingsklingen | **Echo-Input** | halbtransparenter Geister-Pirscher wiederholt jede Bewegung versetzt, RGB-Spur | jeder Treffer wiederholt sich 0,4 s später als Geisterschlag mit 70 % Schaden (nur eigene Treffer, kein zweites Netz-Objekt) |
+| Spannbogen | **Debug-Modus** | Welt wird grünes Drahtgitter, Trefferzonen des Brocken als Debug-Boxen sichtbar, Schwachstellen blähen sich auf | jeder Pfeil zählt als Schwachstellen-Treffer + kritisch (×1,5), Sweet Spot immer aktiv |
+| Katana | **Desync-Schnitte** | Schnitte bleiben als flackernde rote Risse am Brocken hängen (kein Schaden), Zähler über dem Brocken | bei Modus-Ende oder Tipp auf „RESYNC" lösen alle Risse gleichzeitig mit ×1,5 aus (große Schadenszahl, Hitstop 120 ms) |
+
+- Gestrichen: lokales Zeitfenster für alle, Duplikat-Pirscher, Wand-Phasing, No-Clip-Pfeil, Save-State.
+
+### 16.3 Brocken 2.0 (Phase 1, an Jaggo/Barrotz/Brathalos)
+- **Angriffs-Ketten:** `chains: { lastId → [{ atk, w, cond }] }`, 2–3 Glieder, Zwischenpause 0,1–0,25 s, Telegraph je Glied, letztes Glied Erholung ≥ 1,0 s.
+- **Flinch / Kettenabbruch durch Spieler** (Glitch-Konter, Teilbruch, Betäubung bricht Kette ab).
+- **Erschöpfung:** Ketten/Sprints kosten Monster-Ausdauer; leer → 4–6 s Keuchen (Angriffsfenster).
+- **Teilbruch ändert Moveset** (mind. 1 Move pro Brocken, 2 s Taumeln + Banner).
+- **Phasenwechsel** mit sichtbarem Cue + 1 Sondermove pro Phase (statt Stimmungssystem).
+- **Variation über Timing/Windup-Länge** (Seed pro Jagd) + **Anti-Rollen-Spam** (einzige adaptive Regel).
+- **Koop-Zielwechsel** (Bedrohung + Rollen, Marker 0,5 s vorher, globales Aggro-Token-Budget).
+- **Lesbarkeit:** eigener Windup-**Ton** pro Angriff + **Farbcue** (redundant), Kamera-Auto-Framing bei Ketten, **Lehrangriff** in den ersten ~30 s, lokales **Tod-Log** (welcher Angriff tötet wie oft).
+- Redesign-Ideen je Brocken: `docs/NEXT.md` §3. Jede neue Mechanik mit Fairness-Test (`tests/unit/p3fairness.test.js`) + Determinismus-Test.
+
+### 16.4 Koop-Skalierung (gebaut)
+- Brocken-HP und Teil-HP × **1 / 1,7 / 2,3 / 2,8** bei 1/2/3/4 Pirschern (`src/game/monsters/coopScale.js`). Beitritt/Verlassen mitten in der Jagd behält den HP-Anteil.
+- Rechnerische Dauer (gleiche DPS): ~5,5 / 4,7 / 4,2 / 3,9 min. Später optional: Aggressivität ab 3 Pirschern (kürzere Erholung, mehr Ketten).
+
+### 16.5 Mutatoren (standardisiert)
+- **Reine Daten, nie Code pro Brocken.** Jeder Mutator wirkt automatisch auf alle Brocken (auch Rostwerke).
+- Schema: `{ id, name, desc, reward, monster: {…}, player: {…}, hunt: {…} }`. Generische Hooks, einmal gebaut:
+  - `monster`: `speedMul`, `recoverMul`, `telegraphMul` (nie unter Fairness-Minimum 0,5 s), `dmgMul`, `regenPct` (pro s ohne Treffer), `chainBonus`, `rageAlways`, `hideColorCues` (nur Ton bleibt).
+  - `player`: `dmgMul`, `healItems: false`, `staminaMul`, `glitchGainMul`.
+  - `hunt`: `timeMul`, `fog`, `matMul` (Belohnung).
+- 0–2 Mutatoren pro Auftrag, **vor Abflug sichtbar**, `reward` erhöht Beute. Bestehende Rotglut-Varianten (`hpMul`, `rage:'always'`) werden zu Mutator-Presets.
+- Start-Liste (macht schwerer): **Speicherleck** (Regeneration) · **Fehlende Texturen** (nur Ton-Telegraphen) · **Lag-Spitze** (Brocken springt kurz Frames weiter, Telegraph bleibt) · **Kein Undo** (keine Heil-Items) · **Übertaktet** (Tempo ×1,15, Erholung ×0,8) · **Overflow** (Brocken-Schaden ×1,3).
+
+### 16.6 Multi-Brocken-Jagden
+- Frühestens nach Phase 2, als Hebel für **besonders schwere Aufträge**. Zuerst nur „Revierstreit" (Barrotz vs. Jaggo). Regeln: `docs/NEXT.md` §4.
+
+### 16.7 Gestrichen
+Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Feature, Stimmungssystem, Finten als eigenes System, Ökologie/Weltevents, Mastery-Journal, KI-Begleiter, Solo-HP-Erhöhung, Deckbau, Rhythmus.
+
+### 16.8 Roadmap (gültig)
+- **Phase 1 – Brocken 2.0 (schwerer + abwechslungsreicher):** 16.3 für Jaggo → Barrotz → Brathalos. *Metrik:* mehr verschiedene 3er-Move-Folgen pro Jagd als heute; Tester erklären ihre Tode; „unfaire" Tode im Tod-Log < 10 %; Jagddauer bleibt ~5–6 min.
+- **Phase 2 – Glitch Hunter:** Umbenennung, Glitch-Energie + Glitch-Modus mit Pflicht-Optik, 4 Waffen-Glitches (16.2), Mutator-System + 6 Start-Mutatoren (16.5), Koop-Zielwechsel, End-Auszeichnungen, „Link teilen". *Metrik:* Glitch-Anteil am Schaden 40–50 %; ≥ 40 % lösen in Jagd 2 den Glitch-Modus aus.
+- **Phase 3 – Breite:** Rostwerke (§15) mit Kroll/Gorgo/Voltaro direkt auf Brocken-2.0-Bausteinen + Glitch-Stellen + Mutator-Hooks · erste Multi-Jagd „Revierstreit" · Rotglut als Mutator-Preset.
+- Erledigt vorab: Koop-HP-Skalierung (16.4).
 
 ---
 

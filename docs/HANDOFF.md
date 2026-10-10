@@ -1,6 +1,6 @@
 # Handoff – Projektstand für neue Agents/Sessions
 
-> **Lies das zuerst.** Diese Datei ersetzt den Chat-Kontext der ersten Entwicklungs-Session (Okt 2026). Danach: `docs/NEXT.md` (Brainstorming: Brocken-Design & USP, offene Entscheidungen) und GitHub-Issue #4 (Rostwerke-TODO).
+> **Lies das zuerst.** Diese Datei ersetzt den Chat-Kontext der ersten Entwicklungs-Session (Okt 2026). Danach: **`docs/GDD.md` §16 (Glitch Hunter 2.0 – gültige Entscheidungen & Roadmap)**, `docs/NEXT.md` (Brainstorming: Brocken-Design & USP, offene Entscheidungen) und GitHub-Issue #4 (Rostwerke-TODO).
 
 ## 1. Was ist das?
 **Scuffed Hunter** – Koop-Monsterjagd (1–4 Spieler) im Browser, mobile-first (Querformat, iPhone/Android), installierbar als PWA.
@@ -25,7 +25,7 @@
 - **Mobil:** Touch-Layout-Solver (keine Überlappungen, ≥ 44 px), PWA (Manifest + Service Worker, Installieren-Button), Auto-Grafik (360–800 px intern, Standard 640), Onboarding-Overlay.
 
 ## 4. Offene Punkte / bekannte Baustellen
-- Owner-Feedback letzte Runde: **Brocken zu eintönig/vorhersehbar** → siehe `docs/NEXT.md`. **USP fehlt** („schlechter MH-Klon") → siehe `docs/NEXT.md`.
+- Brocken zu vorhersehbar + USP fehlt → **entschieden**, siehe `docs/GDD.md` §16 (Name Glitch Hunter, Glitch pro Waffe, Brocken 2.0, Mutatoren, Roadmap). Koop-HP-Skalierung ist gebaut.
 - Schwarzer Balken oben auf Android war nicht reproduzierbar (Fix-Versuch gemerged: kein dvh, Fullscreen-Retry) – Owner-Bestätigung ausstehend.
 - Rostwerke (2. Map, Kroll/Gorgo/Voltaro, Stufe 5) = Issue #4, Spec GDD §15. Noch nicht gebaut.
 - Ungetestet: öffentliches PeerJS-Signaling + TURN über Mobilfunk; iOS-Installation.

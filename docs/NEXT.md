@@ -1,4 +1,6 @@
-# NEXT – Brainstorming: Brocken-Design & USP (Stand Okt 2026, noch NICHTS davon gebaut)
+# NEXT – Brainstorming: Brocken-Design & USP (Stand Okt 2026)
+
+> **Entscheidungen getroffen → `docs/GDD.md` §16 ist autoritativ.** Dieses Dokument bleibt als Herleitung.
 
 > Kontext: zuerst `docs/HANDOFF.md` lesen. Dieses Dokument ist das Ergebnis einer Brainstorming-Runde (Monster-Designer, USP-Recherche, Kritiker) auf Wunsch des Owners. **Owner will das mit einem neuen Agent durchsprechen, bevor gebaut wird.** Abschnitt 7 = offene Entscheidungen. Verknüpft mit GitHub-Issue #4 (Rostwerke).
 
@@ -107,7 +109,7 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 **Säulen:** 1) **Lesbar-gefährlich** (Telegraph + Ton + Erholung; jeder Tod erklärbar) · 2) **Fehler sind Waffen** (Glitch-Konter + sichtbare Glitch-Stellen als Schwachpunkte) · 3) **Jede Jagd ist anders** (Seed + Mutatoren + Persönlichkeit; Vielfalt aus Regeln statt Content) · 4) **Link und los** (10 s bis zur Jagd, 3–6 min, teilbare Monster-Codes, kein Account/Server/Tageslimit).
 **Verzahnung:** Jede Kette endet in einem Konterfenster; Erschöpfung = „Absturz"; Glitch-Stellen = brechbare Teile (ein Mechanismus, zwei Funktionen); Persönlichkeits-Seed = teilbarer Monster-Code; Quest-Modifier und Mutatoren = EIN System („Gravitation.dll fehlt").
 
-**Roadmap (Kritiker):**
+**Roadmap (Kritiker) – überholt, gültig ist `docs/GDD.md` §16.8:**
 - **Phase 1 – Fundament:** Ketten für alle 3 Brocken · Flinch/Abbruch der Kette bei Konter · Erschöpfung · Teilbruch ändert 1 Move/Brocken · Windup-Töne + Farbcues · Kamera-Framing · Hunt-Link · Lehrangriff · lokales Tod-Log. *Metrik:* Tester erklären nach 3 Jagden ihre Tode; „unfaire" Tode im Log < 10 %; Jagd 3–6 min.
 - **Phase 2 – USP:** Glitch-Energie aus Perfekt-Ausweichen/Konter + **eine** Sonderfähigkeit (Vorschlag: lokales Zeitfenster) · sichtbare Glitch-Stellen · 6–8 Mutatoren · Persönlichkeits-Seed + teilbarer Monster-Code · Koop-Zielwechsel · lustige End-Auszeichnungen · Anti-Rollen-Spam. *Metrik:* ≥ 40 % lösen in Jagd 2 eine Glitch-Fähigkeit aus; jede 3. Session wird geteilt.
 - **Phase 3 – Breite:** Kroll/Gorgo/Voltaro direkt mit Phase-1/2-Mechaniken · wöchentlicher Seed („Feldstudie", Datum = Seed) · erste Multi-Jagd nur „Revierstreit" · Rotglut+ als Mutator-Preset.
@@ -150,6 +152,11 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 - **Glitch pro Waffe:** Plattmacher **Frame-Skip** und Zwillingsklingen **Echo-Input** angenommen. Spannbogen (No-Clip) + Katana (Save-State) abgelehnt → neue Vorschläge: Bogen **Debug-Modus** / **Paketverlust-Salve**, Katana **Lag-Teleport** / **Desync-Schnitte**.
 - **Pflicht für jeden Glitch:** sieht cool aus, Glitch-Modus sofort erkennbar (RGB-Versatz + Scanlines am Pirscher, Pixelrauschen am Bildrand, Bitcrush-Ton, HUD-Balken „GLITCH"), und man ist in der Zeit **deutlich stärker**.
 - **Mutatoren:** ja, aber **standardisiert** – reine Daten (Multiplikatoren/Flags) auf generischen Hooks in `Monster`/`Player`/`Hunt`, nie Code pro Brocken.
+
+### 7d. Runde 3 (10.10.2026) – final
+- Bogen-Glitch **Debug-Modus**, Katana-Glitch **Desync-Schnitte** angenommen.
+- Mutator-Standard (reine Daten auf generischen Hooks) angenommen.
+- **Alle Entscheidungen + gültige Roadmap stehen jetzt in `docs/GDD.md` §16** (autoritativ). Roadmap in Abschnitt 6 oben ist damit überholt.
 
 ## 8. So geht's weiter (für den nächsten Agent)
 1. `docs/HANDOFF.md` lesen, dann dieses Dokument mit dem Owner durchgehen (Abschnitt 7 abfragen, Kennzahlen/Vergleiche anbieten – Owner entscheidet intuitiv, will Daten dazu).
