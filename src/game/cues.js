@@ -61,7 +61,7 @@ export function attach(hunt) {
     const tg = Math.max(0.1, inst?.tgWall ?? 0.5);
     const tone = pickTone(attackId, cue, chainIdx);
     b.emit('sfx', { name: 'windup', pos: monster.pos, timbre: tone.timbre, f: tone.f * (teach ? 1.15 : 1), dur: tg, teach: !!teach });
-    glows.set(monster, { rgb: hexRGB(tone.color), t: tg, teach: !!teach });
+    if (!(hunt.mods?.monster?.hideColorCues && !monster.minor)) glows.set(monster, { rgb: hexRGB(tone.color), t: tg, teach: !!teach }); // Fehlende Texturen: nur Ton
     track.set(monster, { attackId, chainIdx, tg });
     const fr = near(monster) ? framingFor(inst, chainIdx) : null;
     if (fr) hunt.rig?.frame?.(fr.amount, fr.seconds);

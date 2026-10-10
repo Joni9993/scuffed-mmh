@@ -168,7 +168,7 @@ export class HuntMeta {
     if (c.fauna) { this.#carveFauna(c); return; }
     this.carveCount++;
     const q = this.hunt.quest;
-    const r = rollCarve(q.monster, this.rng, { tail: c.tail, matMul: q.matMul ?? 1 });
+    const r = rollCarve(q.monster, this.rng, { tail: c.tail, matMul: this.matMul() });
     if (!r) return;
     const n = this.inv.add(r.id, r.n, { carve: true });
     this.hud.toast(`Zerlegt: ${n || r.n}x ${itemName(r.id)}`, r.id);
@@ -217,10 +217,13 @@ export class HuntMeta {
   /** Pause menu "Aufgeben" */
   abandon() { this.hunt.forceFinish?.('fail', 'Aufgegeben'); this.proceed(); }
 
+  /** Beute-Multiplikator: Auftrag (inkl. fester Mutatoren) x Brett-Mutatoren x hunt.matMul (GDD 16.5). */
+  matMul() { const h = this.hunt, m = h.mods; return (h.quest.matMul ?? 1) * (h.boardMods?.reward ?? 1) * (m?.hunt?.matMul ?? 1); }
+
   rewards(result) {
     const h = this.hunt;
     return buildRewards({
-      quest: h.quest, result, gathered: this.inv.gathered(), carved: this.inv.carved, breaks: this.breaks,
+      quest: { ...h.quest, matMul: this.matMul() }, result, gathered: this.inv.gathered(), carved: this.inv.carved, breaks: this.breaks,
       used: h.opts.loadout?.debug ? {} : this.inv.used(), chest: this.chest.result(), rng: this.rng,
     });
   }
@@ -230,7 +233,7 @@ export class HuntMeta {
     const h = this.hunt;
     const result = h.result ?? 'fail';
     this.phase = 'leaving';
-    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: h.quest.timeLimit - h.timeLeft, stats: h.stats, carves: this.carveCount, debug: !!this.loadout.debug };
+    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, carves: this.carveCount, debug: !!this.loadout.debug };
     queueMicrotask(() => h.app.goto('results', payload));
   }
 

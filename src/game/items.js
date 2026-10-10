@@ -102,6 +102,7 @@ export class ItemSystem {
       hunt.bus.emit('itemUsed', { player: p, id, tip: p.ammoTip });
       return;
     }
+    if (hunt.mods?.player?.healItems === false && (e.type === 'heal' || e.type === 'grill')) { hunt.fx.number(this.#top(), 'Kein Undo', 'heal'); return; } // Mutator Kein Undo
     if (!this.inv.consume(id, 1)) return;
     switch (e.type) {
       case 'heal':

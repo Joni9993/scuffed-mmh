@@ -122,7 +122,7 @@ export const lobbyScene = {
     const slot = st.members.indexOf(session.myId);
     const o = this.opts;
     this.app.goto('hunt', {
-      quest: st.questId, seed: st.seed, net: channel, players, playerId: session.myId, slot: Math.max(0, slot),
+      quest: st.questId, mutators: st.mutators ?? [], seed: st.seed, net: channel, players, playerId: session.myId, slot: Math.max(0, slot),
       name: session.profile.name, weapon: session.profile.weapon, tier: session.profile.tier, loadout: o.loadout, coop: true,
       god: o.god, nofx: o.nofx, aggro: st.hostId === session.myId ? o.aggro : false,
     });

@@ -265,10 +265,10 @@ export const hubScene = {
     const board = this.board;
     return {
       getPosted: () => board.getPosted().map((p) => ({
-        id: p.postId, quest: p.questId, host: p.hostName, joined: p.joined, mine: p.hostId === session.myId,
+        id: p.postId, quest: p.questId, mutators: p.mutators ?? [], host: p.hostName, joined: p.joined, mine: p.hostId === session.myId,
         members: p.members.map((m) => ({ name: m.name, ready: m.ready, me: m.id === session.myId })),
       })),
-      post: (q) => board.post(q),
+      post: (q, mu) => board.post(q, mu),
       join: (id) => board.join(id),
       unpost: () => board.leavePost(),
       setReady: (b) => board.setReady(b),
@@ -356,7 +356,7 @@ export const hubScene = {
     this.starting = true;
     closeStation();
     const save = saveStore.get(), loadout = buildLoadout(save), o = this.opts;
-    const base = { quest: st.questId, seed: st.seed, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: o.god, nofx: o.nofx };
+    const base = { quest: st.questId, mutators: st.mutators ?? [], seed: st.seed, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: o.god, nofx: o.nofx };
     if (session.role === 'solo') { this.app.goto('hunt', { ...base, aggro: o.aggro }); return; }
     const board = this.board;
     const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, onDispose: () => board.returned() });

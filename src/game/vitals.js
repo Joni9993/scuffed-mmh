@@ -60,7 +60,7 @@ export function tickStamina(v, dt) {
   v.sinceSpend += dt;
   if (v.exhaust > 0) { v.exhaust = Math.max(0, v.exhaust - dt); return; }
   if (v.sinceSpend >= VIT.staminaRegenDelay && v.stamina < v.maxStamina) {
-    v.stamina = Math.min(v.maxStamina, v.stamina + VIT.staminaRegen * dt);
+    v.stamina = Math.min(v.maxStamina, v.stamina + VIT.staminaRegen * (v.regenMul ?? 1) * dt);
   }
 }
 
