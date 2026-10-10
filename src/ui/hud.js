@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -106,6 +107,7 @@ export function createHud(root) {
       bannerT -= dt; if (bannerT <= 0) refs.banner.classList.remove('show');
       centerT -= dt; if (centerT <= 0) refs.center.classList.remove('show');
       zoneToast(hunt, dt); // [K]
+      bossArrows(hunt); // Multi-Jagd: Pfeil zum Brocken außerhalb des Bildes
       drawMinimap(hunt);
     },
     /** screen position in 0..1 or null */
@@ -117,6 +119,37 @@ export function createHud(root) {
     },
     dispose() { el.remove(); },
   };
+
+  // ---------------------------------------------------------------- Multi-Jagd: Offscreen-Marker
+  const _bv = new THREE.Vector3();
+  const arrows = [];
+  function bossArrows(hunt) {
+    const list = hunt.bosses;
+    if (!list || list.length < 2 || !hunt.camera) return;
+    for (let i = 0; i < list.length; i++) {
+      let a = arrows[i];
+      if (!a) {
+        a = arrows[i] = document.createElement('div');
+        a.className = 'hud-boss-arrow';
+        a.style.cssText = 'position:fixed;left:0;top:0;display:none;pointer-events:none;z-index:5;font:700 1.9vmin/1.1 monospace;color:#ff6a4a;text-shadow:0 0 3px #000,0 0 3px #000;text-align:center;white-space:nowrap';
+        el.appendChild(a);
+      }
+      const m = list[i];
+      if (!m.alive) { a.style.display = 'none'; continue; }
+      _bv.set(m.pos.x, m.pos.y + 3, m.pos.z).project(hunt.camera);
+      const behind = _bv.z > 1;
+      let x = behind ? -_bv.x : _bv.x, y = behind ? -_bv.y : _bv.y;
+      if (!behind && Math.abs(x) < 0.9 && Math.abs(y) < 0.86) { a.style.display = 'none'; continue; }
+      const k = 0.88 / Math.max(Math.abs(x), Math.abs(y), 1e-3);
+      x *= k; y *= k;
+      const d = Math.round(Math.hypot(m.pos.x - hunt.player.pos.x, m.pos.z - hunt.player.pos.z));
+      const ang = Math.atan2(x, y); // 0 = nach oben
+      a.style.display = 'block';
+      a.style.transform = `translate(${((0.5 + x * 0.5) * 100).toFixed(1)}vw,${((0.5 - y * 0.5) * 100).toFixed(1)}vh) translate(-50%,-50%)`;
+      const txt = `<div style="transform:rotate(${ang.toFixed(2)}rad);font-size:3.2vmin">▲</div>${m.def.name} ${d} m`;
+      if (a._t !== txt) { a._t = txt; a.innerHTML = txt; }
+    }
+  }
 
   // ---------------------------------------------------------------- [K] zone toast + minimap
   function zoneToast(hunt, dt) {

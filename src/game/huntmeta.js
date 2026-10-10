@@ -48,7 +48,7 @@ export class HuntMeta {
 
     const on = (type, fn) => hunt.bus.on(type, fn);
     on('gathered', (e) => this.#onGathered(e));
-    on('monsterDead', ({ monster }) => { if (monster === hunt.mainMonster) this.#addCorpse(monster, false); else if (monster.def.carve) this.#addFaunaCorpse(monster); });
+    on('monsterDead', ({ monster }) => { if (hunt.bosses?.includes(monster) || monster === hunt.mainMonster) this.#addCorpse(monster, false); else if (monster.def.carve) this.#addFaunaCorpse(monster); });
     on('tailSevered', (e) => this.#addCorpse(e.monster, true, e.pos));
     on('partBreak', ({ part }) => { this.breaks.push(part); });
   }
@@ -168,7 +168,7 @@ export class HuntMeta {
     if (c.fauna) { this.#carveFauna(c); return; }
     this.carveCount++;
     const q = this.hunt.quest;
-    const r = rollCarve(q.monster, this.rng, { tail: c.tail, matMul: this.matMul() });
+    const r = rollCarve(c.monster?.def?.id ?? q.monster, this.rng, { tail: c.tail, matMul: this.matMul() });
     if (!r) return;
     const n = this.inv.add(r.id, r.n, { carve: true });
     this.hud.toast(`Zerlegt: ${n || r.n}x ${itemName(r.id)}`, r.id);

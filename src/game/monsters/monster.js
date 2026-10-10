@@ -269,6 +269,7 @@ export class Monster {
     this.hitFlash = 0.12;
     this._sinceHit = 0;
     const pid = res.attackerId ?? 'p1';
+    if (!res.revier && !this.minor) this.ctx.revier?.noteDamage(this, total); // Revierstreit: Pirscher-Druck
     this._addThreat(pid, total);
     const ev = { monster: this, part, dmg: total, res, broke: false, stunned: false, killed: false };
     if (part) {
@@ -418,7 +419,7 @@ export class Monster {
       if (this.def.chains && !extra.teach) this.chain = { idx: extra.chainIdx ?? 0, broken: false };
       this._atkCount++;
       if (this._stamOn && attackId !== this.def.tiredAttack) this.stamina = Math.max(0, this.stamina - (ad.stam ?? 8) * ((extra.chainIdx ?? 0) > 0 ? 1.5 : 1) * (this.rage ? 0.7 : 1));
-      if (tgt && this._b2) { const ag = (this.ctx._aggro ??= new Map()); ag.set(tgt.id, { t: this._clock(), id: this.id }); }
+      if (tgt && (this._b2 || this.ctx.revier)) { const ag = (this.ctx._aggro ??= new Map()); ag.set(tgt.id, { t: this._clock(), id: this.id }); }
     }
     return this.startAttack({
       attackId, t0: this.time, origin: { x: this.pos.x, y: this.pos.y - this.air, z: this.pos.z },
@@ -548,10 +549,13 @@ export class Monster {
     const tgt = this.target, e = this.ctx._aggro?.get(tgt?.id);
     return !e || e.id === this.id || this._clock() - e.t >= 0.6;
   }
+  _aggroGate() { return (this._b2 || this.ctx.revier) && !this._aggroOk(); }
 
 
   // ---------- targeting
   _pickTarget() {
+    const rv = this.ctx.revier?.rivalOf(this); // Revierstreit: erst gegen den anderen Brocken
+    if (rv) { this.target = rv; return; }
     const alive = this.ctx.players.filter((p) => p.alive);
     if (!alive.length) { this.target = null; return; }
     if (this._b2) return this._pickTargetB2(alive);
@@ -768,6 +772,7 @@ export class Monster {
       return;
     }
     if (this.chainNext) {
+      if (this.ctx.revier && this._aggroGate()) { this.recover = 0.2; return; }
       if (diff > 1.0) { this._faceTarget(dt, 6 * turn); this._brake(dt); return; }
       const cn = this.chainNext;
       this.chainNext = null;
@@ -775,6 +780,7 @@ export class Monster {
       return;
     }
     if (this.queued) {
+      if (this.ctx.revier && this._aggroGate()) { this.recover = 0.2; return; }
       if (diff > 0.4) { this._faceTarget(dt, 3.6 * turn); this._brake(dt); return; }
       const id = this.queued;
       this.queued = null;
@@ -789,7 +795,7 @@ export class Monster {
     } else def = this._chooseAttack(dist);
     if (def) {
       if (diff > 0.4 && !def.noFace) { this._faceTarget(dt, 3.4 * turn); this._brake(dt); return; }
-      if (this._b2 && !this._aggroOk()) { this.recover = 0.2; return; }
+      if (this._aggroGate()) { this.recover = 0.2; return; }
       this.beginAttack(def.id, teach ? { teach: true } : {});
       return;
     }
@@ -848,6 +854,7 @@ export class Monster {
         if (res === 'hit' && h.dmg > 0) this.ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
       }
     }
+    if (this.authority && this.ctx.revier) this.ctx.revier.resolve(this, inst, hits); // Revierkampf: Brocken trifft Brocken (nur Host)
   }
 
   /** Mutator-Tick (nur Autoritaet, deterministisch ueber this.time): regenPct + lagSpike. */
