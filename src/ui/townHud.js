@@ -27,12 +27,13 @@ export function createTownHud(root, handlers) {
     if (a === 'menu') handlers.onMenu?.();
     else if (a === 'emote') wheel.classList.toggle('open');
     else if (a === 'copy') { handlers.onCopy?.(); }
+    else if (a === 'share') { handlers.onShare?.(); }
     else if (/^e\d$/.test(a)) { wheel.classList.remove('open'); handlers.onEmote?.(Number(a[1])); }
   });
   const api = {
     el,
     setRoom({ code, solo }) {
-      chip.innerHTML = solo ? '<span class="th-solo">Solo</span>' : `<span>Raum</span> <b class="th-code" data-code>${esc(code)}</b> <button class="ui-hit th-copy" data-a="copy">Kopieren</button>`;
+      chip.innerHTML = solo ? '<span class="th-solo">Solo</span>' : `<span>Raum</span> <b class="th-code" data-code>${esc(code)}</b> <button class="ui-hit th-copy" data-a="copy">Kopieren</button> <button class="ui-hit th-copy" data-a="share">Link teilen</button>`;
     },
     setMembers(list) {
       members.innerHTML = list.length > 1 || !list[0] ? list.map((m) => `<div><i style="background:${m.color}"></i>${esc(m.name)}${m.hunting ? ' <small>(Jagd)</small>' : ''}</div>`).join('') : '';

@@ -6,6 +6,7 @@ import { normalizeCode, isValidCode, MAX_PLAYERS, ERR } from '../net/protocol.js
 import { WEAPON_TYPES } from '../data/weapons.js';
 import { quests } from '../data/quests.js';
 import { sfx } from '../audio/sfx.js';
+import { shareJoinLink } from '../meta/sharelink.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const wname = (t) => WEAPON_TYPES[t]?.name ?? t;
@@ -74,7 +75,7 @@ export const lobbyScene = {
     const postRows = posts.map((p) => `<div class="row ${p.joined ? 'me' : ''}"><span class="nm">${esc(quests[p.questId]?.name ?? p.questId)} · ${esc(p.hostName)}</span><span class="wp">${p.members.map((m) => `${esc(m.name)}${m.ready ? ' OK' : ''}`).join(', ')}</span>${p.joined ? '<span></span>' : p.full ? '<span></span>' : `<button class="btn small" data-a="join" data-id="${p.postId}">+</button>`}</div>`).join('') || '<div class="row empty"><span class="nm">kein Auftrag ausgehängt</span><span></span><span></span></div>';
     this.el.innerHTML = `<div class="panel ui-hit lobby">
       <div class="col"><h2>${connected ? 'Raumcode' : 'Eigenes Rostnest'}</h2>
-        ${connected ? `<div class="code" data-code>${session.code}</div><button class="btn small" data-a="copy">Code kopieren</button>`
+        ${connected ? `<div class="code" data-code>${session.code}</div><button class="btn small" data-a="copy">Code kopieren</button> <button class="btn small" data-a="share">Link teilen</button>`
           : `<button class="btn red" data-a="host">Hosten</button>
              <input class="codein ui-hit" maxlength="4" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="ABCD" aria-label="Raumcode" value="${esc(typed)}">
              <button class="btn" data-a="join-code">Beitreten</button>`}
@@ -104,6 +105,7 @@ export const lobbyScene = {
         this._join(code);
         break;
       }
+      case 'share': { const b = e.target; shareJoinLink(session.code).then((r) => { b.textContent = r === 'shared' ? 'Geteilt!' : r === 'copied' ? 'Link kopiert!' : 'Ging nicht'; }); break; }
       case 'copy': navigator.clipboard?.writeText?.(session.code ?? '').catch?.(() => {}); e.target.textContent = 'Kopiert!'; break;
       case 'post': this.board.post(this.questId); break;
       case 'join': this.board.join(e.target.dataset.id); break;

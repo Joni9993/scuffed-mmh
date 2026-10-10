@@ -29,7 +29,7 @@ export const titleScene = {
     const el = document.createElement('div');
     el.className = 'screen';
     el.innerHTML = `<div class="panel ui-hit" style="margin-left:34vw">
-      <h1>SCUFFED<br>HUNTER</h1>
+      <h1 class="glitch-logo"><span>GLITCH</span><br><span>HUNTER</span></h1>
       <p>Koop-Brockenjagd.<br>Nicht schön, aber fair.</p>
       <button class="btn red" data-a="hunt">Ins Rostnest</button><br>
       <button class="btn small" data-a="res">Auflösung: ${settings.res}</button>

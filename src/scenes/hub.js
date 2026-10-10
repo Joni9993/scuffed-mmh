@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { shareJoinLink } from '../meta/sharelink.js';
 import { createBus } from '../core/events.js';
 import { createCameraRig } from '../render/camera.js';
 import { Player } from '../game/player.js';
@@ -130,6 +131,7 @@ export const hubScene = {
     this.hud = createTownHud(app.ui, {
       onMenu: () => this.toggleMenu(),
       onEmote: (i) => this.emote(i),
+      onShare: () => { shareJoinLink(session.code).then((r) => this.toast(r === 'shared' ? 'Link geteilt' : r === 'copied' ? 'Link kopiert' : 'Teilen ging nicht')); },
       onCopy: () => { try { navigator.clipboard?.writeText?.(session.code ?? ''); } catch { /* no clipboard */ } this.toast('Code kopiert'); },
     });
     this.syncProfile();

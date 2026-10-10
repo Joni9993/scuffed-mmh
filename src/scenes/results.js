@@ -6,6 +6,7 @@ import { iconHtml } from '../ui/hubIcons.js';
 import { esc } from '../ui/hubKit.js';
 import { settings } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
+import { pickAwards } from '../meta/awards.js';
 import '../ui/hub.css';
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -27,6 +28,7 @@ export const resultsScene = {
     if (quest && rewards) {
       sum = saveStore.update((s) => { jrBefore = s.jr; return applyHuntResult(s, quest, rewards, { time: opts.time, kos: opts.stats?.kos, glitch: opts.stats?.perfect, carves: opts.carves }); });
     }
+    const awards = pickAwards({ ...opts.stats, time: opts.time }, opts.coopStats);
     const win = result === 'win';
     const p = rewards?.parts ?? {};
     const el = document.createElement('div');
@@ -36,6 +38,7 @@ export const resultsScene = {
         <span class="st-npc">${esc(quest?.name ?? '')}${opts.time ? ` · ${mmss(opts.time)}` : ''}</span></div>
       <div class="st-body">
         <div class="note">${win ? 'Geschafft. Der Brocken sieht das anders, aber der hat auch keine Stimme.' : `${esc(opts.reason || 'Pech')}. Gesammeltes behältst du trotzdem.`}</div>
+        <div class="rs-sec"><div class="sub">Auszeichnungen</div>${awards.map((a) => `<div class="note"><b>${esc(a.title)}</b> – ${esc(a.text)}</div>`).join('')}</div>
         ${rewards?.schrott ? `<div class="rs-big">${iconHtml('schrott')} +${rewards.schrott} Schrott</div>` : ''}
         ${sum?.overflowSchrott ? `<div class="note">Truhe voll: Überschuss für ${sum.overflowSchrott} Schrott verkauft.</div>` : ''}
         ${list('Zerlegt', p.carved)}${list('Teilbruch-Bonus', p.breaks)}${list('Auftragsbonus', p.reward)}${list('Gesammelt', p.gathered)}

@@ -12,6 +12,7 @@ import { initInstall } from './ui/install.js';
 import { scenes } from './scenes/index.js';
 import { sfx } from './audio/sfx.js';
 import { AutoQuality } from './core/autoquality.js';
+import { parseJoinParam } from './meta/sharelink.js';
 import { saveStore } from './meta/save.js'; // [P]
 
 const params = new URLSearchParams(location.search);
@@ -104,7 +105,8 @@ window.__SH = {
   input, app, time,
 };
 
-const sceneName = params.get('scene') || 'title';
+const joinCode = parseJoinParam(location.search); // ?join=ABCD -> direkt in den Raum
+const sceneName = params.get('scene') || (joinCode ? 'hub' : 'title');
 const startOpts = {
   quest: params.get('quest') || 'jaggo',
   weapon: params.get('weapon') || 'gs',
@@ -114,8 +116,8 @@ const startOpts = {
   aggro: flag('aggro'),
   noAmbient: flag('noambient'), // [B] ?noambient=1 disables the ambient Jagglinge packs
   noFauna: flag('nofauna'), // [L] ?nofauna=1 disables Mampfer/Hoppler + ambient decoration
-  mode: params.get('mode') || undefined, // [N] lobby: host | join
-  code: params.get('code') || undefined,
+  mode: params.get('mode') || (joinCode ? 'join' : undefined), // [N] lobby: host | join
+  code: params.get('code') || joinCode || undefined,
   name: params.get('name') || undefined,
   world: params.get('world') || undefined, // [K] ?world=arena for the flat test arena
 };
