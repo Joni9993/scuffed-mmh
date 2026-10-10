@@ -31,7 +31,7 @@
 ## 4. Offene Punkte / bekannte Baustellen
 - Brocken zu vorhersehbar + USP fehlt → **entschieden**, siehe `docs/GDD.md` §16 (Name Glitch Hunter, Glitch pro Waffe, Brocken 2.0, Mutatoren, Roadmap). Koop-HP-Skalierung ist gebaut. **Phase 1 (Brocken 2.0) und Phase 2 (Glitch Hunter) sind live** – Owner-Handytest ausstehend (Glitch-Anteil, Mutatoren, Link teilen auf echten Handys); nächster Schritt Phase 3 (GDD §16.8).
 - Schwarzer Balken oben auf Android war nicht reproduzierbar (Fix-Versuch gemerged: kein dvh, Fullscreen-Retry) – Owner-Bestätigung ausstehend.
-- Rostwerke (2. Map, Kroll/Gorgo/Voltaro, Stufe 5/6) **gebaut (Phase 3)** – GDD §15 + §16.8, Verträge `docs/PHASE3_CONTRACTS.md`. Offene Kleinigkeiten in GDD §16.8.
+- Rostwerke (2. Map, Kroll/Gorgo/Voltaro, Stufe 5/6) **gebaut (Phase 3)** – GDD §15 + §16.8, Verträge `docs/PHASE3_CONTRACTS.md`. Restpunkte (Wind, Katana 5/6, Gorgo-Minimap) nachgezogen, GDD §16.8.
 - Ungetestet: öffentliches PeerJS-Signaling + TURN über Mobilfunk; iOS-Installation.
 - Kleinkram: Bogen gegen Barrotz relativ schwach (Kopfplatte 0,5), Camp-Zeichnungen ~+20 Draw Calls über Budget, Gast-Profiländerung im Raum nur teilweise.
 

@@ -552,7 +552,8 @@ Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Featur
   - **Revierstreit** (JR 4): Barrotz + Jaggo je 65 % HP, kämpfen erst gegeneinander (Uhr startet, wenn ein Pirscher < 45 m ist), verbünden sich nach 60 s oder > 8 % HP Pirscher-Schaden in 10 s; Offscreen-Pfeile; Sieg erst wenn beide fallen.
   - **Feldstudie** (`src/meta/fieldstudy.js`): ISO-Kalenderwoche = Seed → Brocken + 2 Mutatoren + Bonus, Bestzeit pro Woche lokal, oben im Auftragsbrett, Koop gleicher Seed.
   - **Vielfalt** (`variety.metric`, 5 Seeds × 240 s, HP ≥ 50 %): Kroll 22,8 / Gorgo 22,0 / Voltaro 42,6 versch. 3er-Folgen (Kroll-Phase-2-Angriffe erst nach Panzerbruch).
-  - **Offen:** Turbinen-Wind (Flag `windImmune` der Gorgo-Rüstung hat noch kein Gegenstück), Katana Stufe 5/6 nutzt Stufe-4-Optik, Gorgo-Minimap-Icon im eingegrabenen Zustand, Owner-Handytest.
+  - **Nachgezogen:** Turbinen-Wind in Zone 4 (`src/game/world/turbinenWind.js`: Böe alle 8–14 s für 2–3 s, 1 s Ankündigung über Staub/Windton, Schub 2,5 m/s, kein Schaden, deterministisch aus Seed; Gorgo-Rüstung „Wühler" macht immun – gemessen 0 m vs. 10,8 m in 30 s), Katana Stufe 5/6 mit eigenen Looks je Ast, Gorgo eingegraben = pulsierender oranger Ring auf der Minimap.
+  - **Offen:** Owner-Handytest.
 - **Als Nächstes:** Owner-Tests auf dem Handy, Balancing nach Tod-Log; danach Ideen aus `docs/NEXT.md` (weitere Multi-Jagden, Rotglut+).
 
 ---
