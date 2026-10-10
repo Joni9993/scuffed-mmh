@@ -75,6 +75,7 @@ export class HuntNet {
     hunt.scene.add(p.mesh, p.rig.shadow);
     hunt.players.push(p);
     this.peers.set(info.id, { id: info.id, name: info.name, rtt: 0, player: p, buf: new SnapBuffer({ angleKeys: ['rot'] }) });
+    if (hunt.net) hunt.applyCoopScale?.(); // [N] Beitritt mitten in der Jagd
   }
   #removeRemote(id) {
     const peer = this.peers.get(id);
@@ -84,7 +85,7 @@ export class HuntNet {
     hunt.players.splice(hunt.players.indexOf(p), 1);
     this.peers.delete(id);
     hunt.hud?.center?.(`${peer.name} ist weg`, 2);
-    
+    hunt.applyCoopScale?.(); // [N] HP-Anteil bleibt, Max-HP sinkt
   }
 
   // ---------- Handler

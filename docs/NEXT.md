@@ -145,6 +145,12 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 8. Multi-Brocken-Jagden: ok, frühestens nach Phase 2, als Hebel für besonders schwere Aufträge.
 9. Jagddauer bleibt wie jetzt (~5–6 min solo).
 
+### 7c. Runde 2 (10.10.2026)
+- **Koop-HP-Skalierung gebaut:** ×1 / 1,7 / 2,3 / 2,8 bei 1–4 Pirschern (`src/game/monsters/coopScale.js`), Teil-HP mit, HP-Anteil bleibt bei Beitritt/Verlassen.
+- **Glitch pro Waffe:** Plattmacher **Frame-Skip** und Zwillingsklingen **Echo-Input** angenommen. Spannbogen (No-Clip) + Katana (Save-State) abgelehnt → neue Vorschläge: Bogen **Debug-Modus** / **Paketverlust-Salve**, Katana **Lag-Teleport** / **Desync-Schnitte**.
+- **Pflicht für jeden Glitch:** sieht cool aus, Glitch-Modus sofort erkennbar (RGB-Versatz + Scanlines am Pirscher, Pixelrauschen am Bildrand, Bitcrush-Ton, HUD-Balken „GLITCH"), und man ist in der Zeit **deutlich stärker**.
+- **Mutatoren:** ja, aber **standardisiert** – reine Daten (Multiplikatoren/Flags) auf generischen Hooks in `Monster`/`Player`/`Hunt`, nie Code pro Brocken.
+
 ## 8. So geht's weiter (für den nächsten Agent)
 1. `docs/HANDOFF.md` lesen, dann dieses Dokument mit dem Owner durchgehen (Abschnitt 7 abfragen, Kennzahlen/Vergleiche anbieten – Owner entscheidet intuitiv, will Daten dazu).
 2. Entscheidungen in `docs/GDD.md` übernehmen (neuer Abschnitt „Brocken 2.0" + „Vision/Säulen"), GitHub-Issue(s) pro Phase anlegen.

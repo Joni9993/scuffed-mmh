@@ -10,6 +10,7 @@ import { Player } from './player.js';
 import { Monster } from './monsters/monster.js';
 import { getMonsterDef } from './monsters/index.js';
 import { spawnPack } from './monsters/jaggling.js';
+import { applyCoopScale } from './monsters/coopScale.js';
 import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
@@ -115,7 +116,7 @@ export class Hunt {
     this.effects = new Effects(this);
     this.meta = new HuntMeta(this, lo);
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
-    if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); }
+    if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); this.applyCoopScale(); }
   }
 
   /** [B] 2 packs (2-3 Jagglinge) in each of zone 1 (Wackelwiese) and zone 2 (Knochengrube); never near camp / spawns / the Brocken. */
@@ -146,6 +147,12 @@ export class Hunt {
     const q = this.quest;
     if (q.hpMul) { m.maxHp = Math.round(m.maxHp * q.hpMul); m.hp = m.maxHp; }
     if (q.rage === 'always') { m.rageUsed = true; m.rage = true; m.rageT = 1e9; m.def.onRage?.(m, true); }
+  }
+
+  /** [N] Brocken-HP nach Anzahl Pirscher (coopScale.js); bei Beitritt/Verlassen erneut aufrufen. */
+  applyCoopScale() {
+    const n = this.players.length;
+    for (const m of this.monsters) applyCoopScale(m, n);
   }
 
   // ---------- ctx API used by entities
