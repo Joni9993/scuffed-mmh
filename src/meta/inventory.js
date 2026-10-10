@@ -6,6 +6,7 @@ export const boxCount = (save, id) => save.box[id] ?? 0;
 
 /** Add up to BOX_MAX. Returns { added, overflow } (overflow = pieces that did not fit). */
 export function boxAdd(save, id, n = 1) {
+  n = Math.floor(n); // nur ganze Stücke in die Truhe
   if (!ITEMS[id] || n <= 0) return { added: 0, overflow: Math.max(0, n) };
   const have = save.box[id] ?? 0;
   const added = Math.min(n, BOX_MAX - have);

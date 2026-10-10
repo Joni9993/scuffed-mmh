@@ -5,7 +5,8 @@ import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
 
 // Gorgo, der Schlackwurm (JR 5, GDD 15.5): ~18 m langer Wurm aus Kopf + 6 Segmenten. Gräbt sich ein (unverwundbar, Schlacke-Hügel),
-// taucht mit Bodenwarnung unter dem Ziel auf, spuckt Lava-Brocken, saugt an und peitscht mit dem Körper.
+// jagt unter der Erde (Jagd-Durchbruch: 2x, Phase 2: 3x hintereinander mit Bodenwarnung unter dem Ziel), spuckt Lava-Brocken (Fächer),
+// saugt an, peitscht/walzt mit dem Körper (270°) und bäumt sich zur Schlackewelle auf (Ring-Schockwelle, per Rolle zu durchqueren).
 // Alles host-autoritativ + deterministisch: Graben/Auftauchen sind normale Angriffe (Position aus Attack-params), `m.burrowed` wird
 // ausschließlich durch deren Events gesetzt (Gäste replayen sie), Zwangs-Auftauchen (Knallgurke/Schrottkran) läuft über Betäubung.
 
@@ -14,7 +15,7 @@ const SEGS = ['segment1', 'segment2', 'segment3', 'segment4', 'segment5', 'segme
 const HEAD_Z = 5.6, SEG_GAP = 2.3;
 const BURROW_BOMB_R = 3.6;
 export const GORGO_STUN = 8;
-const SOG_PULL = 4.5, SOG_RANGE = 12, SOG_CONE = 0.62, SOG_FROM = 0.9, SOG_LEN = 2.0, POOL_SECS = 6;
+const SOG_PULL = 4.5, SOG_RANGE = 12, SOG_CONE = 0.62, SOG_FROM = 0.9, SOG_LEN = 2.0, POOL_SECS = 8, POOL_R = 2.3;
 
 // ---- Texturen (PS1, 16 px)
 const speckle = (cols, density = 1) => (g, n, rnd) => {
@@ -162,6 +163,7 @@ export function forceEmerge(m, stun = GORGO_STUN) {
   const was = !!m.burrowed;
   m._interrupt?.();
   m.queued = null;
+  m._jagd = 0;
   setBurrowed(m, false);
   if (stun > 0) { m.stunT = Math.max(m.stunT, stun); m.ctx.bus.emit('monsterStun', { monster: m }); }
   if (was) {
@@ -175,10 +177,10 @@ export function forceEmerge(m, stun = GORGO_STUN) {
 // ======================================================= Angriffe
 const MOUTH = 5.0; // Maul-Abstand vor dem Wurzelpunkt (m)
 
-// ---- 1. Graben/Wühlen (internal-Vorspiel zum Durchbruch): taucht ab, Hügel zieht auf das Ziel zu
+// ---- 1. Graben/Wühlen (Vorspiel der Jagd): taucht ab, Hügel zieht auf das Ziel zu; danach folgen 2 (Phase 2: 3) Durchbrüche am Stück
 const wuehlen = {
-  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 6 : 3), cooldown: 11, telegraph: 0.8, flashParts: ['kopf'], duration: 2.5, stam: 10,
-  cue: { color: '#a07040', tone: 'knurr' }, tempo: 1,
+  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 5 : 6), cooldown: 6, telegraph: 0.6, flashParts: ['kopf'], duration: 1.75, stam: 6,
+  cue: { color: '#a07040', tone: 'knurr' }, tempo: 1.1,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
     a.travel = Math.max(0, Math.min(16, d * 0.85 - 1));
@@ -186,52 +188,69 @@ const wuehlen = {
     a.aim = Math.atan2(dx, dz);
   },
   hits: [],
-  events: [{ t: 0.82, call: 'under', all: true }],
+  events: [{ t: 0.62, call: 'under', all: true }],
   calls: { under(m) { setBurrowed(m, true); m.ctx.fx.shake?.(0.3, 0.3); m.ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); } },
   motion(tau, a) {
-    const k = smooth(clamp01((tau - 0.82) / 1.6));
-    return { x: a.origin.x + a.ux * a.travel * k, z: a.origin.z + a.uz * a.travel * k, yaw: a.yaw0 + wrapTo(a.aim - a.yaw0) * smooth(clamp01(tau / 0.8)) };
+    const k = smooth(clamp01((tau - 0.62) / 1.0));
+    return { x: a.origin.x + a.ux * a.travel * k, z: a.origin.z + a.uz * a.travel * k, yaw: a.yaw0 + wrapTo(a.aim - a.yaw0) * smooth(clamp01(tau / 0.6)) };
   },
   pose: mTrack([
-    [0, {}], [0.4, { neck: 2.6, head: -18, jaw: 34 }], [0.65, { neck: 1.2, head: 40, jaw: 5, bodyY: -0.8 }], [0.85, { neck: 0, head: 55, bodyY: -3.2 }], [2.5, { bodyY: -3.2 }],
+    [0, {}], [0.3, { neck: 2.6, head: -18, jaw: 34 }], [0.5, { neck: 1.2, head: 40, jaw: 5, bodyY: -0.8 }], [0.66, { neck: 0, head: 55, bodyY: -3.2 }], [1.75, { bodyY: -3.2 }],
   ]),
 };
 function wrapTo(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
 
-// ---- 2. Durchbruch (aus dem Boden unter dem Ziel): Bodenwarnung (Risse + Glühen + Rumpeln) >= 0,8 s, dann 30 Schaden + Wurf
-const durchbruch = {
-  id: 'gorgo_durchbruch', range: [0, 40], weight: 1, cooldown: 2, telegraph: 1.05, flashParts: [], duration: 2.7, stam: 0, internal: true, tgVar: false, noTeach: true,
+/** Durchbruch-Effekte (Rumpeln mit Funken + Beben auf der Landestelle). */
+function rumbleCall(m, ctx, inst) {
+  const L = inst.landing;
+  for (let i = 0; i < 3; i++) ctx.fx.spark({ x: L.x + (inst.r(i) - 0.5) * 5, y: ctx.world.heightAt(L.x, L.z) + 0.2, z: L.z + (inst.r(i + 4) - 0.5) * 5 }, 6, i % 2 ? '#ff7a20' : '#2a2422', 3);
+  ctx.fx.shake?.(0.15, 0.25);
+  ctx.bus.emit('sfx', { name: 'heavy', pos: { x: L.x, y: 0, z: L.z } });
+}
+function surfaceCall(m, ctx) {
+  setBurrowed(m, false);
+  ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 1, z: m.pos.z }, 50, '#ff7a20', 9);
+  ctx.fx.shake?.(0.7, 0.4);
+  ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
+}
+function prepLanding(a) {
+  const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz);
+  a.step = Math.min(d, 9);
+  a.ux = d > 0.01 ? dx / d : a.dir.x; a.uz = d > 0.01 ? dz / d : a.dir.z;
+  a.landing = { x: a.origin.x + a.ux * a.step, z: a.origin.z + a.uz * a.step };
+}
+
+// ---- 2a. Stoß (Zwischen-Durchbruch der Jagd): bricht unter dem Ziel durch, taucht sofort wieder ab und setzt nach. Warnung 0,65 s
+const stoss = {
+  id: 'gorgo_stoss', range: [0, 40], weight: 1, cooldown: 0, telegraph: 0.65, flashParts: [], duration: 1.4, stam: 0, internal: true, tgVar: false, noTeach: true,
   cue: { color: '#ff5a1a', tone: 'droehn' }, tempo: 1, audit: [3, 7],
-  marker: { at: 'landing', radius: 3.9 }, markerUntil: 1.25,
-  prepare(a) {
-    const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz);
-    a.step = Math.min(d, 9);
-    a.ux = d > 0.01 ? dx / d : a.dir.x; a.uz = d > 0.01 ? dz / d : a.dir.z;
-    a.landing = { x: a.origin.x + a.ux * a.step, z: a.origin.z + a.uz * a.step };
-  },
-  hits: [{ t0: 1.05, t1: 1.22, shape: 'sphere', at: [0, 0.6, 0], radius: 3.6, dmg: 30, knock: 'down' }],
-  events: [{ t: 0, call: 'under', all: true }, { t: 0.5, call: 'rumble', all: true }, { t: 0.8, call: 'rumble', all: true }, { t: 1.05, call: 'surface', all: true }],
+  marker: { at: 'landing', radius: 3.9 }, markerUntil: 0.85,
+  prepare: prepLanding,
+  hits: [{ t0: 0.65, t1: 0.8, shape: 'sphere', at: [0, 0.6, 0], radius: 3.6, dmg: 32, knock: 'flinch' }],
+  events: [{ t: 0, call: 'under', all: true }, { t: 0.3, call: 'rumble', all: true }, { t: 0.65, call: 'surface', all: true }, { t: 1.12, call: 'dive', all: true }],
   calls: {
     under(m) { setBurrowed(m, true); },
-    rumble(m, ctx, inst) {
-      const L = inst.landing;
-      for (let i = 0; i < 3; i++) ctx.fx.spark({ x: L.x + (inst.r(i) - 0.5) * 5, y: ctx.world.heightAt(L.x, L.z) + 0.2, z: L.z + (inst.r(i + 4) - 0.5) * 5 }, 6, i % 2 ? '#ff7a20' : '#2a2422', 3);
-      ctx.fx.shake?.(0.15, 0.25);
-      ctx.bus.emit('sfx', { name: 'heavy', pos: { x: L.x, y: 0, z: L.z } });
-    },
-    surface(m, ctx) {
-      setBurrowed(m, false);
-      ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 1, z: m.pos.z }, 50, '#ff7a20', 9);
-      ctx.fx.shake?.(0.7, 0.4);
-      ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
-    },
+    rumble: rumbleCall, surface: surfaceCall,
+    dive(m, ctx) { setBurrowed(m, true); ctx.fx.shake?.(0.25, 0.25); },
   },
-  motion(tau, a) {
-    const k = smooth(clamp01(tau / 0.45));
-    return { x: a.origin.x + a.ux * a.step * k, z: a.origin.z + a.uz * a.step * k };
-  },
+  motion(tau, a) { const k = smooth(clamp01(tau / 0.5)); return { x: a.origin.x + a.ux * a.step * k, z: a.origin.z + a.uz * a.step * k }; },
   pose: mTrack([
-    [0, { bodyY: -3.2 }], [1.02, { bodyY: -3.2 }], [1.2, { bodyY: 0, neck: 3.6, head: -12, jaw: 38 }, 'lin'], [1.8, { neck: 3.0, head: 22, jaw: 10 }], [2.7, {}],
+    [0, { bodyY: -3.2 }], [0.62, { bodyY: -3.2 }], [0.8, { bodyY: 0, neck: 3.2, head: -12, jaw: 38 }, 'lin'], [1.05, { neck: 2.4, head: 20, jaw: 10 }], [1.3, { bodyY: -3.2, head: 50 }, 'lin'], [1.4, { bodyY: -3.2 }],
+  ]),
+};
+
+// ---- 2b. Durchbruch (letzter der Jagd, bleibt oben): Bodenwarnung (Risse + Glühen + Rumpeln) >= 0,8 s, dann 30 Schaden + Wurf
+const durchbruch = {
+  id: 'gorgo_durchbruch', range: [0, 40], weight: 1, cooldown: 2, telegraph: 0.8, flashParts: [], duration: 2.1, stam: 0, internal: true, tgVar: false, noTeach: true,
+  cue: { color: '#ff5a1a', tone: 'droehn' }, tempo: 1, audit: [3, 7],
+  marker: { at: 'landing', radius: 3.9 }, markerUntil: 1.0,
+  prepare: prepLanding,
+  hits: [{ t0: 0.8, t1: 0.97, shape: 'sphere', at: [0, 0.6, 0], radius: 3.6, dmg: 36, knock: 'down' }],
+  events: [{ t: 0, call: 'under', all: true }, { t: 0.35, call: 'rumble', all: true }, { t: 0.6, call: 'rumble', all: true }, { t: 0.8, call: 'surface', all: true }],
+  calls: { under(m) { setBurrowed(m, true); }, rumble: rumbleCall, surface: surfaceCall },
+  motion(tau, a) { const k = smooth(clamp01(tau / 0.45)); return { x: a.origin.x + a.ux * a.step * k, z: a.origin.z + a.uz * a.step * k }; },
+  pose: mTrack([
+    [0, { bodyY: -3.2 }], [0.77, { bodyY: -3.2 }], [0.95, { bodyY: 0, neck: 3.6, head: -12, jaw: 38 }, 'lin'], [1.5, { neck: 3.0, head: 22, jaw: 10 }], [2.1, {}],
   ]),
 };
 
@@ -251,7 +270,7 @@ function spuckCall(n) {
       }
       const to = { x: tx, y: ctx.world.heightAt(tx, tz), z: tz };
       const dur = 0.85 + dist * 0.025 + inst.r(i + 3) * 0.12;
-      const def = { kind: 'fire', mode: 'impact', from: { ...from }, to, dur, arc: 7, radius: 0.5, splash: 1.8, hold: POOL_SECS, dmg: 15, knock: 'flinch', status: { type: 'rost' }, key: `${inst.key}:s${i}`, attackId: inst.params.attackId };
+      const def = { kind: 'fire', mode: 'impact', from: { ...from }, to, dur, arc: 7, radius: 0.5, splash: POOL_R, hold: POOL_SECS, dmg: 20, knock: 'flinch', status: { type: 'rost' }, key: `${inst.key}:s${i}`, attackId: inst.params.attackId };
       m.projectiles.spawn(def, age);
       m.extra.pools.push({ x: tx, y: to.y, z: tz, t0: m.time + dur - age, t1: m.time + dur - age + POOL_SECS, mesh: null });
     }
@@ -260,29 +279,29 @@ function spuckCall(n) {
   };
 }
 const spuckPose = mTrack([
-  [0, {}], [0.4, { neck: 2.4, head: -22, jaw: 30, bodyY: 0.1 }], [0.8, { neck: 3.0, head: -28, jaw: 40 }], [0.95, { neck: 2.4, head: 18, jaw: 10 }, 'lin'], [1.4, { neck: 1.6, head: 10, jaw: 4 }], [2.4, {}],
+  [0, {}], [0.35, { neck: 2.4, head: -22, jaw: 30, bodyY: 0.1 }], [0.7, { neck: 3.0, head: -28, jaw: 40 }], [0.85, { neck: 2.4, head: 18, jaw: 10 }, 'lin'], [1.3, { neck: 1.6, head: 10, jaw: 4 }], [2.0, {}],
 ]);
 const spucke = {
-  id: 'gorgo_spucke', range: [7, 24], weight: 5, cooldown: 5, telegraph: 0.8, flashParts: ['kopf'], duration: 2.4, stam: 8, tempo: 1.2,
+  id: 'gorgo_spucke', range: [7, 24], weight: 5, cooldown: 4, telegraph: 0.7, flashParts: ['kopf'], duration: 2.0, stam: 5, tempo: 1.2,
   cue: { color: '#ff9a2a', tone: 'zisch' }, cond: (m) => m.phase < 1,
-  hits: [], events: [{ t: 0.85, call: 'spuck', all: true }], calls: { spuck: spuckCall(3) }, pose: spuckPose,
+  hits: [], events: [{ t: 0.75, call: 'spuck', all: true }], calls: { spuck: spuckCall(3) }, pose: spuckPose,
 };
 const glutspucke = {
-  id: 'gorgo_glutspucke', range: [5, 24], weight: 6, cooldown: 4, telegraph: 0.8, flashParts: ['kopf'], duration: 2.4, stam: 9, tempo: 1.2,
+  id: 'gorgo_glutspucke', range: [5, 24], weight: 3, cooldown: 3, telegraph: 0.7, flashParts: ['kopf'], duration: 2.0, stam: 5, tempo: 1.2,
   cue: { color: '#ff3a10', tone: 'zisch' }, cond: (m) => m.phase >= 1,
-  hits: [], events: [{ t: 0.85, call: 'spuck', all: true }], calls: { spuck: spuckCall(5) }, pose: spuckPose,
+  hits: [], events: [{ t: 0.75, call: 'spuck', all: true }], calls: { spuck: spuckCall(5) }, pose: spuckPose,
 };
 
 // ---- 4. Sog: Maul öffnet sich (0,9 s), zieht Pirscher im 12-m-Kegel 2 s an; Rolle bricht den Sog; im Maul 40 Schaden
 const sog = {
-  id: 'gorgo_sog', range: [6.5, SOG_RANGE], weight: 4, cooldown: 9, telegraph: 0.9, flashParts: ['kopf'], duration: 3.7, stam: 12, tempo: 1.0,
+  id: 'gorgo_sog', range: [6.5, SOG_RANGE], weight: 4, cooldown: 8, telegraph: 0.9, flashParts: ['kopf'], duration: 3.4, stam: 6, tempo: 1.0,
   cue: { color: '#a050ff', tone: 'brumm' }, audit: [8, 11],
   marker: { at: 'self', radius: 4 }, markerUntil: SOG_FROM,
   hits: [{ t0: SOG_FROM + 0.3, t1: SOG_FROM + SOG_LEN, shape: 'sphere', at: [0, 1.4, MOUTH - 0.4], radius: 1.8, dmg: 40, knock: 'down' }],
   events: [{ t: 0.1, call: 'open', all: true }],
   calls: { open(m, ctx) { ctx.bus.emit('sfx', { name: 'roar', pos: m.pos, low: true }); } },
   pose: mTrack([
-    [0, {}], [0.5, { neck: 1.6, head: -10, jaw: 30 }], [0.9, { neck: 1.8, head: -6, jaw: 52 }], [2.9, { neck: 1.8, head: -6, jaw: 52 }], [3.2, { neck: 0.4, jaw: 8 }], [3.7, {}],
+    [0, {}], [0.5, { neck: 1.6, head: -10, jaw: 30 }], [0.9, { neck: 1.8, head: -6, jaw: 52 }], [2.9, { neck: 1.8, head: -6, jaw: 52 }], [3.1, { neck: 0.4, jaw: 8 }], [3.4, {}],
   ]),
 };
 
@@ -314,41 +333,121 @@ function suctionTick(m, dt) {
 // ---- 5. Körperpeitsche: Halbkreis vor dem Wurm, die Segmente schlagen (20 Schaden)
 const PEITSCHE_LEN = 9;
 const peitsche = {
-  id: 'gorgo_peitsche', range: [0, 9.5], weight: 7, cooldown: 3, telegraph: 0.8, flashParts: ['segment1', 'segment2', 'segment3'], duration: 2.3, stam: 6, tempo: 1.2,
+  id: 'gorgo_peitsche', range: [0, 9.5], weight: (m) => (m.phase >= 1 ? 8 : 7), cooldown: 2.5, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3'], duration: 2.0, stam: 4, tempo: 1.15,
   cue: { color: '#c070ff', tone: 'klick' }, audit: [3, 6.5],
-  marker: { at: 'self', radius: PEITSCHE_LEN }, markerUntil: 1.0,
+  marker: { at: 'self', radius: PEITSCHE_LEN }, markerUntil: 0.85,
   cond: (m) => brokenCount(m) < 4,
-  hits: [{ t0: 0.95, t1: 1.5, shape: 'capsule', from: [0, 1.2, 1.2], to: [0, 1.2, PEITSCHE_LEN], radius: 1.5, dmg: 20, knock: 'flinch' }],
+  hits: [{ t0: 0.8, t1: 1.35, shape: 'capsule', from: [0, 1.2, 1.2], to: [0, 1.2, PEITSCHE_LEN], radius: 1.5, dmg: 30, knock: 'flinch' }],
   motion(tau, a) {
     const sign = a.r(0) < 0.5 ? 1 : -1;
-    return { yaw: a.yaw0 + sign * (-Math.PI / 2 * smooth(clamp01(tau / 0.8)) + Math.PI * smooth(clamp01((tau - 0.95) / 0.55))) };
+    return { yaw: a.yaw0 + sign * (-Math.PI / 2 * smooth(clamp01(tau / 0.7)) + Math.PI * smooth(clamp01((tau - 0.8) / 0.55))) };
   },
   pose: mTrack([
-    [0, {}], [0.7, { tailYaw: 40, neck: 0.8, head: -8, bodyY: -0.2 }], [0.95, { tailYaw: 40, neck: 0.8 }], [1.5, { tailYaw: -50, neck: 0.4, legL: 40 }, 'lin'], [2.3, {}],
+    [0, {}], [0.6, { tailYaw: 40, neck: 0.8, head: -8, bodyY: -0.2 }], [0.8, { tailYaw: 40, neck: 0.8 }], [1.35, { tailYaw: -50, neck: 0.4, legL: 40 }, 'lin'], [2.0, {}],
   ]),
 };
 
 // ---- 6. Schnappen (nur mit >= 2 gebrochenen Segmenten): kurzer Vorstoß-Biss, ersetzt Teile des Peitschen-Repertoires
 const schnappen = {
-  id: 'gorgo_schnappen', range: [0, 7], weight: 6, cooldown: 3, telegraph: 0.6, flashParts: ['kopf'], duration: 1.7, stam: 5, tempo: 1.2,
+  id: 'gorgo_schnappen', range: [0, 7], weight: 6, cooldown: 3, telegraph: 0.6, flashParts: ['kopf'], duration: 1.6, stam: 3, tempo: 1.2,
   cue: { color: '#40e0d0', tone: 'schrill' }, audit: [3, 5.5],
   cond: (m) => brokenCount(m) >= 2,
-  hits: [{ t0: 0.62, t1: 0.8, shape: 'capsule', from: [0, 1.4, 3], to: [0, 1.4, 6.2], radius: 1.5, dmg: 22, knock: 'flinch' }],
+  hits: [{ t0: 0.62, t1: 0.8, shape: 'capsule', from: [0, 1.4, 3], to: [0, 1.4, 6.2], radius: 1.5, dmg: 26, knock: 'flinch' }],
   motion(tau, a) { const k = smooth(clamp01((tau - 0.5) / 0.15)) * 2.6 * (1 - smooth(clamp01((tau - 0.9) / 0.6))); return { x: a.origin.x + a.dir.x * k, z: a.origin.z + a.dir.z * k }; },
   pose: mTrack([
     [0, {}], [0.45, { neck: 2.0, head: -14, jaw: 40 }], [0.58, { neck: 2.0, head: -14, jaw: 42 }], [0.7, { neck: 0.8, head: 22, jaw: 2 }, 'lin'], [1.2, { neck: 0.4, head: 8 }], [1.7, {}],
   ]),
 };
 
+// ---- 7. Zubiss (nur als Kettenglied nach Sog/Peitsche): schneller Vorstoß-Biss direkt hinter dem Sog
+const zubiss = {
+  id: 'gorgo_zubiss', range: [0, 8], weight: 1, cooldown: 0, telegraph: 0.55, flashParts: ['kopf'], duration: 1.4, stam: 3, tempo: 1.1, internal: true, tgVar: false, noTeach: true,
+  cue: { color: '#40e0d0', tone: 'schrill' }, audit: [3, 6],
+  hits: [{ t0: 0.55, t1: 0.74, shape: 'capsule', from: [0, 1.4, 2.5], to: [0, 1.4, 6.6], radius: 1.6, dmg: 28, knock: 'flinch' }],
+  motion(tau, a) { const k = smooth(clamp01((tau - 0.4) / 0.15)) * 3.2 * (1 - smooth(clamp01((tau - 0.85) / 0.5))); return { x: a.origin.x + a.dir.x * k, z: a.origin.z + a.dir.z * k }; },
+  pose: mTrack([
+    [0, {}], [0.4, { neck: 2.0, head: -14, jaw: 42 }], [0.52, { neck: 2.0, head: -14, jaw: 44 }], [0.64, { neck: 0.8, head: 24, jaw: 2 }, 'lin'], [1.0, { neck: 0.4, head: 8 }], [1.4, {}],
+  ]),
+};
+
+// ---- 8. Wurmwalze: der ganze Körper schwingt ~270° rundum (große, schnelle Sweep-Hitbox, wirft um). Rolle oder Abstand > 10 m
+const WALZE_LEN = 10;
+const walze = {
+  id: 'gorgo_walze', range: [0, 10.5], weight: (m) => (m.phase >= 1 ? 8 : 5), cooldown: 4, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3', 'segment4'], duration: 2.2, stam: 5, tempo: 1.1,
+  cue: { color: '#ff4040', tone: 'droehn' }, audit: [3, 7],
+  marker: { at: 'self', radius: WALZE_LEN }, markerUntil: 0.8,
+  cond: (m) => brokenCount(m) < 5,
+  hits: [{ t0: 0.8, t1: 1.6, shape: 'capsule', from: [0, 1.2, 1.4], to: [0, 1.2, WALZE_LEN], radius: 1.7, dmg: 40, knock: 'down' }],
+  motion(tau, a) {
+    const sign = a.r(1) < 0.5 ? 1 : -1;
+    const back = -60 * R * smooth(clamp01(tau / 0.7)), sweep = 270 * R * smooth(clamp01((tau - 0.8) / 0.8));
+    return { yaw: a.yaw0 + sign * (back + sweep) };
+  },
+  events: [{ t: 0.8, call: 'swing', all: true }],
+  calls: { swing(m, ctx) { ctx.fx.shake?.(0.35, 0.5); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); } },
+  pose: mTrack([
+    [0, {}], [0.7, { tailYaw: 50, neck: 0.8, head: -8, bodyY: -0.3, bodyRoll: 10 }], [0.8, { tailYaw: 50, neck: 0.8, bodyRoll: 10 }], [1.6, { tailYaw: -60, neck: 0.4, legL: 50, bodyRoll: -14 }, 'lin'], [2.2, {}],
+  ]),
+};
+
+// ---- 9. Schlackewelle: Aufbäumen, Schlag auf den Boden, Schockwelle läuft in Ringen nach außen (4,5 / 8,5 / 12,5 m).
+// Jeder Ring ist nur 0,1 s aktiv und 2,6 m breit, dazwischen 1,4 m Lücken -> Rolle im richtigen Moment oder in die Lücke stellen. Ring 1 ist eine
+// Scheibe (auch nah am Wurm), die äußeren bestehen aus Kapselstücken mit Lücken an den Nähten (kein Doppeltreffer).
+const RING_R = [4.5, 8.5, 12.5], RING_N = [0, 10, 14], RING_STEP = 0.25, RING_W = 0.1, RING_RAD = 0.9, RING_PL = 0.4;
+function ringHits(t0, dmg) {
+  const out = [];
+  RING_R.forEach((R, k) => {
+    const a0 = t0 + k * RING_STEP;
+    if (!RING_N[k]) { out.push({ t0: a0, t1: a0 + RING_W, shape: 'sphere', at: [0, 0.5, 0], radius: R + RING_RAD + RING_PL, dmg, knock: 'flinch' }); return; }
+    const n = RING_N[k], trim = Math.asin((RING_RAD + RING_PL) / R); // Endkappen berühren sich nur (kein Doppeltreffer)
+    for (let i = 0; i < n; i++) {
+      const c = (i / n) * 2 * Math.PI, half = Math.PI / n - trim;
+      out.push({ t0: a0, t1: a0 + RING_W, shape: 'capsule', from: [Math.sin(c - half) * R, 0.5, Math.cos(c - half) * R], to: [Math.sin(c + half) * R, 0.5, Math.cos(c + half) * R], radius: RING_RAD, dmg, knock: 'flinch' });
+    }
+  });
+  return out;
+}
+/** Funken-/Beben-Effekt eines Rings (k) der Welle. */
+function ringCall(k) {
+  return (m, ctx, inst) => {
+    const o = inst.origin, R = RING_R[k], gy = ctx.world.heightAt(o.x, o.z) + 0.3;
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * 2 * Math.PI + k; ctx.fx.spark({ x: o.x + Math.sin(a) * R, y: gy, z: o.z + Math.cos(a) * R }, 5, i % 2 ? '#ff7a20' : '#ffd070', 4); }
+    if (k === 0) { ctx.fx.shake?.(0.6, 0.5); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); }
+  };
+}
+const ringCalls = (pre) => Object.fromEntries(RING_R.map((_, k) => [pre + k, ringCall(k)]));
+const ringEvents = (t0, pre) => RING_R.map((_, k) => ({ t: t0 + k * RING_STEP, call: pre + k, all: true }));
+const WELLE_T = 0.7, WELLE2_T = 1.6;
+const wellePose = [[0, {}], [0.45, { neck: 3.4, head: -22, jaw: 30, bodyY: 0.2 }], [0.66, { neck: 3.6, head: -26, jaw: 36 }], [0.78, { neck: 0, head: 40, jaw: 4, bodyY: -0.6 }, 'lin'], [1.4, { neck: 0.4, head: 10 }]];
+const welle = {
+  id: 'gorgo_welle', range: [0, 13], weight: 6, cooldown: 5, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 2.0, stam: 5, tempo: 1.15,
+  cue: { color: '#ffb030', tone: 'droehn' }, audit: [4.5, 12],
+  marker: { at: 'self', radius: RING_R[2] + 1.4 }, markerUntil: WELLE_T,
+  cond: (m) => m.phase < 1,
+  hits: ringHits(WELLE_T, 30),
+  events: ringEvents(WELLE_T, 'ring'), calls: ringCalls('ring'),
+  pose: mTrack([...wellePose, [2.0, {}]]),
+};
+// Phase 2 (Glutkern): Doppelwelle – zweite Welle 0,85 s nach der ersten (erst durch, dann wieder auf den Zeitpunkt achten)
+const doppelwelle = {
+  id: 'gorgo_doppelwelle', range: [0, 13], weight: 12, cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 3.0, stam: 6, tempo: 1.15,
+  cue: { color: '#ff3a10', tone: 'droehn' }, audit: [4.5, 12],
+  marker: { at: 'self', radius: RING_R[2] + 1.4 }, markerUntil: WELLE_T,
+  cond: (m) => m.phase >= 1,
+  hits: [...ringHits(WELLE_T, 30), ...ringHits(WELLE2_T, 30)],
+  events: [...ringEvents(WELLE_T, 'ring'), ...ringEvents(WELLE2_T, 'ring')], calls: ringCalls('ring'),
+  pose: mTrack([...wellePose, [1.45, { neck: 3.0, head: -16, jaw: 24, bodyY: 0.1 }], [1.6, { neck: 0, head: 40, jaw: 4, bodyY: -0.6 }, 'lin'], [2.2, { neck: 0.4, head: 10 }], [3.0, {}]]),
+};
+
 // ======================================================= Definition
 export const gorgo = {
   id: 'gorgo',
   name: 'Gorgo',
-  hp: 16000,
+  hp: 14500,
   scale: 1,
   bodyRadius: 2.8,
-  walk: 3.0, run: 7.2, detect: 30, prefer: 9, turn: 0.8,
-  recoverAfter: (m) => (0.4 + m.rng() * 0.5) / (1.2 * m.speedMul),
+  walk: 3.6, run: 7.6, detect: 30, prefer: 6, turn: 1.0, // Owner-Feedback Okt 2026: Nahdruck statt Boxsack (war prefer 9 / turn 0,8)
+  recoverAfter: (m) => (0.2 + m.rng() * 0.3) / ((m.phase >= 1 ? 1.7 : 1.3) * m.speedMul),
   speedFactor: (m) => 1 - 0.07 * brokenCount(m), // jedes gebrochene Segment: Wurm wird langsamer
   drops: ['gorgo_segment', 'gorgo_zahn', 'gorgo_kern'],
   glitchSpots: ['kopf', 'segment3'],
@@ -363,21 +462,28 @@ export const gorgo = {
   attacks: {
     gorgo_wuehlen: wuehlen, gorgo_durchbruch: durchbruch, gorgo_spucke: spucke, gorgo_glutspucke: glutspucke,
     gorgo_sog: sog, gorgo_peitsche: peitsche, gorgo_schnappen: schnappen,
+    gorgo_stoss: stoss, gorgo_zubiss: zubiss, gorgo_walze: walze, gorgo_welle: welle, gorgo_doppelwelle: doppelwelle,
   },
   // Brocken 2.0
   teachAttack: 'gorgo_spucke', stamina: true, flinchDmg: true,
   chains: {
-    gorgo_spucke: [{ atk: 'gorgo_sog', w: 2 }, { atk: null, w: 2 }],
-    gorgo_glutspucke: [{ atk: 'gorgo_glutspucke', w: 3 }, { atk: 'gorgo_sog', w: 1 }, { atk: 'gorgo_wuehlen', w: 2 }],
-    gorgo_peitsche: [{ atk: 'gorgo_schnappen', w: 2 }, { atk: 'gorgo_wuehlen', w: 2 }, { atk: null, w: 2 }],
-    gorgo_schnappen: [{ atk: 'gorgo_peitsche', w: 2 }, { atk: null, w: 2 }],
-    gorgo_sog: [{ atk: 'gorgo_peitsche', w: 2 }, { atk: null, w: 1 }],
+    gorgo_spucke: [{ atk: 'gorgo_welle', w: 2 }, { atk: 'gorgo_sog', w: 2 }, { atk: 'gorgo_wuehlen', w: 1 }, { atk: null, w: 1 }],
+    gorgo_glutspucke: [{ atk: 'gorgo_glutspucke', w: 3 }, { atk: 'gorgo_doppelwelle', w: 2 }, { atk: 'gorgo_sog', w: 1 }, { atk: 'gorgo_wuehlen', w: 2 }],
+    gorgo_peitsche: [{ atk: 'gorgo_walze', w: 3 }, { atk: 'gorgo_schnappen', w: 2 }, { atk: 'gorgo_wuehlen', w: 1 }, { atk: null, w: 1 }],
+    gorgo_schnappen: [{ atk: 'gorgo_peitsche', w: 2 }, { atk: 'gorgo_walze', w: 2 }, { atk: null, w: 1 }],
+    gorgo_sog: [{ atk: 'gorgo_zubiss', w: 5 }, { atk: 'gorgo_peitsche', w: 1 }], // Kette Sog -> Zubiss -> Walze
+    gorgo_zubiss: [{ atk: 'gorgo_walze', w: 5 }, { atk: null, w: 1 }],
+    gorgo_walze: [{ atk: 'gorgo_welle', w: 2 }, { atk: 'gorgo_doppelwelle', w: 3 }, { atk: 'gorgo_peitsche', w: 2 }, { atk: null, w: 1 }],
+    gorgo_welle: [{ atk: 'gorgo_walze', w: 3 }, { atk: 'gorgo_peitsche', w: 2 }, { atk: null, w: 1 }],
+    gorgo_doppelwelle: [{ atk: 'gorgo_walze', w: 3 }, { atk: 'gorgo_peitsche', w: 2 }, { atk: null, w: 1 }],
+    gorgo_durchbruch: [{ atk: 'gorgo_welle', w: 3 }, { atk: 'gorgo_doppelwelle', w: 4 }, { atk: 'gorgo_peitsche', w: 2 }, { atk: 'gorgo_walze', w: 2 }, { atk: null, w: 1 }],
   },
-  phases: [{ at: 0.5, name: 'Glutkern', cue: '#ff7a1a', special: 'gorgo_glutspucke', enter: (m) => { m.cds.gorgo_glutspucke = 0; m.cds.gorgo_wuehlen = Math.min(m.cds.gorgo_wuehlen ?? 0, 2); } }],
+  phases: [{ at: 0.5, name: 'Glutkern', cue: '#ff7a1a', special: 'gorgo_glutspucke', enter: (m) => { m.cds.gorgo_glutspucke = 0; m.cds.gorgo_doppelwelle = 0; m.cds.gorgo_wuehlen = Math.min(m.cds.gorgo_wuehlen ?? 0, 2); } }],
   build: () => buildGorgo(),
   init(m) {
     m.burrowed = false;
     m._idleB = 0;
+    m._jagd = 0; // verbleibende Durchbrüche der laufenden Jagd
   },
   onBreak(m, part) {
     if (!SEGS.includes(part.id)) return;
@@ -391,8 +497,12 @@ export const gorgo = {
     if (m.burrowed && res?.env && m.alive) forceEmerge(m, GORGO_STUN);
   },
   onAttackEnd(m, id) {
-    if (id === 'gorgo_wuehlen' && m.burrowed && m.alive) { m.queued = 'gorgo_durchbruch'; m.recover = 0; } // Wühlen läuft immer in den Durchbruch
-    if (id === 'gorgo_durchbruch' && m.phase >= 1) m.cds.gorgo_wuehlen = Math.min(m.cds.gorgo_wuehlen ?? 0, 4); // Glutkern: häufiger graben
+    // Jagd-Durchbruch: Wühlen -> 2 (Phase 2: 3) Durchbrüche am Stück; alle bis auf den letzten tauchen sofort wieder ab
+    if (id === 'gorgo_wuehlen') m._jagd = m.phase >= 1 ? 3 : 2;
+    if ((id === 'gorgo_wuehlen' || id === 'gorgo_stoss') && m.burrowed && m.alive && m._jagd > 0) {
+      m.queued = m._jagd-- > 1 ? 'gorgo_stoss' : 'gorgo_durchbruch'; m.recover = 0;
+    }
+    if (id === 'gorgo_durchbruch' && m.phase >= 1) m.cds.gorgo_wuehlen = Math.min(m.cds.gorgo_wuehlen ?? 0, 3); // Glutkern: häufiger graben
   },
   tick(m, dt) {
     const ex = m.extra;
@@ -437,10 +547,10 @@ export const gorgo = {
       if (live && !q.mesh && m.ctx.scene) {
         q.mesh = new THREE.Mesh(poolGeo, poolMat);
         q.mesh.position.set(q.x, q.y + 0.08, q.z);
-        q.mesh.scale.setScalar(1.8);
+        q.mesh.scale.setScalar(POOL_R);
         m.ctx.scene.add(q.mesh);
       }
-      if (q.mesh) q.mesh.scale.setScalar(1.7 + Math.sin(m.time * 5 + i) * 0.1);
+      if (q.mesh) q.mesh.scale.setScalar(POOL_R * 0.95 + Math.sin(m.time * 5 + i) * 0.1);
       if (m.time > q.t1 || !m.alive) { q.mesh?.parent?.remove(q.mesh); pools.splice(i, 1); }
     }
     suctionTick(m, dt);

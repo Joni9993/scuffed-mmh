@@ -12,6 +12,7 @@ import { time } from '../../src/core/time.js';
 import { HuntInventory } from '../../src/game/inventory.js';
 import { ItemSystem } from '../../src/game/items.js';
 import { createVitals, tickStamina, spendStamina } from '../../src/game/vitals.js';
+import { fieldStudyQuest } from '../../src/meta/fieldstudy.js';
 import { QuestBoardState } from '../../src/net/questboard.js';
 
 const DT = 1 / 60;
@@ -36,7 +37,7 @@ describe('resolveMods', () => {
   it('leer = neutral', () => { expect(resolveMods([])).toMatchObject({ monster: {}, player: {}, hunt: {}, reward: 1 }); });
   it('Multiplikatoren multiplizieren, Flags OR, reward multipliziert', () => {
     const r = resolveMods(['overflow', 'uebertaktet']);
-    expect(r.monster.dmgMul).toBeCloseTo(1.3); expect(r.monster.speedMul).toBeCloseTo(1.15); expect(r.monster.recoverMul).toBeCloseTo(0.8);
+    expect(r.monster.dmgMul).toBeCloseTo(1.4); expect(r.monster.speedMul).toBeCloseTo(1.25); expect(r.monster.recoverMul).toBeCloseTo(0.7);
     expect(r.reward).toBeCloseTo(1.3 * 1.3, 3);
     const r2 = resolveMods(['rotglut', 'fehlende_texturen']);
     expect(r2.monster.rageAlways).toBe(true); expect(r2.monster.hideColorCues).toBe(true); expect(r2.monster.hpMul).toBe(1.4);
@@ -52,8 +53,8 @@ describe('resolveMods', () => {
 describe('Monster-Hooks', () => {
   it('speedMul / dmgMul wirken auf Brocken, nicht auf Kleinvieh', () => {
     const base = mk([]).m, fast = mk(['uebertaktet', 'overflow']).m;
-    expect(fast.speedMul / base.speedMul).toBeCloseTo(1.15);
-    expect(fast.dmgMul / base.dmgMul).toBeCloseTo(1.3);
+    expect(fast.speedMul / base.speedMul).toBeCloseTo(1.25);
+    expect(fast.dmgMul / base.dmgMul).toBeCloseTo(1.4);
     fast.minor = true; expect(fast.speedMul).toBe(base.speedMul);
   });
   it('Telegraph nie unter MIN_TELEGRAPH, auch mit telegraphMul', () => {
@@ -72,7 +73,7 @@ describe('Monster-Hooks', () => {
     expect(m.hp).toBe(h0); // 1 s nach Treffer: noch nichts
     for (let i = 0; i < 600; i++) m.mutatorTick(DT);
     expect(m.hp).toBeGreaterThan(h0);
-    expect(m.hp - h0).toBeLessThan(m.maxHp * 0.05);
+    expect(m.hp - h0).toBeLessThan(m.maxHp * 0.15);
     const o = mk([]).m; o.hp = 10; for (let i = 0; i < 600; i++) o.mutatorTick(DT); expect(o.hp).toBe(10);
   });
   it('rageAlways / hideColorCues liegen als Flags vor', () => {
@@ -85,6 +86,45 @@ describe('Monster-Hooks', () => {
       const z = []; for (let i = 0; i < 800; i++) { m.mutatorTick(DT); z.push(m.pos.z); } return z;
     };
     const a = run(); expect(a[799]).toBeGreaterThan(0); expect(JSON.stringify(a)).toBe(JSON.stringify(run()));
+  });
+});
+
+describe('Sichtbare Mutatoren', () => {
+  it('Feldstudie-Quest traegt Mutatoren bis in ctx.mods.monster', () => {
+    const q = fieldStudyQuest(new Date('2026-10-07'));
+    expect(q.mutators.length).toBeGreaterThan(0);
+    const mods = resolveMods(q.mutators); expect(mods.ids).toEqual(q.mutators);
+    expect(Object.keys(mods.monster).length + Object.keys(mods.player).length).toBeGreaterThan(0);
+    const { m } = mk(q.mutators); expect(m.mm).toBeTruthy();
+  });
+  it('Speicherleck heilt in 10 s ohne Treffer >= 10 % maxHp, auch im Flug', () => {
+    for (const st of ['combat', 'fly']) {
+      const { m } = mk(['speicherleck']); m.state = st; m.hp = m.maxHp * 0.5; m._sinceHit = 5;
+      for (let i = 0; i < 600; i++) m.mutatorTick(DT);
+      expect(m.hp - m.maxHp * 0.5).toBeGreaterThanOrEqual(m.maxHp * 0.1);
+    }
+  });
+  it('Speicherleck-FX: gruene Zahl + sfx + mutfx', () => {
+    const { ctx, m } = mk(['speicherleck']); const nums = [], ev = [];
+    ctx.fx.number = (p, t, k) => nums.push([t, k]); ctx.bus.on('mutfx', (e) => ev.push(e.kind));
+    m.hp = m.maxHp * 0.5; m._sinceHit = 5; for (let i = 0; i < 180; i++) m.mutatorTick(DT);
+    expect(nums.length).toBeGreaterThanOrEqual(2); expect(nums[0][1]).toBe('mheal'); expect(ev).toContain('heal');
+  });
+  it('Lag-Spitze loest in 20 s >= 3x aus, nie waehrend m.attack', () => {
+    const { m } = mk(['lag_spitze']); m.chainNext = null; m.vel.set(0, 0, 3);
+    let bad = 0, n0 = 0;
+    for (let i = 0; i < 1200; i++) {
+      m.attack = i % 600 > 400 ? { inst: {} } : null; // Telegraph/Angriff: Pos darf sich nicht sprunghaft aendern
+      const z0 = m.pos.z, c0 = m.lagCount ?? 0; m.mutatorTick(DT);
+      if ((m.lagCount ?? 0) > c0) { n0++; if (m.attack) bad++; }
+      else if (m.attack && m.pos.z !== z0) bad++;
+    }
+    expect(n0).toBeGreaterThanOrEqual(3); expect(bad).toBe(0);
+  });
+  it('Lag-Spitze greift auch im Flug', () => {
+    const { m } = mk(['lag_spitze']); m.state = 'fly'; m.air = 5; m.vel.set(0, 0, 4);
+    for (let i = 0; i < 600; i++) m.mutatorTick(DT);
+    expect(m.lagCount).toBeGreaterThanOrEqual(1);
   });
 });
 

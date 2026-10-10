@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MUTATORS, MUTATOR_SHORT } from '../data/mutators.js';
 
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -27,6 +28,7 @@ export function createHud(root) {
     <div class="hud-tr">
       <div class="hud-timer">20:00</div>
       <div class="hud-ko">Umgekippt 0/3</div>
+      <div class="hud-mut" style="display:none"></div>
       <div class="hud-train" style="display:none;font:700 1.9vmin/1.35 monospace;color:#ffe9a0;text-shadow:0 0 3px #000,0 0 3px #000;text-align:right;white-space:nowrap"></div>
       <canvas class="mini ui-hit" width="64" height="64"></canvas>
     </div>
@@ -38,7 +40,7 @@ export function createHud(root) {
   const q = (s) => el.querySelector(s);
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
-    wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mini: q('.mini'),
+    wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mut: q('.hud-mut'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
   const g = refs.mini.getContext('2d');
@@ -56,12 +58,26 @@ export function createHud(root) {
 
   const api = {
     el,
-    banner(text, secs = 3) { refs.banner.textContent = text; refs.banner.classList.add('show'); bannerT = secs; },
+    banner(text, secs = 3) { refs.banner.classList.remove('mut'); refs.banner.textContent = text; refs.banner.classList.add('show'); bannerT = secs; },
     center(text, secs = 2) { refs.center.textContent = text; refs.center.classList.add('show'); centerT = secs; },
     update(hunt, dt = 0.016) {
       const p = hunt.player;
       if (!p) return;
       const v = p.v;
+      if (!cache.mutInit) { // aktive Mutatoren: dauerhaft klein + 3 s Banner beim Start
+        cache.mutInit = true;
+        const ids = hunt.mods?.ids ?? [];
+        if (ids.length && !hunt.training) {
+          refs.mut.style.display = '';
+          refs.mut.innerHTML = ids.map((i) => `<b title="${MUTATORS[i]?.desc ?? ''}">${MUTATOR_SHORT[i] ?? MUTATORS[i]?.name ?? i}</b>`).join('');
+          api.banner(`Mutatoren: ${ids.map((i) => MUTATORS[i]?.name ?? i).join(' + ')}`, 3);
+          refs.banner.classList.add('mut');
+        }
+        hunt.bus?.on('mutfx', (e) => { // Speicherleck: Lock-Marke flackert gruen
+          if (e.kind !== 'heal') return;
+          refs.lock.classList.remove('mheal'); void refs.lock.offsetWidth; refs.lock.classList.add('mheal');
+        });
+      }
       set('name', p.name, (x) => (refs.name.textContent = x));
       const hp = Math.round((v.hp / v.maxHp) * 200) / 2, br = Math.round(((v.hp + v.bruise) / v.maxHp) * 200) / 2;
       set('hp', hp, (x) => (refs.hp.style.width = x + '%'));

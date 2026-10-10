@@ -12,7 +12,7 @@ const step = (m, secs, f) => { for (let i = 0; i < secs / DT; i++) { m.update(DT
 describe('Gorgo: Definition', () => {
   it('Registry, HP, Schwaeche, Teile, Glitch-Stellen', () => {
     expect(getMonsterDef('gorgo')).toBe(gorgo);
-    expect(monsters.gorgo.hp).toBe(16000);
+    expect(monsters.gorgo.hp).toBe(14500);
     const { m } = mk();
     expect(m.parts.map((p) => p.id)).toEqual(['kopf', 'segment1', 'segment2', 'segment3', 'segment4', 'segment5', 'segment6']);
     expect(m.partById.kopf.factor).toBe(1);
@@ -46,7 +46,7 @@ describe('Gorgo: Eingraben', () => {
     expect(m.extra.mound.visible).toBe(true);
     expect(m.extra.body.visible).toBe(false);
   });
-  it('Wühlen läuft in den Durchbruch: Auftauchen mit Bodenwarnung >= 0,8 s unter dem Ziel', () => {
+  it('Wühlen läuft in den Durchbruch: Auftauchen mit Bodenwarnung >= 0,75 s unter dem Ziel', () => {
     const { ctx, m, p } = mk();
     const evs = [];
     ctx.bus.on('monsterAttack', (e) => evs.push(e));
@@ -62,17 +62,17 @@ describe('Gorgo: Eingraben', () => {
     }
     expect(evs.map((e) => e.attackId)).toContain('gorgo_durchbruch');
     expect(surfaced).not.toBeNull();
-    expect(surfaced - markStart).toBeGreaterThanOrEqual(0.8);
+    expect(surfaced - markStart).toBeGreaterThanOrEqual(0.75);
     expect(Math.hypot(m.pos.x - 0, m.pos.z - 10)).toBeLessThan(2.5);
     const last = marks[marks.length - 1];
     expect(Math.hypot(last.pos.x, last.pos.z - 10)).toBeLessThan(2.5);
   });
-  it('Durchbruch: Telegraph >= 0,8 s auch in Rotglut, 30 Schaden', () => {
+  it('Durchbruch: Telegraph >= 0,8 s (Rotglut >= 0,6 s), 36 Schaden', () => {
     const base = { attackId: 'gorgo_durchbruch', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 6 }, seed: 1 };
     const d = gorgo.attacks.gorgo_durchbruch;
     expect(new AttackInstance(d, base).firstHitTime()).toBeGreaterThanOrEqual(0.8);
-    expect(new AttackInstance(d, { ...base, rage: true }).firstHitTime()).toBeGreaterThanOrEqual(0.8);
-    expect(d.hits[0].dmg).toBe(30);
+    expect(new AttackInstance(d, { ...base, rage: true }).firstHitTime()).toBeGreaterThanOrEqual(0.6);
+    expect(d.hits[0].dmg).toBe(36);
   });
   it('Durchbruch trifft den Pirscher im Kreis erst nach der Warnung', () => {
     const { m, p } = mk(0, 8);
@@ -85,7 +85,7 @@ describe('Gorgo: Eingraben', () => {
       if (hurtAt === null && p.v.hp < hp0) hurtAt = m.attack ? m.attack.t : 99;
     }
     expect(hurtAt).not.toBeNull();
-    expect(hurtAt).toBeGreaterThanOrEqual(0.8);
+    expect(hurtAt).toBeGreaterThanOrEqual(0.75);
   });
 });
 
@@ -185,7 +185,7 @@ describe('Gorgo: Phase + Spucke', () => {
     expect(ph[0]?.name).toBe('Glutkern');
     expect(atk).toContain('gorgo_glutspucke');
   });
-  it('Spucke: 3 Brocken (Glutspucke 5), bleiben 6 s, Rost, 15', () => {
+  it('Spucke: 3 Brocken (Glutspucke 5), bleiben 8 s, Rost, 20', () => {
     for (const [id, n] of [['gorgo_spucke', 3], ['gorgo_glutspucke', 5]]) {
       const { m } = mk(0, 14);
       if (id === 'gorgo_glutspucke') m.phase = 1;
@@ -194,15 +194,15 @@ describe('Gorgo: Phase + Spucke', () => {
       step(m, 1.2, () => { max = Math.max(max, m.projectiles.list.length); });
       expect(max).toBe(n);
       const pr = m.projectiles.list[0];
-      expect(pr.def.hold).toBe(6);
+      expect(pr.def.hold).toBe(8);
       expect(pr.def.status.type).toBe('rost');
-      expect(pr.def.dmg).toBe(15);
+      expect(pr.def.dmg).toBe(20);
     }
   });
 });
 
 describe('Gorgo: Replay-Determinismus (Gast)', () => {
-  it('Host und Gast durchlaufen Wühlen->Durchbruch identisch (Position + burrowed)', () => {
+  it('Host und Gast durchlaufen Wühlen->Stoß->Durchbruch identisch (Position + burrowed)', () => {
     const { ctx, m: host } = mk(0, 10, 3);
     const guest = new Monster(gorgo, ctx, { id: 'gorgo-g', x: 0, z: 0, state: 'combat', seed: 99, authority: false });
     ctx.monsters.push(guest);
@@ -219,7 +219,7 @@ describe('Gorgo: Replay-Determinismus (Gast)', () => {
       }
     }
     for (const [k, v] of ha) if (gb.has(k)) { a.push(v); b.push(gb.get(k)); }
-    expect(ids.slice(0, 2)).toEqual(['gorgo_wuehlen', 'gorgo_durchbruch']);
+    expect(ids.slice(0, 3)).toEqual(['gorgo_wuehlen', 'gorgo_stoss', 'gorgo_durchbruch']);
     expect(a.length).toBeGreaterThan(300);
     expect(b).toEqual(a);
     expect(a.some((x) => x[3])).toBe(true);

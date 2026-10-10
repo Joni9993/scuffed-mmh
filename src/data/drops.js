@@ -1,6 +1,6 @@
 // Drop tables (GDD 8.3). Weighted carve tables, guaranteed/chance part-break bonuses, quest reward extras.
 // All rolls take a seeded rng (core/rng.js) -> deterministic in tests.
-// `n` is a fixed count or [min, max]. `matMul` (Rotglut variants: 2) multiplies every count.
+// `n` is a fixed count or [min, max]. `matMul` (Rotglut variants: 2) multiplies every count (scaleCount: always whole items).
 
 export const DROPS = {
   jaggo: {
@@ -92,6 +92,11 @@ export function partTag(partId = '') {
 }
 
 const countOf = (n, rng) => (Array.isArray(n) ? rng.int(n[0], n[1]) : n);
+/** Beute-Faktor auf ganze Stückzahlen: 3 x 1,3 = 3,9 -> 4 mit 90 % (sonst 3). Erwartungswert bleibt, nie Bruchteile (Owner-Feedback Okt 2026). */
+export function scaleCount(n, mul, rng) {
+  const x = n * mul, whole = Math.floor(x + 1e-9), frac = x - whole;
+  return whole + (frac > 1e-6 && rng() < frac ? 1 : 0);
+}
 
 /** One weighted pick -> item id (null if table empty). */
 export function pickWeighted(table, rng) {
@@ -108,7 +113,7 @@ export function rollCarve(monsterId, rng, { tail = false, matMul = 1 } = {}) {
   if (!d) return null;
   const table = tail && d.tail.length ? d.tail : d.carve;
   const id = pickWeighted(table, rng);
-  return id ? { id, n: matMul } : null;
+  return id ? { id, n: scaleCount(1, matMul, rng) } : null;
 }
 
 /** [L] Whole-corpse carve of neutral animals (one carve, several items) -> [{id, n}] ; null for monsters without a `once` table. */
@@ -124,14 +129,14 @@ export function rollCarveAll(monsterId, rng) {
 export function rollBreak(monsterId, partId, rng, { matMul = 1 } = {}) {
   const list = DROPS[monsterId]?.breaks?.[partTag(partId)] ?? [];
   const out = [];
-  for (const e of list) if (e.chance >= 1 || rng() < e.chance) out.push({ id: e.id, n: countOf(e.n, rng) * matMul });
+  for (const e of list) if (e.chance >= 1 || rng() < e.chance) out.push({ id: e.id, n: scaleCount(countOf(e.n, rng), matMul, rng) });
   return out;
 }
 
 /** Quest reward extras -> [{id, n}] */
 export function rollReward(monsterId, rng, { matMul = 1 } = {}) {
   const out = [];
-  for (const e of DROPS[monsterId]?.reward ?? []) if (e.chance >= 1 || rng() < e.chance) out.push({ id: e.id, n: countOf(e.n, rng) * matMul });
+  for (const e of DROPS[monsterId]?.reward ?? []) if (e.chance >= 1 || rng() < e.chance) out.push({ id: e.id, n: scaleCount(countOf(e.n, rng), matMul, rng) });
   return out;
 }
 
