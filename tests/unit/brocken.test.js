@@ -254,8 +254,8 @@ describe('Barrotz', () => {
   it('Rotglut: Rammsturm chains into a second charge (once)', () => {
     const { m } = make(barrotz);
     m.rage = true; m.rageT = 40;
-    m.beginAttack('barrotz_ramm');
-    run(m, 3.2);
+    const inst = m.beginAttack('barrotz_ramm');
+    run(m, inst.duration + 0.05); // Dauer hängt vom Tempo ab (Barrotz 1,2)
     expect(m.queued).toBe('barrotz_ramm');
     m.recover = 0; m.target.spawnAt(0, 12, Math.PI);
     m.rot = Math.PI; // turned around already

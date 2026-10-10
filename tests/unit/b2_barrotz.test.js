@@ -61,4 +61,39 @@ describe('Barrotz Brocken 2.0', () => {
       }
     }
   });
+
+  // Owner-Feedback Okt 2026
+  const hitOn = (id, px, pz, yaw = 0) => {
+    const inst = new AttackInstance(barrotz.attacks[id], { attackId: id, t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw, targetPos: { x: px, y: 0, z: pz }, seed: 3 });
+    for (let t = 0; t < inst.duration; t += DT) for (const h of inst.hitsAt(t)) {
+      const sh = h.shape, c = sh.a && sh.b ? sh : null;
+      // Abstand Punkt (px,1,pz) zur Kapsel/Kugel
+      const P = { x: px, y: 1, z: pz };
+      let d;
+      if (c) { const ax = c.b.x - c.a.x, ay = c.b.y - c.a.y, az = c.b.z - c.a.z, l2 = ax * ax + ay * ay + az * az || 1; const k = Math.max(0, Math.min(1, ((P.x - c.a.x) * ax + (P.y - c.a.y) * ay + (P.z - c.a.z) * az) / l2)); d = Math.hypot(P.x - c.a.x - ax * k, P.y - c.a.y - ay * k, P.z - c.a.z - az * k); }
+      else d = Math.hypot(P.x - sh.x, P.y - sh.y, P.z - sh.z);
+      if (d <= (sh.r ?? sh.radius)) return { t, dmg: h.dmg };
+    }
+    return null;
+  };
+  it('Schwanzfeger trifft im Vollkreis (vorn, seitlich, hinten)', () => {
+    for (const [x, z] of [[0, 4], [4, 0], [-4, 0], [0, -4]]) expect(hitOn('barrotz_feger', x, z), `@${x},${z}`).not.toBeNull();
+  });
+  it('Walze rollt auf den Jäger zu und trifft hart (40)', () => {
+    const r = hitOn('barrotz_waelzer', 0, 9);
+    expect(r).not.toBeNull(); expect(r.dmg).toBe(40);
+    const inst = new AttackInstance(barrotz.attacks.barrotz_waelzer, { attackId: 'barrotz_waelzer', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 9 }, seed: 3 });
+    const end = inst.sample(inst.duration);
+    expect(end.z).toBeGreaterThan(9); // rollt durch den Jäger durch
+    expect(inst.duration).toBeCloseTo(3.4, 1); // nicht schneller als vorher
+  });
+  it('Tempo 1,2 + Angriffe 15 % größer', () => {
+    const h = barrotz.attacks.barrotz_hammer;
+    expect(h.tempo).toBe(1.2);
+    expect(h.hits[0].radius).toBeCloseTo(3.6 * 1.15, 5);
+    const inst = new AttackInstance(h, { attackId: h.id, t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, seed: 1 });
+    expect(inst.duration).toBeCloseTo(2.1 / 1.2, 2);
+    expect(barrotz.run).toBeCloseTo(7.2);
+  });
 });
+

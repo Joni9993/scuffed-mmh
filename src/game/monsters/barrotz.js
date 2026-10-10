@@ -224,11 +224,28 @@ const hammer = {
   ]),
 };
 
-// ---- 3. Schlammwälzer: wälzt sich 2 s (verwundbar), danach Schlammpanzer
+// ---- 3. Schlammwälzer: legt sich quer zum Jäger und rollt wie eine Walze auf ihn zu (40 Schaden, wirft um), danach Schlammpanzer
+const WALZE_MIN = 5, WALZE_MAX = 15;
 const waelzer = {
   id: 'barrotz_waelzer', range: [0, 22], weight: 2, cooldown: 14, telegraph: 0.6, flashParts: ['body'], duration: 3.4, stam: 2, cue: { color: '#8a6a3a', tone: 'knurr' },
-  cond: (m) => !m.armor,
-  hits: [],
+  tempo: 1, // bleibt bewusst so schnell wie bisher (Owner-Feedback)
+  cond: (m) => !m.armor, audit: [4, 9],
+  marker: { at: 'landing', radius: 2.6 }, markerUntil: 2.4,
+  prepare(a) {
+    const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z;
+    a.rollYaw = Math.atan2(dx, dz); // Rollrichtung = zum Jäger
+    a.rollLen = Math.max(WALZE_MIN, Math.min(WALZE_MAX, Math.hypot(dx, dz) + 3));
+    // Körper quer zur Rollrichtung: bodyRoll > 0 dreht die Oberseite nach lokal -x, die Walze rollt also nach -x → Gier = Rollrichtung + 90°
+    a.turn = wrapAngle(a.rollYaw + Math.PI / 2 - a.yaw0);
+    a.landing = { x: a.origin.x + Math.sin(a.rollYaw) * a.rollLen, z: a.origin.z + Math.cos(a.rollYaw) * a.rollLen };
+  },
+  // Walze: Kapsel entlang des Körpers (quer zur Rollrichtung), solange er rollt
+  hits: [{ t0: 0.9, t1: 2.4, shape: 'capsule', from: [0, 1.0, -2.6], to: [0, 1.0, 2.6], radius: 1.5, dmg: 40, knock: 'down' }],
+  motion(tau, a) {
+    const k = clamp01((tau - 0.9) / 1.5);
+    const e = k * 0.8 + k * k * (3 - 2 * k) * 0.2;
+    return { x: a.origin.x + Math.sin(a.rollYaw) * a.rollLen * e, z: a.origin.z + Math.cos(a.rollYaw) * a.rollLen * e, yaw: a.yaw0 + a.turn * smooth(clamp01(tau / 0.6)) };
+  },
   events: [{ t: 2.7, call: 'coat', all: true }],
   calls: {
     coat(m) {
@@ -274,14 +291,19 @@ const spritzer = {
   ]),
 };
 
-// ---- 5. Schwanzfeger: Halbkreis hinten, 18 Schaden
+// ---- 5. Schwanzfeger: Vollkreis (360°) um sich herum, 18 Schaden
 const feger = tailSweep({
-  id: 'barrotz_feger', range: [0, 8], weight: 8, cooldown: 3, telegraph: 0.6, dmg: 18, len: 6.4, radius: 1.1, sweep: 2.4, y: 1.0, duration: 1.9, t0: 0.65, t1: 1.15,
+  id: 'barrotz_feger', range: [0, 8], weight: 8, cooldown: 3, telegraph: 0.6, dmg: 18, len: 6.4, radius: 1.1, sweep: Math.PI * 2, y: 1.0, duration: 2.0, t0: 0.65, t1: 1.3,
   cond: (m) => targetBehind(m, 1.6),
   pose: mTrack([
-    [0, {}], [0.5, { tailYaw: 55, bodyY: -0.1, bodyPitch: 3, head: 8 }], [0.62, { tailYaw: 55 }], [0.8, { tailYaw: -55 }, 'lin'], [1.15, { tailYaw: -55 }], [1.9, {}],
+    [0, {}], [0.5, { tailYaw: 55, bodyY: -0.1, bodyPitch: 3, head: 8 }], [0.62, { tailYaw: 55 }], [0.8, { tailYaw: -40 }, 'lin'], [1.3, { tailYaw: -40 }], [2.0, {}],
   ]),
 });
+// Vollkreis: kurzes Ausholen (statt halbem Kreis zurückdrehen), dann eine ganze Drehung
+feger.motion = (tau, a) => {
+  const sign = a.r(0) < 0.5 ? 1 : -1;
+  return { yaw: a.yaw0 + sign * (-0.5 * smooth(clamp01(tau / 0.6)) + (Math.PI * 2 + 0.5) * smooth(clamp01((tau - 0.65) / 0.65))) };
+};
 feger.stam = 4;
 feger.cue = { color: '#c070ff', tone: 'klick' };
 
@@ -351,7 +373,8 @@ export const barrotz = {
   hp: 9000,
   scale: SC,
   bodyRadius: 2.0,
-  walk: 2.2, run: 6.0, detect: 26, prefer: 6, turn: 0.75,
+  walk: 2.64, run: 7.2, detect: 26, prefer: 6, turn: 0.9, // Owner-Feedback Okt 2026: +20 % Tempo (war 2,2 / 6,0 / 0,75)
+  recoverAfter: (m) => (0.35 + m.rng() * 0.5) / (1.2 * m.speedMul),
   drops: ['barrotz_kruste', 'barrotz_platte', 'barrotz_schwanzleder'],
   parts: [
     { id: 'head', label: 'Kopfplatte', factor: 0.5, breakHp: 800, jitter: 0.07, elem: { fire: 10, shock: 20 }, blunt: true, stunPart: true,
@@ -414,3 +437,15 @@ export const barrotz = {
   setArmor,
   breakArmor,
 };
+
+// Owner-Feedback Okt 2026: Barrotz +20 % Angriffstempo (außer Walze) und alle Angriffe 15 % größer (Radius + Reichweite)
+const BARROTZ_TEMPO = 1.2, BARROTZ_SIZE = 1.15;
+for (const a of Object.values(barrotz.attacks)) {
+  if (a.tempo === undefined) a.tempo = BARROTZ_TEMPO;
+  for (const h of a.hits ?? []) {
+    h.radius *= BARROTZ_SIZE;
+    if (h.shape === 'capsule') for (const p of [h.from, h.to]) { p[0] *= BARROTZ_SIZE; p[2] *= BARROTZ_SIZE; }
+  }
+  if (a.marker) a.marker = { ...a.marker, radius: a.marker.radius * BARROTZ_SIZE };
+}
+

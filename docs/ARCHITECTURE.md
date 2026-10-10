@@ -176,7 +176,7 @@ def: { chains:{ [lastAttackId]:[{ atk|null, w, cond(m,dist) }] },   // max 3 Gli
        phases:[{ at:0.7, name, cue, special:attackId, enter(m) }],   // m.phase = Anzahl betretener Phasen
        teachAttack:id, stamina:true, tiredAttack:id, flinchDmg:number|true (true = 6 % maxHp / 3 s), brocken2?:bool }
 attack: { stam (Default 8), tgVar:false, punishRoll:true, needsBroken:'partId', lockedByBreak:'partId', phase:n, cue:{color,tone},
-         noTeach:true (nie Lehrangriff, z. B. Aufflug), audit:[Distanzen] (Pflicht für neue Angriffe mit hits → automatisch im Fairness-Audit) }
+         noTeach:true (nie Lehrangriff, z. B. Aufflug), tempo (Default 1, ganzer Angriff schneller; Telegraph nie < 0,5 s), audit:[Distanzen] (Pflicht für neue Angriffe mit hits → automatisch im Fairness-Audit) }
 params (zusätzlich, fehlend = Default): tgMul (Telegraph-Faktor, Protokoll 'k'), chainIdx ('c'), teach ('e')
 ```
 Bus: `attackStart {monster, attackId, inst, chainIdx, teach, cue}` (alle Clients), `teach {monster, attackId}`, `monsterTired {monster,on}`, `monsterPhase {monster, idx, name, cue}`, `monsterFlinch {monster}`, `retarget {monster, playerId}`. Snapshot: Flag `tired` (MF.TIRED), `phase` (`ph`). Zufall nur beim Host (`beginAttack`/`_chainStep`), Replay nur aus params. Ziel wechselt nur zwischen Ketten/Angriffen (recover ≥ 0,5 s + Marker), globales Aggro-Budget `ctx._aggro` (0,6 s, Uhr = `hunt.time`). Lehrangriff = erster lehrbarer Angriff der Jagd (tgMul 1,4, keine Kette; auch wenn ein `def.combat`-Hook ihn startet). Kettenglieder prüfen `attack.cond` + `chain.cond`. Phasen-Special über `queued` prüft keine Reichweite (Special selbst muss Lücke schließen).

@@ -17,7 +17,7 @@ export const RAGE_TELEGRAPH = 0.8;
  *    motion?(tau, a) -> { x, z, yaw?, air? },          // a: { origin, yaw0, dir, target, r(i), def }
  *    pose?: compiled track (monster pose keys) sampled by tau, marker?: { at:'target'|'landing'|'self', radius },
  *    events?: [{ t, call }], cond?(monster, ctx) }
- * Rage: telegraph shortened by 20 % (never below 0.5 s), rest plays 1.2x faster.
+ * Rage: telegraph shortened by 20 % (never below 0.5 s), rest plays 1.2x faster. def.tempo (default 1) speeds up the whole attack (telegraph never below 0.5 s).
  */
 export class AttackInstance {
   constructor(def, params) {
@@ -35,10 +35,10 @@ export class AttackInstance {
     this.hitSet = new Set();
     this.firedEvents = new Set();
 
-    const tg = def.telegraph, mul = params.tgMul ?? 1;
-    const tgBase = mul === 1 ? tg : Math.max(MIN_TELEGRAPH, tg * mul); // Timing-Variation (Brocken 2.0); Rage-Kürzung kommt danach
+    const tg = def.telegraph, mul = params.tgMul ?? 1, tempo = def.tempo ?? 1; // tempo: Grundtempo des Angriffs (z. B. Barrotz 1,2)
+    const tgBase = mul === 1 && tempo === 1 ? tg : Math.max(MIN_TELEGRAPH, tg * mul / tempo); // Timing-Variation (Brocken 2.0); Rage-Kürzung kommt danach
     this.tgWall = this.rage ? Math.max(MIN_TELEGRAPH, tgBase * RAGE_TELEGRAPH) : tgBase;
-    this.speed = this.rage ? RAGE_SPEED : 1;
+    this.speed = (this.rage ? RAGE_SPEED : 1) * tempo;
     this.duration = this.tgWall + (def.duration - tg) / this.speed;
     this.landing = null;
     def.prepare?.(this);
