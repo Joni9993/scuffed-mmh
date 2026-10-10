@@ -38,7 +38,7 @@ function buildDummy() {
 }
 
 export const dummy = {
-  id: 'dummy', name: 'Trainingspuppe', hp: DUMMY_HP, scale: 1, bodyRadius: 0.8, walk: 0, run: 0, turn: 0, detect: 0,
+  id: 'dummy', noRage: true, name: 'Trainingspuppe', hp: DUMMY_HP, scale: 1, bodyRadius: 0.8, walk: 0, run: 0, turn: 0, detect: 0,
   attacks: {}, // greift nie an
   ai(m) { m.vel.set(0, 0, 0); m.kb = null; m.target = null; }, // steht still, kein Kampf-AI
   tick(m, dt) {

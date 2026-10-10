@@ -284,7 +284,7 @@ export class Monster {
     this.def.onDamage?.(this, res, ev);
     // rage triggers
     this.burst.push({ t: this.time, dmg: total });
-    if (!this.minor && this.authority) {
+    if (!this.minor && this.authority && !this.def.noRage) { // noRage: Trainingspuppe
       if (!this.rageUsed && this.hp <= this.maxHp * RAGE_HP) { this.rageUsed = true; this._enrage(); }
       else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= this.maxHp * RAGE_BURST_PCT) this._enrage();
     }
