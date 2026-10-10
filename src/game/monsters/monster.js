@@ -518,7 +518,7 @@ export class Monster {
       const opts = list.filter((o) => {
         if (o.atk === null) return true;
         const a = this.def.attacks[o.atk];
-        return a && this._atkAllowed(a) && (!a.rageOnly || this.rage) && dist >= a.range[0] && dist <= a.range[1] && (!o.cond || o.cond(this, dist));
+        return a && this._atkAllowed(a) && (!a.cond || a.cond(this, this.ctx)) && (!a.rageOnly || this.rage) && dist >= a.range[0] && dist <= a.range[1] && (!o.cond || o.cond(this, dist));
       });
       let total = 0;
       for (const o of opts) total += o.w ?? 1;
