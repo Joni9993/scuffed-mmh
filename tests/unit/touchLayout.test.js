@@ -59,3 +59,18 @@ describe('touch layout solver', () => {
     expect(hitButton(L, 10, 10)).toBe(null);
   });
 });
+
+import { stickStep } from '../../src/input/touchLayout.js';
+describe('stickStep', () => {
+  it('follow: origin drags with the thumb', () => {
+    const p = { ox: 100, oy: 100 };
+    const r = stickStep(p, 200, 100, 40, 'follow');
+    expect(p.ox).toBe(160); expect(r.x).toBeCloseTo(1);
+  });
+  it('fixed: origin stays, deflection clamped', () => {
+    const p = { ox: 100, oy: 100 };
+    const r = stickStep(p, 200, 100, 40, 'fixed');
+    expect(p.ox).toBe(100); expect(r.x).toBeCloseTo(1);
+    expect(stickStep(p, 120, 100, 40, 'fixed').x).toBeCloseTo(0.5);
+  });
+});

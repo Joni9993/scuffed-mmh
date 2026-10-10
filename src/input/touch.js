@@ -5,7 +5,7 @@
  * Everything is pointer-id based (multi-touch safe). A finger only ever belongs to the control it started on.
  */
 import { settings } from '../core/settings.js';
-import { solveLayout, STICK_ZONE } from './touchLayout.js';
+import { solveLayout, STICK_ZONE, stickStep } from './touchLayout.js';
 
 const BUTTONS = [
   { act: 'attack', key: 'attack', label: 'A', cls: 'btn-a' },
@@ -97,6 +97,8 @@ export function attachTouch(input, root) {
 
   document.addEventListener('pointerdown', (e) => {
     if (!active || e.pointerType === 'mouse') return;
+    const slot = e.target.closest?.('.hh-slot[data-i]');
+    if (slot) { flag(); ptrs.set(e.pointerId, { kind: 'slot', btn: slot, x0: e.clientX, y0: e.clientY }); return; }
     if (e.target.closest?.('.ui-hit')) return;
     flag();
     e.preventDefault();
@@ -128,17 +130,9 @@ export function attachTouch(input, root) {
     if (!p) return;
     e.preventDefault();
     if (p.kind === 'stick') {
-      let dx = e.clientX - p.ox, dy = e.clientY - p.oy;
-      const d = Math.hypot(dx, dy);
-      if (d > stickRadius) { // floating: origin follows the thumb
-        const k = (d - stickRadius) / d;
-        p.ox += dx * k; p.oy += dy * k;
-        dx = e.clientX - p.ox; dy = e.clientY - p.oy;
-        base.style.transform = `translate(${p.ox}px,${p.oy}px) translate(-50%,-50%)`;
-      }
-      const m = Math.min(1, Math.hypot(dx, dy) / stickRadius);
-      const a = Math.atan2(dy, dx);
-      const x = Math.cos(a) * m, y = Math.sin(a) * m;
+      const ox = p.ox, oy = p.oy;
+      const { x, y } = stickStep(p, e.clientX, e.clientY, stickRadius, settings.stickMode);
+      if (p.ox !== ox || p.oy !== oy) base.style.transform = `translate(${p.ox}px,${p.oy}px) translate(-50%,-50%)`;
       knob.style.transform = `translate(${x * stickRadius}px,${y * stickRadius}px) translate(-50%,-50%)`;
       input.setStick(x, -y, 't' + e.pointerId);
     } else if (p.kind === 'cam') {
@@ -153,11 +147,21 @@ export function attachTouch(input, root) {
     }
   });
 
+  // Item strip slots: select on pointerup (a 2nd finger's click is dropped by Chrome while another finger holds the stick).
+  // The native touch click is swallowed, the synthetic one (flagged) goes through to hubHuntHud's click handler.
+  let synth = false;
+  document.addEventListener('click', (e) => {
+    if (synth || e.pointerType !== 'touch' || !e.target.closest?.('.hh-slot')) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+  }, true);
+
   const end = (e) => {
     const p = ptrs.get(e.pointerId);
     if (!p) return;
     ptrs.delete(e.pointerId);
-    if (p.kind === 'stick') { input.setStick(0, 0, 't' + e.pointerId); base.style.display = 'none'; }
+    if (p.kind === 'slot') {
+      if (e.type === 'pointerup' && p.btn.isConnected && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < vmin() * 4) { synth = true; try { p.btn.click(); } finally { synth = false; } }
+    } else if (p.kind === 'stick') { input.setStick(0, 0, 't' + e.pointerId); base.style.display = 'none'; }
     else if (p.kind === 'btn') { input.set(p.act, false, 't' + e.pointerId); p.btn.classList.remove('down'); }
     else if (p.kind === 'bar') { p.btn.classList.remove('down'); if (e.type === 'pointerup') document.dispatchEvent(new CustomEvent('sh:strip-toggle')); }
     else if (p.kind === 'item') { p.btn.classList.remove('down'); if (!p.swiped && e.type === 'pointerup') input.press('item', 40); }
