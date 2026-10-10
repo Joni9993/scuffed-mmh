@@ -43,7 +43,7 @@ touch.setVisible(false);
 
 // no scroll / zoom / callouts
 for (const ev of ['gesturestart', 'gesturechange', 'contextmenu', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());
-document.addEventListener('touchmove', (e) => { if (!e.target.closest?.('.allow-scroll')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (!e.target.closest?.('.allow-scroll, .panel, .hub-wrap')) e.preventDefault(); }, { passive: false });
 
 const app = {
   renderer, input, touch, ui, bus: appBus, settings, sfx,
