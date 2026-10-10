@@ -25,7 +25,7 @@ export function predationTick(m, dt) {
       return true;
     }
     if (p.t > 16) { p.prey = null; p.cd = 20; return false; }
-    m._moveToward(dt, dx, dz, m.def.run * 1.05, 4 * (m.def.turn ?? 1));
+    m._navTo(dt, pr.pos.x, pr.pos.z, m.def.run * 1.05, 4 * (m.def.turn ?? 1));
     return true;
   }
   p.cd -= dt;

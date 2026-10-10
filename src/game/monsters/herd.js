@@ -206,7 +206,7 @@ export class Herd {
     if (!fa.arrived && d > 0.9) {
       const sep = this.#separate(m, SEP);
       this.#setState(m, 'walk');
-      m._moveToward(dt, dx / d + sep.x * 1.5, dz / d + sep.z * 1.5, def.walk * 0.85, 1.6 * (def.turn ?? 1));
+      { const [ax, az] = m._navAim(dt, fa.spot.x, fa.spot.z, def.walk); const al = Math.hypot(ax, az) || 1; m._moveToward(dt, ax / al + sep.x * 1.5, az / al + sep.z * 1.5, def.walk * 0.85, 1.6 * (def.turn ?? 1)); }
       fa.spotT -= dt * 0.15 * 0; // travelling time does not count
       if (fa.spotT < -8) { fa.arrived = true; } // could not reach it (blocked)
       else if (fa.spotT > 0) fa.spotT -= 0;
@@ -235,7 +235,7 @@ export class Herd {
     if (d < 1) { m._brake(dt); this.#setState(m, 'idle'); return; }
     const sep = this.#separate(m, SEP);
     this.#setState(m, 'walk');
-    m._moveToward(dt, dx / d + sep.x * 1.2, dz / d + sep.z * 1.2, sp * 0.95, 1.8 * (def.turn ?? 1));
+    { const [ax, az] = m._navAim(dt, gx, gz, sp); const al = Math.hypot(ax, az) || 1; m._moveToward(dt, ax / al + sep.x * 1.2, az / al + sep.z * 1.2, sp * 0.95, 1.8 * (def.turn ?? 1)); }
   }
 
   #flee(m, dt, fa) {
@@ -258,7 +258,10 @@ export class Herd {
     let gz = az * 1.0 + (cd > 1e-3 ? (cz / cd) * pull : 0) + sep.z * 0.9;
     this.#setState(m, 'flee');
     const sp = def.run * (m.fa.role === 'calf' ? 0.93 : 1);
-    m._moveToward(dt, gx, gz, sp, 5 * (def.turn ?? 1));
+    { // aim at a far point along the escape vector so cliffs / ridges get routed around
+      const gl = Math.hypot(gx, gz) || 1, [ax, az] = m._navAim(dt, m.pos.x + (gx / gl) * 16, m.pos.z + (gz / gl) * 16, sp), al = Math.hypot(ax, az) || 1;
+      m._moveToward(dt, (ax / al) * gl, (az / al) * gl, sp, 5 * (def.turn ?? 1));
+    }
     fa.dustT -= dt;
     if (fa.dustT <= 0) {
       fa.dustT = 0.08 + Math.random() * 0.06;

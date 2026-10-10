@@ -6,6 +6,7 @@ import { AttackInstance } from './attack.js';
 import { overlap } from '../hitbox.js';
 import { radialTexture } from '../../render/textures.js';
 import { ProjectileSet } from './mprojectiles.js';
+import { getNav } from './nav.js';
 import { predationTick, eatTick, endEating } from './predation.js'; // [L]
 
 // wing/spread/jaw: only used by models that have them (Brathalos); harmless for the others
@@ -354,6 +355,7 @@ export class Monster {
   _startFlee() {
     this.fleeing = true;
     this.fleeUsed = true;
+    this.fleeT = 0; this.nv = null;
     this._interrupt();
     this.setState('flee');
   }
@@ -527,7 +529,7 @@ export class Monster {
   /** Stink bomb: leave the area (single target) for a few seconds. */
   _stinkFlee(dt) {
     const from = this.st.stinkFrom ?? (this.target ? { x: this.target.pos.x, z: this.target.pos.z } : { x: this.pos.x, z: this.pos.z + 1 });
-    this._moveToward(dt, this.pos.x - from.x, this.pos.z - from.z, this.def.run * 0.9, 3.4);
+    { const ax = this.pos.x - from.x, az = this.pos.z - from.z, al = Math.hypot(ax, az) || 1; this._navTo(dt, this.pos.x + (ax / al) * 14, this.pos.z + (az / al) * 14, this.def.run * 0.9, 3.4); }
   }
 
   _nextWanderPoint() {
@@ -559,7 +561,7 @@ export class Monster {
     if (this.wanderTo) {
       const dx = this.wanderTo.x - this.pos.x, dz = this.wanderTo.z - this.pos.z, dd = Math.hypot(dx, dz);
       if (dd < 2) { this.wanderTo = null; this.wanderT = 2 + this.rng() * 4; this._brake(dt); return; }
-      this._moveToward(dt, dx, dz, this.def.walk, 1.6 * (this.def.turn ?? 1));
+      this._navTo(dt, this.wanderTo.x, this.wanderTo.z, this.def.walk, 1.6 * (this.def.turn ?? 1));
     } else this._brake(dt);
   }
 
@@ -592,7 +594,7 @@ export class Monster {
       return;
     }
     const prefer = this.def.prefer ?? 4.5;
-    if (dist > prefer) this._moveToward(dt, dx, dz, this.def.run, 3.2 * turn);
+    if (dist > prefer) this._navTo(dt, tgt.pos.x, tgt.pos.z, this.def.run, 3.2 * turn);
     else if (dist < prefer * 0.6) { this._faceTarget(dt, 2 * turn); this._moveToward(dt, -dx, -dz, this.def.walk * 0.8, 0, true); }
     else { this._faceTarget(dt, 2.4 * turn); const s = Math.sin(this.time * 0.7) > 0 ? 1 : -1; this._moveToward(dt, -dz * s, dx * s, this.def.walk * 0.7, 0, true); }
   }
@@ -659,8 +661,17 @@ export class Monster {
   _flee(dt) {
     const nest = nestOf(this);
     const dx = nest.x - this.pos.x, dz = nest.z - this.pos.z, d = Math.hypot(dx, dz);
+    this.fleeT = (this.fleeT ?? 0) + dt;
     if (d < 3) { this.fleeing = false; this.setState('sleep'); this.vel.set(0, 0, 0); return; }
-    this._moveToward(dt, dx, dz, this.def.run * 1.1, 4 * (this.def.turn ?? 1));
+    // give up: too long (or repeatedly stuck) -> fight back if a hunter is close, else just rest where we are
+    if (this.fleeT > 75 || (this.nv?.stuckTotal ?? 0) >= 4) {
+      const { p, d: pd } = this._nearestPlayer();
+      this.fleeing = false;
+      if (p && pd < 40) { this.target = p; this.setState('combat'); this.recover = 0.8; }
+      else { this.setState('sleep'); this.vel.set(0, 0, 0); }
+      return;
+    }
+    this._navTo(dt, nest.x, nest.z, this.def.run * 1.1, 4 * (this.def.turn ?? 1));
   }
 
   _sleep(dt) {
@@ -706,6 +717,14 @@ export class Monster {
       this.beginAttack(f.attack, { origin: { x: this.pos.x, y: this.ctx.world.heightAt(this.pos.x, this.pos.z), z: this.pos.z }, yaw: yawOf(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z) });
     }
   }
+  /** Never touch down inside rock / a cliff: nudge to the nearest walkable nav cell. */
+  _landOnGround() {
+    const nav = getNav(this.ctx.world);
+    if (!nav || nav.free(this.pos.x, this.pos.z)) return;
+    const s = nav.snap(this.pos.x, this.pos.z);
+    this.pos.x = s.x; this.pos.z = s.z;
+    this.pos.y = this.ctx.world.heightAt(s.x, s.z);
+  }
   /** Down from the sky: falls, then lies helpless for `t` seconds. */
   _startFall(t = 4) {
     if (this.state === 'fall' || !this.alive) return;
@@ -722,6 +741,7 @@ export class Monster {
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     if (this.air <= 0) {
       this.air = 0;
+      this._landOnGround();
       this.ctx.fx.shake(0.6, 0.4);
       this.ctx.fx.spark({ x: this.pos.x, y: this.pos.y + 0.3, z: this.pos.z }, 30, '#a08a60', 7);
       this.ctx.bus.emit('sfx', { name: 'heavy', pos: this.pos });
@@ -737,6 +757,56 @@ export class Monster {
     const t = this.target;
     if (!t) return;
     this.rot = stepAngle(this.rot, yawOf(t.pos.x - this.pos.x, t.pos.z - this.pos.z), rate * this.speedMul * dt);
+  }
+
+  /**
+   * Navigation aim: returns [dx, dz] towards the next waypoint of an A* path to (gx, gz) (cached per world nav grid),
+   * with stuck detection (no progress 1.5 s -> repath around the blocking cells + slide along the wall).
+   * Falls back to the straight line (no nav grid, or clear line of sight). Deterministic (no rng).
+   */
+  _navAim(dt, gx, gz, speed = 4) {
+    const dx = gx - this.pos.x, dz = gz - this.pos.z, nav = getNav(this.ctx.world);
+    if (!nav) return [dx, dz];
+    const n = this.nv ??= { path: null, i: 0, gx: NaN, gz: NaN, age: 0, sx: 0, sz: 0, st: 0, last: -9, slide: 0, sd: 1, stuck: 0, stuckTotal: 0, avoid: null, avoidT: 0 };
+    if (this.time - n.last > 0.4) { n.st = 0; n.sx = this.pos.x; n.sz = this.pos.z; n.path = null; n.slide = 0; n.avoid = null; }
+    n.last = this.time;
+    n.age += dt; n.st += dt; n.avoidT -= dt;
+    if (n.avoidT <= 0) n.avoid = null;
+    if (n.st >= 1.5) { // progress check
+      const moved = Math.hypot(this.pos.x - n.sx, this.pos.z - n.sz);
+      n.sx = this.pos.x; n.sz = this.pos.z; n.st = 0;
+      if (moved < speed * this.speedMul * 0.3 && Math.hypot(dx, dz) > 2.5) {
+        n.stuck++; n.stuckTotal++;
+        const avoid = new Set();
+        const wp = n.path?.[n.i];
+        const k = nav.cell(wp ? wp.x : this.pos.x + Math.sin(this.rot) * 2, wp ? wp.z : this.pos.z + Math.cos(this.rot) * 2);
+        if (k >= 0) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) avoid.add(k + a + b * nav.N);
+        n.avoid = avoid; n.avoidT = 4; n.path = null; n.slide = 0.7; n.sd = -n.sd;
+      }
+    }
+    if (Math.hypot(dx, dz) < 3 || nav.los(this.pos.x, this.pos.z, gx, gz)) { n.path = null; return [dx, dz]; }
+    if (!n.path || Math.hypot(gx - n.gx, gz - n.gz) > 3 || n.age > 2.5) {
+      n.path = nav.find(this.pos.x, this.pos.z, gx, gz, n.avoid) ?? (n.avoid ? nav.find(this.pos.x, this.pos.z, gx, gz) : null);
+      n.i = 0; n.age = 0; n.gx = gx; n.gz = gz;
+      if (!n.path) return [dx, dz];
+    }
+    while (n.i < n.path.length - 1 && (Math.hypot(n.path[n.i].x - this.pos.x, n.path[n.i].z - this.pos.z) < 2.2 || nav.los(this.pos.x, this.pos.z, n.path[n.i + 1].x, n.path[n.i + 1].z))) n.i++;
+    const w = n.path[n.i];
+    let ax = w.x - this.pos.x, az = w.z - this.pos.z;
+    if (n.slide > 0) { // slide along the wall: sdf gradient tangent
+      n.slide -= dt;
+      const L = this.ctx.world.layout, e = 0.6;
+      const gxx = L.sdfAt(this.pos.x + e, this.pos.z) - L.sdfAt(this.pos.x - e, this.pos.z), gzz = L.sdfAt(this.pos.x, this.pos.z + e) - L.sdfAt(this.pos.x, this.pos.z - e);
+      const gl = Math.hypot(gxx, gzz) || 1, al = Math.hypot(ax, az) || 1;
+      ax = ax / al - (gzz / gl) * n.sd * 1.2 + (gxx / gl) * 0.6; az = az / al + (gxx / gl) * n.sd * 1.2 + (gzz / gl) * 0.6;
+    }
+    return [ax, az];
+  }
+
+  /** _moveToward a point via the nav grid. */
+  _navTo(dt, gx, gz, speed, turn) {
+    const [ax, az] = this._navAim(dt, gx, gz, speed);
+    this._moveToward(dt, ax, az, speed, turn);
   }
 
   _moveToward(dt, dx, dz, speed, turn, keepFacing = false) {
