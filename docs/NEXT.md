@@ -133,6 +133,18 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 8. **Multi-Brocken-Jagden:** frühestens nach Phase 2, zuerst nur „Revierstreit".
 9. **Kurze Jagden (3–6 min) als Ziel?** Aktuell ~5–6 min solo; mit Mutatoren/Seeds evtl. kürzere „Feldstudien" zusätzlich anbieten.
 
+## 7b. Entscheidungen des Owners (10.10.2026)
+1. **Bestehende Brocken zuerst** – Phase 1 an Jaggo/Barrotz/Brathalos. **Wichtig: Änderungen dürfen die Brocken nicht leichter machen, sondern schwerer** (abwechslungsreicher UND fordernder).
+2. **Vision „Fehler sind Waffen" angenommen.** Neuer Spielname: **Glitch Hunter** (Umbenennung noch offen).
+3. Glitch-Anteil am Schaden: **40–50 %**.
+4. **Verbotene Fähigkeit: offen** – Brainstorming läuft, Idee des Owners: **eigener Glitch pro Waffentyp**.
+5. KI strikt host-autoritativ: **ok**.
+6. **Narben + Monster-Codes gestrichen.** Mutatoren: interessant, später genauer ausarbeiten. Ausrüstungsspirale bleibt.
+   - Befund: HP skalieren aktuell **nicht** mit der Spielerzahl (nur `hpMul` bei Rotglut-Aufträgen, `hunt.js:147`) → 4 Spieler töten Brocken ~3–4× schneller. Muss gelöst werden.
+7. **Solo: keine HP-Erhöhung, kein Begleiter.** Spannung muss aus Phase 1 (KI) + Mutatoren kommen, nicht aus längerem Draufhauen.
+8. Multi-Brocken-Jagden: ok, frühestens nach Phase 2, als Hebel für besonders schwere Aufträge.
+9. Jagddauer bleibt wie jetzt (~5–6 min solo).
+
 ## 8. So geht's weiter (für den nächsten Agent)
 1. `docs/HANDOFF.md` lesen, dann dieses Dokument mit dem Owner durchgehen (Abschnitt 7 abfragen, Kennzahlen/Vergleiche anbieten – Owner entscheidet intuitiv, will Daten dazu).
 2. Entscheidungen in `docs/GDD.md` übernehmen (neuer Abschnitt „Brocken 2.0" + „Vision/Säulen"), GitHub-Issue(s) pro Phase anlegen.
