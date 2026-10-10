@@ -230,7 +230,8 @@ function buildAmbient() {
   const chop = ctx.createGain(); chop.gain.value = 0;
   const cl = ctx.createOscillator(), clg = ctx.createGain(); cl.type = 'square'; cl.frequency.value = 13; clg.gain.value = 0.5; cl.connect(clg).connect(chop.gain);
   const cl2 = ctx.createOscillator(), cl2g = ctx.createGain(); cl2.frequency.value = 0.6; cl2g.gain.value = 0.4; cl2.connect(cl2g).connect(chop.gain);
-  co.connect(chop).connect(cr).connect(ambBus); co.start(); cl.start(); cl2.start();
+  // Grillen (4,3-kHz-Dauerton) entfernt – Owner-Feedback: schrill. Knoten bleiben stumm, damit setAmbient unverändert läuft.
+  co.connect(chop).connect(cr);
   // lava rumble: low noise with slow throb
   const rum = ctx.createGain(); rum.gain.value = 0;
   const rf = ctx.createBiquadFilter(); rf.type = 'lowpass'; rf.frequency.value = 130;
