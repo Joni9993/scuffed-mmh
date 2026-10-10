@@ -10,11 +10,11 @@ import { createSchmiede, createTruhe, createLaden } from './hubPanelsA.js';
 import { createKochtopf, createBrett, createSpiegel, createOptionen } from './hubPanelsB.js';
 
 export const STATIONS = {
-  schmiede: { title: 'Schmiede', npc: 'Schmied Rost', icon: 'ore', make: createSchmiede },
+  schmiede: { title: 'Schmiede', npc: 'Schmiedin Funke', icon: 'ore', make: createSchmiede },
   laden: { title: 'Krämerladen', npc: 'Krämer Kiesel', icon: 'coin', make: createLaden },
   truhe: { title: 'Truhe', npc: 'Deine Truhe', icon: 'plate', make: createTruhe },
-  kochtopf: { title: 'Kochtopf', npc: 'Köchin Brodel', icon: 'cake', make: createKochtopf },
-  auftragsbrett: { title: 'Auftragsbrett', npc: 'Brettwart', icon: 'trap', make: createBrett },
+  kochtopf: { title: 'Kochtopf', npc: 'Koch Brösel', icon: 'cake', make: createKochtopf },
+  auftragsbrett: { title: 'Auftragsbrett', npc: 'Brettwart Ole', icon: 'trap', make: createBrett },
   spiegel: { title: 'Spiegel', npc: 'Der Spiegel', icon: 'gem', make: createSpiegel },
   optionen: { title: 'Optionen', npc: 'Kleingedrucktes', icon: 'bone', make: createOptionen },
 };
