@@ -235,3 +235,9 @@ Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert,
 - **Netz:** Gast-Pfeile werden per `fx {k:'arrow'}` gespiegelt (nur Optik, Schaden bleibt Gast-`hit`). Sammeln im Koop ist host-arbitriert: Gast sendet `gather {id, c:1}`, Host antwortet an den Absender mit `{id,u,it:[…]}` (oder `deny`) und meldet den neuen Stand an die übrigen. Gameplay-Item-Effekte (`flash/stink/trap/bomb`) wirken nur beim Host/Solo, Gäste spielen die Optik.
 - **Kamera:** `createCameraRig(camera, getGroundY, collide)` – Kollision gegen Gelände/Wände; `update({lockSize})` skaliert Abstand/Neigung mit `monster.bodyRadius`.
 - **Tools:** `tools/weapon-dps.mjs` (DPS-Sweep), `tools/net-e2e.mjs` (2-Peer-Test, braucht PeerJS-Server auf :9000), `tools/perf-probe.mjs` (renderer.info + Allokationen). `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js` = volles Fairness-Audit (~2 min).
+
+# Neutrale Tiere [L]
+- `monsters/mampfer.js` (Mampfer/-bulle/-kalb, Hoppler; `neutral`, `minor`, `carve`, `dropId`), `skinned.js` (1 SkinnedMesh pro Tier), `herd.js` (Herde: graze/migrate/flee, `def.ai`-Hook in `Monster._ai`), `predation.js` (Jaggo/Brathalos `predator`: jagen Mampfer, Zustand `fressen` = Ueberraschungstreffer x2), `game/fauna.js` (Spawn, `?nofauna=1`), `game/ambientFauna.js` (Voegel/Gluehkaefer/Schmetterlinge, 4 Draw Calls, lokal). Weide-Daten: `world.pastures` (`layout.buildPastures`).
+- Netz: Neutrale gehen mit 5 Hz, nur <= 75 m um einen Pirscher, ohne Teile, Gast-Puffer 0,3 s. Bullenstoss laeuft als normales `atk`.
+- Zerlegen: `huntmeta` `#addFaunaCorpse` (1 Zerlegen pro Leiche/Pirscher, `rollCarveAll`), zaehlt nicht fuer das End-Zerlegefenster.
+- Tools: `tools/fauna-e2e.mjs` (2-Peer-Divergenz).
