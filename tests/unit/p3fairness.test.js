@@ -103,6 +103,12 @@ const CASES = [
   [brathalos, 'brathalos_schwanz', [2.5, 5]],
   [brathalos, 'brathalos_bruellen', [4, 8]],
 ];
+// Brocken 2.0: neue Angriffe melden sich selbst an über attack.audit = [Distanzen] (Pflicht für jeden neuen Angriff mit hits).
+for (const def of [jaggo, barrotz, brathalos]) {
+  for (const atk of Object.values(def.attacks)) {
+    if (atk.audit && !CASES.some(([d, id]) => d === def && id === atk.id)) CASES.push([def, atk.id, atk.audit]);
+  }
+}
 
 const rows = [];
 describe('fairness audit: every attack can be dodged by a well-timed roll (god off)', () => {
