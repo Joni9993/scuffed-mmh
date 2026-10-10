@@ -88,7 +88,7 @@ export function createHud(root) {
       // [M] player status icons (Schlamm / Brennen / Gift), tiny
       const stKeys = Object.keys(p.status || {}).concat(p.glitchT > 0 ? ['konter'] : []).join(','); // [B] Glitch-Konter bonus ready (1.5 s)
       set('pstatus', stKeys, (x) => {
-        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', konter: 'Konter x1,5' };
+        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', konter: 'Konter x1,5' };
         refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k}">${names[k] ?? k}</span>`).join('') : '';
       });
       if (hunt.training) { // Übungsplatz: kein Zeitlimit, keine KOs, dafür DPS + Combo

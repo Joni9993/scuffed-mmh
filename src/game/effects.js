@@ -7,6 +7,7 @@ import { applyMonsterHit } from './combat.js';
 const THROW_TIME = 0.6;
 const FLASH_R = 3.6, STINK_R = 3.6, TRAP_R = 2.0, BOMB_R = 4.0;
 const BOMB_DMG = 120, BOMB_STUN = 50;
+const RUST_R = 3.6, RUST_BOMB = 60, GROUND_R = 4, GROUND_SECS = 20;
 
 /** [B] gameplay effects (status, damage) are applied by the host / solo only; guests replay the visuals. */
 const auth = (h) => !h.net || h.net.isHost;
@@ -96,6 +97,37 @@ const KINDS = {
       h.effects.list.push(cloud(h, at, 4));
     },
   }),
+
+  rostbomb: (fx, p) => thrown(fx, p, { // Rostbombe: Rost-Aufbau 60 im Radius
+    color: '#c8661e',
+    onLand(h, at) {
+      h.fx.spark({ x: at.x, y: at.y + 0.5, z: at.z }, 30, '#c8661e', 6);
+      h.bus.emit('sfx', { name: 'break', pos: at });
+      if (auth(h)) for (const m of monstersNear(h.monsters, at, RUST_R)) m.applyStatus?.('rost', { amount: RUST_BOMB });
+      h.effects.list.push(cloud(h, at, 3));
+    },
+  }),
+
+  ground: (fx, p) => { // Erdungsstab: 20 s Schutzzone r=4 (hunt.groundingZones)
+    const h = fx.hunt;
+    const mesh = new THREE.Mesh(fx.geo.disc, lambert({ color: '#5ad8ff', emissive: '#1a5a70' }));
+    mesh.scale.set(GROUND_R, 1, GROUND_R);
+    mesh.position.set(p.pos.x, p.pos.y + 0.05, p.pos.z);
+    const zone = { x: p.pos.x, z: p.pos.z, r: GROUND_R, until: h.time + GROUND_SECS };
+    (h.groundingZones ??= []).push(zone);
+    let t = GROUND_SECS;
+    return {
+      mesh,
+      update(dt) {
+        t -= dt;
+        mesh.material.emissive?.setRGB(0.05, 0.25 + 0.15 * Math.sin(t * 6), 0.3);
+        if (t > 0) return true;
+        const i = h.groundingZones?.indexOf(zone) ?? -1;
+        if (i >= 0) h.groundingZones.splice(i, 1);
+        return false;
+      },
+    };
+  },
 
   trap: (fx, p) => {
     const h = fx.hunt;

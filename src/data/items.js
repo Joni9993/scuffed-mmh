@@ -40,6 +40,23 @@ export const ITEMS = {
   rohfleisch: mat('rohfleisch', 'Rohfleisch', 'Roh, rosa und leicht vorwurfsvoll. Dringend braten.', 'meat', '#e0607a', 7),
   mampfer_fell: mat('mampfer_fell', 'Mampfer-Fell', 'Zottelig, warm und riecht nach Wiese.', 'fur', '#c9a878', 18),
 
+  // ---- Rostwerke (GDD 15.7): gathered + Brocken materials
+  kupferdraht: mat('kupferdraht', 'Kupferdraht', 'Leitet Strom, Ärger und gelegentlich Funken.', 'ore', '#d08a50', 8),
+  schlacke: mat('schlacke', 'Schlacke', 'Erstarrter Hüttenabfall. Knirscht beim Anfassen.', 'ore', '#6a5a52', 5),
+  rostkaefer: mat('rostkaefer', 'Rostkäfer', 'Frisst Eisen zum Frühstück. Und zum Mittag.', 'bug', '#c8661e', 6),
+  giftschlamm: mat('giftschlamm', 'Giftschlamm', 'Blubbert in giftigem Grün. Nicht probieren.', 'shroom', '#7ac030', 8),
+  funkenstein: mat('funkenstein', 'Funkenstein', 'Knistert, wenn man ihn schief anschaut. Selten.', 'gem', '#ffe85a', 45),
+  kroll_panzer: mat('kroll_panzer', 'Kroll-Panzer', 'Verbeult, verrußt, unkaputtbar. Fast.', 'plate', '#a0522d', 40),
+  kroll_schere: mat('kroll_schere', 'Kroll-Schere', 'Zwickt noch. Vorsicht.', 'crest', '#c8661e', 45),
+  kroll_auge: mat('kroll_auge', 'Kroll-Auge', 'Glimmt wie ein ausgebrannter Kessel.', 'gem', '#ff8a3a', 70),
+  gorgo_segment: mat('gorgo_segment', 'Gorgo-Segment', 'Ein Stück Schlackwurm. Immer noch warm.', 'scale', '#6a5a52', 40),
+  gorgo_zahn: mat('gorgo_zahn', 'Gorgo-Zahn', 'Zermahlt Stahl. Und Hoffnung.', 'bone', '#d8d0b8', 50),
+  gorgo_kern: mat('gorgo_kern', 'Gorgo-Kern', 'Glüht tief im Inneren. Sehr selten.', 'ember', '#ff5a2a', 120),
+  voltaro_kamm: mat('voltaro_kamm', 'Voltaro-Kamm', 'Knistert vor Spannung.', 'crest', '#5ad8ff', 90),
+  voltaro_spule: mat('voltaro_spule', 'Voltaro-Spule', 'Gewickelt von der Natur selbst.', 'ore', '#8ab0ff', 80),
+  voltaro_fell: mat('voltaro_fell', 'Voltaro-Fell', 'Statisch aufgeladen. Haare zu Berge.', 'fur', '#9fc8ff', 70),
+  voltaro_herz: mat('voltaro_herz', 'Voltaro-Herz', 'Schlägt noch im Takt der Turbinen. Sehr selten.', 'gem', '#ffe14d', 300),
+
   // ---- consumables
   flickbrause: { id: 'flickbrause', name: 'Flickbrause', desc: '+35 HP über 1 s. Schmeckt nach Pfefferminz und Eisen.', kind: 'consumable', max: 10, time: 0.9, applyAt: 0.45, icon: { shape: 'potion', color: '#58e060' }, value: 8, effect: { type: 'heal', hp: 35, over: 1 } },
   dicke_flickbrause: { id: 'dicke_flickbrause', name: 'Dicke Flickbrause', desc: '+80 HP über 1 s, heilt die Prellung komplett.', kind: 'consumable', max: 5, time: 1.1, applyAt: 0.45, icon: { shape: 'potion', color: '#20c0a0' }, value: 20, effect: { type: 'heal', hp: 80, over: 1, bruise: true } },
@@ -56,6 +73,11 @@ export const ITEMS = {
   brennspitze: { id: 'brennspitze', name: 'Brennspitze', desc: 'Bogen-Munition mit Feuer (+12). Wechsel dauert 0,4 s.', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ff7a30' }, value: 2, effect: { type: 'tip' } },
   giftspitze: { id: 'giftspitze', name: 'Giftspitze', desc: 'Bogen-Munition, baut Gift auf (20).', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#a050e0' }, value: 2, effect: { type: 'tip' } },
   bummspitze: { id: 'bummspitze', name: 'Bummspitze', desc: 'Bogen-Munition, kleine Explosion mit Betäubung (8).', kind: 'ammo', max: 10, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ffe14d' }, value: 3, effect: { type: 'tip' } },
+  rostspitze: { id: 'rostspitze', name: 'Rostspitze', desc: 'Bogen-Munition, baut Rost auf (15).', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#c8661e' }, value: 3, effect: { type: 'tip' } },
+  // ---- Rostwerke items
+  rostbombe: { id: 'rostbombe', name: 'Rostbombe', desc: 'Wurf (6 m). Der Brocken fängt an zu rosten.', kind: 'consumable', max: 3, time: 0.5, applyAt: 0.6, icon: { shape: 'bomb', color: '#c8661e' }, value: 22, effect: { type: 'throw', fx: 'rostbomb', range: 6 } },
+  erdungsstab: { id: 'erdungsstab', name: 'Erdungsstab', desc: 'Platzieren. 20 s Schutzzone (4 m) gegen Blitze.', kind: 'consumable', max: 2, time: 1.0, applyAt: 0.7, icon: { shape: 'trap', color: '#d08a50' }, value: 25, effect: { type: 'place', fx: 'ground' } },
+  kuehlbrause: { id: 'kuehlbrause', name: 'Kühlbrause', desc: '+30 HP über 1 s, löscht Rost und Brennen.', kind: 'consumable', max: 5, time: 0.9, applyAt: 0.45, icon: { shape: 'potion', color: '#5ad8ff' }, value: 14, effect: { type: 'cool', hp: 30, over: 1 } },
 };
 
 // baseValue = Schrott value per piece (shop sells at 40 % of it, see meta/shop.js). Defaults to 2x `value`.
@@ -100,6 +122,25 @@ const INFO = {
   brennspitze: 'Bogen-Munition mit Feuer (+12). Wechsel 0,4 s.',
   giftspitze: 'Bogen-Munition, baut Gift auf (20). Wechsel 0,4 s.',
   bummspitze: 'Bogen-Munition, kleine Explosion mit Betäubung (8). Wechsel 0,4 s.',
+  kupferdraht: 'Material: für Erdungsstab.',
+  schlacke: 'Material: für Rostbombe.',
+  rostkaefer: 'Material: für Rostbombe und Kühlbrause.',
+  giftschlamm: 'Material: aus dem Giftgraben, für spätere Rostwerke-Rezepte.',
+  funkenstein: 'Material: selten, aus der Turbinenkrone.',
+  kroll_panzer: 'Material: für Rostwerke-Ausrüstung.',
+  kroll_schere: 'Material: für Rostwerke-Ausrüstung.',
+  kroll_auge: 'Material: seltenes Teil für Rostwerke-Ausrüstung.',
+  gorgo_segment: 'Material: für Rostwerke-Ausrüstung.',
+  gorgo_zahn: 'Material: für Rostwerke-Ausrüstung.',
+  gorgo_kern: 'Material: sehr selten, für Rostwerke-Ausrüstung.',
+  voltaro_kamm: 'Material: für Rostwerke-Ausrüstung.',
+  voltaro_spule: 'Material: für Rostwerke-Ausrüstung.',
+  voltaro_fell: 'Material: für Rostwerke-Ausrüstung.',
+  voltaro_herz: 'Material: sehr selten, für die stärksten Rostwerke-Stücke.',
+  rostbombe: 'Wurf (6 m): baut 60 Rost auf (bei 100: 15 s Verrostet).',
+  erdungsstab: 'Platzieren: 20 s Schutzzone (4 m) gegen Kettenblitz und Donnerschlag.',
+  kuehlbrause: 'Heilt 30 HP und entfernt Rost und Brennen.',
+  rostspitze: 'Bogen-Munition, baut Rost auf (15). Wechsel 0,4 s.',
 };
 for (const it of Object.values(ITEMS)) it.info = INFO[it.id] ?? it.desc;
 

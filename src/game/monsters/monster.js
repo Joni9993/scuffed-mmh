@@ -17,6 +17,8 @@ const RAGE_DURATION = 45, RAGE_HP = 0.6, RAGE_BURST_PCT = 0.075 /* of max HP wit
 const FLEE_HP = 0.3, STAGGER = 2.0, STUN_TIME = 6.0, STUN_BASE = 150, THREAT_WINDOW = 10;
 const POISON_THRESHOLD = 100, POISON_TIME = 15, POISON_PCT = 0.03, TRAP_TIME = 6, TRAP_COOLDOWN = 60, BLIND_TIME = 4, STINK_TIME = 4.5;
 export const LIMP_HP = 0.3;
+export const RUST_THRESHOLD = 100, RUST_TIME = 15, RUST_FACTOR = 0.15, RUST_PART_MUL = 1.5, SCALD_TIME = 10, SCALD_FACTOR = 0.1;
+const GL_CYAN = [0.0, 0.7, 0.85], GL_MAGENTA = [0.9, 0.0, 0.7];
 const MINOR_CULL_R2 = 65 * 65; // [B] perf: small monsters farther than this from every local hunter are neither posed nor drawn (nor hittable)
 const NO_PARTS = Object.freeze([]);
 const _v = new THREE.Vector3();
@@ -71,7 +73,8 @@ export class Monster {
     this.wanderT = 0; this.wanderTo = null; this.routeIdx = 0;
     this.fleeing = false;
     this.kb = null;           // knockback { x, z, t }
-    this.st = { blind: 0, trap: 0, trapCd: 0, poisonBuild: 0, poisonT: 0, poisonAcc: 0, stink: 0, stinkFrom: null };
+    this.st = { blind: 0, trap: 0, trapCd: 0, poisonBuild: 0, poisonT: 0, poisonAcc: 0, stink: 0, stinkFrom: null, rustBuild: 0, rustT: 0, scaldT: 0 }; // Phase 3: rost (Aufbau 100 -> 15 s), scald (Verbruht 10 s)
+    this._fb = 0; // aktueller Teile-Faktor-Bonus (Rost +0,15 / Verbruht +0,1)
     this.flyT = 0; this.fallV = 0; this.flyAng = 0; this.flyDir = 1; this.flyDamage = 0; this.helpless = 4;
     this.pose = { ...MREST };
     this._tgt = { ...MREST };
@@ -223,6 +226,22 @@ export class Monster {
         }
         return true;
       }
+      case 'rost': { // GDD 15.3: Aufbau 100 -> 15 s Verrostet (Teile-Faktoren +0,15, Teil-HP-Schaden x1,5)
+        if (st.rustT > 0) { st.rustT = RUST_TIME; return true; }
+        st.rustBuild += opts.amount ?? opts.buildup ?? 20;
+        if (st.rustBuild >= RUST_THRESHOLD) {
+          st.rustBuild = 0; st.rustT = RUST_TIME;
+          this.ctx.fx.number({ x: this.pos.x, y: this.pos.y + this.def.scale * 2.4 + this.air, z: this.pos.z }, 'Verrostet!', 'weak');
+          this.def.onStatus?.(this, 'rost');
+        }
+        return true;
+      }
+      case 'scald': { // Dampfventil: Verbruht, Teile-Faktor +0,1 fuer 10 s
+        const fresh = st.scaldT <= 0;
+        st.scaldT = opts.t ?? SCALD_TIME;
+        if (fresh) this.ctx.fx.number({ x: this.pos.x, y: this.pos.y + this.def.scale * 2.4 + this.air, z: this.pos.z }, 'Verbrüht!', 'weak');
+        return true;
+      }
       case 'stun': { const b = opts.buildup ?? 0; if (b <= 0) return false; this._addStun(b); return true; }
       case 'stink': {
         st.stink = opts.t ?? STINK_TIME;
@@ -269,11 +288,11 @@ export class Monster {
     this.hitFlash = 0.12;
     this._sinceHit = 0;
     const pid = res.attackerId ?? 'p1';
-    this._addThreat(pid, total);
+    if (!res.env) this._addThreat(pid, total); // Umgebungsschaden zaehlt nicht als Bedrohung
     const ev = { monster: this, part, dmg: total, res, broke: false, stunned: false, killed: false };
     if (part) {
       if (part.breakHp && !part.broken) {
-        part.hp -= total;
+        part.hp -= total * (this.st.rustT > 0 ? RUST_PART_MUL : 1);
         const jit = clamp(1 - part.hp / part.breakHp, 0, 1) * (part.jitter ?? 0.05);
         for (const m of part.mats) m.userData.ps1.uJit.value = jit;
         if (part.hp <= 0) { this._breakPart(part); ev.broke = true; }
@@ -325,7 +344,7 @@ export class Monster {
   }
   _breakPart(part) {
     part.broken = true;
-    part.factor = Math.max(0, part.baseFactor - 0.1);
+    part.factor = Math.max(0, part.baseFactor - 0.1) + this._fb;
     for (const m of part.mats) m.userData.ps1.uJit.value = 0.01;
     if (this.state !== 'fly') this.stagT = STAGGER;
     this.hitFlash = 0.3;
@@ -611,6 +630,7 @@ export class Monster {
       if (this.rageT <= 0) { this.rage = false; this.rageCd = RAGE_COOLDOWN; this.ctx.bus.emit('rage', { monster: this, on: false }); this.def.onRage?.(this, false); }
       else this._rageSteam(dt);
     }
+    this._statusTick(dt);
     if (st.poisonT > 0 && this.alive && this.authority) this._poisonTick(dt);
     if (this._b2 && this.alive && this.authority) this._b2Tick(dt);
     if (this.kb && this.kb.t > 0 && this.authority && this.alive) {
@@ -634,6 +654,22 @@ export class Monster {
       this.ctx.fx.spark({ x: _v2.x + o, y: _v2.y + 0.5, z: _v2.z + o }, 1, Math.random() < 0.6 ? '#ff5030' : '#d0a0a0', 1.4);
     }
   }
+  /** Rost/Verbruht: Timer + Teile-Faktor-Bonus (wirkt auf part.factor, das Treffer-Aufloesung liest). Gaeste: Timer kommen per Snapshot-Flags. */
+  _statusTick(dt, remote = false) {
+    const st = this.st;
+    if (!remote) { st.rustT = Math.max(0, st.rustT - dt); st.scaldT = Math.max(0, st.scaldT - dt); }
+    const fb = (st.rustT > 0 ? RUST_FACTOR : 0) + (st.scaldT > 0 ? SCALD_FACTOR : 0);
+    if (fb === this._fb) return;
+    const d = fb - this._fb;
+    this._fb = fb;
+    for (const p of this.parts) if (!p.gone) p.factor = Math.max(0, p.factor + d);
+  }
+  /** true, solange Teil `partId` eine unzerstoerte Glitch-Stelle ist (def.glitchSpots). */
+  isGlitchSpot(partId) {
+    const p = this.partById[partId];
+    return !!p && !p.broken && !p.gone && !!this.def.glitchSpots?.includes(partId);
+  }
+
   _poisonTick(dt) {
     const st = this.st;
     const d = Math.min(dt, st.poisonT);
@@ -874,6 +910,7 @@ export class Monster {
   /** Remote clients: advance a replayed attack. */
   tickRemote(dt) {
     this.time += dt;
+    this._statusTick(dt, true);
     if (this.attack) this._runAttack(dt);
     this.projectiles.update(dt);
     this.def.tick?.(this, dt);
@@ -1135,15 +1172,22 @@ export class Monster {
 
     // flash: telegraph red/white blink, hit flash white, rage glow, poison/trap tint
     const blink = Math.floor(this.time * 10) % 2 === 0;
-    const poison = this.poisoned, trap = this.trapped;
+    const poison = this.poisoned, trap = this.trapped, rust = this.st.rustT > 0, gs = this.def.glitchSpots;
     for (const part of this.parts) {
       if (part.gone) continue;
+      const spot = !!gs && gs.includes(part.id);
       let r = 0, g = 0, b = 0;
       if (tele && tele.includes(part.id)) { if (this.mm?.hideColorCues) { /* nur Ton */ } else if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
       else if (this.hitFlash > 0) { r = g = b = 0.45; }
+      else if (spot && !part.broken) { const c = Math.floor(this.time * 20) % 2 ? GL_CYAN : GL_MAGENTA, k = 0.55 + 0.45 * Math.sin(this.time * 18); r = c[0] * k; g = c[1] * k; b = c[2] * k; }
       else if (this.rage) { r = 0.22; }
       else if (trap) { r = 0.2; g = 0.2; }
       else if (poison) { g = 0.16; }
+      else if (rust) { r = 0.3; g = 0.11; }
+      if (spot && !part.broken && part.breakHp) { // gelegentlicher Positions-Jitter der Teil-Materialien
+        const js = Math.floor(this.time * 12), jit = js % 7 === 0 ? 0.07 : clamp(1 - part.hp / part.breakHp, 0, 1) * (part.jitter ?? 0.05);
+        for (const m of part.mats) if (m.userData?.ps1?.uJit) m.userData.ps1.uJit.value = jit;
+      }
       for (const m of part.mats) m.emissive?.setRGB(r, g, b);
     }
     this.sync();
@@ -1163,7 +1207,7 @@ export class Monster {
       id: this.id, def: this.def.id, pos: [this.pos.x, this.pos.y, this.pos.z], rot: this.rot, state: this.state,
       hpPct: this.hp / this.maxHp, rage: this.rage, air: this.air, phase: this.phase,
       parts: this.parts.map((p) => ({ id: p.id, hp: p.hp, broken: p.broken })),
-      flags: { blind: this.blind, trap: this.trapped, poison: this.poisoned, stun: this.stunT > 0, tired: this.tired, ...(this.def.snapExtra?.(this) ?? {}) },
+      flags: { blind: this.blind, trap: this.trapped, poison: this.poisoned, stun: this.stunT > 0, tired: this.tired, rust: this.st.rustT > 0, scald: this.st.scaldT > 0, ...(this.def.snapExtra?.(this) ?? {}) },
     };
   }
 }

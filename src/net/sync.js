@@ -57,6 +57,8 @@ export class HuntNet {
   sendKo() { this.net.sendHost(MSG.EV, { k: 'ko' }); }
   /** [G] camp chest: my outfit changed mid-hunt -> compact gear code to everybody (remote rigs follow). */
   sendGear(code) { this.net.sendAll(MSG.EV, { k: 'gear', g: String(code).slice(0, 8) }); }
+  /** Rostwerke-Interactables: Gast -> Host (Wunsch), Host -> alle (Ausfuehrung/Zustand). */
+  sendIa(d) { if (this.isHost) this.net.sendAll(MSG.EV, { k: 'ia', ...d }); else this.net.sendHost(MSG.EV, { k: 'ia', ...d }); }
   /** Host: Jagd ist entschieden -> alle. */
   sendEnd(result, reason) { this.ended = true; this.net.sendAll(MSG.END, { r: result, why: reason ?? '', tl: Math.round(this.hunt.timeLeft) }); }
   get rtt() { return this.net.rtt; }
@@ -141,6 +143,7 @@ export class HuntNet {
       h.res.attackerId = from; // dem Absender vertrauen, nicht der Nutzlast
       const before = m.hp;
       const ev = m.applyDamage(h.res);
+      if (h.res.rostBuild > 0) m.applyStatus?.('rost', { amount: h.res.rostBuild });
       this.stats.hitsApplied++;
       this.stats.dmgApplied += before - m.hp;
       const hp = m.hurtParts().find((q) => q.part.id === h.res.partId);
@@ -156,6 +159,7 @@ export class HuntNet {
     switch (d.k) {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
       case 'gear': this.#onGear(from, d.g); break;
+      case 'ia': hunt.interact?.onNet(d, from); break;
       case 'glitch': {
         const peer = this.peers.get(from), gl = decodeGlitch(d);
         if (peer && gl) { peer.player.glitch.active = gl.on; peer.player.glitch.t = gl.on ? 9 : 0; }
@@ -263,6 +267,7 @@ export class HuntNet {
       m.discovered = c.discovered;
       m.stunT = c.stun ? 1 : 0;
       m.stagT = c.stag ? 1 : 0;
+      m.st.rustT = c.rust ? 15 : 0; m.st.scaldT = c.scald ? 10 : 0; // Rost/Verbruht: Host-Zustand (Teile-Faktoren fuer lokale Treffer)
       if (!!c.tired !== m.tired) { m.tired = !!c.tired; this.hunt.bus.emit('monsterTired', { monster: m, on: m.tired }); }
       if ((c.phase ?? 0) > m.phase) { m.phase = c.phase; this.hunt.bus.emit('monsterPhase', { monster: m, idx: m.phase, name: m.def.phases?.[m.phase - 1]?.name, cue: m.def.phases?.[m.phase - 1]?.cue }); }
       if (c.rage !== m.rage) { m.rage = c.rage; this.hunt.bus.emit('rage', { monster: m, on: c.rage }); m.def.onRage?.(m, c.rage); }
@@ -432,7 +437,7 @@ export class HuntNet {
   #monSnap(m) {
     return {
       id: m.id, def: m.def.id, x: m.pos.x, y: m.pos.y, z: m.pos.z, rot: m.rot, state: m.state, hpPct: m.hp / m.maxHp,
-      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, phase: m.phase,
+      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, rust: m.st.rustT > 0, scald: m.st.scaldT > 0, phase: m.phase,
       atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.def.neutral ? [] : m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
     };
   }

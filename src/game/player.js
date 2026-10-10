@@ -209,7 +209,7 @@ export class Player {
       if (!sp || Math.abs(angleDiff(this.rot, yawOf(sp.x - this.pos.x, sp.z - this.pos.z))) <= ctr.arc * D2R) return this.#counter(h, ctr);
     }
     const sa = w.superArmor();
-    let dmg = h.dmg * (1 - protectReduction(this.protect)) * (h.dmgMul ?? 1);
+    let dmg = h.dmg * (1 - protectReduction(this.protect * (this.status.rost ? 0.7 : 1))) * (h.dmgMul ?? 1); // Rost: Schutz -30 %
 
     const blk = w.blockDef();
     if (blk && h.sourcePos) {
@@ -276,13 +276,16 @@ export class Player {
   /** type: 'mud' | 'burn' | 'poison'; opts {t, rolls}. */
   addStatus(type, opts = {}) {
     if (this.state === 'ko') return false;
-    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 } }[type];
+    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 } }[type];
     if (!base) return false;
     const had = !!this.status[type];
     this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
     if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
     return true;
   }
+  /** Phase-3-Vertrag: player.applyStatus('rost') (Schutz -30 % fuer 20 s). */
+  applyStatus(type, opts = {}) { return this.addStatus(type, opts); }
+  get rusted() { return !!this.status.rost; }
   /** Remove one status (or all when no type given), e.g. Sprudelwasser. */
   clearStatus(type) {
     for (const k of Object.keys(this.status)) {
@@ -300,8 +303,11 @@ export class Player {
   }
   #tickStatus(dt) {
     const st = this.status;
-    if (!st.mud && !st.burn && !st.poison) return;
+    this.v.rust = st.rost ? st.rost.t : 0;
+    if (!st.mud && !st.burn && !st.poison && !st.rost) return;
     const fx = this.ctx.fx;
+    if (st.rost && (st.rost.t -= dt) <= 0) this.clearStatus('rost');
+    else if (st.rost && Math.random() < dt * 3) fx.spark({ x: this.pos.x, y: this.pos.y + 1.2, z: this.pos.z }, 1, '#c8661e', 1);
     if (st.mud && (st.mud.t -= dt) <= 0) this.clearStatus('mud');
     if (st.burn) {
       if ((st.burn.t -= dt) <= 0) this.clearStatus('burn');

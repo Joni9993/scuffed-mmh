@@ -34,7 +34,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
   const crit = rng() < (attacker.critChance ?? 0.05);
   let elemSum = 0;
   const elemBy = {}; // [M] per-element damage (Barrotz mud armour breaks on shock)
-  for (const [k, v] of Object.entries(attacker.elems || {})) { const e = v * ((part.elem?.[k] ?? 0) / 100); elemSum += e; elemBy[k] = Math.round(e); }
+  for (const [k, v] of Object.entries(attacker.elems || {})) { if (k === 'rost') continue; const e = v * ((part.elem?.[k] ?? 0) / 100); elemSum += e; elemBy[k] = Math.round(e); }
   const dmg = calcDamage({
     power: attacker.power, mv: hit.mv, zone, crit,
     glitch: attacker.glitch, sauber: attacker.sauber, sauberMul: hit.sauberMul,
@@ -50,13 +50,16 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
     stunEligible: !!part.stunPart,
     wucht: hit.wucht || 0,
     partId: part.id, hitstop: HITSTOP[size], shake: SHAKE[size],
+    rostBuild: attacker.elems?.rost ?? 0, // Element 'rost' = Rost-Aufbau pro Treffer (kein Elementschaden, GDD 15.3)
   };
 }
 
 /** Hand a resolved hit to the monster (host/solo). In coop a guest sends it over the net instead. */
 export function applyMonsterHit(monster, result, ctx) {
   if (ctx?.net?.isGuest) { ctx.net.sendHit(monster, result); return null; }
-  return monster.applyDamage(result);
+  const ev = monster.applyDamage(result);
+  if (result.rostBuild > 0) monster.applyStatus?.('rost', { amount: result.rostBuild });
+  return ev;
 }
 
 /** Pick the best part (highest factor) among overlapping parts. */

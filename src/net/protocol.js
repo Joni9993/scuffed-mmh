@@ -60,7 +60,7 @@ export function decodeP(o) {
 
 // ---------- Brocken-Snapshot  (10 Hz)
 export const MONSTER_STATES = ['wander', 'notice', 'combat', 'enrage', 'flee', 'sleep', 'dead'];
-export const MF = { RAGE: 1, DISCOVERED: 2, STUN: 4, STAG: 8, TIRED: 16 };
+export const MF = { RAGE: 1, DISCOVERED: 2, STUN: 4, STAG: 8, TIRED: 16, RUST: 32, SCALD: 64 };
 /** in: { id, def, x,y,z, rot, state, hpPct, rage, discovered, stun, stag, atk (Schlüssel|0), parts:[{hp, broken}] } */
 export function encodeMonster(s) {
   let f = 0;
@@ -69,6 +69,8 @@ export function encodeMonster(s) {
   if (s.stun) f |= MF.STUN;
   if (s.stag) f |= MF.STAG;
   if (s.tired) f |= MF.TIRED;
+  if (s.rust) f |= MF.RUST;
+  if (s.scald) f |= MF.SCALD;
   const si = MONSTER_STATES.indexOf(s.state);
   const out = {
     i: s.id, d: s.def, x: r2(s.x), y: r2(s.y), z: r2(s.z), r: r3(s.rot), s: si < 0 ? s.state : si, h: r3(s.hpPct), f,
@@ -80,7 +82,7 @@ export function encodeMonster(s) {
 export function decodeMonster(o) {
   return {
     id: o.i, def: o.d, x: o.x, y: o.y, z: o.z, rot: o.r, state: typeof o.s === 'number' ? MONSTER_STATES[o.s] : o.s, hpPct: o.h,
-    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), phase: o.ph ?? 0, atk: o.a || 0,
+    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), rust: !!(o.f & MF.RUST), scald: !!(o.f & MF.SCALD), phase: o.ph ?? 0, atk: o.a || 0,
     parts: o.p.map((hp) => ({ hp: hp < 0 ? 0 : hp, broken: hp < 0 })),
   };
 }
@@ -122,10 +124,11 @@ export function encodeHit(monsterId, res, attackerId, id = ++_hid) {
   if (res.blunt) o.b = r1(res.blunt);
   if (res.crit) o.c = 1;
   if (res.weak) o.w = 1;
+  if (res.rostBuild) o.r = Math.min(100, Math.round(res.rostBuild));
   return o;
 }
 export function decodeHit(o) {
-  return { id: o.i, monsterId: o.m, res: { partId: o.p, dmg: o.d, elemDmg: o.e ?? 0, blunt: o.b ?? 0, crit: !!o.c, weak: !!o.w, attackerId: o.a } };
+  return { id: o.i, monsterId: o.m, res: { partId: o.p, dmg: o.d, elemDmg: o.e ?? 0, blunt: o.b ?? 0, crit: !!o.c, weak: !!o.w, ...(o.r ? { rostBuild: o.r } : {}), attackerId: o.a } };
 }
 export const MAX_HIT_DMG = 5000;
 export const validHit = (h) => Number.isFinite(h.res.dmg) && h.res.dmg > 0 && h.res.dmg <= MAX_HIT_DMG && typeof h.monsterId === 'string';

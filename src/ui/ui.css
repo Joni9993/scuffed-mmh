@@ -79,6 +79,7 @@ body.scan #stage::after {
 .hud-status .st-mud { background: #a07a48; }
 .hud-status .st-burn { background: #ff8a2a; }
 .hud-status .st-poison { background: #9be15a; }
+.hud-status .st-rost { background: #c8661e; }
 .hud-status .st-konter { background: #5ad8ff; }
 .wstat { display: flex; gap: .6vmin; align-items: center; height: 2vmin; font-size: max(8px, 2vmin); }
 .wstat b { width: 2.4vmin; height: 1.6vmin; background: #2a2a6a; border: 1px solid #000; }
