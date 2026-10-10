@@ -43,7 +43,7 @@ export class Presence {
   /** → { x,y,z,rot,anim,speed } (interpoliert) oder null */
   sample(id) {
     const sm = this.bufs.get(id)?.sample(nowS());
-    return sm ? { ...sm.s, anim: sm.cur.anim, emote: sm.cur.emote, emoteN: sm.cur.emoteN, color: sm.cur.color, weapon: sm.cur.weapon } : null; // [T] discrete fields from the snapshot
+    return sm ? { ...sm.s, anim: sm.cur.anim, emote: sm.cur.emote, emoteN: sm.cur.emoteN, color: sm.cur.color, weapon: sm.cur.weapon, gear: sm.cur.gear } : null; // [T] discrete fields from the snapshot
   }
   /** Namensschild über einem Rig-Root anbringen (einmalig je Mitglied). */
   attach(id, root) {

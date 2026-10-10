@@ -5,7 +5,9 @@ import { ITEMS, ITEM_IDS } from '../data/items.js';
 import { RECIPES, RECIPE_ORDER } from '../data/recipes.js';
 import { missing } from '../meta/inventory.js';
 import { upgradeWeapon, weaponUpgradeOptions, craftArmor, equipArmor, equipWeapon, craftItem, setBarItem, barMoveFront } from '../meta/crafting.js';
-import { armorProtection, armorSkills, damageReduction, skillEffects } from '../meta/loadout.js';
+import { armorProtection, armorSkills, damageReduction, skillEffects, buildLoadout } from '../meta/loadout.js';
+import { GearPreview, previewSlot } from './gearPreview.js'; // [G]
+import { makeGear } from '../data/gearlook.js'; // [G]
 import { SHOP_STOCK, buy, sell, sellPrice } from '../meta/shop.js';
 import { esc, costChips, delta, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
@@ -14,7 +16,8 @@ const tabs = (cur, list) => `<div class="tabs">${list.map(([k, n]) => `<button c
 
 // ============================================================ Schmiede
 export function createSchmiede(ctx) {
-  let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null;
+  let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null, wopt = null; // [G] wopt = upgrade option shown in the preview
+  let pv = null;
 
   const statRow = (cur, nxt) => {
     const el = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k} ${v}`).join(', ') || '–';
@@ -30,8 +33,8 @@ export function createSchmiede(ctx) {
       <div class="card"><b>${esc(cur.name)}</b> <small>Stufe ${cur.tier}${cur.branch && cur.tier >= 3 ? ` / Ast ${cur.branch === 'a' ? 'Jaggo' : 'Barrotz'}` : ''}</small>
         ${statRow(cur, cur)}
         <button class="btn small${s.loadout.weapon === wsel ? ' on' : ''}" data-a="equipw">${s.loadout.weapon === wsel ? 'Ausgerüstet' : 'Ausrüsten'}</button></div>
-      ${opts.length ? `<div class="sub">${opts.length > 1 ? 'Wähle einen Ast (Stufe 4 geht aus beiden):' : 'Nächste Stufe:'}</div>` : '<div class="sub">Höchste Stufe erreicht. Mehr Waffe gibt es nicht.</div>'}
-      ${opts.map((o) => `<div class="card up"><b>${esc(o.name)}</b> <small>Stufe ${o.tier}</small>${statRow(cur, o.stats)}
+      ${opts.length ? `<div class="sub">${opts.length > 1 ? 'Wähle einen Ast (Stufe 4 geht aus beiden):' : 'Nächste Stufe:'} <small>(antippen = Vorschau)</small></div>` : '<div class="sub">Höchste Stufe erreicht. Mehr Waffe gibt es nicht.</div>'}
+      ${opts.map((o) => `<div class="card up${wopt && wopt.tier === o.tier && wopt.branch === o.branch ? ' sel' : ''}" data-a="wprev" data-t="${o.tier}" data-b="${o.branch ?? ''}"><b>${esc(o.name)}</b> <small>Stufe ${o.tier}</small>${statRow(cur, o.stats)}
         <div class="costs">${costChips(o.cost, s)}</div>
         <button class="btn small${o.ok ? ' go' : ' dis'}" data-a="upg" data-b="${o.branch ?? ''}">Schmieden</button></div>`).join('')}`;
   }
@@ -54,15 +57,29 @@ export function createSchmiede(ctx) {
     return `<div class="sub">Schutz gesamt ${prot} (${Math.round(damageReduction(prot) * 100)} % weniger Schaden)</div>${grid}${detail}`;
   }
 
+  /** [G] what the preview shows: worn outfit, with the weapon / armor piece that is being looked at */
+  function previewGear() {
+    const s = ctx.save, g = makeGear(buildLoadout(s));
+    if (tab === 'weapons') {
+      const w = s.weapons[wsel];
+      g.weapon = wopt ? { type: wsel, tier: wopt.tier, branch: wopt.branch } : { type: wsel, tier: w.tier, branch: w.branch };
+    } else if (psel) g.armor = { ...g.armor, [getPiece(psel).slot]: psel };
+    return makeGear(g);
+  }
+
   return {
-    render: () => tabs(tab, [['weapons', 'Waffen'], ['armor', 'Rüstung']]) + (tab === 'weapons' ? weapons() : armor()),
+    render: () => `<div class="gpv-row">${previewSlot()}<div class="gpv-main">${tabs(tab, [['weapons', 'Waffen'], ['armor', 'Rüstung']])}${tab === 'weapons' ? weapons() : armor()}</div></div>`,
+    after(body) { const slot = body.querySelector('[data-gpv]'); if (!slot) return; pv ??= new GearPreview(); pv.set(previewGear()); pv.attach(slot); },
+    dispose() { pv?.dispose(); pv = null; },
     click(a, d) {
       const s = ctx.save;
-      if (a === 'tab') tab = d.k;
-      else if (a === 'wsel') wsel = d.k;
+      if (a === 'tab') { tab = d.k; wopt = null; }
+      else if (a === 'wsel') { wsel = d.k; wopt = null; }
+      else if (a === 'wprev') wopt = wopt && wopt.tier === Number(d.t) && wopt.branch === (d.b || null) ? null : { tier: Number(d.t), branch: d.b || null };
       else if (a === 'psel') psel = d.k;
       else if (a === 'equipw') { equipWeapon(s, wsel); ctx.commit(); ctx.toast(`${WEAPON_TYPES[wsel].name} ausgerüstet.`); }
       else if (a === 'upg') {
+        wopt = null;
         const r = upgradeWeapon(s, wsel, d.b || null);
         if (r.ok) { ctx.commit(); ctx.toast(`${r.name} geschmiedet!`); } else ctx.toast(reasonText(r), true);
       } else if (a === 'craftp') {
@@ -76,6 +93,7 @@ export function createSchmiede(ctx) {
 // ============================================================ Truhe
 export function createTruhe(ctx) {
   let tab = 'gear', info = null, slotSel = null;
+  let pv = null; // [G] rotating preview of what you wear (updates live when you change gear)
 
   function gear() {
     const s = ctx.save, lo = s.loadout;
@@ -122,7 +140,9 @@ export function createTruhe(ctx) {
   }
 
   return {
-    render: () => tabs(tab, [['gear', 'Ausrüstung'], ['stock', 'Vorrat'], ['craft', 'Basteln']]) + (tab === 'gear' ? gear() : tab === 'stock' ? stock() : craft()),
+    render: () => tabs(tab, [['gear', 'Ausrüstung'], ['stock', 'Vorrat'], ['craft', 'Basteln']]) + (tab === 'gear' ? `<div class="gpv-row">${previewSlot()}<div class="gpv-main">${gear()}</div></div>` : tab === 'stock' ? stock() : craft()),
+    after(body) { const slot = body.querySelector('[data-gpv]'); if (!slot) return; pv ??= new GearPreview(); pv.set(makeGear(buildLoadout(ctx.save))); pv.attach(slot); },
+    dispose() { pv?.dispose(); pv = null; },
     click(a, d) {
       const s = ctx.save, lo = s.loadout;
       switch (a) {

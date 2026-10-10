@@ -19,6 +19,7 @@ import { HuntMeta, resolveLoadout } from './huntmeta.js';
 import { Effects } from './effects.js';
 import { Projectiles } from './projectiles.js'; // [W]
 import { HuntNet } from '../net/sync.js'; // [N]
+import { makeGear } from '../data/gearlook.js'; // [G]
 
 const MAX_KO = 3;
 
@@ -69,7 +70,7 @@ export class Hunt {
     // [P] loadout from the hub (or standard gear for the debug URL)
     const lo = resolveLoadout(opts);
     this.loadout = lo;
-    const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, ctx: this });
+    const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, branch: lo.weapon.branch, gear: makeGear(lo), ctx: this }); // [G] gear looks
     p.god = !!opts.god;
     p.spawnAt(sp.x, sp.z, sp.yaw);
     this.players.push(p);

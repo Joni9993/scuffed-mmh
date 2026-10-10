@@ -5,6 +5,7 @@ import { huntScene } from './hunt.js';
 import { hubScene } from './hub.js'; // [P]
 import { resultsScene } from './results.js'; // [P]
 import { lobbyScene } from './lobby.js'; // [N]
+import { gearlabScene } from './gearlab.js'; // [G] debug lineup
 
 export const scenes = {
   title: titleScene,
@@ -12,4 +13,5 @@ export const scenes = {
   hub: hubScene, // [P]
   results: resultsScene, // [P]
   lobby: lobbyScene, // [N]
+  gearlab: gearlabScene, // [G]
 };

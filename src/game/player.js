@@ -10,9 +10,10 @@ import {
   rollPhase, rollSpeed, ROLL, VIT, HIT_REACTION,
 } from './vitals.js';
 import { protectReduction } from './combat.js';
-import { REST, sampleTrack } from './anim.js';
+import { REST, sampleTrack, mirrorPose } from './anim.js';
 import { buildHunterRig } from './rig.js';
 import { stepLock } from '../input/lock.js';
+import { makeGear } from '../data/gearlook.js'; // [G]
 
 const D2R = Math.PI / 180;
 const WALK = 4, RUN = 6, SPRINT = 8.5;
@@ -25,7 +26,7 @@ const _a = { x: 0, y: 0, z: 0 }, _b = { x: 0, y: 0, z: 0 };
  * States: free | roll | flinch | down | pinned | ko
  */
 export class Player {
-  constructor({ id = 'p1', name = 'Pirscher', weapon = 'gs', tier = 1, local = true, ctx }) {
+  constructor({ id = 'p1', name = 'Pirscher', weapon = 'gs', tier = 1, branch = null, gear = null, local = true, ctx }) {
     this.id = id;
     this.type = 'player';
     this.name = name;
@@ -65,7 +66,8 @@ export class Player {
     this.pushT = 0; this.pushV = { x: 0, z: 0 }; // [M] wind push
     this._dotAcc = 0;
 
-    this.setWeapon(weapon, tier);
+    this.gear = makeGear({ ...(gear ?? {}), weapon: gear?.weapon ?? { type: weapon, tier, branch } }); // [G] what the rig shows
+    this.setWeapon(weapon, tier, branch);
     this.pose = { ...REST };
     this.mesh = this.rig.root;
     this.lastState = 'free';
@@ -96,16 +98,24 @@ export class Player {
       exhausted: () => this.v.exhaust > 0,
       onChargeLevel: (lvl) => { this.ctx.bus.emit('sfx', { name: 'charge', pos: this.pos, level: lvl }); this.flash = 0.12; },
     });
-    this.weaponMesh = this.def.buildMesh?.({ tier, branch }) ?? null; // [KT] tier / branch visuals (katana)
+    this.weaponMesh = this.def.buildMesh?.({ tier, branch }) ?? null; // [KT]/[G] tier/branch looks
+    if (this.gear) this.gear = makeGear({ ...this.gear, weapon: { type: id, tier, branch } });
     if (this.rig) this.rig.swapWeapon(this.weaponMesh);
-    else this.rig = buildHunterRig({ weaponMesh: this.weaponMesh });
+    else this.rig = buildHunterRig({ weaponMesh: this.weaponMesh, merged: true, gear: this.gear });
     this.anims = this.def.anims;
   }
 
   /** [KT] rebuild the weapon mesh once the branch is known (applyLoadout) */
   rebuildWeaponMesh(tier, branch) {
     this.weaponMesh = this.def.buildMesh?.({ tier, branch }) ?? null;
+    if (this.gear) this.gear = makeGear({ ...this.gear, weapon: { type: this.weaponId ?? this.gear.weapon?.type, tier, branch } });
     this.rig.swapWeapon(this.weaponMesh);
+  }
+
+  /** [G] change the shown outfit live (armor per slot + colour); the weapon follows setWeapon(). */
+  setGear(gear) {
+    this.gear = makeGear({ ...gear, weapon: this.gear.weapon, color: gear?.color ?? this.gear.color });
+    this.rig.setGear(this.gear);
   }
 
   spawnAt(x, z, yaw = 0) {
@@ -616,7 +626,7 @@ export class Player {
       default:
         if (this.itemUse) {
           // [P] drinking / throwing pose
-          Object.assign(t, { arx: 105, arz: 20, hx: -12, tx: 10, alx: 30, lrx: 6, rrx: -6, sw: 60 });
+          Object.assign(t, { arx: 105, arz: 20, hx: -12, tx: 10, alx: 30, lrx: 6, rrx: -6, sw: 60, th: 0 });
         } else if (wp && this.anims?.[wp.name]) {
           const tt = wp.charging ? Math.min(wp.t, 0.25) : wp.t;
           sampleTrack(this.anims[wp.name], tt, t);
@@ -634,14 +644,16 @@ export class Player {
           t.alx = -12 - sw * 0.9;
           t.py = -Math.abs(Math.cos(this.gait)) * 0.06 * s;
           t.tx = 3 + 10 * clamp(speed / SPRINT, 0, 1);
-          if (this.sprinting) { t.tx += 8; t.arx = 10; }
+          if (this.sprinting) { t.tx += 8; t.arx = this.def.sprintArx ?? 10; }
           t.tx += Math.sin(this.time * 2.2) * 1.0;
         }
     }
+    if (this.def.hand === 'L') mirrorPose(t); // [G] bow: held left, string drawn with the right hand
     const k = 1 - Math.exp(-(this.state === 'roll' ? 60 : wp ? 75 : 38) * dt);
     for (const key in t) p[key] += (t[key] - p[key]) * k;
     if (this.state === 'roll' || this.lastState === 'roll') p.prx = t.prx ?? 0;
     this.rig.apply(p);
+    this.rig.tick?.(dt); // [G] glow pulse + particles
     const m = this.mesh;
     m.position.set(this.pos.x, this.pos.y + airY, this.pos.z);
     m.rotation.y = this.rot;

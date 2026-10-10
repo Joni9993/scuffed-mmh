@@ -325,6 +325,7 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
   grip2.position.set(0, 0.24, 0);
   root.add(grip2);
   root.userData.grip2 = grip2;
+  root.userData.twoHand = { lo: 0.16, hi: 0.3 }; // [G] rig two-hand solver: off hand slides along the hilt
 
   // scabbard on the belt (not part of the weapon in hand)
   root.userData.hip = buildSaya(look);

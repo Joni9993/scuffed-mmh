@@ -118,7 +118,7 @@ export const lobbyScene = {
     this.handedOff = true;
     const board = this.board;
     const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, onDispose: () => board.returned() });
-    const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, slot }; });
+    const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, gear: m?.gear, slot }; });
     const slot = st.members.indexOf(session.myId);
     const o = this.opts;
     this.app.goto('hunt', {
