@@ -18,6 +18,7 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
     idleT: 0,
     sens: 0.0042,
     shake: new THREE.Vector3(),
+    frameK: 0, frameAmt: 0, frameT: 0, // Auto-Framing: extra Distanz (Anteil), Ziel, Restzeit
     clearDist: 99, // how far the camera may sit from the focus without poking into terrain / walls (smoothed)
     /** @param p {playerPos, playerYaw, moving, camInput:{dx,dy}, lockPos|null, shake:Vector3} */
     update(dt, p) {
@@ -50,6 +51,11 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
         this.focus.z = damp(this.focus.z, p.playerPos.z, 14, dt);
         this.focus.y = damp(this.focus.y, p.playerPos.y + 1.6, 8, dt);
       }
+      // Auto-Framing (weich rein/raus, nie ruckartig): dist temporaer skaliert, unten wieder zurueck
+      this.frameT -= dt;
+      this.frameK = damp(this.frameK, this.frameT > 0 ? this.frameAmt : 0, this.frameT > 0 ? 2.2 : 1.6, dt);
+      const baseDist = this.dist;
+      this.dist = baseDist * (1 + this.frameK);
       const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
       // camera collision: march from the focus toward the wanted position, stop before terrain / cliffs / props; shorten at once, extend slowly
       const clear = this.maxClearDist(cp, sp);
@@ -58,11 +64,17 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
       let x = this.focus.x - Math.sin(this.yaw) * cp * dd;
       let z = this.focus.z - Math.cos(this.yaw) * cp * dd;
       if (collide) { _cp.x = x; _cp.z = z; collide(_cp, 0.35); x = _cp.x; z = _cp.z; } // last resort: hunter hugging a wall
+      this.dist = baseDist;
       let y = this.focus.y + sp * dd;
       y = Math.max(y, getGroundY(x, z) + 0.8);
       camera.position.set(x, y, z);
       if (p.shake) camera.position.add(p.shake);
       camera.lookAt(this.focus.x, this.focus.y, this.focus.z);
+    },
+    /** Sanft rauszoomen: amount = Anteil (0.2 = +20 % Distanz) fuer `seconds`, danach weich zurueck. */
+    frame(amount = 0.2, seconds = 1.5) {
+      this.frameAmt = Math.max(0, Math.min(0.3, amount));
+      this.frameT = Math.max(this.frameT, seconds);
     },
     /** Largest camera distance (<= this.dist) whose sample points are above ground and outside walls. */
     maxClearDist(cp, sp) {

@@ -82,7 +82,21 @@ const rr = (a, b) => a + Math.random() * (b - a);
 const pitch = (k = 0.12) => 1 + (Math.random() - 0.5) * 2 * k;
 
 // ------------------------------------------------------------------ sounds
+// ---- Lesbarkeit: Windup-Toene pro Angriff (Klangfarbe + Tonhoehe aus cues.js), Laenge = Telegraph-Dauer
+const WINDUP = {
+  brumm: (f, d, v) => { tone({ f0: f * 0.5, f1: f * 0.62, dur: d, type: 'sawtooth', vol: 0.2 * v, lp: 380 }); tone({ f0: f * 0.25, f1: f * 0.31, dur: d, vol: 0.3 * v }); },
+  schrill: (f, d, v) => { tone({ f0: f * 3, f1: f * 4.2, dur: d, type: 'square', vol: 0.09 * v, vib: 60 }); tone({ f0: f * 6, f1: f * 7, dur: d, type: 'triangle', vol: 0.07 * v }); },
+  knurr: (f, d, v) => { tone({ f0: f * 0.8, f1: f * 0.55, dur: d, type: 'sawtooth', vol: 0.2 * v, lp: 700, vib: 90 }); noise({ dur: d, vol: 0.12 * v, f0: 500, f1: 250, type: 'bandpass', q: 2 }); },
+  zisch: (f, d, v) => { noise({ dur: d, vol: 0.2 * v, f0: 2500, f1: 7000, type: 'bandpass', q: 1.2 }); tone({ f0: f * 4, f1: f * 5, dur: d, type: 'sine', vol: 0.05 * v }); },
+  droehn: (f, d, v) => { tone({ f0: f * 0.4, f1: f * 0.8, dur: d, type: 'sawtooth', vol: 0.22 * v, lp: 600 }); tone({ f0: f * 0.2, f1: f * 0.4, dur: d, type: 'square', vol: 0.14 * v, lp: 300 }); },
+  klick: (f, d, v) => { const n = Math.max(3, Math.round(d / 0.09)); for (let i = 0; i < n; i++) tone({ f0: f * 5, f1: f * 3, dur: 0.035, type: 'square', vol: 0.12 * v, delay: (d * i) / n }); },
+};
+
 const SOUNDS = {
+  windup: (o) => { const d = Math.max(0.15, Math.min(3, o?.dur ?? 0.5)); (WINDUP[o?.timbre] ?? WINDUP.brumm)(o?.f ?? 180, d, o?.teach ? 1.5 : 1); if (o?.teach) noise({ dur: 0.12, vol: 0.15, f0: 3000, f1: 800, type: 'bandpass' }); },
+  tired: () => { noise({ dur: 0.3, vol: 0.2, f0: 1500, f1: 400, type: 'bandpass' }); noise({ dur: 0.3, vol: 0.2, f0: 1400, f1: 350, type: 'bandpass', delay: 0.4 }); tone({ f0: 160, f1: 90, dur: 0.5, vol: 0.2, lp: 500, delay: 0.1 }); },
+  eye: () => { tone({ f0: 330, f1: 330, dur: 0.12, type: 'triangle', vol: 0.18 }); tone({ f0: 495, f1: 520, dur: 0.22, type: 'triangle', vol: 0.18, delay: 0.1 }); },
+  phase: () => { tone({ f0: 90, f1: 40, dur: 0.9, type: 'sawtooth', vol: 0.4, lp: 400 }); noise({ dur: 0.6, vol: 0.3, f0: 2000, f1: 200 }); },
   // ---- combat (existing + variations)
   hit: (o) => {
     const k = o?.kind;
@@ -176,9 +190,9 @@ const SOUNDS = {
   },
 };
 
-const DUR = { roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
-const PRIO = { roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
-const MIN_GAP = { step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
+const DUR = { tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
+const PRIO = { windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
+const MIN_GAP = { windup: 0.05, step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
 
 // ------------------------------------------------------------------ ambient (per zone)
 const amb = { built: false, wind: null, cricket: null, rumble: null, bubbleG: null, w: [0, 0, 0, 0], nextBubble: 0, nextCrackle: 0, on: true };
@@ -255,7 +269,7 @@ export const sfx = {
     v.input.gain.cancelScheduledValues(now);
     v.input.gain.value = opts.vol ?? 1;
     if (v.pan) v.pan.pan.value = opts.pan ?? 0;
-    v.until = now + (DUR[name] ?? 0.45);
+    v.until = now + (name === 'windup' && opts.dur ? opts.dur + 0.1 : (DUR[name] ?? 0.45));
     v.prio = prio;
     dest = v.input;
     try { fn(opts); } catch { /* audio is best-effort */ }

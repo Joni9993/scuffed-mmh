@@ -15,6 +15,7 @@ import { createWorld } from './world/index.js';
 import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
 import { sfx } from '../audio/sfx.js';
+import * as cues from './cues.js';
 // [P] meta layer: loadout, inventory, items, carving, end flow
 import { HuntMeta, resolveLoadout } from './huntmeta.js';
 import { Effects } from './effects.js';
@@ -98,6 +99,7 @@ export class Hunt {
 
     this.hud = createHud(app.ui);
     sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
+    this._detachCues = cues.attach(this); // Lesbarkeit: Windup-Ton, Farbcue, Auto-Framing, Tod-Log
     this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
     this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
@@ -405,6 +407,7 @@ export class Hunt {
     this.input.reset();
     this.input.contextLabel = null; this.input.lockOn = false;
     time.reset();
+    this._detachCues?.();
     this.bus.clear();
     this.scene.traverse((o) => { o.geometry?.dispose?.(); });
     document.body.classList.remove('scan');
