@@ -2,6 +2,7 @@
 import { MUTATORS, MUTATOR_ORDER, MAX_MUTATORS, resolveMods, rewardLabel } from '../data/mutators.js';
 import { FOODS, FOOD_ORDER } from '../data/foods.js';
 import { questList } from '../data/quests.js';
+import { registerFieldStudy, getBestTime, FIELDSTUDY_ID } from '../meta/fieldstudy.js';
 import { monsters } from '../game/monsters/index.js';
 import { cookMeal } from '../meta/crafting.js';
 import { missing } from '../meta/inventory.js';
@@ -79,21 +80,23 @@ export function createBrett(ctx) {
     dispose() { unsub?.(); },
     render() {
       const s = ctx.save;
-      const list = questList().map((q) => {
+      const fs = registerFieldStudy(), fsBest = getBestTime(fs.fieldStudy);
+      const list = [fs, ...questList()].map((q) => {
+        const isFs = q.id === FIELDSTUDY_ID;
         const open = questUnlocked(s, q), avail = !q.monster || !!monsters[q.monster];
         const done = s.clears[q.id] ?? 0;
-        return `<div class="row quest${open && avail ? '' : ' lock'}${sel === q.id ? ' sel' : ''}" data-a="qsel" data-k="${q.id}">
-          <span class="nm"><b>${esc(q.name)}</b>${done ? ` <small>✓${done}</small>` : ''}<br><small>${open ? (avail ? esc(q.desc) : 'Dieser Brocken ist noch nicht im Rostnest angekommen.') : `Jägerrang ${q.jr} nötig.`}</small></span>
+        return `<div class="row quest${open && avail ? '' : ' lock'}${sel === q.id ? ' sel' : ''}${isFs ? ' fieldstudy' : ''}"${isFs ? ' style="border:1px solid #ffd040;background:rgba(255,208,64,.12)"' : ''} data-a="qsel" data-k="${q.id}">
+          <span class="nm">${isFs ? '<small>★ Wochenauftrag</small><br>' : ''}<b>${esc(q.name)}</b> ${isFs ? `<small>(${esc(q.monster)})</small>` : ''}${done ? ` <small>✓${done}</small>` : ''}<br><small>${open ? (avail ? esc(q.desc) + (isFs ? ` Mutatoren: ${mutHtml(q.mutators)}. Bestzeit: ${fsBest ? mmss(fsBest) : '–'}` : '') : 'Dieser Brocken ist noch nicht im Rostnest angekommen.') : `Jägerrang ${q.jr} nötig.`}</small></span>
           <span class="chip ok">${iconHtml('schrott')}${q.reward}</span>
           ${open && avail ? `<button class="btn small go" data-a="post" data-k="${q.id}">Posten</button>` : '<span class="lockm">gesperrt</span>'}</div>`;
       }).join('');
       const posted = adapter.getPosted();
       const postedHtml = posted.length ? posted.map((p) => {
-        const q = questList().find((x) => x.id === p.quest);
+        const q = [registerFieldStudy(), ...questList()].find((x) => x.id === p.quest);
         const me = p.members.find((m) => m.me);
         const alone = p.members.length <= 1;
         return `<div class="card post"><b>${esc(q?.name ?? p.quest)}</b> <small>von ${esc(p.host)}</small>
-          ${p.mutators?.length ? `<div class="note">Mutatoren: ${mutHtml(p.mutators)}</div>` : ''}<div class="note">${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(' · ')}</div>
+          ${(p.mutators?.length || q?.mutators?.length) ? `<div class="note">Mutatoren: ${mutHtml(p.mutators?.length ? p.mutators : q.mutators)}</div>` : ''}<div class="note">${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(' · ')}</div>
           ${p.joined ? `<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>${p.mine ? `<button class="btn small" data-a="unpost">Zurückziehen</button>` : ''}`
           : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
       }).join('') : '<div class="note">Niemand hat etwas gepostet. Sei der Erste.</div>';
@@ -108,7 +111,7 @@ export function createBrett(ctx) {
     click(a, d) {
       if (a === 'qsel') { sel = d.k; return true; }
       if (a === 'mut') { info = d.k; const i = chosen.indexOf(d.k); if (i >= 0) chosen.splice(i, 1); else { if (chosen.length >= MAX_MUTATORS) chosen.shift(); chosen.push(d.k); } return true; }
-      if (a === 'post') { adapter.post(d.k, [...chosen]); return true; }
+      if (a === 'post') { adapter.post(d.k, d.k === FIELDSTUDY_ID ? [] : [...chosen]); return true; } // Feldstudie: feste Mutatoren stecken im Auftrag
       if (a === 'join') { adapter.join(d.k); return true; }
       if (a === 'unpost') { adapter.unpost?.(); return true; }
       if (a === 'ready') { adapter.setReady(d.r === '1'); return true; }

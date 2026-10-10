@@ -93,3 +93,14 @@ export function getQuest(id) {
 }
 /** Quests in board order (only ones that exist). */
 export const questList = () => QUEST_ORDER.map((id) => quests[id]).filter((q) => q && !q.hidden);
+
+// ---- Phase 3: Multi-Jagd + Feldstudie-Hook
+// Revierstreit (JR 4): Barrotz + Jaggo, je 65 % HP, bekämpfen sich erst gegenseitig (game/revier.js).
+quests.revierstreit = {
+  id: 'revierstreit', name: 'Revierstreit', type: 'hunt', monster: 'barrotz', world: 'schotterklamm', timeLimit: 25 * 60, reward: 1500, jr: 4,
+  monsters: [{ id: 'barrotz', hpMul: 0.65 }, { id: 'jaggo', hpMul: 0.65 }], multi: 'revier',
+  desc: 'Barrotz und Jaggo streiten ums Revier. Nutzt den Kampf - nach einer Minute oder bei zu viel Druck jagen sie euch gemeinsam.',
+};
+QUEST_ORDER.push('revierstreit');
+/** Wochen-Feldstudie (meta/fieldstudy.js) meldet sich hier an; nicht in QUEST_ORDER (das Brett zeigt sie separat oben). */
+export function setFieldStudyQuest(q) { quests.feldstudie = q; }

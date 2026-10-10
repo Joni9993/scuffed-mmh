@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createBus } from '../core/events.js';
-import { createRng } from '../core/rng.js';
+import { createRng, hashSeed } from '../core/rng.js';
+import { Revier, scaleBoss } from './revier.js';
+import { recordBestTime } from '../meta/fieldstudy.js'; // meldet auch die Wochen-Feldstudie im Quest-Register an
 import { time } from '../core/time.js';
 import { createFx } from '../render/fx.js';
 import { createCameraRig } from '../render/camera.js';
@@ -45,7 +47,7 @@ export class Hunt {
     this.opts = opts;
     this.input = app.input;
     this.bus = createBus();
-    this.seed = Number(opts.seed ?? 1);
+    this.seed = Number(getQuest(opts.quest ?? 'jaggo').fixedSeed ?? opts.seed ?? 1); // Feldstudie: Datum = Seed
     this.rng = createRng(this.seed);
     this.quest = getQuest(opts.quest ?? 'jaggo');
     this.training = !!this.quest.training; // Übungsplatz (Trainingspuppe im Dorf): solo, keine Belohnung/Statistik, Leisten füllen sich
@@ -100,8 +102,10 @@ export class Hunt {
     let ms = this.world.monsterSpawns?.[this.quest.monster] ?? this.world.monsterSpawns.default;
     if (this.training) ms = { x: sp.x + Math.sin(sp.yaw) * 7, z: sp.z + Math.cos(sp.yaw) * 7 }; // Puppe 7 m vor dem Spawn
     // [P] gather quests have no Brocken (quest.monster = null)
-    this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro || this.training ? 'combat' : 'wander', id: this.quest.monster }) : null;
-    if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
+    this.bosses = []; // alle Brocken des Auftrags (Multi-Jagd: 2); Sieg erst wenn alle tot
+    this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro || this.training || this.quest.multi ? 'combat' : 'wander', id: this.quest.monster }) : null;
+    if (this.mainMonster) { this.bosses.push(this.mainMonster); this.#applyQuestVariant(this.mainMonster); }
+    if (this.quest.monsters && this.mainMonster) this.#spawnMulti(ms, sp);
     if (this.training && this.mainMonster) this.mainMonster.rot = Math.atan2(sp.x - ms.x, sp.z - ms.z);
     // [B] ambient Jagglinge packs in zones 1 + 2 (host/solo only; guests get them through the monster snapshots)
     if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
@@ -117,13 +121,15 @@ export class Hunt {
     this.musicTr = new IntensityTracker(4); this.musicChainT = -99; this.musicWon = false;
     music.setScene(opts.music ?? (this.world.id === 'rostwerke' ? 'rost' : 'hunt')); // Rostwerke: eigener Industrial-Stil (?music=rost zum Vorhören)
     this.bus.on('glitchCounter', () => { this.musicChainT = this.time; });
-    this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
+    this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
     this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
     this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
-    this.bus.on('monsterDead', ({ monster }) => { if (monster === this.mainMonster) this.#onBossDead(); });
+    this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) this.#onBossDead(); });
+    this.bus.on('revierAlly', () => this.hud.center('Sie verbünden sich!', 2.2));
+    this.bus.on('questComplete', ({ quest, time }) => { if (quest.fieldStudy && recordBestTime(quest.fieldStudy, time)) this.newBest = true; });
     this.bus.on('monsterState', ({ monster, state }) => {
-      if (monster === this.mainMonster && state === 'notice') this.hud.banner(monster.def.name, 3);
+      if (this.bosses.includes(monster) && state === 'notice') this.hud.banner(monster.def.name, 3);
       if (state === 'enrage') this.hud.center('Rotglut!', 1.5);
     });
     this.bus.on('partBreak', ({ monster, part }) => this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5));
@@ -181,6 +187,23 @@ export class Hunt {
     const q = this.quest, mm = this.mods.monster, hpMul = (q.hpMul ?? 1) * (mm.hpMul ?? 1);
     if (hpMul !== 1) { m.maxHp = Math.round(m.maxHp * hpMul); m.hp = m.maxHp; }
     if (q.rage === 'always' || mm.rageAlways) { m.rageUsed = true; m.rage = true; m.rageT = 1e9; m.def.onRage?.(m, true); }
+  }
+
+  #allBossesDead(monster) { return this.bosses.includes(monster) && this.bosses.every((b) => !b.alive); }
+
+  /** Multi-Jagd (quest.monsters): weitere Brocken, je eigener Seed-Stream, HP-Faktor; 'revier' = Revierkampf. */
+  #spawnMulti(ms, sp) {
+    const specs = this.quest.monsters;
+    const first = specs[0];
+    scaleBoss(this.mainMonster, first.hpMul ?? 1);
+    for (let i = 1; i < specs.length; i++) {
+      const sx = specs[i], dx = i % 2 ? -13 : 13;
+      const m = this.spawnMonster(sx.id, { x: ms.x + dx, z: ms.z - 5 * i, yaw: Math.PI / 2, state: 'combat', id: sx.id, seed: 1 + (hashSeed(`${this.seed}:${sx.id}:${i}`) % 1e9) });
+      this.bosses.push(m);
+      this.#applyQuestVariant(m);
+      scaleBoss(m, sx.hpMul ?? 1);
+    }
+    if (this.quest.multi === 'revier') this.revier = new Revier(this, this.bosses);
   }
 
   /** [N] Brocken-HP nach Anzahl Pirscher (coopScale.js); bei Beitritt/Verlassen erneut aufrufen. */
@@ -306,7 +329,7 @@ export class Hunt {
     if (this.teamKo >= MAX_KO) this.#finish('fail', 'Dreimal umgekippt');
   }
   #onBossDead() {
-    for (const m of this.monsters) if (m !== this.mainMonster && m.alive && !m.def.neutral) m.applyDamage({ dmg: 9999, partId: m.parts[0].id, elemDmg: 0 });
+    for (const m of this.monsters) if (!this.bosses.includes(m) && m.alive && !m.def.neutral) m.applyDamage({ dmg: 9999, partId: m.parts[0].id, elemDmg: 0 });
     this.winTimer = 2.2;
   }
   #finish(result, reason = '') {
@@ -397,6 +420,7 @@ export class Hunt {
     this.meta.update(dt); // [P]
     this.effects.update(dt); // [P]
     for (const p of this.players) { if (p.local) p.update(dt); else p.updateRemote(dt); } // [N]
+    if (this.revier && authoritative) this.revier.update(dt);
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.reapDead(dt);
     this.projectiles.update(dt); // [W]
