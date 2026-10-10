@@ -118,7 +118,7 @@ export const jaggling = {
     const ang = m.time * 0.5 * jx.dir + (idx / n) * Math.PI * 2;
     const gx = t.pos.x + Math.cos(ang) * R, gz = t.pos.z + Math.sin(ang) * R;
     const gd = Math.hypot(gx - m.pos.x, gz - m.pos.z);
-    if (gd > 1.2) m._moveToward(dt, gx - m.pos.x, gz - m.pos.z, m.def.run * Math.min(1, 0.45 + gd * 0.12), 6);
+    if (gd > 1.2) m._navTo(dt, gx, gz, m.def.run * Math.min(1, 0.45 + gd * 0.12), 6);
     else { m._faceTarget(dt, 6); m._brake(dt); }
     return true;
   },

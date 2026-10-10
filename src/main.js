@@ -7,7 +7,8 @@ import { pollGamepad } from './input/gamepad.js';
 import { createLoop, DT } from './core/loop.js';
 import { time } from './core/time.js';
 import { appBus } from './core/events.js';
-import { settings } from './core/settings.js';
+import { settings, RES_STEPS, lowerRes } from './core/settings.js';
+import { initInstall } from './ui/install.js';
 import { scenes } from './scenes/index.js';
 import { sfx } from './audio/sfx.js';
 import { AutoQuality } from './core/autoquality.js';
@@ -18,7 +19,19 @@ const flag = (k) => params.get(k) === '1' || params.get(k) === 'true';
 
 // session-only overrides (not persisted)
 if (flag('nofx')) { settings.scanlines = false; settings.nofx = true; }
-if (params.get('res')) settings.res = Number(params.get('res')) === 360 ? 360 : 480;
+if (params.get('res')) settings.res = RES_STEPS.includes(Number(params.get('res'))) ? Number(params.get('res')) : 640;
+initInstall();
+
+// first tap: Fullscreen API + landscape lock (Android; iOS has neither, ignore errors)
+function goFullscreen() {
+  try {
+    const d = document.documentElement;
+    if (!document.fullscreenElement && d.requestFullscreen && !window.matchMedia?.('(display-mode: fullscreen)').matches) {
+      Promise.resolve(d.requestFullscreen({ navigationUI: 'hide' })).then(() => screen.orientation?.lock?.('landscape')?.catch(() => {})).catch(() => {});
+    } else screen.orientation?.lock?.('landscape')?.catch?.(() => {});
+  } catch { /* unsupported */ }
+}
+if (navigator.maxTouchPoints > 0 && !params.get('nofs')) document.addEventListener('pointerup', goFullscreen, { once: true });
 
 const stage = document.getElementById('stage');
 const ui = document.getElementById('ui');
@@ -30,7 +43,7 @@ touch.setVisible(false);
 
 // no scroll / zoom / callouts
 for (const ev of ['gesturestart', 'gesturechange', 'contextmenu', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());
-document.addEventListener('touchmove', (e) => { if (!e.target.closest?.('.allow-scroll')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (!e.target.closest?.('.allow-scroll, .panel, .hub-wrap')) e.preventDefault(); }, { passive: false });
 
 const app = {
   renderer, input, touch, ui, bus: appBus, settings, sfx,
@@ -56,7 +69,7 @@ const loop = createLoop({
     lastRender = t;
     if (app.sceneName !== aqScene) { aqScene = app.sceneName; aq.t = 0; aq.n = 0; }
     if (app.sceneName === 'hunt' && settings.autoRes && settings.res > 360 && !document.hidden && aq.sample(dt)) {
-      renderer.setResolution(360); // session only (not saved)
+      renderer.setResolution(lowerRes(settings.res)); aq.reset(); // session only (not saved); may step down again
       app.scene?.hunt?.toast?.('Grafik reduziert');
     }
   },

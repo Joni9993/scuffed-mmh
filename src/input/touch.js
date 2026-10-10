@@ -14,6 +14,7 @@ const BUTTONS = [
   { act: 'lock', key: 'lock', label: '', cls: 'btn-lock' },
   { act: 'item', key: 'item', label: '', cls: 'btn-item' },
   { act: 'context', key: 'ctx', label: '', cls: 'btn-ctx' },
+  { act: 'bar', key: 'bar', label: '+', cls: 'btn-bar' },
 ];
 
 /** shrink text until it fits (long station labels); wraps at spaces first. */
@@ -103,7 +104,8 @@ export function attachTouch(input, root) {
       btn.classList.add('down');
       try { btn.setPointerCapture(e.pointerId); } catch { /* capture is a nicety */ }
       buzz(act === 'attack' ? 10 : 7);
-      if (act === 'item') ptrs.set(e.pointerId, { kind: 'item', btn, x0: e.clientX, swiped: false });
+      if (act === 'bar') ptrs.set(e.pointerId, { kind: 'bar', btn });
+      else if (act === 'item') ptrs.set(e.pointerId, { kind: 'item', btn, x0: e.clientX, swiped: false });
       else if (act === 'lock') ptrs.set(e.pointerId, { kind: 'lock', btn, y0: e.clientY, swiped: false });
       else { input.set(act, true, 't' + e.pointerId); ptrs.set(e.pointerId, { kind: 'btn', btn, act }); }
       return;
@@ -155,6 +157,7 @@ export function attachTouch(input, root) {
     ptrs.delete(e.pointerId);
     if (p.kind === 'stick') { input.setStick(0, 0, 't' + e.pointerId); base.style.display = 'none'; }
     else if (p.kind === 'btn') { input.set(p.act, false, 't' + e.pointerId); p.btn.classList.remove('down'); }
+    else if (p.kind === 'bar') { p.btn.classList.remove('down'); if (e.type === 'pointerup') document.dispatchEvent(new CustomEvent('sh:strip-toggle')); }
     else if (p.kind === 'item') { p.btn.classList.remove('down'); if (!p.swiped && e.type === 'pointerup') input.press('item', 40); }
     else if (p.kind === 'lock') { p.btn.classList.remove('down'); if (!p.swiped && e.type === 'pointerup') input.press('lock', 40); } // tap = toggle
   };

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { createWorld } from '../game/world/index.js';
 import { buildRaptor } from '../game/monsters/raptor.js';
-import { settings, saveSettings } from '../core/settings.js';
+import { settings, saveSettings, nextRes } from '../core/settings.js';
+import { installHtml, bindInstall, onInstallChange } from '../ui/install.js';
 import { shouldHintA2hs, A2HS_TEXT } from '../ui/a2hs.js';
 import { sfx } from '../audio/sfx.js';
 
@@ -33,14 +34,18 @@ export const titleScene = {
       <button class="btn red" data-a="hunt">Ins Rostnest</button><br>
       <button class="btn small" data-a="res">Auflösung: ${settings.res}</button>
       <button class="btn small" data-a="scan">Scanlines: ${settings.scanlines ? 'an' : 'aus'}</button>
+      <span class="inst-slot"></span>
       ${hint ? `<p class="small" style="max-width:34ch;font-size:max(9px,1.8vmin)">${A2HS_TEXT}</p>` : ''}
     </div>`;
+    const slot = el.querySelector('.inst-slot');
+    const fillInst = () => { slot.innerHTML = installHtml().replace('class="note"', 'class="note" style="font-size:max(8px,1.7vmin);max-width:40ch;margin:.6vmin auto"'); bindInstall(slot); };
+    fillInst(); this._offInst = onInstallChange(fillInst);
     el.addEventListener('click', (e) => {
       const a = e.target.dataset?.a;
       if (!a) return;
       sfx.unlock(); sfx.play('ui');
       if (a === 'hunt') app.goto('hub', { fresh: true }); // [T] title -> Rostnest (room choice happens in the town)
-      if (a === 'res') { settings.autoRes = false; app.renderer.setResolution(settings.res === 480 ? 360 : 480); e.target.textContent = `Auflösung: ${settings.res}`; saveSettings(); }
+      if (a === 'res') { settings.autoRes = false; app.renderer.setResolution(nextRes(settings.res)); e.target.textContent = `Auflösung: ${settings.res}`; saveSettings(); }
       if (a === 'scan') { settings.scanlines = !settings.scanlines; document.body.classList.toggle('scan', settings.scanlines); e.target.textContent = `Scanlines: ${settings.scanlines ? 'an' : 'aus'}`; saveSettings(); }
     });
     app.ui.appendChild(el);
@@ -49,6 +54,7 @@ export const titleScene = {
   },
   exit() {
     this.app.renderer.onResize.delete(this._onResize);
+    this._offInst?.();
     this.el.remove();
   },
   update(dt) {

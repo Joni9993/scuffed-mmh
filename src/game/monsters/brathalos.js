@@ -363,7 +363,7 @@ export const brathalos = {
   },
   onAttackEnd(m, id) {
     if (id === 'brathalos_aufflug') m.beginFly();
-    else if (id === 'brathalos_sturz') { m.air = 0; m.setState('combat'); m.recover = 0.9; }
+    else if (id === 'brathalos_sturz') { m.air = 0; m._landOnGround?.(); m.setState('combat'); m.recover = 0.9; }
   },
   init(m) { m.flyCd = m.def.fly.firstGap; m._wasUp = false; },
   /** Flight cadence: the gap timer only runs on the ground; a fresh 21-33 s ground gap is rolled each time he comes down. */
