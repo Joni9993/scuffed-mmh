@@ -194,6 +194,7 @@ export function createOptionen(ctx) {
         <div class="sub">Layout (Touch)</div>
         <div class="row"><span class="nm">Tastengröße</span><span class="seg">${['S', 'M', 'L'].map((k) => `<button class="btn small ${settings.btnSize === k ? 'on' : ''}" data-a="bsz" data-v="${k}">${k}</button>`).join('')}</span></div>
         <div class="row"><span class="nm">Linkshänder (spiegeln)</span><button class="btn small" data-a="lefty">${on(settings.leftHand)}</button></div>
+        <div class="row"><span class="nm">Joystick</span><button class="btn small" data-a="stk">${settings.stickMode === 'fixed' ? 'bleibt fest' : 'folgt Daumen'}</button></div>
         <div class="row"><span class="nm">Vibration</span><button class="btn small" data-a="hap">${on(settings.haptics)}</button></div>
         <div class="note">Lock: tippen = an/aus. Lock-Taste hoch/runter wischen = nächster/voriger Körperteil (Taste F/V, Pad: R3).</div>
         <div class="row"><span class="nm">Lautstärke</span><input id="st-vol" class="inp rng" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></div>
@@ -222,6 +223,7 @@ export function createOptionen(ctx) {
       else if (a === 'tips') { settings.tipsSeen = !settings.tipsSeen; settings.tipsShown = 0; saveSettings(); }
       else if (a === 'scan') { settings.scanlines = !settings.scanlines; document.body.classList.toggle('scan', settings.scanlines); saveSettings(); }
       else if (a === 'bsz') { settings.btnSize = ds?.v === 'S' || ds?.v === 'L' ? ds.v : 'M'; saveSettings(); app.touch?.relayout(); }
+      else if (a === 'stk') { settings.stickMode = settings.stickMode === 'fixed' ? 'follow' : 'fixed'; saveSettings(); }
       else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
       else if (a === 'hap') { settings.haptics = !settings.haptics; saveSettings(); if (settings.haptics) navigator.vibrate?.(15); }
       else if (a === 'dmg') { settings.dmgNumbers = !settings.dmgNumbers; saveSettings(); }

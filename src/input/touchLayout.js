@@ -159,3 +159,21 @@ export function hitButton(L, x, y) {
   }
   return best;
 }
+
+/**
+ * Stick math. p = {ox, oy} origin (mutated). mode 'follow': origin drags along when the thumb leaves the radius;
+ * 'fixed': origin stays where the thumb landed, deflection is only clamped to the radius.
+ * @returns {{x:number, y:number}} deflection -1..1 (screen coords, y down)
+ */
+export function stickStep(p, cx, cy, radius, mode = 'follow') {
+  let dx = cx - p.ox, dy = cy - p.oy;
+  const d = Math.hypot(dx, dy);
+  if (d > radius && mode !== 'fixed') {
+    const k = (d - radius) / d;
+    p.ox += dx * k; p.oy += dy * k;
+    dx = cx - p.ox; dy = cy - p.oy;
+  }
+  const m = Math.min(1, Math.hypot(dx, dy) / radius);
+  const a = Math.atan2(dy, dx);
+  return { x: Math.cos(a) * m, y: Math.sin(a) * m };
+}
