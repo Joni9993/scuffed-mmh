@@ -4,6 +4,7 @@ import { jaggo } from '../../src/game/monsters/jaggo.js';
 import { time } from '../../src/core/time.js';
 import { resolvePlayerHit } from '../../src/game/combat.js';
 import { make, makeCtx, DT } from './p3helpers.js';
+import { Player } from '../../src/game/player.js';
 import { jaggling, spawnPack, MAX_JAGGLINGE } from '../../src/game/monsters/jaggling.js';
 
 beforeEach(() => time.reset());
@@ -51,5 +52,32 @@ describe('fix 5: ambient Jagglinge', () => {
     for (let i = 0; i < 60 * 40; i++) m.update(DT);
     expect(Math.hypot(m.pos.x, m.pos.z)).toBeLessThan(26); // stays near home, not on a Brocken route
     expect(ctx).toBeTruthy();
+  });
+});
+
+describe('fix 8: feel', () => {
+  it('a roll press that lands during hitstop is buffered, not eaten', () => {
+    const ctx = makeCtx();
+    const p = new Player({ ctx });
+    p.spawnAt(0, 0, 0);
+    ctx.players.push(p);
+    p.hitstop = 0.12; // heavy hit freeze
+    ctx.input.press('roll', 40);
+    for (let i = 0; i < 4; i++) { ctx.input.poll(DT); p.update(DT); }
+    expect(p.hitstop).toBeGreaterThan(0); // still frozen, press edge already gone
+    for (let i = 0; i < 12; i++) { ctx.input.poll(DT); p.update(DT); }
+    expect(p.state).toBe('roll');
+  });
+  it('breaking a part makes the Brocken recoil and flash', () => {
+    const { m, p } = make(jaggo);
+    p.spawnAt(0, 6, 0);
+    m.attack = null;
+    const z0 = m.pos.z;
+    m.applyDamage({ dmg: 700, elemDmg: 0, partId: 'head', blunt: 0 });
+    expect(m.partById.head.broken).toBe(true);
+    expect(m.kb).not.toBeNull();
+    for (let i = 0; i < 20; i++) m.update(DT);
+    expect(m.pos.z).toBeLessThan(z0 - 0.5); // pushed away from the hunter (hunter is at +z)
+    expect(m.stagT).toBeGreaterThan(0);
   });
 });

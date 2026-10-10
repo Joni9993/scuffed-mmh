@@ -282,6 +282,11 @@ export class Monster {
     part.factor = Math.max(0, part.baseFactor - 0.1);
     for (const m of part.mats) m.userData.ps1.uJit.value = 0.01;
     if (this.state !== 'fly') this.stagT = STAGGER;
+    this.hitFlash = 0.3;
+    if (this.authority && this.state !== 'fly' && !this.attack) { // [B] part break: visible recoil away from the hunter
+      const { p } = this._nearestPlayer();
+      if (p) { const dx = this.pos.x - p.pos.x, dz = this.pos.z - p.pos.z, l = Math.hypot(dx, dz) || 1; this.kb = { x: (dx / l) * 1.1 / 0.3, z: (dz / l) * 1.1 / 0.3, t: 0.3 }; }
+    }
     this._interrupt();
     this.def.onBreak?.(this, part);
     const p = part.sph[0].node.getWorldPosition(new THREE.Vector3());

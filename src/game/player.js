@@ -352,6 +352,8 @@ export class Player {
   update(dt) {
     const ctx = this.ctx, input = ctx.input;
     this.lastState = this.state;
+    // [B] a roll press landing in a hitstop frame must not be eaten (button edges last exactly one sim step)
+    if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
     if (consumeHitstop(this, dt)) {
       // [W] keep buffering button edges during hitstop (a press landing in a freeze frame must not be lost: B-hold finishers)
       if (this.state === 'free') this.weapon.feed(dt, { A: input.b.attack, B: input.b.special });
