@@ -177,7 +177,7 @@ const MOUTH = 5.0; // Maul-Abstand vor dem Wurzelpunkt (m)
 
 // ---- 1. Graben/Wühlen (internal-Vorspiel zum Durchbruch): taucht ab, Hügel zieht auf das Ziel zu
 const wuehlen = {
-  id: 'gorgo_wuehlen', range: [0, 40], weight: (m) => (m.phase >= 1 ? 6 : 3), cooldown: 11, telegraph: 0.8, flashParts: ['kopf'], duration: 2.5, stam: 10,
+  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 6 : 3), cooldown: 11, telegraph: 0.8, flashParts: ['kopf'], duration: 2.5, stam: 10,
   cue: { color: '#a07040', tone: 'knurr' }, tempo: 1,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
