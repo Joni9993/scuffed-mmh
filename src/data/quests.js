@@ -38,6 +38,12 @@ export const quests = {
     variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
     desc: 'Brathalos, dauerwütend, 40 % mehr Leben.',
   },
+  // Übungsplatz (Dorf: Trainingspuppe). hidden: nicht im Auftragsbrett, kein Rang, keine Belohnung, kein Zeitlimit.
+  training: {
+    id: 'training', name: 'Übungsplatz', type: 'hunt', monster: 'dummy', world: 'arena', timeLimit: 3600, reward: 0, jr: 0,
+    hidden: true, training: true,
+    desc: 'Trainingspuppe: Leisten füllen sich dauernd, Glitch-Energie sehr schnell.',
+  },
 };
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
@@ -49,4 +55,4 @@ export function getQuest(id) {
   return q;
 }
 /** Quests in board order (only ones that exist). */
-export const questList = () => QUEST_ORDER.map((id) => quests[id]).filter(Boolean);
+export const questList = () => QUEST_ORDER.map((id) => quests[id]).filter((q) => q && !q.hidden);

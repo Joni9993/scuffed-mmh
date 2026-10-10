@@ -115,6 +115,17 @@ export function createTown() {
     if (['counter', 'board', 'tent', 'watch'].includes(b.id)) continue;
     hut(b, pick(WOOD), pick(RUST));
   }
+  // Trainingspuppe: Strohpuppe an einem Pfosten, Zielscheibe auf der Brust
+  { const f = frame(lit, -11.5, 13.8, Math.PI, H(-11.5, 13.8));
+    f.cyl(0.62, 0.7, 0.2, 8, '#5a3c24', 0, 0.1, 0);
+    f.cyl(0.11, 0.13, 2.1, 6, '#6b4a2e', 0, 1.05, 0);
+    f.box(0.85, 0.95, 0.5, '#c8a850', 0, 1.4, 0);
+    f.box(0.9, 0.12, 0.54, '#8a6a30', 0, 1.0, 0); f.box(0.9, 0.12, 0.54, '#8a6a30', 0, 1.8, 0);
+    f.box(0.56, 0.5, 0.56, '#b89868', 0, 2.2, 0, 0.3);
+    f.box(0.1, 0.1, 0.05, '#1e1418', 0.13, 2.25, 0.29, 0.3); f.box(0.1, 0.1, 0.05, '#1e1418', -0.13, 2.25, 0.29, 0.3);
+    f.box(1.9, 0.14, 0.14, '#6b4a2e', 0, 1.65, 0);
+    f.box(0.3, 0.3, 0.3, '#c8a850', 0.98, 1.65, 0); f.box(0.3, 0.3, 0.3, '#c8a850', -0.98, 1.65, 0);
+    f.box(0.56, 0.56, 0.05, '#b8402a', 0, 1.4, 0.27); f.box(0.34, 0.34, 0.06, '#e8d8b0', 0, 1.4, 0.28); f.box(0.14, 0.14, 0.07, '#b8402a', 0, 1.4, 0.29); }
   // tent (Truhe)
   { const b = BOXES.find((k) => k.id === 'tent'), f = frame(lit, b.x, b.z, b.yaw, H(b.x, b.z));
     f.cone(3.3, 3, 4, '#b8802a', 0, 1.5, 0, Math.PI / 4);
@@ -240,8 +251,8 @@ export function createTown() {
     if (text) {
       const sp = labelSprite(text, { color: s.npc ? '#ffd84a' : '#9ad8ff' });
       const px = s.npc ? s.npc.x : s.id === 'spiegel' ? 9.6 : s.id === 'truhe' ? 11.8 : s.x;
-      const pz = s.npc ? s.npc.z : s.id === 'spiegel' ? 19.6 : s.id === 'truhe' ? -9.5 : 25.9;
-      sp.position.set(px, H(px, pz) + (s.npc ? 2.75 : s.id === 'tor' ? 7.0 : s.id === 'spiegel' ? 4.1 : 1.9), pz);
+      const pz = s.npc ? s.npc.z : s.id === 'spiegel' ? 19.6 : s.id === 'truhe' ? -9.5 : s.id === 'training' ? 13.8 : 25.9;
+      sp.position.set(px, H(px, pz) + (s.npc ? 2.75 : s.id === 'tor' ? 7.0 : s.id === 'spiegel' ? 4.1 : s.id === 'training' ? 3.0 : 1.9), pz);
       group.add(sp);
       info.label = sp;
     }

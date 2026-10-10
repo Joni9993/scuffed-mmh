@@ -231,6 +231,7 @@ export const hubScene = {
     this.onMembers();
     const slot = Number(String(session.myId).slice(1)) || 0;
     this.spawn(slot);
+    if (this.opts?.fromTraining) { const ts = stationById('training'); this.player.spawnAt(ts.x, ts.z - 1.2, 0); } // zurück vom Übungsplatz: an die Puppe
     this.rig.snap(this.player.pos, this.player.rot);
   },
   spawn(slot) {
@@ -302,7 +303,8 @@ export const hubScene = {
   },
   activate(st) {
     sfx.unlock(); sfx.play('ui');
-    if (st.id === 'tor') {
+    if (st.id === 'training') this.beginTraining();
+    else if (st.id === 'tor') {
       const my = this.board.myPost();
       if (!my) this.toast('Erst am Auftragsbrett einen Auftrag posten.');
       else if (!my.ready) { this.board.setReady(true); this.toast('Bereit!'); }
@@ -352,6 +354,15 @@ export const hubScene = {
     else if (back.length) this.toast(`${back.join(', ')} ${back.length > 1 ? 'sind' : 'ist'} zurück`);
     this.busyPrev = new Set(busy);
     this.onMembers();
+  },
+
+  /** Trainingspuppe: Übungsplatz, immer solo/lokal (auch im Raum), mit der aktuellen Ausrüstung. */
+  beginTraining() {
+    if (this.starting) return;
+    this.starting = true;
+    closeStation();
+    const save = saveStore.get(), loadout = buildLoadout(save), o = this.opts;
+    this.app.goto('hunt', { quest: 'training', training: true, seed: 1, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: true, nofx: o.nofx });
   },
 
   /** Quest board says: go. Mirrors lobby.js _begin(). */

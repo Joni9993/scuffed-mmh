@@ -19,6 +19,7 @@ export const STATIONS = [
   { id: 'auftragsbrett', label: 'Brett', panel: 'auftragsbrett', x: -6.2, z: 18.4, r: 4.2, tag: null, npc: { name: 'Brettwart Ole', x: -2.4, z: 20.2, kind: 'clerk' } },
   { id: 'tor', label: 'Abflugtor', panel: null, x: 0, z: 22.6, r: 3.8, tag: 'Abflugtor', npc: null },
   { id: 'spiegel', label: 'Spiegel', panel: 'spiegel', x: 9.6, z: 17.4, r: 2.8, tag: 'Spiegel', npc: null },
+  { id: 'training', label: 'Training', panel: null, x: -11.5, z: 12.0, r: 2.6, tag: 'Trainingspuppe', npc: null },
 ];
 
 /** Solid huts / stalls as rotated boxes: front is local +z (yaw maps local +z to (sin yaw, cos yaw)). h = height (camera clipping). */
@@ -59,6 +60,7 @@ export const CIRCLES = [
   { id: 'crate5', x: 14.2, z: -3.2, r: 0.7, h: 1.3 },
   { id: 'scrap1', x: -4.6, z: -17.2, r: 1.1, h: 1.8 },
   { id: 'scrap2', x: 17.8, z: 0.8, r: 1.0, h: 1.6 },
+  { id: 'dummy', x: -11.5, z: 13.8, r: 0.55, h: 2.4 }, // Trainingspuppe (Station 'training' steht davor)
 ];
 
 /** Ground height: gentle, mostly flat plateau. */

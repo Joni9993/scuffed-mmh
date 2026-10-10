@@ -3,10 +3,12 @@ import { jaggo } from './jaggo.js';
 import { jaggling } from './jaggling.js';
 import { barrotz } from './barrotz.js';
 import { brathalos } from './brathalos.js'; // [M]
+import { dummy } from './dummy.js';
 import { mampfer, mampferbulle, mampferkalb, hoppler } from './mampfer.js'; // [L]
 
 export const monsters = {
   jaggo,
+  dummy, // Trainingspuppe (Übungsplatz)
   jaggling,
   barrotz, // [M]
   brathalos, // [M]

@@ -231,6 +231,11 @@ export class HuntMeta {
   proceed() {
     if (this.phase === 'leaving') return;
     const h = this.hunt;
+    if (h.training) { // Übungsplatz: keine Belohnung, keine Statistik, kein Ergebnis-Bildschirm -> direkt zurück an die Puppe
+      this.phase = 'leaving';
+      queueMicrotask(() => h.app.goto('hub', { fromTraining: true }));
+      return;
+    }
     const result = h.result ?? 'fail';
     this.phase = 'leaving';
     const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, carves: this.carveCount, debug: !!this.loadout.debug };

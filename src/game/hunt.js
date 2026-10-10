@@ -28,6 +28,7 @@ import { spawnFauna } from './fauna.js'; // [L]
 import { createAmbientFauna } from './ambientFauna.js'; // [L]
 import { openStation, closeStation } from '../ui/stations.js';
 import { attachGlitch, GLITCH } from './glitch.js';
+import { newTrain, trainRefill, trainHit, trainTick } from './training.js';
 
 const MAX_KO = 3;
 
@@ -46,6 +47,8 @@ export class Hunt {
     this.seed = Number(opts.seed ?? 1);
     this.rng = createRng(this.seed);
     this.quest = getQuest(opts.quest ?? 'jaggo');
+    this.training = !!this.quest.training; // Übungsplatz (Trainingspuppe im Dorf): solo, keine Belohnung/Statistik, Leisten füllen sich
+    if (this.training) { opts = this.opts = { ...opts, noFauna: true, noAmbient: true, net: null, god: true }; this.train = newTrain(); }
     this.mods = resolveMods([...(this.quest.mutators ?? []), ...(opts.mutators ?? [])]); // GDD 16.5; Brocken lesen ctx.mods.monster
     this.boardMods = resolveMods(opts.mutators ?? []); // nur die vor Abflug gewaehlten (Beute-Bonus; feste Quest-Mutatoren stecken schon in quest.matMul)
     this.timeLimit = this.quest.timeLimit * (this.mods.hunt.timeMul ?? 1);
@@ -93,10 +96,12 @@ export class Hunt {
     this.scene.add(p.mesh, p.rig.shadow);
     this.rig.snap(p.pos, sp.yaw);
 
-    const ms = this.world.monsterSpawns?.[this.quest.monster] ?? this.world.monsterSpawns.default;
+    let ms = this.world.monsterSpawns?.[this.quest.monster] ?? this.world.monsterSpawns.default;
+    if (this.training) ms = { x: sp.x + Math.sin(sp.yaw) * 7, z: sp.z + Math.cos(sp.yaw) * 7 }; // Puppe 7 m vor dem Spawn
     // [P] gather quests have no Brocken (quest.monster = null)
-    this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro ? 'combat' : 'wander', id: this.quest.monster }) : null;
+    this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro || this.training ? 'combat' : 'wander', id: this.quest.monster }) : null;
     if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
+    if (this.training && this.mainMonster) this.mainMonster.rot = Math.atan2(sp.x - ms.x, sp.z - ms.z);
     // [B] ambient Jagglinge packs in zones 1 + 2 (host/solo only; guests get them through the monster snapshots)
     if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
     this.herds = []; // [L] neutral fauna (Mampfer herds, Hoppler groups); host/solo only, ?nofauna=1 disables
@@ -237,6 +242,7 @@ export class Hunt {
     player.afterHit(res, ah);
     this.stats.damage += res.dmg;
     this.stats.hits++;
+    if (this.training) this.#trainHit(res.dmg);
     this.bus.emit('hit', { player, monster, part: hp.part.id, ...res });
   }
 
@@ -246,7 +252,7 @@ export class Hunt {
   /** [P] world effects of items: 'flash' | 'stink' | 'trap' | 'bomb' (net layer mirrors by wrapping this) */
   spawnEffect(kind, params) { return this.effects.spawn(kind, params); }
   /** [P] give up (pause menu) */
-  abandon() { this.#finish('fail', 'Aufgegeben'); this.meta.proceed(); }
+  abandon() { if (this.training) { this.#leave(); return; } this.#finish('fail', 'Aufgegeben'); this.meta.proceed(); }
 
   // ---------- flow
   #onPlayerDown() {
@@ -271,8 +277,10 @@ export class Hunt {
     this.overlay = ov;
   }
   #leave() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
-    for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name); } catch { /* scene missing */ } }
+    for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name, this.training && name === 'hub' ? { fromTraining: true } : undefined); } catch { /* scene missing */ } }
   }
+  #trainHit(dmg) { trainHit(this.train, this.time, dmg); }
+  #trainTick(dt) { trainRefill(this.player, dt); trainTick(this.train, this.time); }
   #toggleLeave() {
     if (this.leaveEl) { this.leaveEl.remove(); this.leaveEl = null; return; }
     if (this.result) return;
@@ -289,6 +297,7 @@ export class Hunt {
     this.leaveEl = ov;
   }
   #countKo() {
+    if (this.training) return;
     this.teamKo++;
     this.hud.center(`Umgekippt! ${this.teamKo}/${MAX_KO}`, 2);
     if (this.teamKo >= MAX_KO) this.#finish('fail', 'Dreimal umgekippt');
@@ -320,7 +329,7 @@ export class Hunt {
     if (v) {
       const ov = document.createElement('div');
       ov.className = 'screen ui-hit';
-      ov.innerHTML = '<div class="panel"><h2>Pause</h2><button class="btn" data-a="go">Weiter</button><button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">Aufgeben</button></div>';
+      ov.innerHTML = `<div class="panel"><h2>Pause</h2><button class="btn" data-a="go">Weiter</button><button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">${this.training ? 'Zurück ins Dorf' : 'Aufgeben'}</button></div>`;
       ov.addEventListener('click', (e) => {
         const a = e.target.dataset?.a;
         if (a === 'go') this.setPaused(false);
@@ -375,7 +384,8 @@ export class Hunt {
       music.setIntensity(this.musicTr.update(computeIntensity({ monster: this.mainMonster, player: lp?.v, glitching: !!lp?.glitching, chain: this.time - this.musicChainT < 5 }), dt));
     }
     this.viz.begin();
-    if (!this.result) this.timeLeft -= dt;
+    if (!this.result && !this.training) this.timeLeft -= dt;
+    if (this.training) this.#trainTick(dt);
     const authoritative = !this.net || this.net.isHost; // [N] guests take quest state from the host
     this.net?.update(dt); // [N]
     if (authoritative && this.timeLeft <= 0 && !this.result) this.#finish('fail', 'Zeit abgelaufen');

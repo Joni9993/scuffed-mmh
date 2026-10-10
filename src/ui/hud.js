@@ -23,6 +23,7 @@ export function createHud(root) {
     <div class="hud-tr">
       <div class="hud-timer">20:00</div>
       <div class="hud-ko">Umgekippt 0/3</div>
+      <div class="hud-train" style="display:none;font:700 1.9vmin/1.35 monospace;color:#ffe9a0;text-shadow:0 0 3px #000,0 0 3px #000;text-align:right;white-space:nowrap"></div>
       <canvas class="mini ui-hit" width="64" height="64"></canvas>
     </div>
     <div class="lockmark"></div>
@@ -33,7 +34,7 @@ export function createHud(root) {
   const q = (s) => el.querySelector(s);
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
-    wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), mini: q('.mini'),
+    wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
   const g = refs.mini.getContext('2d');
@@ -90,8 +91,14 @@ export function createHud(root) {
         const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', konter: 'Konter x1,5' };
         refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k}">${names[k] ?? k}</span>`).join('') : '';
       });
-      set('timer', mmss(Math.max(0, hunt.timeLeft)), (x) => (refs.timer.textContent = x));
-      set('ko', hunt.teamKo, (x) => { refs.ko.textContent = `Umgekippt ${x}/3`; refs.ko.classList.toggle('bad', x >= 2); });
+      if (hunt.training) { // Übungsplatz: kein Zeitlimit, keine KOs, dafür DPS + Combo
+        set('timer', 'Übung', (x) => { refs.timer.textContent = x; refs.ko.style.display = 'none'; refs.train.style.display = ''; });
+        const tr = hunt.train;
+        set('train', `${tr.dps.toFixed(0)}|${tr.combo}|${tr.best}`, () => { refs.train.innerHTML = `Schaden letzte 10 s: ${tr.dps.toFixed(0)} / s<br>Combo-Treffer: ${tr.combo} (Best ${tr.best})`; });
+      } else {
+        set('timer', mmss(Math.max(0, hunt.timeLeft)), (x) => (refs.timer.textContent = x));
+        set('ko', hunt.teamKo, (x) => { refs.ko.textContent = `Umgekippt ${x}/3`; refs.ko.classList.toggle('bad', x >= 2); });
+      }
       const others = hunt.players.filter((o) => o !== p);
       set('party', others.map((o) => `${o.name}${Math.round(o.v.hp)}`).join(','), () => { // [N] name + mini HP bar
         refs.party.innerHTML = others.map((o) => `<div>${o.name} <span class="party-bar"><b style="width:${Math.round((o.v.hp / o.v.maxHp) * 100)}%"></b></span></div>`).join('');
