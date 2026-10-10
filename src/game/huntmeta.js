@@ -9,6 +9,7 @@ import { buildRewards } from '../meta/progression.js';
 import { rollCarve, CARVES_PER_PLAYER, TAIL_CARVES } from '../data/drops.js';
 import { createRng, hashSeed } from '../core/rng.js';
 import { itemName } from '../data/items.js';
+import { showOnboarding } from '../ui/onboarding.js';
 
 export const CARVE_HOLD = 0.8;
 export const CARVE_WINDOW = 45;
@@ -27,6 +28,7 @@ export class HuntMeta {
     this.hud.onSlot((i) => this.inv.select(i));
     this.hud.onDone(() => this.proceed());
     hunt.toast = (t, id) => this.hud.toast(t, id);
+    if (typeof document !== 'undefined' && hunt.app?.ui) this.onboarding = showOnboarding(hunt.app.ui, p.weaponId);
 
     this.rng = createRng(hunt.opts.lootSeed ?? hashSeed(`${hunt.seed}:${Date.now()}`));
     this.corpses = [];
@@ -172,7 +174,7 @@ export class HuntMeta {
     queueMicrotask(() => h.app.goto('results', payload));
   }
 
-  dispose() { this.hud.dispose(); }
+  dispose() { this.onboarding?.close(); this.hud.dispose(); }
 }
 
 export function resolveLoadout(opts) {

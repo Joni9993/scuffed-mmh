@@ -224,11 +224,18 @@ function takeVoice(prio) {
   return best;
 }
 
+let primed = false;
 export const sfx = {
   unlock() {
     if (!ensure()) return;
-    if (ctx.state !== 'running') ctx.resume?.();
+    if (ctx.state !== 'running') { try { ctx.resume?.()?.catch?.(() => {}); } catch { /* ignore */ } }
+    if (!primed) { // iOS: a started (silent) source inside the gesture fully unlocks output
+      primed = true;
+      try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); } catch { /* ignore */ }
+    }
   },
+  /** true when the AudioContext exists and is not running (suspended / interrupted) */
+  get blocked() { return !!ctx && ctx.state !== 'running'; },
   /** master volume 0..1 */
   setVolume(v) { settings.volume = v; if (master) master.gain.value = v; },
   setSfxVolume(v) { settings.sfxVolume = v; if (sfxBus) sfxBus.gain.value = v; },
@@ -322,3 +329,25 @@ if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener(ev, () => sfx.unlock(), { once: false, passive: true });
   }
 }
+
+/**
+ * iOS/Safari: keep the context alive. Resume on every user gesture (not just the first; iOS re-suspends after
+ * calls/lock screen/tab switch) and when the page becomes visible again.
+ */
+export function installAudioAutoResume(doc = typeof document !== 'undefined' ? document : null, win = typeof window !== 'undefined' ? window : null) {
+  if (typeof doc?.addEventListener !== 'function' || typeof win?.addEventListener !== 'function') return () => {};
+  const gesture = () => { if (!ctx || ctx.state !== 'running') sfx.unlock(); };
+  const vis = () => { if (!doc.hidden) { if (ctx && ctx.state !== 'running') sfx.unlock(); } };
+  const evs = ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown', 'click'];
+  for (const e of evs) doc.addEventListener(e, gesture, { passive: true, capture: true });
+  doc.addEventListener('visibilitychange', vis);
+  win.addEventListener('pageshow', vis);
+  win.addEventListener('focus', vis);
+  return () => {
+    for (const e of evs) doc.removeEventListener(e, gesture, { capture: true });
+    doc.removeEventListener('visibilitychange', vis);
+    win.removeEventListener('pageshow', vis);
+    win.removeEventListener('focus', vis);
+  };
+}
+installAudioAutoResume();

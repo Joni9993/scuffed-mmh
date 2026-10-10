@@ -87,7 +87,7 @@ describe('protocol roundtrips', () => {
     expect(d).toEqual({ id: 7, monsterId: 'jaggo', res: { partId: 'head', dmg: 104, elemDmg: 4, blunt: 30, crit: true, weak: true, attackerId: 'p2' } });
   });
   it('knows all message types of the architecture', () => {
-    expect(Object.values(MSG).sort()).toEqual(['atk', 'end', 'ev', 'fx', 'gather', 'hello', 'hit', 'lobby', 'm', 'p', 'ping', 'qb', 'ready', 'start', 'tp'].sort());
+    expect(Object.values(MSG).sort()).toEqual(['atk', 'end', 'ev', 'fx', 'gather', 'hello', 'hit', 'lobby', 'm', 'p', 'ping', 'prof', 'qb', 'ready', 'start', 'tp'].sort());
   });
 });
 
@@ -204,7 +204,8 @@ describe('connection options', () => {
   });
   it('ICE: Google STUN plus optional ?turn= JSON', () => {
     const base = iceServers('');
-    expect(base.every((s) => s.urls.startsWith('stun:stun'))).toBe(true);
+    expect(base.filter((s) => String(s.urls).startsWith('stun:stun')).length).toBe(3);
+    expect(base.some((s) => [].concat(s.urls).some((u) => u.startsWith('turn:openrelay.metered.ca:443?transport=tcp')) && s.username === 'openrelayproject')).toBe(true);
     const t = iceServers('?turn=' + encodeURIComponent(JSON.stringify({ urls: 'turn:t.example:3478', username: 'u', credential: 'c' })));
     expect(t.at(-1)).toMatchObject({ urls: 'turn:t.example:3478', username: 'u' });
     expect(iceServers('?turn=garbage{').length).toBe(base.length);

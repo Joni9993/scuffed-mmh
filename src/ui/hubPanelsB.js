@@ -6,6 +6,7 @@ import { cookMeal } from '../meta/crafting.js';
 import { missing } from '../meta/inventory.js';
 import { questUnlocked } from '../meta/progression.js';
 import { buildLoadout } from '../meta/loadout.js';
+import { A2HS_TEXT } from './a2hs.js';
 import { PLAYER_COLORS, cleanName, importCode, exportCode, SAVE_KEY } from '../meta/save.js';
 import { settings, saveSettings } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
@@ -132,9 +133,10 @@ export function createOptionen(ctx) {
   return {
     render() {
       const on = (b) => (b ? 'an' : 'aus');
-      return `<div class="row"><span class="nm">Auflösung</span><button class="btn small" data-a="res">${settings.res} px</button></div>
+      return `<div class="row"><span class="nm">Auflösung</span><button class="btn small" data-a="res">${settings.autoRes ? 'Auto' : settings.res + ' px'}</button></div>
         <div class="row"><span class="nm">Scanlines</span><button class="btn small" data-a="scan">${on(settings.scanlines)}</button></div>
         <div class="row"><span class="nm">Schadenszahlen</span><button class="btn small" data-a="dmg">${on(settings.dmgNumbers)}</button></div>
+        <div class="row"><span class="nm">Steuerungs-Tipps in der Jagd</span><button class="btn small" data-a="tips">${on(!settings.tipsSeen)}</button></div>
         <div class="sub">Layout (Touch)</div>
         <div class="row"><span class="nm">Tastengröße</span><span class="seg">${['S', 'M', 'L'].map((k) => `<button class="btn small ${settings.btnSize === k ? 'on' : ''}" data-a="bsz" data-v="${k}">${k}</button>`).join('')}</span></div>
         <div class="row"><span class="nm">Linkshänder (spiegeln)</span><button class="btn small" data-a="lefty">${on(settings.leftHand)}</button></div>
@@ -145,6 +147,7 @@ export function createOptionen(ctx) {
         <textarea id="st-code" class="inp code" rows="3" placeholder="Code hier einfügen" spellcheck="false">${esc(code)}</textarea>
         <div class="row"><button class="btn small" data-a="export">Exportieren</button><button class="btn small go" data-a="import">Importieren</button><button class="btn small" data-a="copy">Kopieren</button></div>
         <div class="row"><button class="btn small ${confirm ? 'red' : ''}" data-a="reset">${confirm ? 'Wirklich alles löschen?' : 'Spielstand löschen'}</button></div>
+        <div class="note">${A2HS_TEXT}</div>
         <div class="note">Speicherschlüssel: ${SAVE_KEY}</div>`;
     },
     input(e) {
@@ -155,7 +158,13 @@ export function createOptionen(ctx) {
     click(a, ds) {
       const app = ctx.app;
       if (a !== 'reset') confirm = false;
-      if (a === 'res') { app.renderer.setResolution(settings.res === 480 ? 360 : 480); saveSettings(); }
+      if (a === 'res') { // Auto -> 480 -> 360 -> Auto
+        if (settings.autoRes) { settings.autoRes = false; app.renderer.setResolution(480); }
+        else if (settings.res === 480) app.renderer.setResolution(360);
+        else { settings.autoRes = true; app.renderer.setResolution(480); }
+        saveSettings();
+      }
+      else if (a === 'tips') { settings.tipsSeen = !settings.tipsSeen; settings.tipsShown = 0; saveSettings(); }
       else if (a === 'scan') { settings.scanlines = !settings.scanlines; document.body.classList.toggle('scan', settings.scanlines); saveSettings(); }
       else if (a === 'bsz') { settings.btnSize = ds?.v === 'S' || ds?.v === 'L' ? ds.v : 'M'; saveSettings(); app.touch?.relayout(); }
       else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
