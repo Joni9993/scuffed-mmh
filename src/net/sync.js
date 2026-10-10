@@ -270,6 +270,10 @@ export class HuntNet {
       m.stunT = c.stun ? 1 : 0;
       m.stagT = c.stag ? 1 : 0;
       m.st.rustT = c.rust ? 15 : 0; m.st.scaldT = c.scald ? 10 : 0; // Rost/Verbruht: Host-Zustand (Teile-Faktoren fuer lokale Treffer)
+      if (c.extra) { // Sonderzustand vom Host: def.applySnapExtra oder flache Felder übernehmen (keine Objekte überschreiben)
+        if (m.def.applySnapExtra) m.def.applySnapExtra(m, c.extra);
+        else for (const k in c.extra) if (typeof m[k] !== 'object' && typeof c.extra[k] !== 'object') m[k] = c.extra[k];
+      }
       if (!!c.tired !== m.tired) { m.tired = !!c.tired; this.hunt.bus.emit('monsterTired', { monster: m, on: m.tired }); }
       if ((c.phase ?? 0) > m.phase) { m.phase = c.phase; this.hunt.bus.emit('monsterPhase', { monster: m, idx: m.phase, name: m.def.phases?.[m.phase - 1]?.name, cue: m.def.phases?.[m.phase - 1]?.cue }); }
       if (c.rage !== m.rage) { m.rage = c.rage; this.hunt.bus.emit('rage', { monster: m, on: c.rage }); m.def.onRage?.(m, c.rage); }
@@ -441,6 +445,7 @@ export class HuntNet {
       id: m.id, def: m.def.id, x: m.pos.x, y: m.pos.y, z: m.pos.z, rot: m.rot, state: m.state, hpPct: m.hp / m.maxHp,
       rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, rust: m.st.rustT > 0, scald: m.st.scaldT > 0, phase: m.phase,
       atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.def.neutral ? [] : m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
+      extra: m.def.snapExtra?.(m), // Brocken-Sonderzustand (Gorgo eingegraben, Voltaro Ladung …)
     };
   }
 

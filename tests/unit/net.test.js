@@ -211,3 +211,12 @@ describe('connection options', () => {
     expect(iceServers('?turn=garbage{').length).toBe(base.length);
   });
 });
+
+import { encodeMonster as _encM, decodeMonster as _decM } from '../../src/net/protocol.js';
+describe('Brocken-Snapshot: snapExtra wird übertragen (Phase 3)', () => {
+  it('extra (z. B. Gorgo eingegraben) geht hin und zurück', () => {
+    const s = { id: 'g', def: 'gorgo', x: 1, y: 0, z: 2, rot: 0, state: 'combat', hpPct: 0.5, parts: [], extra: { burrowed: true } };
+    expect(_decM(JSON.parse(JSON.stringify(_encM(s)))).extra).toEqual({ burrowed: true });
+    expect(_decM(_encM({ ...s, extra: undefined })).extra).toBeUndefined();
+  });
+});

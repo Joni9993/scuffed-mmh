@@ -77,12 +77,13 @@ export function encodeMonster(s) {
     a: s.atk || 0, p: s.parts.map((p) => (p.broken ? -1 : p.hp === Infinity ? 0 : Math.round(p.hp))),
   };
   if (s.phase) out.ph = s.phase;
+  if (s.extra && Object.keys(s.extra).length) out.xt = s.extra; // def.snapExtra (klein, flach)
   return out;
 }
 export function decodeMonster(o) {
   return {
     id: o.i, def: o.d, x: o.x, y: o.y, z: o.z, rot: o.r, state: typeof o.s === 'number' ? MONSTER_STATES[o.s] : o.s, hpPct: o.h,
-    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), rust: !!(o.f & MF.RUST), scald: !!(o.f & MF.SCALD), phase: o.ph ?? 0, atk: o.a || 0,
+    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), rust: !!(o.f & MF.RUST), scald: !!(o.f & MF.SCALD), phase: o.ph ?? 0, atk: o.a || 0, extra: o.xt,
     parts: o.p.map((hp) => ({ hp: hp < 0 ? 0 : hp, broken: hp < 0 })),
   };
 }
