@@ -169,7 +169,7 @@ export class HuntNet {
     }
     for (const s of q.monsters) {
       let buf = this.monBuf.get(s.id);
-      if (!buf) { buf = new SnapBuffer({ angleKeys: ['rot'], delay: MONDEFS[s.def]?.neutral ? 0.3 : 0.1 }); // [L] neutrals arrive at 5 Hz this.monBuf.set(s.id, buf); }
+      if (!buf) { buf = new SnapBuffer({ angleKeys: ['rot'], delay: MONDEFS[s.def]?.neutral ? 0.3 : 0.1 }); this.monBuf.set(s.id, buf); } // [L] neutrals arrive at 5 Hz
       buf.push(q.T, { ...s, T: q.T }, nowS());
     }
   }

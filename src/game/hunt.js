@@ -20,6 +20,7 @@ import { Effects } from './effects.js';
 import { Projectiles } from './projectiles.js'; // [W]
 import { HuntNet } from '../net/sync.js'; // [N]
 import { spawnFauna } from './fauna.js'; // [L]
+import { createAmbientFauna } from './ambientFauna.js'; // [L]
 
 const MAX_KO = 3;
 
@@ -86,6 +87,8 @@ export class Hunt {
     if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
     this.herds = []; // [L] neutral fauna (Mampfer herds, Hoppler groups); host/solo only, ?nofauna=1 disables
     if (!opts.noFauna && (!opts.net || opts.net.isHost)) { const f = spawnFauna(this); this.herds = [...f.herds, ...f.groups]; }
+    this.ambientFauna = opts.noFauna ? null : createAmbientFauna(this); // [L] birds / glow bugs / butterflies (decoration only, local)
+    if (this.ambientFauna) this.scene.add(this.ambientFauna.group);
     if (opts.aggro && this.mainMonster) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
@@ -295,6 +298,7 @@ export class Hunt {
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.projectiles.update(dt); // [W]
     this.world.update(dt, this);
+    this.ambientFauna?.update(dt); // [L]
     this.meta.late(dt); // [P]
 
     const p = this.player;
@@ -328,6 +332,7 @@ export class Hunt {
   dispose() {
     this.app.renderer.onResize.delete(this._onResize);
     this.projectiles.dispose(); // [W]
+    this.ambientFauna?.dispose(); // [L]
     this.fx.dispose();
     this.world.dispose?.(); // [K] gather UI, ambient audio
     this.hud.dispose();
