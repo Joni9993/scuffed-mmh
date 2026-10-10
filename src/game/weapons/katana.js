@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
 import { lambert } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
+import { applyMonsterHit, CRIT_MUL, HITSTOP, SHAKE } from '../combat.js';
+import { createCrackPool, createCounters, MAX_CRACKS } from './glitchfx2.js';
 
 // Katana / Ronin-Klinge (GDD 4.4, `kt`): mittleres Tempo, zweihaendig, belohnt Konter-Timing.
 //  A-Kette  Schnitt -> Zugschnitt -> Kreuzhieb (-> Zugschnitt ...)
@@ -354,8 +356,105 @@ const LEVEL_EM = [[0, 0, 0], [0.6, 0.48, 0.02], [0.9, 0.28, 0.02], [1, 0.95, 0.7
 const LEVEL_SHELL = [0, 0.16, 0.3, 0.55];
 const LEVEL_SHELL_COL = ['#000000', '#ffd830', '#ff6a10', '#ffffff'];
 
+// ---------- Waffen-Glitch: Desync-Schnitte (GDD 16.2)
+export const RESYNC_MUL = 1.5;
+const _lv = new THREE.Vector3();
+/** Waehrend der Desync-Schnitte macht ein Treffer ~keinen Sofortschaden (dmgMul ~0 -> 1 Schaden), der echte Wert wandert in den Riss. */
+const desyncOn = (p) => !!(p?.glitching && p._ds);
+
+/** Alle Risse gleichzeitig ausloesen: je (Brocken, Teil) EIN Sammeltreffer ueber den normalen Treffer-Pfad (Netz/Gaeste), keine Energie. */
+export function resync(p) {
+  const ds = p._ds, ctx = p.ctx;
+  if (!ds || !ds.cracks.length) return 0;
+  const groups = new Map();
+  for (const c of ds.cracks) {
+    const k = c.monster.id + '|' + c.partId;
+    let g = groups.get(k);
+    if (!g) groups.set(k, g = { monster: c.monster, partId: c.partId, raw: 0, pos: c.pos });
+    g.raw += c.dmg;
+  }
+  ds.cracks = [];
+  ds.pool?.burst();
+  let total = 0;
+  for (const g of groups.values()) {
+    if (!g.monster.alive) continue;
+    let left = Math.max(1, Math.round(g.raw * RESYNC_MUL));
+    while (left > 0) { // Netz: ein Treffer max. 5000 (protocol.MAX_HIT_DMG)
+      const dmg = Math.min(left, 4900); left -= dmg;
+      const res = { dmg, elemDmg: 0, elemBy: {}, crit: false, weak: false, zone: 1, blunt: 0, stunEligible: false, wucht: 0, partId: g.partId, hitstop: HITSTOP.heavy, shake: SHAKE.heavy, attackerId: p.id };
+      if (ctx.glitchSys) ctx.glitchSys.hitting = p;
+      applyMonsterHit(g.monster, res, ctx);
+      if (ctx.glitchSys) ctx.glitchSys.hitting = null;
+      total += dmg;
+      if (ctx.stats) { ctx.stats.damage = (ctx.stats.damage ?? 0) + dmg; ctx.stats.glitchDmg = (ctx.stats.glitchDmg ?? 0) + dmg; }
+      ctx.fx?.number?.({ x: g.pos.x, y: g.pos.y + 0.8, z: g.pos.z }, dmg, 'gbig');
+    }
+    ctx.fx?.spark?.(g.pos, 30, '#ff2a3a', 8);
+  }
+  if (total > 0) {
+    p.hitstop = Math.max(p.hitstop ?? 0, HITSTOP.heavy); // Hitstop 120 ms
+    ctx.fx?.shake?.(0.5, 0.3); ctx.fx?.flash?.('rgba(255,30,50,.35)', 0.25); ctx.fx?.glitchTear?.(0.3);
+    ctx.bus?.emit?.('sfx', { name: 'heavy', pos: p.pos });
+  }
+  return total;
+}
+
+const glitch = {
+  name: 'Desync-Schnitte',
+  onStart(p) {
+    const ctx = p.ctx;
+    const ds = p._ds = { cracks: [], pool: null, counters: null };
+    if (ctx?.scene) {
+      ds.pool = p._dsPool ??= createCrackPool(MAX_CRACKS);
+      if (typeof document !== 'undefined') ds.counters = p._dsCounters ??= createCounters(3);
+      if (ds.counters) for (const c of ds.counters.list) ctx.scene.add(c.sp);
+    }
+  },
+  onEnd(p) {
+    resync(p); // Modus-Ende loest alle Risse aus
+    const ds = p._ds;
+    if (ds) { ds.pool?.clear(); ds.counters?.list.forEach((c) => { c.sp.visible = false; c.sp.removeFromParent(); }); }
+    p._ds = null;
+  },
+  tick(p, dt) {
+    const ds = p._ds;
+    if (!ds) return;
+    if (p.ctx?.input?.b?.special?.pressed && ds.cracks.length) resync(p); // "RESYNC": Spezial-Taste
+    if (ds.pool) ds.pool.update(p.time ?? 0, dt);
+    if (ds.counters) { // Zaehler ueber dem Brocken
+      const seen = new Map();
+      for (const c of ds.cracks) seen.set(c.monster, (seen.get(c.monster) ?? 0) + 1);
+      let slot = 0;
+      for (const [m, n] of seen) {
+        if (slot >= 3) break;
+        let top = m.pos.y + 2;
+        for (const hp of m.hurtParts?.() ?? []) top = Math.max(top, hp.sphere.y + hp.sphere.r);
+        ds.counters.set(slot++, { x: m.pos.x, y: top + 0.8, z: m.pos.z }, 'x' + n + ' RESYNC');
+      }
+      ds.counters.hideFrom(slot);
+    }
+  },
+  onHit(p, res, monster) {
+    const ds = p._ds;
+    if (!ds || !monster) return;
+    const w = p.weapon, ctx = p.ctx;
+    const mv = w?.activeHits?.()[0]?.hit.mv ?? 60;
+    const dmg = (p.stats?.power ?? 10) * (mv / 100) * (res.zone ?? 1) * (res.crit ? CRIT_MUL : 1)
+      * (1 + SCHLIFF_DMG * schliffLevel(w)) * (p.dmgMul ?? 1) * (ctx?.mods?.player?.dmgMul ?? 1) * (p.glitchDmgMul ?? 1) + (res.elemDmg ?? 0);
+    const hp = monster.hurtParts?.().find((e) => e.part.id === res.partId);
+    const pos = hp ? { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z } : { x: monster.pos.x, y: monster.pos.y + 1, z: monster.pos.z };
+    if (ds.cracks.length >= MAX_CRACKS) { ds.cracks[ds.cracks.length - 1].dmg += dmg; return; } // Cap: Schaden bleibt erhalten, kein neuer Riss
+    const node = hp?.part.sph?.[0]?.node;
+    let local = pos;
+    if (node?.worldToLocal) local = node.worldToLocal(_lv.set(pos.x, pos.y, pos.z));
+    const crack = ds.pool?.spawn(node, local, 0.8 + Math.min(0.8, dmg / 150)) ?? null;
+    ds.cracks.push({ monster, partId: res.partId, dmg, pos, crack });
+  },
+};
+
 export const katana = {
   id: 'kt',
+  glitch,
   name: 'Katana',
   tierMesh: true,
   // A: Tipp (Release < 0,2 s) / Halten = Ziehschnitt.  B: Tipp sofort bei Druck (Konter-Reaktionszeit), holdB nach 0,3 s = Mondsichel
@@ -385,7 +484,7 @@ export const katana = {
     },
   },
   /** Schliff: +8 % Schaden je Stufe (hunt.playerHit) */
-  dmgMul: (w) => 1 + SCHLIFF_DMG * schliffLevel(w),
+  dmgMul: (w) => (desyncOn(w.hooks.player) ? 1e-4 : 1 + SCHLIFF_DMG * schliffLevel(w)), // Desync: kein Sofortschaden
   poseLevel: (w) => (w.charging ? w.chargeLevel : schliffLevel(w)),
   onUpdate(w, dt) {
     if ((w.data.schliff | 0) > 0) {
