@@ -203,6 +203,22 @@ registerTexture('kt_char', (g, n, rnd) => { // Brathalos: charred scales with em
   g.fillStyle = '#ff6a1a'; for (let i = 0; i < 6; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 2);
 });
 
+registerTexture('kt_kessel', (g, n, rnd) => { // Kroll: Kesselstahl, rostig, genietet
+  g.fillStyle = '#6a5a52'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#7a4a2a' : '#4a3a34'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#9a8a7a'; for (let y = 3; y < n; y += 6) { g.fillRect(2, y, 1, 1); g.fillRect(n - 3, y, 1, 1); }
+});
+registerTexture('kt_slag', (g, n, rnd) => { // Gorgo: Schlacke mit Glutadern
+  g.fillStyle = '#2a2420'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#3a322c' : '#1a1512'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#ff6a1a'; for (let i = 0; i < 8; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 3);
+});
+registerTexture('kt_copper', (g, n, rnd) => { // Voltaro: Kupfer mit blauen Funkenpunkten
+  g.fillStyle = '#b8642a'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#c8783a' : '#8a4a20'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#7ae0ff'; for (let i = 0; i < 5; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1);
+});
+
 // Per-tier look. len = blade length (m), w = blade width, curve = sori, tipW = kissaki width factor.
 const LOOKS = {
   1: { tex: 'kt_rust', len: 0.95, w: 0.13, curve: 0.05, tsuka: '#6a5a44', wrap: '#4a3a2a', tsuba: '#6a4a30', saya: '#6a4a2a', cord: '#7a6a4a' },
@@ -210,8 +226,14 @@ const LOOKS = {
   3.1: { tex: 'kt_fang', len: 1.1, w: 0.17, curve: 0.08, tsuka: '#c0501a', wrap: '#ff9a3a', tsuba: '#ff8a2a', saya: '#3a30a0', cord: '#ff5a1a' },
   3.2: { tex: 'kt_mud', len: 1.06, w: 0.19, curve: 0.04, tsuka: '#4a3a24', wrap: '#6a7a3a', tsuba: '#5a4a32', saya: '#6a5a3a', cord: '#6a7a3a' },
   4: { tex: 'kt_char', len: 1.22, w: 0.19, curve: 0.09, tsuka: '#1a0e0c', wrap: '#8a1a10', tsuba: '#c0301a', saya: '#3a1a14', cord: '#ff6a1a' },
+  '5k': { tex: 'kt_kessel', len: 1.25, w: 0.21, curve: 0.06, tsuka: '#3a2a22', wrap: '#7a4a2a', tsuba: '#8a4a2a', saya: '#4a3a34', cord: '#d89a50' },
+  '5g': { tex: 'kt_slag', len: 1.28, w: 0.2, curve: 0.09, tsuka: '#1a1512', wrap: '#5a2412', tsuba: '#3a3430', saya: '#241f1c', cord: '#ff6a1a' },
+  '5v': { tex: 'kt_copper', len: 1.28, w: 0.19, curve: 0.08, tsuka: '#1a1e2a', wrap: '#2a3a5a', tsuba: '#b8642a', saya: '#1a1e2a', cord: '#5ad0ff' },
+  6: { tex: 'kt_copper', len: 1.36, w: 0.21, curve: 0.1, tsuka: '#10141e', wrap: '#5ad0ff', tsuba: '#e89a50', saya: '#10141e', cord: '#fff0a0' },
 };
-const lookFor = (tier, branch) => LOOKS[tier >= 4 ? 4 : tier === 3 ? (branch === 'b' ? 3.2 : 3.1) : tier] ?? LOOKS[1];
+/** Stufe 5/6 -> Ast-Key ('k' Kroll, 'g' Gorgo, 'v' Voltaro; Stufe 6 immer Voltaro-Funkenfuerst). */
+export const katanaRwBranch = (tier, branch) => (tier >= 6 ? 'v' : branch === 'g' || branch === 'v' ? branch : 'k');
+const lookFor = (tier, branch) => LOOKS[tier >= 6 ? 6 : tier === 5 ? `5${katanaRwBranch(5, branch)}` : tier >= 4 ? 4 : tier === 3 ? (branch === 'b' ? 3.2 : 3.1) : tier] ?? LOOKS[1];
 
 const box = (w, h, d, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; };
 const cone = (r, h, seg, mat, x, y, z, rx = 0, rz = 0) => { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat); m.position.set(x, y, z); m.rotation.set(rx, 0, rz); return m; };
@@ -294,7 +316,7 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
     for (const [x, y] of [[0.12, 0.2], [-0.1, 0.28], [0.05, 0.44]]) hilt.add(cone(0.035, 0.12, 4, shock, x, y, 0.05, 0, x > 0 ? -0.5 : 0.5));
     for (const s of [0.35, 0.75]) { const f = bladeFrame(look, s); bladeG.add(cone(0.03, 0.1, 4, shock, 0.03, f.y, f.z + look.w * 0.6)); }
     ex.push(shock);
-  } else { // Brathalos-Glutkatana: charred blade with ember vein, wing-spike guard, fins, glow
+  } else if (tier === 4) { // Brathalos-Glutkatana: charred blade with ember vein, wing-spike guard, fins, glow
     const ember = em('#ff7a1a'), hot = em('#ffd060');
     for (let i = 0; i < SEG; i++) { const e = edges[i]; const v = box(0.034, e.f1.y !== e.f0.y ? Math.hypot(e.f1.y - e.f0.y, e.f1.z - e.f0.z) : 0.2, 0.02, i % 2 ? ember : hot, 0, e.mid.y, e.mid.z); v.rotation.x = e.rx; bladeG.add(v); }
     const fin = lambert({ map: tex('kt_char', { size: 16 }) });
@@ -309,6 +331,38 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
     bladeG.add(halo);
     root.userData.halo = halo;
     ex.push(ember, hot);
+  }
+
+  else { // Stufe 5/6 (Rostwerke): Kroll = Kesselstahl + Nieten, Gorgo = Schlacke-Glut, Voltaro = Kupfer + Funken (Stufe 6 staerker)
+    const key = katanaRwBranch(tier, branch), big = tier >= 6 ? 1.5 : 1;
+    const bright = em(key === 'g' ? '#ff6a1a' : key === 'v' ? '#7ae0ff' : '#ffb050'), hot = em(key === 'v' ? '#fff0a0' : '#ffd060');
+    const plate = lambert({ color: key === 'k' ? '#8a4a2a' : key === 'g' ? '#3a3430' : '#c8783a' });
+    if (key === 'k') {
+      for (let i = 0; i < 6; i++) { const f = bladeFrame(look, 0.1 + i * 0.15); bladeG.add(box(0.07, 0.07, 0.05, plate, 0, f.y, f.z - look.w * 0.5 - 0.01)); bladeG.add(box(0.02, 0.025, 0.03, hot, 0.04, f.y, f.z + 0.02)); } // Panzerplatten + Nieten
+      guard.scale.set(2.2, 1.8, 1.4);
+      hilt.add(box(0.2, 0.1, 0.22, plate, 0, -0.2, 0));
+      for (const sx of [-1, 1]) hilt.add(box(0.05, 0.05, 0.05, hot, sx * 0.16, -0.15, 0.1));
+      ex.push(hot);
+    } else {
+      for (let i = 0; i < SEG; i++) { const e = edges[i]; const v = box(0.034, Math.hypot(e.f1.y - e.f0.y, e.f1.z - e.f0.z), 0.02, i % 2 ? bright : hot, 0, e.mid.y, e.mid.z); v.rotation.x = e.rx; bladeG.add(v); }
+      const fins = key === 'g' ? 6 : 4;
+      for (let i = 0; i < fins; i++) { const f = bladeFrame(look, 0.1 + i * (0.8 / fins)); bladeG.add(cone(0.05 * big, 0.2 * big, 3, key === 'g' ? plate : bright, 0, f.y + 0.04, f.z + look.w * 0.7, 0.7, 0)); }
+      guard.scale.set(2.4, 1.5, 1.3);
+      for (const sx of [-1, 1]) {
+        hilt.add(cone(0.05 * big, 0.3 * big, 3, key === 'g' ? plate : bright, sx * 0.24, -0.08, 0, 0, -sx * 1.0));
+        if (key === 'v') for (let j = 0; j < 3; j++) hilt.add(box(0.025, 0.1, 0.025, hot, sx * (0.28 + j * 0.03), -0.05 - j * 0.1, 0.02 * (j % 2 ? 1 : -1))); // Funkenzacken
+      }
+      hilt.add(cone(0.06, 0.18, 4, bright, 0, 0.5, 0));
+      const halo = new THREE.Mesh(new THREE.BoxGeometry(0.2 * big, look.len * 1.05, 0.05), new THREE.MeshBasicMaterial({ color: key === 'g' ? '#ff5a10' : '#5ad8ff', transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      halo.position.set(0, -0.16 - look.len * 0.5, -look.curve * 0.5);
+      bladeG.add(halo);
+      root.userData.halo = halo;
+      ex.push(bright, hot);
+    }
+    if (tier >= 6) { // Funkenfuerst: Funkenkranz um die Klinge
+      for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.15 + i * 0.22); bladeG.add(cone(0.035, 0.22, 4, hot, (i % 2 ? 1 : -1) * 0.08, f.y, f.z + look.w * 0.5, 0, (i % 2 ? -1 : 1) * 0.9)); }
+      hilt.add(box(0.05, 0.05, 0.05, hot, 0, 0.55, 0));
+    }
   }
 
   // Schliff glow shell (additive, scales with the level)
@@ -507,7 +561,7 @@ export const katana = {
     const e = [0, 1, 2].map((i) => (LEVEL_EM[lo][i] + (LEVEL_EM[hi][i] - LEVEL_EM[lo][i]) * f) * pulse);
     // Brathalos: always glowing embers
     const t4 = d.tier >= 4;
-    const emb = t4 ? 0.12 + 0.06 * Math.sin(d.t * 9) : 0;
+    const emb = t4 ? 0.12 + (d.tier >= 6 ? 0.14 : 0) + 0.06 * Math.sin(d.t * 9) : 0; // Funkenfuerst (6) staerker
     d.bladeMat.emissive.setRGB(Math.min(1, e[0] + emb), Math.min(1, e[1] + emb * 0.35), Math.min(1, e[2] + emb * 0.05));
     d.mSpine.emissive.copy(d.bladeMat.emissive);
     d.bladeMat.color.setScalar(1 - 0.28 * d.k);

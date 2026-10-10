@@ -6,6 +6,9 @@ const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Mat
  * Compact HUD (GDD 10, max ~15 % of the screen). Everything is sized in vmin (see ui.css).
  * Call update(hunt) once per rendered frame; DOM is only touched when values change.
  */
+/** Minimap-Symbol eines entdeckten Grossmonsters: burrow (Gorgo eingegraben, auch auf Gaesten per Snapshot) oder dot. */
+export const minimapIcon = (m) => (m?.burrowed ? 'burrow' : 'dot');
+
 export function createHud(root) {
   const el = document.createElement('div');
   el.id = 'hud';
@@ -217,6 +220,13 @@ export function createHud(root) {
       if (d < 30 || m.discovered || (m.state && m.state !== 'wander' && m.state !== 'sleep')) mm.seen.add(m);
       if (mm.seen.has(m)) {
         if (m.minor) { if (d < 45 || m.discovered) { g.fillStyle = m.def.neutral ? '#9ae06a' : '#ff9a3a'; g.fillRect(sx(m.pos.x) - 1, sz(m.pos.z) - 1, px - 1, px - 1); } continue; }
+        if (minimapIcon(m) === 'burrow') { // Gorgo eingegraben: pulsierende orange Welle statt Brocken-Punkt
+          const ph = (performance.now() / 900) % 1, cx = sx(m.pos.x), cy = sz(m.pos.z), rr = px + 1 + ph * (big ? 7 : 5);
+          g.strokeStyle = `rgba(255,150,40,${(1 - ph).toFixed(2)})`; g.lineWidth = big ? 2 : 1;
+          g.beginPath(); g.arc(cx, cy, rr, 0, 6.3); g.stroke();
+          g.strokeStyle = '#ff8a2a'; g.beginPath(); g.arc(cx, cy, px, 0, 6.3); g.stroke();
+          continue;
+        }
         if (blink) { g.fillStyle = '#000'; g.fillRect(sx(m.pos.x) - px - 1, sz(m.pos.z) - px - 1, px * 2 + 2, px * 2 + 2); g.fillStyle = '#ff3b3b'; g.fillRect(sx(m.pos.x) - px, sz(m.pos.z) - px, px * 2, px * 2); }
       } else if (!m.minor && m === hunt.mainMonster) {
         const f = mm.first.get(m), zid = w.zoneAt?.(f.x, f.z), zc = w.zones?.find((z) => z.id === zid) ?? f;

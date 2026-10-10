@@ -213,7 +213,7 @@ const PRIO = { windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4,
 const MIN_GAP = { windup: 0.05, step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
 
 // ------------------------------------------------------------------ ambient (per zone)
-const amb = { built: false, wind: null, cricket: null, rumble: null, bubbleG: null, w: [0, 0, 0, 0], nextBubble: 0, nextCrackle: 0, on: true };
+const amb = { built: false, wind: null, cricket: null, rumble: null, bubbleG: null, w: [0, 0, 0, 0], nextBubble: 0, nextCrackle: 0, on: true, windBase: 0, gust: 0 };
 
 function buildAmbient() {
   if (amb.built || !ctx) return;
@@ -337,6 +337,15 @@ export const sfx = {
     return () => offs.forEach((o) => o?.());
   },
 
+  /** Windboee (Turbinenkrone): hebt das Wind-Ambient an (0..1), Zone-Mix bleibt Basis. */
+  setGust(g) {
+    if (!ctx || ctx.state !== 'running' || !amb.wind) return;
+    g = Math.round(g * 20) / 20;
+    if (g === amb.gust) return;
+    amb.gust = g;
+    amb.wind.gain.setTargetAtTime(amb.windBase + g * 0.22, ctx.currentTime, 0.25);
+  },
+
   /** Ambient mix from the 4 zone blend weights (call every frame; cheap). */
   setAmbient(w) {
     if (!ctx || ctx.state !== 'running') return;
@@ -348,7 +357,8 @@ export const sfx = {
       for (let i = 0; i < 4; i++) amb.w[i] = w[i];
       let wi = 0, ru = 0, cr = 0;
       for (let i = 0; i < 4; i++) { wi += AMB_WIND[i] * w[i]; ru += AMB_RUMBLE[i] * w[i]; cr += AMB_CRICKET[i] * w[i]; }
-      amb.wind.gain.setTargetAtTime(wi, now, 0.5);
+      amb.windBase = wi;
+      amb.wind.gain.setTargetAtTime(wi + (amb.gust || 0) * 0.22, now, 0.5);
       amb.rumble.gain.setTargetAtTime(ru, now, 0.5);
       amb.cricket.gain.setTargetAtTime(cr, now, 0.5);
       amb.on = true;

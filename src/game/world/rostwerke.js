@@ -14,6 +14,7 @@ import {
 } from './rostwerkeProps.js';
 import { createGatherables, BUILDERS } from './gatherables.js';
 import { createHazards } from './hazards.js';
+import { createWindSchedule, windPush } from './turbinenWind.js';
 
 export const TERRAIN_SEED = 1;
 
@@ -364,7 +365,7 @@ export function createRostwerke({ seed = 1 } = {}) {
   group.add(gather.group);
 
   // ================================================================ ambient particles: steam, sparks, toxic bubbles, wind dust (one Points object)
-  const PN = 150, pRng = createRng(seed * 977 + 5);
+  const PN = 190, pRng = createRng(seed * 977 + 5);
   const pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3);
   const parts = [];
   const spawnP = (p) => {
@@ -396,20 +397,24 @@ export function createRostwerke({ seed = 1 } = {}) {
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
   pg.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-  const points = new THREE.Points(pg, new THREE.PointsMaterial({ size: 3.5, sizeAttenuation: false, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const pointsMat = new THREE.PointsMaterial({ size: 3.5, sizeAttenuation: false, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const points = new THREE.Points(pg, pointsMat);
   points.frustumCulled = false;
   points.name = 'ambient-particles';
   group.add(points);
+  const wind = createWindSchedule(seed), windSt = { warn: 0, gust: 0, dx: 1, dz: 0, active: false };
   const stepParticles = (dt) => {
+    pointsMat.size = 3.5 + windSt.warn * 1.5 + windSt.gust * 2.5;
     for (let i = 0; i < PN; i++) {
       const p = parts[i];
       p.t += dt;
       if (p.t >= p.life) { spawnP(p); p.t = 0; }
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      if (p.kind === 3 && windSt.gust > 0) { p.x += windSt.dx * 24 * windSt.gust * dt; p.z += windSt.dz * 24 * windSt.gust * dt; } // Staub in Windrichtung
       if (p.kind === 1) p.vy -= 6 * dt;
       const k = Math.sin((p.t / p.life) * Math.PI), c = PCOL[p.kind];
       pPos[i * 3] = p.x; pPos[i * 3 + 1] = p.y; pPos[i * 3 + 2] = p.z;
-      const br = p.kind === 0 ? 0.55 * k : k;
+      const br = p.kind === 0 ? 0.55 * k : p.kind === 3 ? k * (0.7 + windSt.warn * 0.5 + windSt.gust * 0.6) : k;
       pCol[i * 3] = c[0] * br; pCol[i * 3 + 1] = c[1] * br; pCol[i * 3 + 2] = c[2] * br;
     }
     pg.attributes.position.needsUpdate = true; pg.attributes.color.needsUpdate = true;
@@ -488,6 +493,7 @@ export function createRostwerke({ seed = 1 } = {}) {
     setGatherState: gather.setState,
     minimap: { size: MM, data: mmData },
     layout: L,
+    windAt: (t) => wind.at(t),
     mesh: group,
     gather,
     stats() {
@@ -552,6 +558,15 @@ export function createRostwerke({ seed = 1 } = {}) {
       if (zoneStable > (lastZone === 0 ? 0 : 0.35)) { lastZone = z; zoneStable = 0; hunt.bus.emit('zoneEnter', { zone: z, name: ZONES[z - 1].name }); }
     } else zoneStable = 0;
     sfx.setAmbient?.(wv);
+    // Turbinen-Wind: Boeen nur in Zone 4, deterministisch aus Seed + Hunt-Zeit; schiebt den lokalen Pirscher (kein Schaden, Rolle frei)
+    Object.assign(windSt, wind.at(hunt.time ?? t));
+    const inCrown = z === 4;
+    sfx.setGust?.(inCrown ? Math.max(windSt.warn * 0.4, windSt.gust) : 0);
+    const push = windPush(windSt, pl, zoneAt);
+    if (push && pl.state !== 'ko' && pl.state !== 'pinned' && pl.state !== 'down') {
+      pl.pos.x += push.x * dt; pl.pos.z += push.z * dt;
+      world.collide(pl.pos, pl.radius);
+    }
 
     gather.update(dt, hunt);
     hazards.update(dt, hunt);
