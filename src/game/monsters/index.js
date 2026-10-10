@@ -4,6 +4,7 @@ import { jaggling } from './jaggling.js';
 import { barrotz } from './barrotz.js';
 import { brathalos } from './brathalos.js'; // [M]
 import { gorgo } from './gorgo.js'; // [Gorgo]
+import { voltaro } from './voltaro.js'; // [V]
 import { dummy } from './dummy.js';
 import { mampfer, mampferbulle, mampferkalb, hoppler } from './mampfer.js'; // [L]
 import { kroll } from './kroll.js'; // [Rostwerke]
@@ -15,6 +16,7 @@ export const monsters = {
   jaggling,
   barrotz, // [M]
   brathalos, // [M]
+  voltaro, // [V]
   mampfer, mampferbulle, mampferkalb, hoppler, // [L] neutral fauna
   kroll, // [Rostwerke]
 };
