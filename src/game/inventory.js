@@ -69,6 +69,25 @@ export class HuntInventory {
     return this.selectedId;
   }
 
+  /** Camp chest: take consumables/ammo from the box into the brought pool (caller checked the box stock). -> how many fit */
+  bring(id, n = 1) {
+    if (!carryable(id) || n <= 0) return 0;
+    if (!this.bar.includes(id) && this.bar.length >= BAR_MAX) return 0; // would vanish from the bar
+    const k = Math.max(0, Math.min(n, ITEMS[id].max - this.count(id)));
+    if (k > 0) { this.brought[id] = (this.brought[id] ?? 0) + k; this.brought0[id] = (this.brought0[id] ?? 0) + k; this.#toBar(id); }
+    return k;
+  }
+  /** Camp chest: give brought items back (only the brought pool; free/loot stay). Spent count (brought0 - brought) is unchanged. */
+  unbring(id, n = 1) {
+    const k = Math.min(Math.max(0, n), this.brought[id] ?? 0);
+    if (k > 0) {
+      this.brought[id] -= k; this.brought0[id] -= k;
+      if (!this.brought[id]) delete this.brought[id];
+      if (!this.brought0[id]) delete this.brought0[id];
+    }
+    return k;
+  }
+
   /** Spent from the box stock -> { id: n } (for Hub accounting). */
   used() {
     const out = {};

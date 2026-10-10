@@ -2,6 +2,7 @@
 import { getQuest } from '../data/quests.js';
 import { rollReward, rollBreak } from '../data/drops.js';
 import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
+import { applyChestResult } from './huntChest.js';
 
 export const MAX_JR = 4;
 
@@ -19,7 +20,7 @@ export function bump(map, id, n = 1) {
  *  used: {id:n} consumables spent from the box, rng: seeded rng for the drop rolls.
  * Failure keeps only what was gathered. Gather quests hand in the target items on success.
  */
-export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks = [], used = {}, rng }) {
+export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks = [], used = {}, chest = null, rng }) {
   const win = result === 'win';
   const matMul = quest.matMul ?? 1;
   const parts = { gathered: { ...gathered }, carved: win ? { ...carved } : {}, breaks: {}, reward: {}, handedIn: {} };
@@ -36,7 +37,7 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
   }
   const items = {};
   for (const m of [parts.gathered, parts.carved, parts.breaks, parts.reward]) for (const [id, n] of Object.entries(m)) bump(items, id, n);
-  return { quest: quest.id, result, schrott: win ? quest.reward : 0, items, parts, used: { ...used } };
+  return { quest: quest.id, result, schrott: win ? quest.reward : 0, items, parts, used: { ...used }, chest: chest ?? null };
 }
 
 /**
@@ -44,6 +45,7 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
  * -> { schrott, added, sold, overflowSchrott, jrUp: newJr|null, firstClear }
  */
 export function applyHuntResult(save, quest, rewards) {
+  applyChestResult(save, rewards.chest); // camp chest: crafted/spent stock + gear first, so crafted-and-used items net out
   for (const [id, n] of Object.entries(rewards.used ?? {})) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
   const r = boxAddAll(save, rewards.items ?? {});
   addSchrott(save, rewards.schrott ?? 0);

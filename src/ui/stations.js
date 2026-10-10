@@ -7,6 +7,7 @@ import { sfx } from '../audio/sfx.js';
 import { esc } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { createSchmiede, createTruhe, createLaden } from './hubPanelsA.js';
+import { createHuntTruhe } from './huntTruhe.js';
 import { createKochtopf, createBrett, createSpiegel, createOptionen } from './hubPanelsB.js';
 
 export const STATIONS = {
@@ -16,9 +17,10 @@ export const STATIONS = {
   kochtopf: { title: 'Kochtopf', npc: 'Koch Brösel', icon: 'cake', make: createKochtopf },
   auftragsbrett: { title: 'Auftragsbrett', npc: 'Brettwart Ole', icon: 'trap', make: createBrett },
   spiegel: { title: 'Spiegel', npc: 'Der Spiegel', icon: 'gem', make: createSpiegel },
+  hunttruhe: { title: 'Lager-Truhe', npc: 'Deine Truhe (Lager)', icon: 'plate', make: createHuntTruhe }, // in a hunt only (adapter = HuntChest)
   optionen: { title: 'Optionen', npc: 'Kleingedrucktes', icon: 'bone', make: createOptionen },
 };
-export const STATION_IDS = Object.keys(STATIONS);
+export const STATION_IDS = Object.keys(STATIONS).filter((id) => id !== 'hunttruhe'); // town stations
 
 let current = null;
 
