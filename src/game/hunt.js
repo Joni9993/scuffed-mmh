@@ -21,6 +21,7 @@ import { music, computeIntensity, IntensityTracker } from '../audio/music.js';
 // [P] meta layer: loadout, inventory, items, carving, end flow
 import { HuntMeta, resolveLoadout } from './huntmeta.js';
 import { Effects } from './effects.js';
+import { createInteractables } from './world/interactables.js'; // Rostwerke: Ventil/Kran/Blitzableiter
 import { Projectiles } from './projectiles.js'; // [W]
 import { HuntNet } from '../net/sync.js'; // [N]
 import { makeGear } from '../data/gearlook.js'; // [G]
@@ -145,6 +146,8 @@ export class Hunt {
     app.touch?.setVisible(true);
     // [P]
     this.effects = new Effects(this);
+    this.groundingZones = []; // Erdungsstab: [{ x, z, r, until }] (until in hunt.time), Voltaro ignoriert Pirscher darin
+    this.interact = createInteractables(this);
     this.meta = new HuntMeta(this, lo);
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
     if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); this.applyCoopScale(); }
@@ -248,7 +251,7 @@ export class Hunt {
 
   // Hooks for the meta agent (items, gathering, carving). Default: nothing.
   onItem(player, action, slot) { this.meta?.onItem(player, action, slot); } // [P]
-  onContext(player, kind) { this.meta?.onContext(player, kind); } // [P]
+  onContext(player, kind) { if (player === this.player && this.interact?.onContext(player, kind)) return; this.meta?.onContext(player, kind); } // [P]
   /** [P] world effects of items: 'flash' | 'stink' | 'trap' | 'bomb' (net layer mirrors by wrapping this) */
   spawnEffect(kind, params) { return this.effects.spawn(kind, params); }
   /** [P] give up (pause menu) */
@@ -400,6 +403,8 @@ export class Hunt {
     this.world.update(dt, this);
     this.ambientFauna?.update(dt); // [L]
     this.meta.late(dt); // [P]
+    this.interact.update(dt);
+    if (this.groundingZones.length) this.groundingZones = this.groundingZones.filter((z) => z.until > this.time);
 
     const p = this.player;
     this.fx.update(dt);
@@ -440,7 +445,7 @@ export class Hunt {
     this.fx.dispose();
     this.world.dispose?.(); // [K] gather UI, ambient audio
     this.hud.dispose();
-    this.meta?.dispose(); this.effects?.dispose(); // [P]
+    this.meta?.dispose(); this.effects?.dispose(); this.interact?.dispose(); // [P]
     this.overlay?.remove();
     this.pauseEl?.remove();
     this.leaveEl?.remove(); // [N]

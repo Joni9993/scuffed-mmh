@@ -11,5 +11,9 @@ export const RECIPES = {
   giftspitze: { id: 'giftspitze', out: 10, cost: { stinkmorchel: 1, altknochen: 1 } },
   grillsteak: { id: 'grillsteak', out: 1, cost: { rohfleisch: 1, glutbrocken: 1 } }, // [L]
   bummspitze: { id: 'bummspitze', out: 10, cost: { schrotterz: 1, glutbrocken: 1 } },
+  rostbombe: { id: 'rostbombe', out: 1, cost: { rostkaefer: 1, schlacke: 1 } }, // Rostwerke
+  rostspitze: { id: 'rostspitze', out: 10, cost: { rostkaefer: 1, altknochen: 1 } },
+  erdungsstab: { id: 'erdungsstab', out: 1, cost: { kupferdraht: 2, altknochen: 1 } },
+  kuehlbrause: { id: 'kuehlbrause', out: 1, cost: { blaublatt: 1, sprudelwasser: 1, rostkaefer: 1 } },
 };
 export const RECIPE_ORDER = Object.keys(RECIPES);

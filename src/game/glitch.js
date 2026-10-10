@@ -12,6 +12,7 @@ export const GLITCH = {
   DMG_MUL: 1.3,
   FREEZE: 0.2, // Eintritts-Frame-Freeze (s)
   GAIN: { counter: 35, katana: 25, partBreak: 15, hit: 1, perHpPct: 16 }, // perHpPct: Energie je 1 % Brocken-HP Schaden (Koop: je Spieler-Anteil) → ~25 % Glitch-Zeit, Ziel 40–50 % Glitch-Schaden
+  SPOT_MUL: 2, // Glitch-Stellen (def.glitchSpots): eigene Treffer darauf geben x2 Energie
   BREAK_WINDOW: 1.0, // s: Teilbruch zählt, wenn der eigene Treffer so kurz zurückliegt (Gast: Bruch kommt per Netz)
 };
 
@@ -97,7 +98,8 @@ export function attachGlitch(h) {
       // Energie nach verursachtem Schaden (mind. +1): +16 je 1 % Brocken-HP; Koop-HP-Skalierung herausgerechnet, Kleinvieh nur +1
       const m = res.monster, base = m && !m.minor ? m.maxHp / (m.coopMul ?? 1) : 0;
       const gain = base > 0 ? Math.max(GLITCH.GAIN.hit, (GLITCH.GAIN.perHpPct * (res.dmg ?? 0)) / (base * 0.01)) : GLITCH.GAIN.hit;
-      addGlitchEnergy(p, gain, 'hit');
+      const spot = m?.isGlitchSpot?.(res.partId) ? GLITCH.SPOT_MUL : 1;
+      addGlitchEnergy(p, gain * spot, 'hit');
     }
   }));
   return Object.assign(st, { detach() { offs.forEach((o) => o?.()); } });

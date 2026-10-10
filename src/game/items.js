@@ -102,7 +102,7 @@ export class ItemSystem {
       hunt.bus.emit('itemUsed', { player: p, id, tip: p.ammoTip });
       return;
     }
-    if (hunt.mods?.player?.healItems === false && (e.type === 'heal' || e.type === 'grill')) { hunt.fx.number(this.#top(), 'Kein Undo', 'heal'); return; } // Mutator Kein Undo
+    if (hunt.mods?.player?.healItems === false && (e.type === 'heal' || e.type === 'grill' || e.type === 'cool')) { hunt.fx.number(this.#top(), 'Kein Undo', 'heal'); return; } // Mutator Kein Undo
     if (!this.inv.consume(id, 1)) return;
     switch (e.type) {
       case 'heal':
@@ -123,6 +123,11 @@ export class ItemSystem {
         hunt.fx.number(this.#top(), `+${e.hp} / Puste +${e.maxStamina}`, 'heal');
         break;
       }
+      case 'cool': // Kuehlbrause: heilen + Rost/Brennen weg
+        this.heals.push({ left: e.hp, rate: e.hp / e.over });
+        p.clearStatus?.('rost'); p.clearStatus?.('burn');
+        hunt.fx.number(this.#top(), `+${e.hp} / Abgekühlt`, 'heal');
+        break;
       case 'cleanse':
         if (p.clearStatus) p.clearStatus(); else if (p.status) for (const k of Object.keys(p.status)) delete p.status[k];
         hunt.fx.number(this.#top(), 'Sauber', 'heal');

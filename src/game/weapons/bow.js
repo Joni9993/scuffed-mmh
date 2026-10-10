@@ -28,6 +28,7 @@ export const TIPS = {
   brennspitze: { name: 'Brennspitze', color: 0xff7a1a, elems: { fire: 12 } },
   giftspitze: { name: 'Giftspitze', color: 0x6adf3a, poison: 20 },
   bummspitze: { name: 'Bummspitze', color: 0xff3a6a, stun: 8, boom: true },
+  rostspitze: { name: 'Rostspitze', color: 0xc8661e, rost: 15 },
 };
 const LEVEL_COLOR = { 1: 0xf0e6c8, 2: 0x9fd8ff, 3: 0xffe14d };
 
@@ -125,6 +126,7 @@ export function arrowHit(p, info, spec, dist) {
   const ah = { hit, group: 'arrow', instance: 0, sauber: false, glitch: false, elems: tip?.elems };
   ctx.playerHit(p, m, dbg ? weakHp(m, info.hp) : info.hp, ah);
   if (tip?.poison) m.applyStatus?.('poison', { buildup: tip.poison });
+  if (tip?.rost) m.applyStatus?.('rost', { amount: tip.rost });
   if (tip?.stun && typeof m.applyStatus === 'function') m.applyStatus('stun', { buildup: tip.stun });
   if (tip?.boom) explode(ctx, info.pos);
 }
