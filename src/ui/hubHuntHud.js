@@ -15,7 +15,11 @@ export function createHuntHud(root) {
   const q = (s) => el.querySelector(s);
   const toasts = q('.hh-toasts'), strip = q('.hh-strip'), carve = q('.hh-carve'), win = q('.hh-window');
   let onSlot = () => {}, onDone = () => {};
-  strip.addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) onSlot(Number(b.dataset.i)); });
+  let open = false, openT = 0;
+  const setOpen = (v) => { open = v; clearTimeout(openT); if (v) openT = setTimeout(() => setOpen(false), 5000); strip.classList.toggle('open', open && strip.childElementCount > 0); document.body.classList.toggle('strip-open', open); };
+  const onToggle = () => setOpen(!open);
+  document.addEventListener('sh:strip-toggle', onToggle);
+  strip.addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) { onSlot(Number(b.dataset.i)); setOpen(false); } });
   win.querySelector('button').addEventListener('click', () => onDone());
 
   // icon decoration inside the phase-1 item button
@@ -45,7 +49,8 @@ export function createHuntHud(root) {
       const bar = inv.items;
       const key = bar.map((b) => `${b.id}${b.n}`).join() + '|' + inv.sel + '|' + (items?.using?.id ?? '');
       set('strip', key, () => {
-        strip.style.display = bar.length > 1 ? 'grid' : 'none';
+        document.body.classList.toggle('has-bar', bar.length > 1);
+        if (bar.length <= 1) setOpen(false);
         strip.innerHTML = bar.map((b, i) => `<button class="hh-slot${i === inv.sel ? ' sel' : ''}${b.n <= 0 ? ' empty' : ''}" data-i="${i}"><img src="${iconUrl(b.id)}" alt=""><b>${b.n}</b></button>`).join('');
       });
       const cur = inv.selectedId;
@@ -65,7 +70,7 @@ export function createHuntHud(root) {
         if (s >= 0) win.firstChild.textContent = `Zerlegen: ${s}`;
       });
     },
-    dispose() { el.remove(); ico?.remove(); },
+    dispose() { document.removeEventListener('sh:strip-toggle', onToggle); clearTimeout(openT); document.body.classList.remove('has-bar', 'strip-open'); el.remove(); ico?.remove(); },
   };
 }
 

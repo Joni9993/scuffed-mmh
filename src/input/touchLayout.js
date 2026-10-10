@@ -21,6 +21,7 @@ const FLOOR = {
 export const MIN_VIS = 44; // smallest visual size of anything tappable
 export const MIN_HIT = 44;
 export const MIN_HIT_PRIMARY = 56;
+const SMALL_VIS = new Set(['menu', 'bar']); // small secondary buttons: 36 visual, 44 hit
 export const MIN_GAP = 8; // visible gap between two buttons
 const PAD = 6, PAD_A = 8, GAP_HIT = 2;
 const ANG = { roll: 182, b: 132, lock: 82 };
@@ -72,19 +73,26 @@ export function solveLayout(w, h, opt = {}) {
     put('item', item, visO, hitO);
     put('ctx', { cx: item.cx, cy: item.cy - hitO / 2 - hitC / 2 - GAP_HIT }, visC, hitC); // reserved slot, never shared
   }
-  // item strip (quick select, 4 x 2 slots), left of the item button, bottom aligned
-  const SLOT = 44, SG = 3;
-  const stripRight = item.cx - hitO / 2 - MIN_GAP;
+  // item strip (quick select): collapsed by default, a small toggle sits left of the item button (same row);
+  // expanded it is a compact block bottom aligned left of the toggle (below the player area, 40px hit slots)
+  const SLOT = 40, SG = 2;
+  const barHit = MIN_HIT, barVis = 36;
+  const bar = { cx: item.cx - hitO / 2 - GAP_HIT - barHit / 2, cy: item.cy, vis: barVis, hit: barHit, visible: true };
+  put('bar', bar, barVis, barHit, mode === 'hunt');
+  const stripRight = bar.cx - barHit / 2 - MIN_GAP;
   let cols = 4, sw = 4 * SLOT + 3 * SG, sh = 2 * SLOT + SG;
-  if (stripRight - sw < 0.3 * w + ins.l) { cols = 3; sw = 3 * SLOT + 2 * SG; sh = 3 * SLOT + 2 * SG; } // tight screens: 3 x 3
+  if (stripRight - sw < 4 + ins.l) { cols = 3; sw = 3 * SLOT + 2 * SG; sh = 3 * SLOT + 2 * SG; }
   const strip = { x: stripRight - sw, y: bottomEdge - sh, w: sw, h: sh, cols };
 
-  // pause/menu button: top right, left of the minimap column (not mirrored, the minimap is a HUD element)
-  const menuHit = Math.max(MIN_HIT + 8, 7 * u), menuVis = menuHit - 8;
-  const menu = { cx: w - ins.r - 2 * vm - 16.4 * vm - 2 * vm - menuHit / 2, cy: ins.t + 1.6 * vm + menuHit / 2, vis: menuVis, hit: menuHit, visible: mode === 'hunt' };
+  // pause/menu button: small (36 visual, 44 hit), directly BELOW the minimap column (timer / KO / minimap, right aligned) so it can never overlap them
+  const colW = 16.4 * vm, colRight = w - ins.r - 2 * vm, colTop = ins.t + 1.6 * vm;
+  const colH = Math.max(7 * vm, 26) + colW; // timer + KO rows above the square minimap
+  const mini = { x: colRight - colW, y: colTop, w: colW, h: colH };
+  const menuHit = MIN_HIT, menuVis = 36;
+  const menu = { cx: colRight - menuHit / 2, cy: colTop + colH + 6 + menuHit / 2, vis: menuVis, hit: menuHit, visible: mode === 'hunt' };
 
   // stick zone: 40 % of the width, but never wider than the free space left of the leftmost control (min 30 %)
-  const leftmost = mode === 'hunt' ? strip.x : Math.min(roll.cx - hitO / 2, A.cx - hitA / 2);
+  const leftmost = mode === 'hunt' ? bar.cx - barHit / 2 : Math.min(roll.cx - hitO / 2, A.cx - hitA / 2);
   const zoneW = clamp(Math.min(STICK_ZONE * w, leftmost - 4), 0.3 * w, STICK_ZONE * w);
   const flip = (x) => (mirror ? w - x : x);
   const buttons = {};
@@ -94,7 +102,7 @@ export function solveLayout(w, h, opt = {}) {
   return {
     u, mirror, size, mode,
     stickZone: mirror ? { x0: w - zoneW, x1: w } : { x0: 0, x1: zoneW },
-    buttons, strip: { x: stripX, y: strip.y, w: strip.w, h: strip.h, cols: strip.cols },
+    buttons, mini, strip: { x: stripX, y: strip.y, w: strip.w, h: strip.h, cols: strip.cols },
   };
 }
 
@@ -104,7 +112,7 @@ export function checkLayout(L, w, h, insets = {}) {
   const bad = [];
   const list = Object.entries(L.buttons).filter(([, b]) => b.visible);
   for (const [k, b] of list) {
-    if (b.vis < MIN_VIS) bad.push(`${k}: visual ${b.vis.toFixed(1)} < ${MIN_VIS}`);
+    if (b.vis < (SMALL_VIS.has(k) ? 36 : MIN_VIS)) bad.push(`${k}: visual ${b.vis.toFixed(1)} < ${MIN_VIS}`);
     if (b.hit < MIN_HIT) bad.push(`${k}: hit ${b.hit.toFixed(1)} < ${MIN_HIT}`);
     if (b.hit < b.vis + 8) bad.push(`${k}: hit area not larger than visual`);
     if ((k === 'attack' || k === 'ctx') && b.hit < MIN_HIT_PRIMARY) bad.push(`${k}: primary hit < ${MIN_HIT_PRIMARY}`);
@@ -125,8 +133,10 @@ export function checkLayout(L, w, h, insets = {}) {
     const nx = Math.max(st.x, Math.min(b.cx, st.x + st.w)), ny = Math.max(st.y, Math.min(b.cy, st.y + st.h));
     if (Math.hypot(b.cx - nx, b.cy - ny) < b.hit / 2) bad.push(`strip/${k}: overlap`);
   }
-  if (hunt && (L.mirror ? st.x + st.w > L.stickZone.x0 + 0.01 : st.x < L.stickZone.x1 - 0.01)) bad.push('strip reaches into the stick zone');
   if (hunt && (st.x < ins.l || st.x + st.w > w - ins.r)) bad.push('strip outside the safe area');
+  // pause button must not touch the minimap column (timer / KO / minimap)
+  const mb = L.buttons.menu, mn = L.mini;
+  if (hunt && mb?.visible && mn && mb.cx + mb.hit / 2 > mn.x && mb.cx - mb.hit / 2 < mn.x + mn.w && mb.cy + mb.hit / 2 > mn.y && mb.cy - mb.hit / 2 < mn.y + mn.h) bad.push('menu: overlaps the minimap');
   // no button inside the stick zone
   for (const [k, b] of list) {
     if (k === 'menu') continue;

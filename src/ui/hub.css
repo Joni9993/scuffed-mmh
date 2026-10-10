@@ -82,9 +82,10 @@ small { opacity: .7; font-size: .88em; }
 .hh-toast { display: flex; align-items: center; gap: .8vmin; font-size: max(9px, 2.1vmin); text-shadow: 1px 1px 0 #000; background: rgba(10, 8, 40, .55); padding: .3vmin 1vmin; animation: toastin .15s steps(3); }
 .hh-toast.out { opacity: 0; transition: opacity .4s; }
 @keyframes toastin { from { transform: translateX(-30%); opacity: 0; } }
-.hh-strip { position: absolute; left: var(--strip-x, 40vw); top: var(--strip-y, 70vh); width: var(--strip-w, 185px); height: var(--strip-h, 91px); display: none; grid-template-columns: repeat(var(--strip-cols, 4), 44px); gap: 3px; justify-content: end; align-content: end; pointer-events: auto; }
-.hh-slot { position: relative; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; font: inherit; color: var(--ink); background: rgba(10, 8, 40, .55); border: 1px solid rgba(244, 240, 208, .55); touch-action: manipulation; }
-.hh-slot img { width: 70%; height: 70%; image-rendering: pixelated; } .hh-slot b { position: absolute; right: 1px; bottom: -1px; font-size: max(8px, 1.7vmin); text-shadow: 1px 1px 0 #000; }
+.hh-strip { position: absolute; left: var(--strip-x, 40vw); top: var(--strip-y, 70vh); width: var(--strip-w, 166px); height: var(--strip-h, 82px); display: none; grid-template-columns: repeat(var(--strip-cols, 4), 40px); gap: 2px; justify-content: end; align-content: end; pointer-events: auto; }
+.hh-strip.open { display: grid; }
+.hh-slot { position: relative; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; font: inherit; color: var(--ink); background: rgba(10, 8, 40, .62); border: 1px solid rgba(244, 240, 208, .55); touch-action: manipulation; }
+.hh-slot img { width: 66%; height: 66%; image-rendering: pixelated; } .hh-slot b { position: absolute; right: 1px; bottom: -1px; font-size: 9px; text-shadow: 1px 1px 0 #000; }
 .hh-slot.sel { border-color: #ffd84a; background: rgba(90, 58, 192, .75); } .hh-slot.empty { opacity: .35; }
 .hh-btnico { position: absolute; left: 50%; top: 10%; width: 50%; height: 50%; transform: translateX(-50%); image-rendering: pixelated; pointer-events: none; }
 .hh-btnico.empty { opacity: .35; }
