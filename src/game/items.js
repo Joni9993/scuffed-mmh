@@ -115,6 +115,13 @@ export class ItemSystem {
         this.buffs.push({ kind: 'stamina', t: e.secs });
         hunt.fx.number(this.#top(), 'Puste x0.5', 'heal');
         break;
+      case 'grill': { // [L] Grillsteak: heal + permanent (this hunt) max-Puste
+        this.heals.push({ left: e.hp, rate: e.hp / e.over });
+        p.v.maxStamina += e.maxStamina;
+        p.v.stamina = Math.min(p.v.maxStamina, p.v.stamina + e.maxStamina);
+        hunt.fx.number(this.#top(), `+${e.hp} / Puste +${e.maxStamina}`, 'heal');
+        break;
+      }
       case 'cleanse':
         if (p.clearStatus) p.clearStatus(); else if (p.status) for (const k of Object.keys(p.status)) delete p.status[k];
         hunt.fx.number(this.#top(), 'Sauber', 'heal');

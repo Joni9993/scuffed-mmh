@@ -91,6 +91,7 @@ export const jaggo = {
   hp: 7000,
   scale: SC,
   bodyRadius: 1.5,
+  predator: true, // [L]
   walk: 2.6, run: 6.2, detect: 30, prefer: 4.5,
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 600, jitter: 0.07, elem: { fire: 25, shock: 5 }, blunt: true, stunPart: true,

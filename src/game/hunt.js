@@ -20,6 +20,8 @@ import { Effects } from './effects.js';
 import { Projectiles } from './projectiles.js'; // [W]
 import { HuntNet } from '../net/sync.js'; // [N]
 import { makeGear } from '../data/gearlook.js'; // [G]
+import { spawnFauna } from './fauna.js'; // [L]
+import { createAmbientFauna } from './ambientFauna.js'; // [L]
 
 const MAX_KO = 3;
 
@@ -84,6 +86,10 @@ export class Hunt {
     if (this.mainMonster) this.#applyQuestVariant(this.mainMonster);
     // [B] ambient Jagglinge packs in zones 1 + 2 (host/solo only; guests get them through the monster snapshots)
     if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
+    this.herds = []; // [L] neutral fauna (Mampfer herds, Hoppler groups); host/solo only, ?nofauna=1 disables
+    if (!opts.noFauna && (!opts.net || opts.net.isHost)) { const f = spawnFauna(this); this.herds = [...f.herds, ...f.groups]; }
+    this.ambientFauna = opts.noFauna ? null : createAmbientFauna(this); // [L] birds / glow bugs / butterflies (decoration only, local)
+    if (this.ambientFauna) this.scene.add(this.ambientFauna.group);
     if (opts.aggro && this.mainMonster) { this.mainMonster.target = p; this.mainMonster.discovered = true; this.mainMonster.recover = 0.8; }
 
     this.hud = createHud(app.ui);
@@ -144,9 +150,9 @@ export class Hunt {
   countMonsters(defId) { return this.monsters.filter((m) => m.alive && m.def.id === defId).length; }
   debugShape(shape, color) { this.viz.shape(shape, color); }
 
-  spawnMonster(defId, { x, z, yaw = 0, state = 'wander', id } = {}) {
+  spawnMonster(defId, { x, z, yaw = 0, state = 'wander', id, seed } = {}) {
     const def = getMonsterDef(defId);
-    const m = new Monster(def, this, { id: id ?? `${defId}-${++this._n}`, x, z, yaw, state, seed: this.rng.int(1, 1e9) });
+    const m = new Monster(def, this, { id: id ?? `${defId}-${++this._n}`, x, z, yaw, state, seed: seed ?? this.rng.int(1, 1e9) });
     if (state === 'combat') m.discovered = true;
     this.monsters.push(m);
     this.scene.add(m.mesh, m.shadow);
@@ -165,7 +171,7 @@ export class Hunt {
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
     const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (player.def.dmgMul?.(player.weapon) ?? 1) }; // [KT] Schliff
-    const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping });
+    const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     res.attackerId = player.id;
     applyMonsterHit(monster, res, this);
@@ -234,7 +240,7 @@ export class Hunt {
     if (this.teamKo >= MAX_KO) this.#finish('fail', 'Dreimal umgekippt');
   }
   #onBossDead() {
-    for (const m of this.monsters) if (m !== this.mainMonster && m.alive) m.applyDamage({ dmg: 9999, partId: m.parts[0].id, elemDmg: 0 });
+    for (const m of this.monsters) if (m !== this.mainMonster && m.alive && !m.def.neutral) m.applyDamage({ dmg: 9999, partId: m.parts[0].id, elemDmg: 0 });
     this.winTimer = 2.2;
   }
   #finish(result, reason = '') {
@@ -293,6 +299,7 @@ export class Hunt {
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.projectiles.update(dt); // [W]
     this.world.update(dt, this);
+    this.ambientFauna?.update(dt); // [L]
     this.meta.late(dt); // [P]
 
     const p = this.player;
@@ -326,6 +333,7 @@ export class Hunt {
   dispose() {
     this.app.renderer.onResize.delete(this._onResize);
     this.projectiles.dispose(); // [W]
+    this.ambientFauna?.dispose(); // [L]
     this.fx.dispose();
     this.world.dispose?.(); // [K] gather UI, ambient audio
     this.hud.dispose();

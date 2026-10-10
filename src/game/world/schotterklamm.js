@@ -4,7 +4,7 @@ import { tex } from '../../render/textures.js';
 import { createRng } from '../../core/rng.js';
 import { sfx } from '../../audio/sfx.js';
 import {
-  buildLayout, zoneWeights, zoneAt, ZONES, HALF, CELL, NG, PASSES, vnoise, fbm, distToCracks,
+  buildLayout, buildPastures, zoneWeights, zoneAt, ZONES, HALF, CELL, NG, PASSES, vnoise, fbm, distToCracks,
 } from './layout.js';
 import { registerWorldTextures } from './worldTextures.js';
 import {
@@ -381,6 +381,7 @@ export function createSchotterklamm({ seed = 1 } = {}) {
   }
 
   // ================================================================ world interface
+  const pastures = buildPastures(L); // [L] herd grazing spots (zones 1 + 3), after all prop colliders exist
   const nestFor = (defId) => ({ ...L.nests[NEST_ZONE[defId] ?? 2] });
   const routeFor = (defId) => (L.routes[defId] ?? L.routes.jaggo).map((p) => ({ x: p.x, z: p.z }));
   const hazards = createHazards(L);
@@ -403,6 +404,7 @@ export function createSchotterklamm({ seed = 1 } = {}) {
     zoneName: (id) => ZONES[id - 1]?.name ?? '',
     env: { background: env0.bg, fog: { color: env0.bg, near: env0.near, far: env0.far } },
     gatherPoints: gather.points,
+    pastures, // [L] [{id, zone, x, z, r, links}]
     setGatherState: gather.setState,
     minimap: { size: MM, data: mmData },
     layout: L,

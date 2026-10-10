@@ -65,7 +65,7 @@ export function computeAim(p) {
     yaw = ctx.cameraYaw ?? p.rot;
     let bestD = 1e9;
     for (const m of ctx.monsters ?? []) {
-      if (!m.alive) continue;
+      if (!m.alive || m.def?.neutral) continue; // auto-aim ignores neutral fauna
       for (const hp of m.hurtParts()) {
         const dx = hp.pos.x - p.pos.x, dz = hp.pos.z - p.pos.z, d = Math.hypot(dx, dz);
         if (d < 1) continue;

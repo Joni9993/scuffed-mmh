@@ -20,6 +20,7 @@ const SHAPES = {
   cuke: ['......X.', '.....XX.', '....XXX.', '...XXX..', '..XXX...', '.XXX....', 'XXX.....', 'XX......'],
   trap: ['X.X.X.X.', 'XXXXXXXX', '.X.X.X.X', 'XXXXXXXX', 'X.X.X.X.', 'XXXXXXXX', '........', '........'],
   arrow: ['......XX', '.....XXX', '....XXX.', '...XXX..', '.XXX....', 'XXX.....', 'XX.X....', 'X..X....'],
+  meat: ['..XXXX..', '.XXXXXXX', 'XXXXXXXX', 'XXXXXXXX', '.XXXXXX.', '..XXXX.X', '.....XXX', '......X.'], // [L]
   coin: ['..XXXX..', '.XXXXXX.', 'XXX..XXX', 'XX....XX', 'XX....XX', 'XXX..XXX', '.XXXXXX.', '..XXXX..'],
 };
 
