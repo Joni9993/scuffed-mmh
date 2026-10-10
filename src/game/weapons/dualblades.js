@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
 import { buildDualBladeLook } from '../gear/weaponLook.js'; // [G]
 import { VIT } from '../vitals.js';
+import { GhostTrail } from './glitchfx.js';
 
 // Zwillingsklingen (GDD 4.2): schnelle Kette aus kleinen Treffern, Rausch (B) = +1 Treffer pro Move, +15 % Tempo,
 // Rolle wird kurzer Dash, kostet Puste. Finisher "Schrottwirbel" (B halten bei Wucht 100).
@@ -198,6 +199,30 @@ export function buildDualBladesMesh({ tier = 1, branch = null } = {}) {
   return right;
 }
 
+// ---- Echo-Input (Glitch): jeder eigene Treffer wiederholt sich ECHO_DELAY s spaeter mit ECHO_MUL Schaden
+export const ECHO_DELAY = 0.4;
+export const ECHO_MUL = 0.7;
+const ECHO_SLOTS = 8;
+function echoState(p) {
+  const g = p.glitch;
+  if (g._echo) return g._echo;
+  const q = [];
+  for (let i = 0; i < ECHO_SLOTS; i++) q.push({ t: -1, mon: null, partId: null, ah: { hit: {}, group: 'echo', sauber: false, glitch: false } });
+  return (g._echo = { q, trail: null });
+}
+function fireEcho(p, s) {
+  const mon = s.mon;
+  s.t = -1; s.mon = null;
+  if (!mon?.alive || !p.ctx?.playerHit) return;
+  const hp = mon.hurtParts().find((h) => h.part.id === s.partId); // gleiche Trefferzone
+  if (!hp) return;
+  p.glitch._echoing = true; // dmgMul 0,7 + kein weiteres Echo
+  try {
+    p.ctx.playerHit(p, mon, hp, s.ah); // normaler Treffer-Pfad (Netz/Gaeste inklusive)
+  } finally { p.glitch._echoing = false; }
+  p.ctx.fx?.spark?.(hp.pos, 10, '#ff3df0', 6);
+}
+
 export const dualblades = {
   id: 'db',
   name: 'Zwillingsklingen',
@@ -230,6 +255,44 @@ export const dualblades = {
   /** Rausch: Rolle wird Dash (0,3 s, gleiche i-Frames) */
   rollOverride: (w) => (w.data.rausch ? DASH : null),
   buildMesh: buildDualBladesMesh,
+  /** Geisterschlag: 70 % Schaden */
+  dmgMul: (w) => (w.hooks.player?.glitch?._echoing ? ECHO_MUL : 1),
+  /** Zwillingsklingen-Glitch (GDD 16.2): Echo-Input */
+  glitch: {
+    name: 'Echo-Input',
+    onStart(p) {
+      const e = echoState(p);
+      if (!e.trail && p.mesh && p.ctx?.scene) e.trail = new GhostTrail(p.mesh, p.ctx.scene);
+      for (const s of e.q) { s.t = -1; s.mon = null; }
+      e.trail?.hide();
+    },
+    onEnd(p) {
+      const e = p.glitch._echo;
+      if (!e) return;
+      for (const s of e.q) { s.t = -1; s.mon = null; } // offene Echos verfallen mit dem Modus
+      e.trail?.hide();
+    },
+    tick(p, dt) {
+      const e = echoState(p);
+      for (const s of e.q) if (s.t >= 0 && (s.t -= dt) <= 0) fireEcho(p, s);
+      if (e.trail) { e.trail.record(dt); e.trail.apply(Math.floor((p.time ?? 0) * 24) % 13 === 0); }
+    },
+    onHit(p, res, monster) {
+      if (p.glitch._echoing || !monster) return; // Geisterschlaege loesen kein Echo aus
+      const e = echoState(p), w = p.weapon;
+      let s = null;
+      for (const c of e.q) if (c.t < 0) { s = c; break; }
+      if (!s) return;
+      let src = null; // Treffer-Definition des gerade aktiven Schlags
+      const hits = w?.move?.hits;
+      if (hits) for (let i = 0; i < hits.length; i++) { const h = hits[i]; if (w.t >= h.t0 && w.t <= h.t1 + 0.02) { src = h; break; } }
+      if (!src && hits?.length) src = hits[hits.length - 1];
+      if (!src) return;
+      Object.assign(s.ah.hit, src);
+      s.ah.hit.wucht = 0; s.ah.hit.hitstop = 'light'; s.ah.hit.shake = 0.1;
+      s.mon = monster; s.partId = res.partId; s.t = ECHO_DELAY;
+    },
+  },
   /** red glow + halo while Rausch is on */
   updateMesh(w, mesh, dt) {
     const d = mesh?.userData.db;

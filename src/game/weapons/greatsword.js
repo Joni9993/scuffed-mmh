@@ -1,5 +1,6 @@
 import { compileTrack, REST } from '../anim.js';
 import { buildGreatswordLook } from '../gear/weaponLook.js'; // [G]
+import { stutterFrame, hideContour } from './glitchfx.js';
 
 // ---- helpers: hit shapes that follow the blade so hitboxes match the visuals.
 // Right shoulder in player-local coords (x+ = character's left, z+ = forward).
@@ -152,6 +153,8 @@ export function buildGreatswordMesh({ tier = 1, branch = null } = {}) {
   return buildGreatswordLook(tier, branch);
 }
 
+export const GS_GLITCH_DMG = 1.2;
+
 export const greatsword = {
   id: 'gs',
   name: 'Plattmacher',
@@ -164,6 +167,34 @@ export const greatsword = {
   // Wucht 100 + B = Finisher "Schrottbrecher"
   overrideEvent: (w, type) => ((type === 'B' || type === 'holdB') && w.wucht >= 100 ? 'gs_finisher' : undefined),
   buildMesh: buildGreatswordMesh,
+  /** Glitch-Modus Frame-Skip: Aufladeschlaege +20 % */
+  dmgMul: (w) => (w.hooks.player?.glitching && w.move?.level > 0 ? GS_GLITCH_DMG : 1),
+  updateMesh(w, mesh, dt, p) { if (p?.glitching) stutterFrame(p, mesh, p.time ?? 0); else if (p?.glitch?._contour) hideContour(p); },
+  /** Plattmacher-Glitch (GDD 16.2): Frame-Skip */
+  glitch: {
+    name: 'Frame-Skip',
+    onStart() {},
+    onEnd(p) { hideContour(p); },
+    tick(p) {
+      const w = p.weapon;
+      if (!w) return;
+      const m = w.move;
+      if (m?.kind === 'charge' && m.levels) {
+        const top = m.levels[m.levels.length - 1];
+        if (w.chargeT < top) { // Aufladezeit uebersprungen: sofort volle Stufe
+          w.chargeT = top; w.chargeLevel = m.levels.length;
+          p.ctx?.fx?.glitchTear?.();
+        }
+        if (w.chargeT > m.maxHold - 0.02) w.chargeT = m.maxHold - 0.02; // nie in "ueberladen" rutschen
+      }
+      const id = w.moveId;
+      if (id !== p.glitch._last) { // Bildsprung beim Schlag
+        p.glitch._last = id;
+        if (m?.level > 0) { p.ctx?.fx?.glitchTear?.(); p.ctx?.fx?.shake?.(0.35, 0.18); }
+      }
+    },
+    onHit() {},
+  },
   /** HUD status line */
   status(w) {
     if (w.charging) return { text: w.chargeLevel ? `Stufe ${w.chargeLevel}` : 'Laden', level: w.chargeLevel, max: 3, sauber: w.sauberOpen };
