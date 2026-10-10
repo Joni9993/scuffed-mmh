@@ -398,5 +398,67 @@ Verkauf: jedes Material zu 40 % seines Basiswerts (Brocken-Material hat Basiswer
 
 ---
 
+## 15. Rostwerke – zweite Map & Endgame (ab JR 5)
+
+Freigeschaltet nach dem ersten Brathalos (JR 4 → Auftrag „Rauch am Horizont" schaltet JR 5 frei). Schwieriger als die Schotterklamm: schnellere Brocken, kürzere Erholungsfenster (aber Ankündigung bleibt ≥ 0,5 s), Umgebung als Waffe.
+
+### 15.1 Map „Rostwerke" (~260 × 260 m, 4 Zonen)
+Eine versunkene Riesenfabrik im Giftsumpf. Dunkle Rost- und Ocker-Töne, grünlicher Giftnebel, Funken, Dampf.
+1. **Schlackehalden** (Start, Lagerpunkt in einem umgekippten Waggon): Halden aus Schlacke und Schrott, offene Flächen, Gorgo-Revier (weicher Schlackeboden, `groundType 'slag'`: man sinkt nicht ein, aber Gorgo kann darunter graben).
+2. **Kesselhalle** (halb überdacht): Riesige Kessel, Rohre, Laufstege auf zwei Ebenen (Rampen), enge Gänge. Kroll-Nest. **Dampfventile**.
+3. **Giftgraben**: Kanäle mit Giftschlamm (`groundType 'toxic'`: Gift-Status nach 1,5 s Stehen), Stege, Pilze, Rostkäfer.
+4. **Turbinenkrone** (hoch oben, über eine lange Rampe/Förderband): Turbinenruinen, Wind, Gewitterhimmel, **Blitzableiter**. Voltaro-Nest.
+
+### 15.2 Umgebung als Waffe (neu)
+Kontext-Taste in der Nähe (wie Sammeln), für alle Pirscher sichtbar markiert, Host-autoritativ synchronisiert:
+- **Dampfventil** (Kesselhalle, 6×): aufdrehen → 3 s Dampfsäule (Kegel 6 m): Brocken darin 150 Schaden + „Verbrüht" (Teile-Faktor +0,1 für 10 s); Pirscher darin 15 Schaden. Abklingzeit 90 s.
+- **Schrottkran** (Schlackehalden, 2×, Seil durchtrennen): Schrottlast fällt nach 1 s auf markierten Kreis → 400 Schaden + 5 s Betäubung, einmal pro Jagd.
+- **Blitzableiter** (Turbinenkrone, 4×): Voltaro lädt sich daran auf. Pirscher können einen Ableiter **umwerfen** (3× schlagen) → zerstört; wirft Voltaro in die Nähe, Überladung bricht ab.
+- **Rostkäfer-Nester** (Giftgraben): sammelbar, Material für „Rost"-Items.
+
+### 15.3 Neuer Status: Rost
+- Auf Pirscher: Schutz −30 % für 20 s (Sprudelwasser entfernt). Von Kroll-Dampf und Gorgo-Schlacke.
+- Auf Brocken: über Item „Rostbombe" / Rostspitzen (Bogen) / Rost-Element-Waffen: Aufbau 100 → 15 s „Verrostet": alle Teile-Faktoren +0,15, Teil-HP-Schaden ×1,5.
+
+### 15.4 Kroll, der Kesselkrebs (JR 5)
+HP 15000 · Größe 2,6× · seitwärts schnell, vorwärts langsam. Schwäche: Schock (Beine 25), Rost.
+Teile: **Kesselpanzer** (brechbar, 1400 Teil-HP, Faktor 0,35 → nach Bruch Körper 0,9 = **Phase 2**), Scheren L/R (brechbar, je 700, 0,7), Augenstiele (0,9, Blendknolle wirkt doppelt), Beine 0,8.
+Angriffe:
+1. **Scherenzange** (2 Hiebe, 22 Schaden, Telegraph 0,55 s Scheren auf).
+2. **Seitrammer** (Telegraph 0,6 s: Beine stemmen seitlich, Staub): rast 12 m seitwärts, 28 Schaden, wirft um.
+3. **Dampfstoß** (Telegraph 0,8 s Kessel glüht + Pfeifen): Dampfkegel 8 m vor ihm 2 s, 8 Schaden/0,25 s + Rost. Sperrt Fläche.
+4. **Kesseldruck** (nur Phase 1, Telegraph 1,0 s Zittern + Ventile pfeifen): Explosion 7 m Radius um ihn, 35 Schaden. Unter ihm = sicher (Skill!).
+5. **Phase 2 (Panzer weg):** +25 % Tempo, neue Attacke **Scherenwirbel** (Telegraph 0,6 s, 3 Drehungen, je 18) und **Krabbensprung** (springt auf Ziel, 30 Schaden, Landung lässt ihn 1,5 s stecken = Strafe-Fenster).
+
+### 15.5 Gorgo, der Schlackwurm (JR 5)
+HP 16000 · Länge ~18 m, 6 Segmente. Schwäche: Feuer am Kopf 0, Wasser? (nicht vorhanden) → **Schock 20, Rost 25**; Kopf 1,0, Segmente 0,6 (jedes brechbar 500 → +Material, Wurm wird kürzer & langsamer).
+Kern-Mechanik: **gräbt sich ein** (Zustand `burrow`, unverwundbar, sichtbar als Schlacke-Welle über Boden, Minimap-Icon). Taucht mit **Bodenwarnung** auf (Risse + Glühen + Rumpeln, 0,8 s) unter dem Ziel.
+Angriffe:
+1. **Durchbruch** (aus dem Boden, 30 Schaden, wirft hoch).
+2. **Schlackespucke** (3 glühende Brocken, Bogenflug, Rost + 15 Schaden, bleiben 6 s als Lava-Pfützen liegen).
+3. **Sog** (Telegraph 0,9 s: Maul öffnet sich, Luftlinien): zieht Pirscher in 12 m Kegel 2 s an (gegen Laufrichtung kämpfbar, Rolle bricht Sog). Wer ins Maul gerät: 40 Schaden.
+4. **Körperpeitsche** (halbkreis, Segmente schlagen, 20 Schaden).
+5. **Knallgurken-Konter:** Eine platzierte Knallgurke, über die er gräbt, zwingt ihn heraus (8 s benommen). **Schrottkran** trifft ihn auch eingegraben.
+
+### 15.6 Voltaro, der Funkenfürst (JR 6, Apex, Endboss)
+HP 22000 · Größe 2,4× · schneller Vierbeiner mit Kupfer-Antennen und Rückenspulen. Schwäche: Feuer 20 (nur ungeladen), Rost 20; Schock 0.
+Teile: Antennen-Kamm (brechbar 900, **bricht Überladung ab**), Vorderpranken (brechbar je 700), Rückenspulen (0,8), Schwanz (abtrennbar 1000).
+**Ladung (0–100):** steigt durch Angriffe und **Aufladen an Blitzableitern** (Telegraph: läuft zum Ableiter, Blitz schlägt ein, 3 s). Bei 100 → **Überladen** (60 s, glüht, +30 % Tempo, neues Moveset). Treffer am Antennen-Kamm senken Ladung, Kamm-Bruch oder Blendknolle beendet Überladen (dann 4 s erschöpft).
+Angriffe (normal): **Prankenhiebe** (2–3er Kombo, je 18), **Spulensprung** (Rückwärtssalto + Schwanzhieb, 26), **Funkenlauf** (rennt im Bogen, hinterlässt 4 s Funkenspur, 10/s).
+Angriffe (überladen): **Kettenblitz** (Telegraph 0,8 s Kamm leuchtet: trifft Ziel, springt auf jeden Pirscher **im Umkreis von 6 m** → bestraft Klumpen im Koop; 22 je Sprung), **Donnerschlag** (5 Blitze auf markierte Kreise nacheinander, je 0,6 s Vorwarnung), **Plasmasprung** (Sprung auf Ziel + Schockwelle 6 m, 34).
+**Phase 2 bei 40 % HP:** zerstört 2 Blitzableiter, ab jetzt Dauer-Ladung schneller, Arena-Gewitter (zufällige Blitze mit Vorwarnung). Ziel: Endkampf-Gefühl.
+
+### 15.7 Neue Items & Materialien
+Sammeln: `kupferdraht` (Schrott in Kesselhalle), `schlacke` (Schlackehalden), `rostkaefer` (Giftgraben), `giftschlamm`, `funkenstein` (Turbinenkrone, selten).
+Brocken-Mats: `kroll_panzer`, `kroll_schere`, `kroll_auge`, `gorgo_segment`, `gorgo_zahn`, `gorgo_kern` (selten), `voltaro_kamm`, `voltaro_spule`, `voltaro_fell`, `voltaro_herz` (sehr selten).
+Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostspitze ×10** (Bogen, Rost-Aufbau 15), **Erdungsstab** (platzieren: 20 s Schutzzone 4 m gegen Kettenblitz/Donnerschlag; `kupferdraht` ×2 + `altknochen`), **Kühlbrause** (+30 HP, entfernt Rost/Brennen; `blaublatt` + `giftschlamm` gereinigt?) → nur `blaublatt` + `sprudelwasser` + `rostkaefer`.
+
+### 15.8 Progression
+- **Waffen-Stufe 5** für alle 4 Waffen (Plattmacher, Zwillingsklingen, Spannbogen, Katana) mit drei Ästen: **Kroll-Ast** (Rost-Element, hohe Teilbruch-Wirkung), **Gorgo-Ast** (Feuer/Schlacke, Krit), **Voltaro-Ast** (Schock, Stufe 6 nur über Voltaro-Herz: „Funkenfürst-Waffe").
+- **Rüstungs-Sets:** **Kroll** (Schutz 34, Macke „Panzerhaut": −50 % Rost-Dauer, +10 % Schutz), **Gorgo** (36, „Wühler": Sog/Wind-Immunität ab 2), **Voltaro** (40, „Überladung": nach Glitch-Konter 8 s +15 % Angriff; „Erdung": Schock-Res). Optik extrem (Gear-Optik §8.6): Voltaro-Set mit Funkenbögen und Spulen.
+- **Aufträge:** „Rauch am Horizont" (Kroll, JR 5), „Was da gräbt" (Gorgo, JR 5), „Der Funkenfürst" (Voltaro, JR 6), „Rostiger Ausflug" (Sammelauftrag Rostwerke), Rotglut-Varianten (JR 7).
+
+---
+
 ## 13. Nicht im MVP
 Host-Migration, Online-Accounts, Chat (nur 6 Schnell-Emotes: „Hilfe!", „Hier!", „Falle!", „Danke", „Los!", „Oops"), weitere Waffen, Musik.
