@@ -465,16 +465,16 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 > Herleitung & Brainstorming: `docs/NEXT.md`. Dieser Abschnitt ist **autoritativ**. Zahlen mit „Start" sind Startwerte fürs Tuning.
 
 ### 16.1 Vision & Name
-- **Neuer Name: Glitch Hunter** (ersetzt „Scuffed Hunter"; Umbenennung in Code/Manifest/Titel steht noch aus).
+- **Neuer Name: Glitch Hunter** (ersetzt „Scuffed Hunter"; umbenannt in Titel, Manifest, Titelbildschirm mit Glitch-Logo; localStorage-Keys bewusst unverändert).
 - *Glitch Hunter ist der Koop-Monsterjäger für dich und deine Freunde: Die Brocken sind kaputte Daten – wer ihre Fehler im richtigen Moment ausnutzt, wird zur Legende.*
 - **Säulen:** 1) **Lesbar-gefährlich** (Telegraph + Ton + Farbe + Erholung; jeder Tod erklärbar) · 2) **Fehler sind Waffen** (Glitch-Konter → Glitch-Modus pro Waffe) · 3) **Jede Jagd ist anders** (Ketten, Teilbruch-Reaktionen, Mutatoren – Vielfalt aus Regeln statt Content) · 4) **Kurz & Koop** (Jagddauer wie bisher ~5–6 min solo).
 - **Leitregel Schwierigkeit:** Jede Änderung an Brocken macht sie **abwechslungsreicher UND schwerer, nie leichter**. Spannung kommt aus Verhalten, **nicht aus mehr HP** (Solo bekommt keine HP-Erhöhung und keinen KI-Begleiter).
 - **Netz:** Brocken-KI strikt host-autoritativ, ohne Ausnahme. Jede Zufallsentscheidung (Ketten-Glied, Variante, Delay) wird bei `beginAttack` in `params` mitgeschickt.
 
-### 16.2 Glitch-System
-- **Glitch-Energie** 0–100 (eigene Leiste im HUD). Start: Glitch-Konter +35, Katana-Konterhaltung erfolgreich +25, Teilbruch durch eigenen Treffer +15, normale Treffer +1. Kein Abbau.
+### 16.2 Glitch-System (gebaut, Phase 2)
+- **Glitch-Energie** 0–100 (eigene Leiste im HUD). Start: Glitch-Konter +35, Katana-Konterhaltung erfolgreich +25, Teilbruch durch eigenen Treffer +15, normale Treffer **+16 je 1 % Brocken-HP Schaden** (mind. +1; Koop-HP-Skalierung herausgerechnet, Kleinvieh +1). Kein Abbau, im Modus kein Gewinn. Knopfdruck wird 0,25 s gepuffert (geht im Hitstop nicht verloren). Tastatur G, Gamepad LT/D-Pad oben, Touch-Button nur bei 100 % sichtbar.
 - Bei 100 → **Glitch-Modus** per eigenem Button (nicht automatisch), Dauer Start **8 s**. Ausgelöst wird lokal (eigene Treffer sind client-autoritativ) + Event an alle für die Optik.
-- **Ziel-Anteil am Gesamtschaden: 40–50 %.** Rechnung: bei ~25–30 % Glitch-Zeit und effektiv ×2 Schaden im Modus → 40–46 %. Messung über Statistik (`glitchDmg / damage`) im Jagdbericht.
+- **Ziel-Anteil am Gesamtschaden: 40–50 %.** Rechnung: bei ~25–30 % Glitch-Zeit und effektiv ×2 Schaden im Modus → 40–46 %. Messung über Statistik (`glitchDmg / damage`). **Gemessen** (`tools/glitch-share.mjs`, Bot ohne Ausweichen/Konter, Jaggo): Plattmacher 38 %, Zwillingsklingen 39 %, Katana 39 % → mit Glitch-Kontern echter Spieler im Zielband. Schaden im Modus (`tools/weapon-dps.mjs` mit `GLITCH=1`): Plattmacher ×1,6 (mehr bei sofortigem Loslassen), Zwillingsklingen ×1,6, Bogen ×2,1, Katana ×1,95 (beim Resync).
 - **Pflicht-Optik (alle Waffen gleich):** RGB-Versatz + Scanlines am eigenen Pirscher, Pixelrauschen/Glitch-Rahmen am Bildrand, Bitcrush-Filter auf dem Ton, HUD-Balken „GLITCH" mit Restzeit, Eintritts-Effekt (0,2 s Frame-Freeze + Bildriss). Mitspieler sehen den Pirscher flackern. Man muss **sofort sehen, dass man im Modus und deutlich stärker ist**.
 - **Ein Glitch pro Waffe:**
 
@@ -485,6 +485,7 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 | Spannbogen | **Debug-Modus** | Welt wird grünes Drahtgitter, Trefferzonen des Brocken als Debug-Boxen sichtbar, Schwachstellen blähen sich auf | jeder Pfeil zählt als Schwachstellen-Treffer + kritisch (×1,5), Sweet Spot immer aktiv |
 | Katana | **Desync-Schnitte** | Schnitte bleiben als flackernde rote Risse am Brocken hängen (kein Schaden), Zähler über dem Brocken | bei Modus-Ende oder Tipp auf „RESYNC" lösen alle Risse gleichzeitig mit ×1,5 aus (große Schadenszahl, Hitstop 120 ms) |
 
+- **Umsetzung:** Kern `src/game/glitch.js` (Energie, Modus, Optik, Netz-Event), Waffen über `def.glitch`-Hook. Plattmacher/Klingen: `weapons/glitchfx.js` (Doppelkontur, Geister-Pirscher), Bogen/Katana: `weapons/glitchfx2.js` (Drahtgitter-Welt + Debug-Kugeln, Risse + „RESYNC"-Zähler). Bogen-Debug: Treffer zählen als stärkste Zone ×1,5, kein Fernabzug. Katana-Desync: Treffer im Modus 1 Schaden, Risse (max 20) lösen bei Modus-Ende oder Spezial-Taste ×1,5 als Sammeltreffer aus.
 - Gestrichen: lokales Zeitfenster für alle, Duplikat-Pirscher, Wand-Phasing, No-Clip-Pfeil, Save-State.
 
 ### 16.3 Brocken 2.0 (Phase 1 – gebaut & live, Okt 2026)
@@ -516,7 +517,7 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 - Brocken-HP und Teil-HP × **1 / 1,7 / 2,3 / 2,8** bei 1/2/3/4 Pirschern (`src/game/monsters/coopScale.js`). Beitritt/Verlassen mitten in der Jagd behält den HP-Anteil.
 - Rechnerische Dauer (gleiche DPS): ~5,5 / 4,7 / 4,2 / 3,9 min. Später optional: Aggressivität ab 3 Pirschern (kürzere Erholung, mehr Ketten).
 
-### 16.5 Mutatoren (standardisiert)
+### 16.5 Mutatoren (standardisiert – gebaut, Phase 2)
 - **Reine Daten, nie Code pro Brocken.** Jeder Mutator wirkt automatisch auf alle Brocken (auch Rostwerke).
 - Schema: `{ id, name, desc, reward, monster: {…}, player: {…}, hunt: {…} }`. Generische Hooks, einmal gebaut:
   - `monster`: `speedMul`, `recoverMul`, `telegraphMul` (nie unter Fairness-Minimum 0,5 s), `dmgMul`, `regenPct` (pro s ohne Treffer), `chainBonus`, `rageAlways`, `hideColorCues` (nur Ton bleibt).
@@ -524,6 +525,9 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
   - `hunt`: `timeMul`, `fog`, `matMul` (Belohnung).
 - 0–2 Mutatoren pro Auftrag, **vor Abflug sichtbar**, `reward` erhöht Beute. Bestehende Rotglut-Varianten (`hpMul`, `rage:'always'`) werden zu Mutator-Presets.
 - Start-Liste (macht schwerer): **Speicherleck** (Regeneration) · **Fehlende Texturen** (nur Ton-Telegraphen) · **Lag-Spitze** (Brocken springt kurz Frames weiter, Telegraph bleibt) · **Kein Undo** (keine Heil-Items) · **Übertaktet** (Tempo ×1,15, Erholung ×0,8) · **Overflow** (Brocken-Schaden ×1,3).
+
+- **Umsetzung:** `src/data/mutators.js` (`MUTATORS`, `resolveMods(ids)`, `cleanMutatorIds` max 2, `rewardLabel`). Hooks: Monster über `ctx.mods.monster` (speedMul/dmgMul-Getter, recoverMul am Angriffsende, telegraphMul als tgMul, chainBonus in `_chainStep`, regenPct + lagSpike im Host-Tick), Spieler in `hunt.js`/`items.js`/`vitals.js`, Jagd: timeMul, fog, matMul. Auftragsbrett: 0–2 Mutator-Chips vor Abflug, Gäste sehen sie, IDs gehen mit dem Auftrag ins Netz. Rotglut-Aufträge = Preset `rotglut` (hpMul 1,4, rageAlways, Beute ×2).
+- Gebaute Start-Mutatoren: Speicherleck, Fehlende Texturen (Boden-Marker bleiben aus Fairness), Lag-Spitze, Kein Undo, Übertaktet, Overflow.
 
 ### 16.6 Multi-Brocken-Jagden
 - Frühestens nach Phase 2, als Hebel für **besonders schwere Aufträge**. Zuerst nur „Revierstreit" (Barrotz vs. Jaggo). Regeln: `docs/NEXT.md` §4.
@@ -533,10 +537,11 @@ Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Featur
 
 ### 16.8 Roadmap (gültig)
 - ✅ **Phase 1 – Brocken 2.0 (schwerer + abwechslungsreicher) – gebaut, live seit Okt 2026, siehe 16.3:** 16.3 für Jaggo → Barrotz → Brathalos. *Metrik:* mehr verschiedene 3er-Move-Folgen pro Jagd als heute; Tester erklären ihre Tode; „unfaire" Tode im Tod-Log < 10 %; Jagddauer bleibt ~5–6 min.
-- **Phase 2 – Glitch Hunter:** Umbenennung, Glitch-Energie + Glitch-Modus mit Pflicht-Optik, 4 Waffen-Glitches (16.2), Mutator-System + 6 Start-Mutatoren (16.5), Koop-Zielwechsel, End-Auszeichnungen, „Link teilen". *Metrik:* Glitch-Anteil am Schaden 40–50 %; ≥ 40 % lösen in Jagd 2 den Glitch-Modus aus.
+- ✅ **Phase 2 – Glitch Hunter – gebaut, live seit Okt 2026:** Umbenennung, Glitch-Energie + Glitch-Modus mit Pflicht-Optik, 4 Waffen-Glitches (16.2), Mutator-System + 6 Start-Mutatoren (16.5), Koop-Zielwechsel, End-Auszeichnungen, „Link teilen". *Metrik:* Glitch-Anteil am Schaden 40–50 %; ≥ 40 % lösen in Jagd 2 den Glitch-Modus aus.
 - **Phase 3 – Breite:** Rostwerke (§15) mit Kroll/Gorgo/Voltaro direkt auf Brocken-2.0-Bausteinen + Glitch-Stellen + Mutator-Hooks · erste Multi-Jagd „Revierstreit" · Rotglut als Mutator-Preset.
 - Erledigt vorab: Koop-HP-Skalierung (16.4).
-- **Als Nächstes: Phase 2.** „Link teilen" und Lehrangriff/Kamera/Tod-Log aus der alten Phase-1-Liste sind teils schon erledigt (Lehrangriff, Kamera, Tod-Log ✅; „Link teilen" → Phase 2).
+- Phase 2 umgesetzt: Umbenennung ✅, Glitch-Modus + 4 Waffen-Glitches ✅, Mutatoren ✅, „Link teilen" (`?join=ABCD`, Web Share/Zwischenablage) ✅, End-Auszeichnungen (`src/meta/awards.js`, bis zu 3 pro Jagd) ✅, Koop-Zielwechsel (aus Phase 1) ✅. Offen: Auszeichnungen im Koop nur mit lokaler Statistik (kein Stats-Austausch), Metrik „≥ 40 % lösen in Jagd 2 Glitch aus" braucht Spielertests.
+- **Als Nächstes: Phase 3** (Rostwerke, wöchentlicher Seed, „Revierstreit").
 
 ---
 

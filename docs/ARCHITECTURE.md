@@ -270,3 +270,6 @@ Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert,
 - **Waffen-Glitch** = optionales Feld `glitch` am Waffen-Def (`p.def.glitch`): `{ name, onStart(p), onEnd(p), tick(p, dt), onHit(p, res, monster) }`. `onHit` nur fuer eigene Treffer im Modus (`res` = `hit`-Event: dmg, crit, weak, partId, ...).
 - Bus: `glitchStart` / `glitchEnd` / `glitchReady` mit `{ player }`. Stats: `hunt.stats.glitchDmg` (lokal) neben `hunt.stats.damage`.
 - Optik: `fx.glitchMode(on)`, `fx.glitchTear()`, Zahlen-Kind `gbig`, `sfx.setCrush(on)` (Bitcrush auf SFX), `glitchVisual(p, t)` (Emissive-Flackern am Mesh, keine neuen Materialien). Netz: `MSG.EV {k:'glitch', on}` (`encodeGlitch/decodeGlitch`), setzt `peer.player.glitch.active`.
+
+## Mutatoren (Phase 2)
+`src/data/mutators.js`: Mutator = reine Daten `{ id, name, desc, reward, monster:{…}, player:{…}, hunt:{…} }`. `resolveMods(ids)` → `hunt.mods = { monster, player, hunt, reward, ids }` (Muls multiplizieren, regenPct addiert, Flags ODER). Monster liest `ctx.mods.monster` (nur Brocken, nicht Kleinvieh; Host-autoritativ), Spieler-Seite in `hunt.js` (dmgMul, staminaMul → `p.v.regenMul`), `items.js` (healItems), `glitch.js` (glitchGainMul). Auftrag trägt `mutators` (questboard post/snapshot/start). Neue Mutatoren = nur Eintrag in `MUTATORS`, kein Brocken-Code.
