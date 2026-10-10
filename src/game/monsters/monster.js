@@ -397,6 +397,8 @@ export class Monster {
     const tgt = this.target;
     const ad = this.def.attacks[attackId];
     if (this.authority && ad) {
+      // Lehrangriff greift auch für Angriffe, die def.combat()-Hooks selbst starten (Barrotz-Ramm, Brathalos-Feuer)
+      if (this._b2 && this._inHook && !this._taught && !extra.chainIdx && !ad.internal && !ad.noTeach && extra.teach === undefined) extra = { ...extra, teach: true };
       if (this._b2 && extra.tgMul === undefined) {
         let mul = 1;
         if (extra.teach) mul = 1.4;
@@ -407,6 +409,7 @@ export class Monster {
         if (mul !== 1) extra = { ...extra, tgMul: Math.round(mul * 1000) / 1000 };
       }
       if (extra.chainIdx === 0) { extra = { ...extra }; delete extra.chainIdx; }
+      if (extra.teach) this._taught = true;
       if (this.def.chains && !extra.teach) this.chain = { idx: extra.chainIdx ?? 0, broken: false };
       this._atkCount++;
       if (this._stamOn && attackId !== this.def.tiredAttack) this.stamina = Math.max(0, this.stamina - (ad.stam ?? 8) * ((extra.chainIdx ?? 0) > 0 ? 1.5 : 1) * (this.rage ? 0.7 : 1));
@@ -738,7 +741,8 @@ export class Monster {
     const tgt = this.target;
     if (!tgt) { this._brake(dt); this.setState('wander'); this.wanderT = 3; return; }
     if (this.st.stink > 0) { this._stinkFlee(dt); return; }
-    if (this.def.combat?.(this, dt)) return;
+    this._inHook = true; const hooked = this.def.combat?.(this, dt); this._inHook = false;
+    if (hooked) return;
     const dx = tgt.pos.x - this.pos.x, dz = tgt.pos.z - this.pos.z, dist = Math.hypot(dx, dz);
     this.recover -= dt;
     const want = yawOf(dx, dz);
@@ -771,10 +775,10 @@ export class Monster {
       return;
     }
     let def = null, teach = false;
-    if (this._b2 && this._atkCount === 0 && this._combatT < 30) {
+    if (this._b2 && !this._taught) { // erster (lehrbarer) Angriff der Jagd = Lehrangriff
       const td = this.def.teachAttack && this.def.attacks[this.def.teachAttack];
       def = td && this._atkAllowed(td) && dist >= td.range[0] && dist <= td.range[1] ? td : this._chooseAttack(dist);
-      teach = !!def;
+      teach = !!def && !def.noTeach && !def.internal;
     } else def = this._chooseAttack(dist);
     if (def) {
       if (diff > 0.4 && !def.noFace) { this._faceTarget(dt, 3.4 * turn); this._brake(dt); return; }

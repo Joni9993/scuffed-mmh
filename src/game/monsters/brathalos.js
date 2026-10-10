@@ -262,7 +262,7 @@ const flammenstoss = {
 // ---- 2a. Aufflug: duckt sich, Flügel spreizen, Abheben (Flug-Zustand beginnt am Ende)
 const aufflug = {
   // Take-off cadence is driven by m.flyCd (see `tick`): one take-off every ~30-45 s (21-33 s of ground time + flight), picked sooner when the hunter is far away / in Rotglut.
-  id: 'brathalos_aufflug', range: [0, 40], cooldown: 0, telegraph: 0.6, stam: 22, cue: { color: '#b09060', tone: 'brumm' }, flashParts: ['wingL', 'wingR'], duration: 1.8,
+  id: 'brathalos_aufflug', noTeach: true, range: [0, 40], cooldown: 0, telegraph: 0.6, stam: 22, cue: { color: '#b09060', tone: 'brumm' }, flashParts: ['wingL', 'wingR'], duration: 1.8,
   weight: (m, dist) => (dist > 14 ? 5 : dist > 8 ? 3 : 1.5) + (m.rage ? 1.5 : 0),
   cond: (m) => m.flyCd <= 0 && !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
   hits: [],

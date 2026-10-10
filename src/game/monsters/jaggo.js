@@ -174,6 +174,7 @@ export const jaggo = {
   ],
   attacks: { jaggo_bissreihe: bissreihe, jaggo_huepfer: huepfer, jaggo_schwanz: schwanz, jaggo_rudelruf: rudelruf, jaggo_zickzack: zickzack, jaggo_rueckhuepfer: rueckhuepfer, jaggo_hetzjagd: hetzjagd },
   teachAttack: 'jaggo_bissreihe',
+  recoverAfter: (m) => (0.2 + m.rng() * 0.4) / m.speedMul, // Brocken 2.0: kürzere Grundpause gleicht Ketten-End-Erholung + Erschöpfung aus (nie leichter als vorher)
   stamina: true,
   flinchDmg: true,
   phases: [{ at: 0.5, name: 'Rudelführer', cue: { color: '#ff3b3b', tone: 'droehn' }, special: 'jaggo_hetzjagd' }],
