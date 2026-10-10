@@ -54,7 +54,7 @@ export class Hunt {
     this.scene.add(this.world.mesh);
 
     this.camera = new THREE.PerspectiveCamera(60, app.renderer.aspect, 0.1, 170);
-    this.rig = createCameraRig(this.camera, (x, z) => this.world.heightAt(x, z));
+    this.rig = createCameraRig(this.camera, (x, z) => this.world.heightAt(x, z), (pt, r) => this.world.collide(pt, r));
     this.fx = createFx({ scene: this.scene, camera: this.camera, nofx: !!opts.nofx });
     this.viz = createDebugViz(this.scene);
     // [W] generic projectile system (arrows, later monster projectiles)
@@ -271,7 +271,7 @@ export class Hunt {
     this.fx.update(dt);
     this.rig.update(dt, {
       playerPos: p.pos, playerYaw: p.rot, moving: p.speed > 1, camInput: this.input.takeCamera(),
-      lockPos: p.lockPoint(), shake: this.fx.shakeOffset,
+      lockPos: p.lockPoint(), lockSize: p.lock?.monster?.bodyRadius, shake: this.fx.shakeOffset,
     });
     this.viz.end();
     this.app.input.contextLabel = this.contextLabel ?? null;
