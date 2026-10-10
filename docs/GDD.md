@@ -431,7 +431,7 @@ Angriffe:
 5. **Phase 2 (Panzer weg):** +25 % Tempo, neue Attacke **Scherenwirbel** (Telegraph 0,6 s, 3 Drehungen, je 18) und **Krabbensprung** (springt auf Ziel, 30 Schaden, Landung lässt ihn 1,5 s stecken = Strafe-Fenster).
 
 ### 15.5 Gorgo, der Schlackwurm (JR 5)
-HP 16000 · Länge ~18 m, 6 Segmente. Schwäche: Feuer am Kopf 0, Wasser? (nicht vorhanden) → **Schock 20, Rost 25**; Kopf 1,0, Segmente 0,6 (jedes brechbar 500 → +Material, Wurm wird kürzer & langsamer).
+HP 16000 · Länge ~18 m, 6 Segmente. Schwäche: **Schock 20, Rost 25**, Feuer 0; Kopf 1,0, Segmente 0,6 (jedes brechbar 500 → +Material, Wurm wird kürzer & langsamer).
 Kern-Mechanik: **gräbt sich ein** (Zustand `burrow`, unverwundbar, sichtbar als Schlacke-Welle über Boden, Minimap-Icon). Taucht mit **Bodenwarnung** auf (Risse + Glühen + Rumpeln, 0,8 s) unter dem Ziel.
 Angriffe:
 1. **Durchbruch** (aus dem Boden, 30 Schaden, wirft hoch).
@@ -451,7 +451,7 @@ Angriffe (überladen): **Kettenblitz** (Telegraph 0,8 s Kamm leuchtet: trifft Zi
 ### 15.7 Neue Items & Materialien
 Sammeln: `kupferdraht` (Schrott in Kesselhalle), `schlacke` (Schlackehalden), `rostkaefer` (Giftgraben), `giftschlamm`, `funkenstein` (Turbinenkrone, selten).
 Brocken-Mats: `kroll_panzer`, `kroll_schere`, `kroll_auge`, `gorgo_segment`, `gorgo_zahn`, `gorgo_kern` (selten), `voltaro_kamm`, `voltaro_spule`, `voltaro_fell`, `voltaro_herz` (sehr selten).
-Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostspitze ×10** (Bogen, Rost-Aufbau 15), **Erdungsstab** (platzieren: 20 s Schutzzone 4 m gegen Kettenblitz/Donnerschlag; `kupferdraht` ×2 + `altknochen`), **Kühlbrause** (+30 HP, entfernt Rost/Brennen; `blaublatt` + `giftschlamm` gereinigt?) → nur `blaublatt` + `sprudelwasser` + `rostkaefer`.
+Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostspitze ×10** (Bogen, Rost-Aufbau 15), **Erdungsstab** (platzieren: 20 s Schutzzone 4 m gegen Kettenblitz/Donnerschlag; `kupferdraht` ×2 + `altknochen`), **Kühlbrause** (+30 HP, entfernt Rost/Brennen; `blaublatt` + `sprudelwasser` + `rostkaefer`).
 
 ### 15.8 Progression
 - **Waffen-Stufe 5** für alle 4 Waffen (Plattmacher, Zwillingsklingen, Spannbogen, Katana) mit drei Ästen: **Kroll-Ast** (Rost-Element, hohe Teilbruch-Wirkung), **Gorgo-Ast** (Feuer/Schlacke, Krit), **Voltaro-Ast** (Schock, Stufe 6 nur über Voltaro-Herz: „Funkenfürst-Waffe").
