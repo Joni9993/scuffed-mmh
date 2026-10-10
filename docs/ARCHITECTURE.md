@@ -170,6 +170,15 @@ Animationen: `game/anim.js` – Keyframes `[t, {Pose-Keys}, 'lin'?]`; Pose-Keys 
   events:[{t, call}], calls:{ call(m, ctx, inst) } }   // events laufen nur beim Host (Spawns etc.)
 ```
 **Deterministisch/Netzwerk:** `AttackInstance` (`attack.js`) ist eine reine Funktion von `{attackId, t0, origin, yaw|dir, targetPos, seed, rage?}` → `sample(t)` (Position/Yaw/Luft), `hitsAt(t)` (Welt-Hitshapes). Rotglut wird über `rage:true` in den Parametern übertragen (Telegraph −20 % aber nie < 0,5 s, Rest 1,2× schneller). Host: `monster.startAttack(params)` emittiert `monsterAttack {monsterId, …params}` auf dem Hunt-Bus. Client: `monster.authority = false`, bei `atk`-Nachricht `monster.startAttack(params, elapsed)`, pro Frame `monster.tickRemote(dt)` (spielt Bewegung/Pose ab und prüft Treffer nur gegen lokale Spieler). Host-Zustand für `m`-Nachrichten: `monster.snapshot()`; `applyDamage(res)` ist der Host-Eingang für Gast-`hit`-Events (Format von `resolvePlayerHit`: `{dmg, elemDmg, partId, blunt, crit, weak, attackerId}`). `combat.applyMonsterHit` routet bei `ctx.net.isGuest` über `ctx.net.sendHit(monster, result)`.
+**Brocken 2.0 (alle Felder optional, ohne sie verhält sich der Brocken wie vorher; `def.brocken2:false` schaltet Timing/Lehr/Anti-Spam/Retarget ab, Default = an, sobald eines der Felder gesetzt ist):**
+```js
+def: { chains:{ [lastAttackId]:[{ atk|null, w, cond(m,dist) }] },   // max 3 Glieder, Pause 0,1–0,25 s, End-recover ≥ 1,0 s
+       phases:[{ at:0.7, name, cue, special:attackId, enter(m) }],   // m.phase = Anzahl betretener Phasen
+       teachAttack:id, stamina:true, tiredAttack:id, flinchDmg:number|true (true = 6 % maxHp / 3 s), brocken2?:bool }
+attack: { stam (Default 8), tgVar:false, punishRoll:true, needsBroken:'partId', lockedByBreak:'partId', phase:n, cue:{color,tone} }
+params (zusätzlich, fehlend = Default): tgMul (Telegraph-Faktor, Protokoll 'k'), chainIdx ('c'), teach ('e')
+```
+Bus: `attackStart {monster, attackId, inst, chainIdx, teach, cue}` (alle Clients), `teach {monster, attackId}`, `monsterTired {monster,on}`, `monsterPhase {monster, idx, name, cue}`, `monsterFlinch {monster}`, `retarget {monster, playerId}`. Snapshot: Flag `tired` (MF.TIRED), `phase` (`ph`). Zufall nur beim Host (`beginAttack`/`_chainStep`), Replay nur aus params. Ziel wechselt nur zwischen Ketten/Angriffen (recover ≥ 0,5 s + Marker), globales Aggro-Budget `ctx._aggro` (0,6 s).
 KI: `wander → notice (Brüllen) → combat → enrage (Rotglut 45 s) → flee (≤30 %, `world.nestPoint`) → sleep (1 %/s, ×2 Schaden, Aufwachen ab 60 % oder bei Treffer)`; Teilbruch → 2 s Taumeln, Betäubung (Schwelle 150, ×1,5) → 6 s; Zielwahl nach Bedrohung der letzten 10 s (15 % Zufall). Zustandsnamen sind ein Teil des Netzprotokolls (`monsterState`-Event).
 Jaggo ist komplett (4 Angriffe, brechbarer Kamm, Schwächen). `jaggling.js` ist ein **Platzhalter** (ein Biss) – Monster-Agent baut ihn aus.
 

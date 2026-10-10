@@ -255,6 +255,8 @@ export class HuntNet {
       m.discovered = c.discovered;
       m.stunT = c.stun ? 1 : 0;
       m.stagT = c.stag ? 1 : 0;
+      if (!!c.tired !== m.tired) { m.tired = !!c.tired; this.hunt.bus.emit('monsterTired', { monster: m, on: m.tired }); }
+      if ((c.phase ?? 0) > m.phase) { m.phase = c.phase; this.hunt.bus.emit('monsterPhase', { monster: m, idx: m.phase, name: m.def.phases?.[m.phase - 1]?.name, cue: m.def.phases?.[m.phase - 1]?.cue }); }
       if (c.rage !== m.rage) { m.rage = c.rage; this.hunt.bus.emit('rage', { monster: m, on: c.rage }); m.def.onRage?.(m, c.rage); }
       // Angriff abbrechen, wenn der Host ihn beendet/unterbrochen hat (Snapshot ist jünger als der Angriffsstart)
       if (m.attack && m.attack.netT !== undefined && c.T >= m.attack.netT && c.atk !== m.attack.key) {
@@ -422,7 +424,7 @@ export class HuntNet {
   #monSnap(m) {
     return {
       id: m.id, def: m.def.id, x: m.pos.x, y: m.pos.y, z: m.pos.z, rot: m.rot, state: m.state, hpPct: m.hp / m.maxHp,
-      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0,
+      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, phase: m.phase,
       atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.def.neutral ? [] : m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
     };
   }

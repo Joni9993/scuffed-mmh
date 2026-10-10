@@ -60,7 +60,7 @@ export function decodeP(o) {
 
 // ---------- Brocken-Snapshot  (10 Hz)
 export const MONSTER_STATES = ['wander', 'notice', 'combat', 'enrage', 'flee', 'sleep', 'dead'];
-export const MF = { RAGE: 1, DISCOVERED: 2, STUN: 4, STAG: 8 };
+export const MF = { RAGE: 1, DISCOVERED: 2, STUN: 4, STAG: 8, TIRED: 16 };
 /** in: { id, def, x,y,z, rot, state, hpPct, rage, discovered, stun, stag, atk (Schlüssel|0), parts:[{hp, broken}] } */
 export function encodeMonster(s) {
   let f = 0;
@@ -68,16 +68,19 @@ export function encodeMonster(s) {
   if (s.discovered) f |= MF.DISCOVERED;
   if (s.stun) f |= MF.STUN;
   if (s.stag) f |= MF.STAG;
+  if (s.tired) f |= MF.TIRED;
   const si = MONSTER_STATES.indexOf(s.state);
-  return {
+  const out = {
     i: s.id, d: s.def, x: r2(s.x), y: r2(s.y), z: r2(s.z), r: r3(s.rot), s: si < 0 ? s.state : si, h: r3(s.hpPct), f,
     a: s.atk || 0, p: s.parts.map((p) => (p.broken ? -1 : p.hp === Infinity ? 0 : Math.round(p.hp))),
   };
+  if (s.phase) out.ph = s.phase;
+  return out;
 }
 export function decodeMonster(o) {
   return {
     id: o.i, def: o.d, x: o.x, y: o.y, z: o.z, rot: o.r, state: typeof o.s === 'number' ? MONSTER_STATES[o.s] : o.s, hpPct: o.h,
-    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), atk: o.a || 0,
+    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), phase: o.ph ?? 0, atk: o.a || 0,
     parts: o.p.map((hp) => ({ hp: hp < 0 ? 0 : hp, broken: hp < 0 })),
   };
 }
@@ -93,16 +96,21 @@ export function decodeM(o) {
 const v3 = (p) => [r3(p.x), r3(p.y ?? 0), r3(p.z)];
 const unv3 = (a) => ({ x: a[0], y: a[1], z: a[2] });
 export function encodeAtk(monsterId, params, T) {
-  return {
+  const o = {
     T: Math.round(T * 1000), m: monsterId, a: params.attackId, t: r3(params.t0), o: v3(params.origin),
     y: r4(params.yaw ?? Math.atan2(params.dir?.x ?? 0, params.dir?.z ?? 1)), g: v3(params.targetPos ?? params.origin), s: params.seed >>> 0, r: params.rage ? 1 : 0,
   };
+  if (params.tgMul !== undefined && params.tgMul !== 1) o.k = r3(params.tgMul);
+  if (params.chainIdx) o.c = params.chainIdx;
+  if (params.teach) o.e = 1;
+  return o;
 }
 export function decodeAtk(o) {
-  return {
-    T: o.T / 1000, monsterId: o.m,
-    params: { attackId: o.a, t0: o.t, origin: unv3(o.o), yaw: o.y, targetPos: unv3(o.g), seed: o.s, rage: !!o.r },
-  };
+  const params = { attackId: o.a, t0: o.t, origin: unv3(o.o), yaw: o.y, targetPos: unv3(o.g), seed: o.s, rage: !!o.r };
+  if (o.k !== undefined) params.tgMul = o.k;
+  if (o.c) params.chainIdx = o.c;
+  if (o.e) params.teach = true;
+  return { T: o.T / 1000, monsterId: o.m, params };
 }
 
 // ---------- Treffer (Gast -> Host)
