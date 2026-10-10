@@ -1,4 +1,7 @@
 // Small helpers shared by the Brocken definitions.
+import * as THREE from 'three';
+import { lambert } from '../../render/ps1.js';
+
 export const smooth = (t) => t * t * (3 - 2 * t);
 export const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 
@@ -29,4 +32,32 @@ export function tailSweep({ id, range = [0, 7.5], weight = 4, cooldown = 4, tele
     },
     pose,
   };
+}
+
+/** Schwanz abtrennen (Brathalos, Jaggo): Mesh m.extra.tail2 verschwindet, ein zerlegbares Schwanzstück bleibt liegen (Event 'tailSevered'). Braucht extra { tail2, scale }. */
+export function severTail(m) {
+  const part = m.partById.tail;
+  part.gone = true;
+  const { tail2, scale } = m.extra;
+  const pos = tail2.getWorldPosition(new THREE.Vector3());
+  tail2.visible = false;
+  // dropped tail: a carvable object lying in the world (P agent carves it via the tailSevered event)
+  const drop = new THREE.Group();
+  const clone = tail2.clone(true);
+  clone.visible = true;
+  clone.position.set(0, 0, 0);
+  clone.rotation.set(0, 0, 0);
+  clone.scale.setScalar(1);
+  clone.traverse((o) => { if (o.material) o.material = lambert({ map: o.material.map }); }); // own materials: no part flash / jitter
+  const wrap = new THREE.Group();
+  wrap.scale.setScalar(scale);
+  wrap.add(clone);
+  drop.add(wrap);
+  const gy = m.ctx.world.heightAt(pos.x, pos.z);
+  drop.position.set(pos.x, gy + 0.35 * scale, pos.z);
+  drop.rotation.y = m.rot + Math.PI * 0.12;
+  m.ctx.scene?.add(drop);
+  m.severedTail = { pos: { x: pos.x, y: gy, z: pos.z }, mesh: drop, carved: false };
+  m.ctx.fx.spark(pos, 30, '#c03020', 7);
+  m.ctx.bus.emit('tailSevered', { monster: m, pos: { x: pos.x, y: gy, z: pos.z }, mesh: drop });
 }

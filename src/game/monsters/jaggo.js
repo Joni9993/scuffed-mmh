@@ -2,6 +2,7 @@ import { buildRaptor } from './raptor.js';
 import { mTrack } from './monster.js';
 import { yawOf } from '../../core/math.js';
 import { spawnPack } from './jaggling.js';
+import { severTail } from './common.js';
 
 const SC = 1.3;
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -54,7 +55,7 @@ const huepfer = {
 
 // ---- Schwanzwirbel: Schwanz hebt sich 0,6 s, dann 360-Grad-Drehung
 const schwanz = {
-  id: 'jaggo_schwanz', range: [0, 6], weight: 3, cooldown: 5, telegraph: 0.6, flashParts: ['tail'], duration: 1.9, cue: { color: '#ff7a2a', tone: 'zisch' },
+  id: 'jaggo_schwanz', lockedByBreak: 'tail', range: [0, 6], weight: 3, cooldown: 5, telegraph: 0.6, flashParts: ['tail'], duration: 1.9, cue: { color: '#ff7a2a', tone: 'zisch' },
   hits: [{ t0: 0.62, t1: 1.35, shape: 'capsule', from: [0, 1.4, -2.2], to: [0, 1.3, -7.8], radius: 0.9, dmg: 15, knock: 'flinch' }],
   motion(tau, a) {
     const sign = a.r(0) < 0.5 ? 1 : -1;
@@ -91,7 +92,7 @@ const LEAN = (s) => ({ bodyRoll: 14 * s, tailYaw: 22 * s, neck: -0.2, bodyY: -0.
 
 // ---- Zickzack-Biss: neigt den Körper zur ersten Seite (Telegraph), zwei Seitenschritte, Biss
 const zickzack = {
-  id: 'jaggo_zickzack', range: [2.5, 8], weight: 3, cooldown: 3.5, telegraph: 0.65, flashParts: ['legs'], duration: 2.3,
+  id: 'jaggo_zickzack', range: [2.5, 8], weight: (m) => (m.partById.tail?.broken ? 6 : 3), cooldown: 3.5, telegraph: 0.65, flashParts: ['legs'], duration: 2.3,
   cue: { color: '#38d6e8', tone: 'schrill' }, audit: [3, 6], stam: 10,
   // beisst durchgehend: nach jedem Seitenschritt + am Ende (4 Bisse)
   hits: [0.88, 1.12, 1.36, 1.55].map((t0, i) => ({ t0, t1: t0 + 0.1, shape: 'sphere', at: [0, 2.3, 2.9], radius: 1.05, dmg: i === 3 ? 14 : 11, knock: 'flinch' })),
@@ -112,7 +113,7 @@ const zickzack = {
 
 // ---- Rückhüpfer: schneller 360°-Schwanzwirbel vor dem Absprung (bestraft Dauer-Nahkampf), dann 4 m zurück
 const rueckhuepfer = {
-  id: 'jaggo_rueckhuepfer', range: [0, 4.5], weight: (m, d) => (d < 3.5 ? 4 : 1.5), cooldown: 4, telegraph: 0.6, flashParts: ['tail', 'legs'], duration: 2.1,
+  id: 'jaggo_rueckhuepfer', lockedByBreak: 'tail', range: [0, 4.5], weight: (m, d) => (d < 3.5 ? 4 : 1.5), cooldown: 4, telegraph: 0.6, flashParts: ['tail', 'legs'], duration: 2.1,
   cue: { color: '#ff4fa3', tone: 'knurr' }, audit: [1.5, 3.5], punishRoll: true, stam: 10,
   hits: [{ t0: 0.64, t1: 1.0, shape: 'capsule', from: [0, 1.4, -1.8], to: [0, 1.3, -6.8], radius: 0.95, dmg: 16, knock: 'flinch' }],
   motion(tau, a) {
@@ -181,7 +182,7 @@ export const jaggo = {
       spheres: [{ node: 'body', offset: [0, 0, 0.55], r: 0.68 }, { node: 'body', offset: [0, 0, -0.45], r: 0.68 }, { node: 'neck', offset: [0, 0.3, 0], r: 0.38 }] },
     { id: 'legs', label: 'Beine', factor: 0.8, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'legL', offset: [0, -0.6, 0.15], r: 0.5 }, { node: 'legR', offset: [0, -0.6, 0.15], r: 0.5 }] },
-    { id: 'tail', label: 'Schwanz', factor: 0.8, elem: { fire: 10, shock: 10 },
+    { id: 'tail', label: 'Schwanz', factor: 0.8, breakHp: 700, jitter: 0.06, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'tail1', offset: [0, 0, -0.8], r: 0.45 }, { node: 'tail2', offset: [0, 0, -0.7], r: 0.35 }] },
   ],
   attacks: { jaggo_bissreihe: bissreihe, jaggo_huepfer: huepfer, jaggo_schwanz: schwanz, jaggo_rudelruf: rudelruf, jaggo_zickzack: zickzack, jaggo_rueckhuepfer: rueckhuepfer, jaggo_hetzjagd: hetzjagd },
@@ -210,6 +211,7 @@ export const jaggo = {
       if (m.extra.crest) m.extra.crest.visible = false;
       if (m.extra.stump) m.extra.stump.visible = true;
     }
+    if (part.id === 'tail') severTail(m); // Schwanz ab: Schwanzwirbel + Rückhüpfer entfallen, dafür mehr Beisserei
   },
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
 };

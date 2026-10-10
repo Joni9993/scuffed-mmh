@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { lambert, basic } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
-import { smooth, clamp01, tailSweep, targetBehind } from './common.js';
+import { smooth, clamp01, tailSweep, targetBehind, severTail } from './common.js';
 import { fireballDef } from './mprojectiles.js';
 import { wrapAngle } from '../../core/math.js';
 
@@ -309,7 +309,7 @@ const sturz = {
 const boee = {
   id: 'brathalos_boee', range: [0, 10], weight: 3, cooldown: 7, telegraph: 0.8, cue: { color: '#d8d0b0', tone: 'brumm' }, cond: (m) => !wingBroken(m), flashParts: ['wingL', 'wingR'], duration: 2.0,
   marker: { at: 'self', radius: 7 }, markerUntil: 1.05,
-  hits: [{ t0: 1.0, t1: 1.12, shape: 'sphere', at: [0, 1.2, 3.8], radius: 4.8, dmg: 0, knock: 'push', push: 3 }],
+  hits: [{ t0: 1.0, t1: 1.12, shape: 'sphere', at: [0, 1.2, 3.8], radius: 4.8, dmg: 12, knock: 'push', push: 3 }], // Owner-Feedback: Böe macht jetzt auch Schaden (war 0)
   events: [{ t: 1.0, call: 'gust', all: true }],
   calls: {
     gust(m, ctx) {
@@ -345,32 +345,6 @@ const bruellen = {
 };
 
 // ======================================================= Teile
-function severTail(m) {
-  const part = m.partById.tail;
-  part.gone = true;
-  const { tail2, g, scale } = m.extra;
-  const pos = tail2.getWorldPosition(new THREE.Vector3());
-  tail2.visible = false;
-  // dropped tail: a carvable object lying in the world (P agent carves it via the tailSevered event)
-  const drop = new THREE.Group();
-  const clone = tail2.clone(true);
-  clone.visible = true;
-  clone.position.set(0, 0, 0);
-  clone.rotation.set(0, 0, 0);
-  clone.scale.setScalar(1);
-  clone.traverse((o) => { if (o.material) o.material = lambert({ map: o.material.map }); }); // own materials: no part flash / jitter
-  const wrap = new THREE.Group();
-  wrap.scale.setScalar(scale);
-  wrap.add(clone);
-  drop.add(wrap);
-  const gy = m.ctx.world.heightAt(pos.x, pos.z);
-  drop.position.set(pos.x, gy + 0.35 * scale, pos.z);
-  drop.rotation.y = m.rot + Math.PI * 0.12;
-  m.ctx.scene?.add(drop);
-  m.severedTail = { pos: { x: pos.x, y: gy, z: pos.z }, mesh: drop, carved: false };
-  m.ctx.fx.spark(pos, 30, '#c03020', 7);
-  m.ctx.bus.emit('tailSevered', { monster: m, pos: { x: pos.x, y: gy, z: pos.z }, mesh: drop });
-}
 
 export const brathalos = {
   id: 'brathalos',
@@ -379,9 +353,10 @@ export const brathalos = {
   scale: SC,
   bodyRadius: 1.7,
   predator: true, // [L]
-  walk: 2.6, run: 6.2, detect: 32, prefer: 6, turn: 0.85,
+  walk: 3.0, run: 7.13, detect: 32, prefer: 6, turn: 0.98, // Owner-Feedback Okt 2026: +15 % (war 2,6 / 6,2 / 0,85)
+  recoverAfter: (m) => (0.35 + m.rng() * 0.5) / (1.15 * m.speedMul),
   drops: ['brathalos_schuppe', 'brathalos_membran', 'glutsack', 'brathalos_rubin'],
-  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 21, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 9, speed: 9, angSpeed: 0.5, dropDamage: 250 },
+  fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 22, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 9, speed: 10.35, angSpeed: 0.575, dropDamage: 250 },
   rageAttack: 'brathalos_bruellen',
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 700, jitter: 0.07, elem: { fire: 0, shock: 25 }, blunt: true, stunPart: true,
@@ -449,3 +424,6 @@ export const brathalos = {
   },
   snapExtra: (m) => ({ tailGone: !!m.severedTail }),
 };
+
+// Owner-Feedback Okt 2026: Brathalos +15 % Angriffstempo (alle Angriffe inkl. Flug-Sturz)
+for (const a of Object.values(brathalos.attacks)) if (a.tempo === undefined) a.tempo = 1.15;

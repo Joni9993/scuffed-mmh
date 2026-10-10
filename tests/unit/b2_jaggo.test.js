@@ -79,5 +79,20 @@ describe('Brocken 2.0: Jaggo', () => {
     expect(jaggo.attacks.jaggo_bissreihe.tempo).toBe(1.25);
     expect(jaggo.run).toBeCloseTo(7.75);
   });
+
+  it('Schwanz abtrennen: bricht bei 700, liegt als Stück am Boden, Schwanzangriffe entfallen', () => {
+    const { ctx, m } = mk();
+    const ev = []; ctx.bus.on('tailSevered', (e) => ev.push(e));
+    m.applyDamage({ dmg: 650, elemDmg: 0, partId: 'tail', blunt: 0 });
+    expect(m.partById.tail.broken).toBe(false);
+    m.applyDamage({ dmg: 60, elemDmg: 0, partId: 'tail', blunt: 0 });
+    expect(m.partById.tail.broken).toBe(true);
+    expect(m.partById.tail.gone).toBe(true);
+    expect(ev.length).toBe(1);
+    expect(m.extra.tail2.visible).toBe(false);
+    expect(m._atkAllowed(jaggo.attacks.jaggo_schwanz)).toBe(false);
+    expect(m._atkAllowed(jaggo.attacks.jaggo_rueckhuepfer)).toBe(false);
+    expect(m._atkAllowed(jaggo.attacks.jaggo_zickzack)).toBe(true);
+  });
 });
 

@@ -82,7 +82,7 @@ export function buildRaptor({ scale = 1.3, skin = 'scale', crest = true, eye = '
 
   const nodes = { body, neck, head, tail1, tail2, legL: legs.legL, legR: legs.legR, root: g };
   return {
-    root, nodes, partMeshes, extra: { crest: crestMesh, stump, eyeMat: eyeM },
+    root, nodes, partMeshes, extra: { crest: crestMesh, stump, eyeMat: eyeM, tail2, scale }, // tail2/scale: Schwanz abtrennen (Jaggo)
     apply(p) {
       body.position.y = 1.6 + p.bodyY / scale;
       body.rotation.set(p.bodyPitch * R, 0, p.bodyRoll * R);

@@ -58,4 +58,13 @@ describe('Brocken 2.0 Brathalos', () => {
     const ends = a.map((d) => projPos(d, d.dur).x);
     expect(Math.max(...ends) - Math.min(...ends)).toBeGreaterThan(5);
   });
+
+  it('Owner-Feedback: Tempo 1,15 und Böe macht Schaden', async () => {
+    const { brathalos } = await import('../../src/game/monsters/brathalos.js');
+    expect(brathalos.attacks.brathalos_boee.hits[0].dmg).toBeGreaterThan(0);
+    expect(brathalos.attacks.brathalos_boee.hits[0].knock).toBe('push');
+    expect(brathalos.attacks.brathalos_feuer.tempo).toBe(1.15);
+    expect(brathalos.run).toBeCloseTo(7.13);
+  });
 });
+
