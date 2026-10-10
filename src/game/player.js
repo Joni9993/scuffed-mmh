@@ -124,7 +124,8 @@ export class Player {
     const l = this.lock;
     if (!l) return null;
     if (!l.monster.alive) { this.lock = null; return null; }
-    return l.monster.lockPoints()[l.idx % l.monster.lockPoints().length].pos;
+    const pts = l.monster.lockPoints();
+    return pts.length ? pts[l.idx % pts.length].pos : null;
   }
   #acquireLock() {
     let best = null, bd = 1e9;

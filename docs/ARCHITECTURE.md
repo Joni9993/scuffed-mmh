@@ -209,3 +209,15 @@ URL-Parameter: `?scene=hunt&quest=jaggo&weapon=gs&seed=1&god=1&nofx=1` plus `agg
 - **Item:** Daten in `data/items.js`, Nutzung über `Hunt.onItem`; Heilung `healVitals`, Statusentfernung/Buffs als Felder am Player (`v.costMul`, `dmgMul`, `protect`).
 - **Szene:** Datei in `src/scenes/`, Zeile in `scenes/index.js`, DOM in `app.ui`.
 - **Sound:** `SOUNDS`-Eintrag + `bus.emit('sfx', {name})`.
+
+---
+
+# Phase 3 (Balancing & Bugfixes) – Änderungen an Verträgen
+
+- **Schaden:** `resolvePlayerHit(...).dmg` ist der **Gesamtschaden inkl. Element**; `elemDmg` ist nur der Elementanteil (Anzeige/Statistik). `Monster.applyDamage` zieht genau `res.dmg` ab.
+- **Brocken-Angriffsgewicht:** `AttackDef.weight` darf eine Funktion `(monster, dist) => Zahl` sein. Brathalos-Aufflug nutzt `monster.flyCd` (nur am Boden herunterzählend, 21–33 s nach jeder Landung).
+- **Kleinmonster-Culling:** `minor`-Monster weiter als 65 m von jedem lokalen Pirscher werden weder gezeichnet noch gepost; `hurtParts()`/`lockPoints()` liefern dann `[]`. `hurtParts()`/`lockPoints()` sind gepoolt und pro Pose-Update gecacht – Einträge nicht über Sim-Schritte hinweg aufbewahren.
+- **Ambient-Packs:** `Hunt` spawnt beim Start (nur Host/Solo, `?noambient=1` schaltet ab) je 2 Rudel Jagglinge in Zone 1 und 2 (`spawnPack(..., {ambient:true})`, zählt nicht gegen das Rudelruf-Limit von 3). Gäste bekommen sie über die Brocken-Snapshots.
+- **Netz:** Gast-Pfeile werden per `fx {k:'arrow'}` gespiegelt (nur Optik, Schaden bleibt Gast-`hit`). Sammeln im Koop ist host-arbitriert: Gast sendet `gather {id, c:1}`, Host antwortet an den Absender mit `{id,u,it:[…]}` (oder `deny`) und meldet den neuen Stand an die übrigen. Gameplay-Item-Effekte (`flash/stink/trap/bomb`) wirken nur beim Host/Solo, Gäste spielen die Optik.
+- **Kamera:** `createCameraRig(camera, getGroundY, collide)` – Kollision gegen Gelände/Wände; `update({lockSize})` skaliert Abstand/Neigung mit `monster.bodyRadius`.
+- **Tools:** `tools/weapon-dps.mjs` (DPS-Sweep), `tools/net-e2e.mjs` (2-Peer-Test, braucht PeerJS-Server auf :9000), `tools/perf-probe.mjs` (renderer.info + Allokationen). `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js` = volles Fairness-Audit (~2 min).

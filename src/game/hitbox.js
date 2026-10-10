@@ -13,31 +13,28 @@ export function distSqPointSegment(p, a, b) {
   return dx * dx + dy * dy + dz * dz;
 }
 
-/** Squared distance between two segments (Ericson). */
+/** Squared distance between two segments (Ericson). Allocation-free (hot path: monster hits vs hunter capsules). */
 export function distSqSegmentSegment(p1, q1, p2, q2) {
-  const d1 = { x: q1.x - p1.x, y: q1.y - p1.y, z: q1.z - p1.z };
-  const d2 = { x: q2.x - p2.x, y: q2.y - p2.y, z: q2.z - p2.z };
-  const r = { x: p1.x - p2.x, y: p1.y - p2.y, z: p1.z - p2.z };
-  const dot = (u, v) => u.x * v.x + u.y * v.y + u.z * v.z;
-  const a = dot(d1, d1), e = dot(d2, d2), f = dot(d2, r);
-  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const d1x = q1.x - p1.x, d1y = q1.y - p1.y, d1z = q1.z - p1.z;
+  const d2x = q2.x - p2.x, d2y = q2.y - p2.y, d2z = q2.z - p2.z;
+  const rx = p1.x - p2.x, ry = p1.y - p2.y, rz = p1.z - p2.z;
+  const a = d1x * d1x + d1y * d1y + d1z * d1z, e = d2x * d2x + d2y * d2y + d2z * d2z, f = d2x * rx + d2y * ry + d2z * rz;
   let s, t;
   if (a <= 1e-9 && e <= 1e-9) { s = t = 0; }
-  else if (a <= 1e-9) { s = 0; t = clamp01(f / e); }
+  else if (a <= 1e-9) { s = 0; t = f / e; t = t < 0 ? 0 : t > 1 ? 1 : t; }
   else {
-    const c = dot(d1, r);
-    if (e <= 1e-9) { t = 0; s = clamp01(-c / a); }
+    const c = d1x * rx + d1y * ry + d1z * rz;
+    if (e <= 1e-9) { t = 0; s = -c / a; s = s < 0 ? 0 : s > 1 ? 1 : s; }
     else {
-      const b = dot(d1, d2), denom = a * e - b * b;
-      s = denom > 1e-9 ? clamp01((b * f - c * e) / denom) : 0;
+      const b = d1x * d2x + d1y * d2y + d1z * d2z, denom = a * e - b * b;
+      s = denom > 1e-9 ? (b * f - c * e) / denom : 0;
+      s = s < 0 ? 0 : s > 1 ? 1 : s;
       t = (b * s + f) / e;
-      if (t < 0) { t = 0; s = clamp01(-c / a); }
-      else if (t > 1) { t = 1; s = clamp01((b - c) / a); }
+      if (t < 0) { t = 0; s = -c / a; s = s < 0 ? 0 : s > 1 ? 1 : s; }
+      else if (t > 1) { t = 1; s = (b - c) / a; s = s < 0 ? 0 : s > 1 ? 1 : s; }
     }
   }
-  const c1 = { x: p1.x + d1.x * s, y: p1.y + d1.y * s, z: p1.z + d1.z * s };
-  const c2 = { x: p2.x + d2.x * t, y: p2.y + d2.y * t, z: p2.z + d2.z * t };
-  const dx = c1.x - c2.x, dy = c1.y - c2.y, dz = c1.z - c2.z;
+  const dx = p1.x + d1x * s - (p2.x + d2x * t), dy = p1.y + d1y * s - (p2.y + d2y * t), dz = p1.z + d1z * s - (p2.z + d2z * t);
   return dx * dx + dy * dy + dz * dz;
 }
 

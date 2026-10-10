@@ -69,6 +69,16 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
       const STEPS = 16, fx = this.focus.x, fy = this.focus.y, fz = this.focus.z;
       const sx = -Math.sin(this.yaw) * cp, sz = -Math.cos(this.yaw) * cp;
       let ok = 0;
+      if (collide) { // fast path: 4 samples (every quarter) free -> skip the fine march
+        let clear = true;
+        for (let i = 1; i <= 4 && clear; i++) {
+          const d = (this.dist * i) / 4, x = fx + sx * d, z = fz + sz * d, y = fy + sp * d;
+          if (y < getGroundY(x, z) + 0.7) { clear = false; break; }
+          _cp.x = x; _cp.z = z; collide(_cp, 0.5);
+          if (Math.abs(_cp.x - x) + Math.abs(_cp.z - z) > 0.02) clear = false;
+        }
+        if (clear) return this.dist;
+      }
       for (let i = 1; i <= STEPS; i++) {
         const d = (this.dist * i) / STEPS;
         const x = fx + sx * d, z = fz + sz * d, y = fy + sp * d;

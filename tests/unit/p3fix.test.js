@@ -81,3 +81,33 @@ describe('fix 8: feel', () => {
     expect(m.stagT).toBeGreaterThan(0);
   });
 });
+
+describe('fix 9: perf', () => {
+  it('hurtParts are cached per pose update and refreshed after it', () => {
+    const { m } = make(jaggo);
+    const a = m.hurtParts();
+    expect(m.hurtParts()).toBe(a);
+    m.update(DT);
+    const b = m.hurtParts();
+    expect(b.length).toBe(a.length);
+    expect(b[0].sphere.r).toBeGreaterThan(0);
+  });
+  it('far-away small monsters are culled (not hittable, not drawn) and come back when the hunter approaches', () => {
+    const { m, p } = make(jaggling, 'wander');
+    p.spawnAt(0, 30, 0);
+    m.update(DT);
+    expect(m.culled).toBeFalsy();
+    expect(m.hurtParts().length).toBeGreaterThan(0);
+    p.spawnAt(0, 120, 0);
+    m.update(DT);
+    expect(m.culled).toBe(true);
+    expect(m.mesh.visible).toBe(false);
+    expect(m.hurtParts().length).toBe(0);
+    expect(m.lockPoints().length).toBe(0);
+    p.spawnAt(0, 20, 0);
+    m.update(DT);
+    expect(m.culled).toBe(false);
+    expect(m.mesh.visible).toBe(true);
+    expect(m.hurtParts().length).toBeGreaterThan(0);
+  });
+});

@@ -26,6 +26,7 @@ const MAX_KO = 3;
  * A hunt session. Also serves as the `ctx` for entities (see docs/ARCHITECTURE.md "Hunt context").
  * opts: { quest:'jaggo', weapon:'gs', seed:1, god:false, nofx:false, aggro:false, solo:true, name }
  */
+const _lockV = new THREE.Vector3(); // [B] perf: no per-frame allocation
 export class Hunt {
   constructor(app, opts = {}) {
     this.app = app;
@@ -313,7 +314,7 @@ export class Hunt {
     this.meta.render(); // [P]
     const lp = this.player.lockPoint();
     if (lp) {
-      const v = new THREE.Vector3(lp.x, lp.y, lp.z).project(this.camera);
+      const v = _lockV.set(lp.x, lp.y, lp.z).project(this.camera);
       this.hud.lock(v.z < 1 ? { x: v.x * 0.5 + 0.5, y: -v.y * 0.5 + 0.5 } : null);
     } else this.hud.lock(null);
     this.app.touch?.update();
