@@ -329,3 +329,53 @@ export function buildLayout(seed = 1) {
     addCollider, colliders, pools, cracks, poolRadiusAt, nests, camp, spawnPoints, routes, monsterSpawns, zoneAt,
   };
 }
+
+// ---------------------------------------------------------------- [L] pastures (herd grazing spots)
+/**
+ * Grazing spots for the Mampfer herds in zones 1 (Wackelwiese) and 3 (Schlammsenke), plus which spots are connected by a clear walk.
+ * Call AFTER props have registered their colliders (so no pasture sits inside a rock). Pure + deterministic.
+ * -> [{ id, zone, x, z, r, links:[id] }]
+ */
+export function buildPastures(L, { zones = [1, 3], perZone = 6, spacing = 26, r = 6 } = {}) {
+  const rng = createRng(L.seed * 977 + 31);
+  const out = [];
+  const clearOf = (x, z, rad) => {
+    for (const c of L.colliders) if (Math.hypot(c.x - x, c.z - z) < c.r + rad) return false;
+    return true;
+  };
+  const okSpot = (x, z, zone) => {
+    if (zoneAt(x, z) !== zone || !L.walkable(x, z, 4) || !L.reachable(x, z) || L.slopeAt(x, z) > 0.25) return false;
+    if (Math.hypot(x - L.camp.x, z - L.camp.z) < 32) return false;
+    if (Object.values(L.nests).some((n) => Math.hypot(x - n.x, z - n.z) < 24)) return false;
+    if (PASSES.some((p) => Math.hypot(x - p.x, z - p.z) < 16)) return false;
+    if (L.spawnPoints.some((s) => Math.hypot(x - s.x, z - s.z) < 22)) return false;
+    for (let k = 0; k < 8; k++) { // whole pasture disc: grass (no mud / lava), not a cliff
+      const a = k * Math.PI / 4, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (L.groundType(px, pz) !== 'grass' || !L.walkable(px, pz, 1.2)) return false;
+    }
+    return L.groundType(x, z) === 'grass' && clearOf(x, z, 1.5);
+  };
+  for (const zone of zones) {
+    const zc = ZONES[zone - 1];
+    const cand = [];
+    for (let x = zc.cx - 54; x <= zc.cx + 54; x += 4) for (let z = zc.cz - 54; z <= zc.cz + 54; z += 4) if (okSpot(x, z, zone)) cand.push({ x, z });
+    for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
+    let n = 0;
+    for (const c of cand) {
+      if (n >= perZone) break;
+      if (out.some((o) => o.zone === zone && Math.hypot(o.x - c.x, o.z - c.z) < spacing)) continue;
+      out.push({ id: out.length, zone, x: c.x, z: c.z, r, links: [] });
+      n++;
+    }
+  }
+  const lineClear = (a, b) => {
+    const d = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.ceil(d / 2.5);
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      if (!L.walkable(x, z, 1.8) || L.groundType(x, z) === 'lava' || L.slopeAt(x, z) > 0.6 || !clearOf(x, z, 1.1)) return false;
+    }
+    return true;
+  };
+  for (const a of out) for (const b of out) if (a !== b && a.zone === b.zone && Math.hypot(a.x - b.x, a.z - b.z) < 70 && lineClear(a, b)) a.links.push(b.id);
+  return out;
+}

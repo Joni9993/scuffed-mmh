@@ -40,7 +40,13 @@ export const ARMOR_SETS = {
     legs: piece('Brathalos-Treter', { schrott: 600, brathalos_schuppe: 3, brathalos_membran: 1 }, { wuchtkopf: 1, hitzefell: 1 }),
   }),
 };
-export const SET_ORDER = ['lumpen', 'knochenkram', 'jaggo', 'barrotz', 'brathalos'];
+// [L] Fellkluft: Mampfer-Fell (id exactly `fellkluft`; the lead dedupes against agent G's entry)
+ARMOR_SETS.fellkluft = set('fellkluft', 'Fellkluft', 10, ['zaehe_socke'], {
+  head: piece('Fellmütze', { schrott: 80, mampfer_fell: 2, altknochen: 1 }, { zaehe_socke: 1 }),
+  body: piece('Fellweste', { schrott: 110, mampfer_fell: 4, altknochen: 2 }, { zaehe_socke: 1 }),
+  legs: piece('Fellgamaschen', { schrott: 90, mampfer_fell: 3, altknochen: 1 }, { zaehe_socke: 1 }),
+});
+export const SET_ORDER = ['lumpen', 'knochenkram', 'fellkluft', 'jaggo', 'barrotz', 'brathalos'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};

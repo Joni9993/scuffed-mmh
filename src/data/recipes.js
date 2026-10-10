@@ -9,6 +9,7 @@ export const RECIPES = {
   knallgurke: { id: 'knallgurke', out: 1, cost: { glutbrocken: 1, altknochen: 1 } },
   brennspitze: { id: 'brennspitze', out: 10, cost: { glutbrocken: 1, altknochen: 1 } },
   giftspitze: { id: 'giftspitze', out: 10, cost: { stinkmorchel: 1, altknochen: 1 } },
+  grillsteak: { id: 'grillsteak', out: 1, cost: { rohfleisch: 1, glutbrocken: 1 } }, // [L]
   bummspitze: { id: 'bummspitze', out: 10, cost: { schrotterz: 1, glutbrocken: 1 } },
 };
 export const RECIPE_ORDER = Object.keys(RECIPES);

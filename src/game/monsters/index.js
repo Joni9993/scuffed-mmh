@@ -3,12 +3,14 @@ import { jaggo } from './jaggo.js';
 import { jaggling } from './jaggling.js';
 import { barrotz } from './barrotz.js';
 import { brathalos } from './brathalos.js'; // [M]
+import { mampfer, mampferbulle, mampferkalb, hoppler } from './mampfer.js'; // [L]
 
 export const monsters = {
   jaggo,
   jaggling,
   barrotz, // [M]
   brathalos, // [M]
+  mampfer, mampferbulle, mampferkalb, hoppler, // [L] neutral fauna
 };
 
 export function getMonsterDef(id) {

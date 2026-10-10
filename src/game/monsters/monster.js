@@ -6,6 +6,7 @@ import { AttackInstance } from './attack.js';
 import { overlap } from '../hitbox.js';
 import { radialTexture } from '../../render/textures.js';
 import { ProjectileSet } from './mprojectiles.js';
+import { predationTick, eatTick, endEating } from './predation.js'; // [L]
 
 // wing/spread/jaw: only used by models that have them (Brathalos); harmless for the others
 export const MREST = { bodyY: 0, bodyPitch: 0, bodyRoll: 0, neck: 0, head: 0, headYaw: 0, tailYaw: 0, tailPitch: 0, legL: 0, legR: 0, wing: 0, spread: 0, jaw: 0 };
@@ -103,6 +104,7 @@ export class Monster {
   get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1); }
   get dmgMul() { return this.rage ? 1.15 : 1; }
   get limping() { return this.hp <= this.maxHp * LIMP_HP && this.alive && !this.minor; }
+  get eating() { return this.state === 'fressen'; } // [L] predator busy with its prey: sneak-hit window
   get flying() { return this.state === 'fly' || this.state === 'fall'; }
   get blind() { return this.st.blind > 0; }
   get trapped() { return this.st.trap > 0; }
@@ -274,6 +276,7 @@ export class Monster {
     if (this.minor) this._flinch(pid, total);
     if (this.state === 'fly' && !this.attack && this.flyDamage >= (this.def.fly?.dropDamage ?? 250)) this._startFall(4);
     if (wasSleeping) { this._interrupt(); this.setState('combat'); this.recover = 1.2; }
+    else if (this.state === 'fressen') endEating(this, true); // [L]
     else if (this.state === 'wander') { this.setState('notice'); this.discovered = true; }
     return ev;
   }
@@ -475,6 +478,7 @@ export class Monster {
     if (this.stagT > 0) { this.stagT -= dt; this._brake(dt); return; }
     if (this.stunT > 0) { this.stunT -= dt; this._brake(dt); return; }
     if (this.trapped) { this._brake(dt); return; }
+    if (this.def.ai) { this.def.ai(this, dt); this._clampWorld(); return; } // [L] neutral fauna AI
     if (this.blind && this.state !== 'dead') { this._blinded(dt); return; }
     switch (this.state) {
       case 'wander': this._wander(dt); break;
@@ -496,6 +500,7 @@ export class Monster {
         if (this.stateT >= (this.def.rageAttack ? 0.2 : 1.4)) { this.recover = 0.3; this.setState('combat'); }
         break;
       case 'combat': this._combat(dt); break;
+      case 'fressen': eatTick(this, dt); break; // [L]
       case 'flee': this._flee(dt); break;
       case 'sleep': this._sleep(dt); break;
       case 'fly': this._fly(dt); break;
@@ -548,6 +553,7 @@ export class Monster {
       }
     }
     if (this.st.stink > 0) { this._stinkFlee(dt); return; }
+    if (predationTick(this, dt)) return; // [L]
     this.wanderT -= dt;
     if (this.wanderT <= 0 && !this.wanderTo) this.wanderTo = this._nextWanderPoint();
     if (this.wanderTo) {
@@ -796,6 +802,9 @@ export class Monster {
       const k = Math.sin(clamp(this.stateT / 1.4, 0, 1) * Math.PI);
       Object.assign(target, { bodyPitch: -10 * k, neck: -0.5 * k, head: -35 * k, bodyY: 0.1 * k, tailPitch: -10 * k });
       if (Math.random() < 0.3) this.ctx.fx.shake(0.05, 0.1);
+    } else if (this.state === 'fressen') { // [L] head down, tearing at the carcass
+      Object.assign(target, { neck: 0.55, head: 30 + Math.sin(this.time * 6) * 9, bodyPitch: 10, bodyY: -0.15, tailYaw: Math.sin(this.time * 2) * 10 });
+      if (Math.random() < dt * 2.5) { this.nodes.head?.getWorldPosition(_v2); this.ctx.fx.spark(_v2, 1, '#b04040', 1); }
     } else if (this.stunT > 0) {
       Object.assign(target, { head: 40, neck: 0.2, bodyPitch: 6, headYaw: Math.sin(this.time * 6) * 20 });
     } else if (this.stagT > 0) {
