@@ -7,13 +7,13 @@
 export const MAX_MUTATORS = 2;
 
 export const MUTATORS = {
-  speicherleck: { id: 'speicherleck', name: 'Speicherleck', desc: 'Der Brocken regeneriert, solange du ihn nicht triffst. Gib ihm keine Ruhe.', reward: 1.3, monster: { regenPct: 0.4 } },
-  fehlende_texturen: { id: 'fehlende_texturen', name: 'Fehlende Texturen', desc: 'Kein Farbglühen mehr. Nur noch Ton. Zeit, die Ohren zu benutzen.', reward: 1.25, monster: { hideColorCues: true } },
-  lag_spitze: { id: 'lag_spitze', name: 'Lag-Spitze', desc: 'Der Brocken ruckelt beim Laufen ein Stück weiter. Angriffe kündigen sich weiter an.', reward: 1.2, monster: { lagSpike: { period: 6, skip: 0.18 } } },
-  kein_undo: { id: 'kein_undo', name: 'Kein Undo', desc: 'Keine Heil-Items. Wer getroffen wird, ist getroffen.', reward: 1.35, player: { healItems: false } },
-  uebertaktet: { id: 'uebertaktet', name: 'Übertaktet', desc: 'Brocken-Tempo ×1,15, Erholung ×0,8. Er hat keinen Kaffee gebraucht.', reward: 1.3, monster: { speedMul: 1.15, recoverMul: 0.8 } },
-  overflow: { id: 'overflow', name: 'Overflow', desc: 'Brocken-Schaden ×1,3. Ein Treffer zu viel.', reward: 1.3, monster: { dmgMul: 1.3 } },
-  rotglut: { id: 'rotglut', name: 'Rotglut', desc: 'Dauerwütend und 40 % zäher.', reward: 2, monster: { hpMul: 1.4, rageAlways: true } },
+  speicherleck: { id: 'speicherleck', name: 'Speicherleck', desc: 'Brocken heilt sich, wenn du ihn ~2 s nicht triffst. Gib ihm keine Ruhe.', reward: 1.3, monster: { regenPct: 0.4 } },
+  fehlende_texturen: { id: 'fehlende_texturen', name: 'Fehlende Texturen', desc: 'Angriffe leuchten nicht mehr auf, nur noch Warnton. Ohren auf.', reward: 1.25, monster: { hideColorCues: true } },
+  lag_spitze: { id: 'lag_spitze', name: 'Lag-Spitze', desc: 'Brocken springt beim Laufen ruckartig ein Stück vor. Vorwarnung bleibt.', reward: 1.2, monster: { lagSpike: { period: 6, skip: 0.18 } } },
+  kein_undo: { id: 'kein_undo', name: 'Kein Undo', desc: 'Heil-Items gesperrt. Treffer bleiben Treffer.', reward: 1.35, player: { healItems: false } },
+  uebertaktet: { id: 'uebertaktet', name: 'Übertaktet', desc: 'Brocken 15 % schneller, kürzere Pausen. Zu viel Kaffee.', reward: 1.3, monster: { speedMul: 1.15, recoverMul: 0.8 } },
+  overflow: { id: 'overflow', name: 'Overflow', desc: 'Brocken-Treffer machen 30 % mehr Schaden.', reward: 1.3, monster: { dmgMul: 1.3 } },
+  rotglut: { id: 'rotglut', name: 'Rotglut', desc: 'Brocken ist dauerwütend und hat 40 % mehr Leben.', reward: 2, monster: { hpMul: 1.4, rageAlways: true } },
 };
 export const MUTATOR_ORDER = ['speicherleck', 'fehlende_texturen', 'lag_spitze', 'kein_undo', 'uebertaktet', 'overflow'];
 

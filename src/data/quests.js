@@ -9,34 +9,34 @@ export const quests = {
   kraeuterlauf: {
     id: 'kraeuterlauf', name: 'Kräuterlauf', type: 'gather', monster: null, world: 'schotterklamm', timeLimit: 15 * 60, reward: 100, jr: 1,
     gather: { id: 'knisterkraut', n: 10 },
-    desc: 'Sammle 10 Knisterkraut und gib sie ab. Kein Brocken, nur Büsche. Meistens.',
+    desc: 'Sammle 10 Knisterkraut und gib sie ab. Kein Brocken.',
   },
   jaggo: {
     id: 'jaggo', name: 'Jaggos Rudel', type: 'hunt', monster: 'jaggo', world: 'schotterklamm', timeLimit: 20 * 60, reward: 300, jr: 1, jrUp: 2,
-    desc: 'Jaggo der Große terrorisiert die Wackelwiese. Er ist laut, schnell und hat Freunde.',
+    desc: 'Jaggo der Große auf der Wackelwiese. Schnell, ruft Rudel-Verstärkung.',
   },
   barrotz: {
     id: 'barrotz', name: 'Schlamm drüber', type: 'hunt', monster: 'barrotz', world: 'schotterklamm', timeLimit: 20 * 60, reward: 500, jr: 2, jrUp: 3,
-    desc: 'Barrotz wälzt sich durch die Schlammsenke. Aufwand: hoch. Sauberkeit: keine.',
+    desc: 'Barrotz in der Schlammsenke. Schwer, langsam, harte Treffer.',
   },
   brathalos: {
     id: 'brathalos', name: 'Feuer unterm Hintern', type: 'hunt', monster: 'brathalos', world: 'schotterklamm', timeLimit: 20 * 60, reward: 800, jr: 3, jrUp: 4,
-    desc: 'Brathalos brütet am Glutkamm. Bring etwas gegen Fliegendes mit.',
+    desc: 'Brathalos am Glutkamm. Fliegt und speit Feuer, Fernwaffe hilft.',
   },
   jaggo_rotglut: {
     id: 'jaggo_rotglut', name: 'Rotglut: Jaggo', type: 'hunt', monster: 'jaggo', world: 'schotterklamm', timeLimit: 20 * 60, reward: 600, jr: 4,
     variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
-    desc: 'Jaggo, dauerwütend, 40 % zäher. Doppelte Materialien für doppelte Nerven.',
+    desc: 'Jaggo, dauerwütend, 40 % mehr Leben. Doppelte Materialien.',
   },
   barrotz_rotglut: {
     id: 'barrotz_rotglut', name: 'Rotglut: Barrotz', type: 'hunt', monster: 'barrotz', world: 'schotterklamm', timeLimit: 20 * 60, reward: 900, jr: 4,
     variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
-    desc: 'Barrotz, dauerwütend, 40 % zäher. Der Schlamm kocht.',
+    desc: 'Barrotz, dauerwütend, 40 % mehr Leben.',
   },
   brathalos_rotglut: {
     id: 'brathalos_rotglut', name: 'Rotglut: Brathalos', type: 'hunt', monster: 'brathalos', world: 'schotterklamm', timeLimit: 20 * 60, reward: 1400, jr: 4,
     variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
-    desc: 'Brathalos, dauerwütend, 40 % zäher. Sag nicht, wir hätten dich nicht gewarnt.',
+    desc: 'Brathalos, dauerwütend, 40 % mehr Leben.',
   },
 };
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).

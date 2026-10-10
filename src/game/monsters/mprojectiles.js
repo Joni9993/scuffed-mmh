@@ -95,7 +95,7 @@ export class ProjectileSet {
       if (!p.hitCapsules().some((c) => overlap(shape, c))) continue;
       const res = p.takeHit({
         dmg: def.dmg * (this.owner.dmgMul ?? 1), knock: def.knock ?? 'flinch', key: `${def.key}|${p.id}`,
-        sourcePos: pos, status: def.status, attackId: def.key, monster: this.owner,
+        sourcePos: pos, status: def.status, attackId: def.attackId ?? String(def.key).split('@')[0], monster: this.owner,
       });
       if (res === 'hit' || res === 'block') {
         pr.hit.add(p.id);

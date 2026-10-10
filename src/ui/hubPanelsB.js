@@ -71,7 +71,7 @@ export function startSolo(app, store, questId, mutators = []) {
 export function createBrett(ctx) {
   const adapter = ctx.adapter ?? createLocalBoard({ name: () => ctx.save.name, start: (q, mu) => { ctx.close(); startSolo(ctx.app, ctx.store, q, mu); } });
   const unsub = adapter.onChange?.(() => ctx.rerender());
-  let sel = null;
+  let sel = null, info = null;
   const chosen = []; // 0-2 Mutatoren fuer den naechsten Posten
   const mutHtml = (ids) => ids.map((i) => MUTATORS[i]).filter(Boolean).map((m) => `${esc(m.name)}${rewardLabel(m) ? ` (${rewardLabel(m)})` : ''}`).join(' · ');
   return {
@@ -97,14 +97,16 @@ export function createBrett(ctx) {
           : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
       }).join('') : '<div class="note">Niemand hat etwas gepostet. Sei der Erste.</div>';
       const chips = MUTATOR_ORDER.map((id) => { const m = MUTATORS[id], on = chosen.includes(id);
-        return `<button class="btn small${on ? ' go' : ''}" style="min-height:44px;min-width:44px;margin:2px;text-align:left" aria-pressed="${on}" data-a="mut" data-k="${id}"><b>${esc(m.name)}</b> <small>${esc(rewardLabel(m))}</small><br><small>${esc(m.desc)}</small></button>`; }).join('');
-      const mb = `<div class="sub">Mutatoren vor Abflug (0–${MAX_MUTATORS}) <small>${chosen.length ? esc(rewardLabel(resolveMods(chosen))) : 'normal'}</small></div><div class="muts">${chips}</div>`;
-      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `${mb}<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}`;
+        return `<button class="mtile${on ? ' on' : ''}" aria-pressed="${on}" data-a="mut" data-k="${id}"><span class="mt-n">${on ? '✓ ' : ''}${esc(m.name)}</span><span class="mt-r">${esc(rewardLabel(m))}</span></button>`; }).join('');
+      const focus = info ?? chosen[chosen.length - 1];
+      const infoLine = `<div class="mt-info">${focus && MUTATORS[focus] ? `<b>${esc(MUTATORS[focus].name)}:</b> ${esc(MUTATORS[focus].desc)}` : 'Tippe einen Mutator an: Wirkung und Bonus erscheinen hier.'}</div>`;
+      const mb = `<div class="sub">Mutatoren (optional) <small>${chosen.length}/${MAX_MUTATORS} gewählt${chosen.length ? ' · ' + esc(rewardLabel(resolveMods(chosen))) : ''}</small></div><div class="muts">${chips}</div>${infoLine}`;
+      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}${mb}`;
       return posted.length ? pb + qb : qb + pb; // posts first once something is posted
     },
     click(a, d) {
       if (a === 'qsel') { sel = d.k; return true; }
-      if (a === 'mut') { const i = chosen.indexOf(d.k); if (i >= 0) chosen.splice(i, 1); else { if (chosen.length >= MAX_MUTATORS) chosen.shift(); chosen.push(d.k); } return true; }
+      if (a === 'mut') { info = d.k; const i = chosen.indexOf(d.k); if (i >= 0) chosen.splice(i, 1); else { if (chosen.length >= MAX_MUTATORS) chosen.shift(); chosen.push(d.k); } return true; }
       if (a === 'post') { adapter.post(d.k, [...chosen]); return true; }
       if (a === 'join') { adapter.join(d.k); return true; }
       if (a === 'unpost') { adapter.unpost?.(); return true; }
@@ -133,8 +135,8 @@ export function createSpiegel(ctx) {
 
   function deathHtml() {
     const top = deathlog.top(5);
-    const list = top.length ? top.map((e) => `<div class="row srow"><span class="nm"><b>${esc(prettyAttack(e.a))}</b><br><small>${esc(monsters[e.m]?.name ?? e.m)}${e.q ? ' · schnell/Kette' : ''}</small></span><span class="num">×${e.n}</span></div>`).join('') : '<div class="note">Noch kein KO. Respekt.</div>';
-    return `<div class="sub">Tod-Log</div>${list}<div class="row"><button class="btn small" data-a="dlexport">Exportieren</button></div>`;
+    const list = top.length ? top.map((e) => `<div class="row srow"><span class="nm"><b>${esc(prettyAttack(e.a))}</b><br><small>${esc(monsters[e.m]?.name ?? e.m)}${e.q ? ` · davon ${e.q}× schnell (Kette/kurze Vorwarnung)` : ''}</small></span><span class="num">${e.n}× umgekippt</span></div>`).join('') : '<div class="note">Noch kein KO. Respekt.</div>';
+    return `<div class="sub">Tod-Log</div><div class="note">Woran du am häufigsten umkippst – hilft uns, unfaire Angriffe zu finden.</div>${list}<div class="row"><button class="btn small" data-a="dlexport">Exportieren</button></div>`;
   }
 
   function statsView() {
@@ -173,7 +175,7 @@ export function createSpiegel(ctx) {
     },
     click(a, d) {
       if (a === 'color') { ctx.save.color = d.k; ctx.commit(); } else if (a === 'tab') tab = d.k;
-      else if (a === 'dlexport') { try { navigator.clipboard?.writeText(deathlog.exportText()); ctx.toast('Tod-Log kopiert.'); } catch { ctx.toast('Kopieren ging nicht.', true); } }
+      else if (a === 'dlexport') { try { navigator.clipboard?.writeText(deathlog.exportText((id) => monsters[id]?.name ?? id)); ctx.toast('Tod-Log kopiert.'); } catch { ctx.toast('Kopieren ging nicht.', true); } }
     },
   };
 }
