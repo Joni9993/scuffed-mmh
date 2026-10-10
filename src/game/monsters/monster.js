@@ -114,8 +114,10 @@ export class Monster {
   get alive() { return this.state !== 'dead'; }
   get sleeping() { return this.state === 'sleep'; }
   get invulnerable() { return false; }
-  get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1); }
-  get dmgMul() { return this.rage ? 1.15 : 1; }
+  /** Mutator-Hooks (GDD 16.5, data/mutators.js): generisch fuer alle Brocken, nie fuer Kleinvieh. */
+  get mm() { return this.minor ? null : this.ctx.mods?.monster ?? null; }
+  get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1) * (this.mm?.speedMul ?? 1); }
+  get dmgMul() { return (this.rage ? 1.15 : 1) * (this.mm?.dmgMul ?? 1); }
   get limping() { return this.hp <= this.maxHp * LIMP_HP && this.alive && !this.minor; }
   get eating() { return this.state === 'fressen'; } // [L] predator busy with its prey: sneak-hit window
   get flying() { return this.state === 'fly' || this.state === 'fall'; }
@@ -265,6 +267,7 @@ export class Monster {
     const wasSleeping = this.sleeping;
     this.hp = Math.max(0, this.hp - total);
     this.hitFlash = 0.12;
+    this._sinceHit = 0;
     const pid = res.attackerId ?? 'p1';
     this._addThreat(pid, total);
     const ev = { monster: this, part, dmg: total, res, broke: false, stunned: false, killed: false };
@@ -408,6 +411,8 @@ export class Monster {
         }
         if (mul !== 1) extra = { ...extra, tgMul: Math.round(mul * 1000) / 1000 };
       }
+      const tgm = this.mm?.telegraphMul; // attack.js klemmt auf MIN_TELEGRAPH
+      if (tgm && tgm !== 1) extra = { ...extra, tgMul: Math.round((extra.tgMul ?? 1) * tgm * 1000) / 1000 };
       if (extra.chainIdx === 0) { extra = { ...extra }; delete extra.chainIdx; }
       if (extra.teach) this._taught = true;
       if (this.def.chains && !extra.teach) this.chain = { idx: extra.chainIdx ?? 0, broken: false };
@@ -524,10 +529,11 @@ export class Monster {
         return a && this._atkAllowed(a) && (!a.cond || a.cond(this, this.ctx)) && (!a.rageOnly || this.rage) && dist >= a.range[0] && dist <= a.range[1] && (!o.cond || o.cond(this, dist));
       });
       let total = 0;
-      for (const o of opts) total += o.w ?? 1;
+      const cb = 1 + (this.mm?.chainBonus ?? 0), wOf = (o) => (o.w ?? 1) * (o.atk !== null ? cb : 1);
+      for (const o of opts) total += wOf(o);
       if (total > 0) {
         let r = this.rng() * total, pick = opts[opts.length - 1];
-        for (const o of opts) { r -= o.w ?? 1; if (r <= 0) { pick = o; break; } }
+        for (const o of opts) { r -= wOf(o); if (r <= 0) { pick = o; break; } }
         if (pick.atk !== null) {
           this.chainNext = { id: pick.atk, idx: ch.idx + 1 };
           this.recover = 0.1 + this.rng() * 0.15;
@@ -593,6 +599,7 @@ export class Monster {
   // ---------- update
   update(dt) {
     this.time += dt;
+    if (this.authority && this.mm) this.mutatorTick(dt);
     this.stateT += dt;
     for (const k in this.cds) this.cds[k] = Math.max(0, this.cds[k] - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
@@ -814,7 +821,7 @@ export class Monster {
       const id = a.id;
       this.attack = null;
       this.ctx.fx.clearMarker?.(this.id);
-      this.recover = this.def.recoverAfter?.(this) ?? (this.minor ? 0.5 : 0.35 + this.rng() * 0.5) / this.speedMul;
+      this.recover = (this.def.recoverAfter?.(this) ?? (this.minor ? 0.5 : 0.35 + this.rng() * 0.5) / this.speedMul) * (this.mm?.recoverMul ?? 1);
       if (this.authority) this._chainStep(id);
       this.def.onAttackEnd?.(this, id, inst);
       if (this.state === 'enrage') { this.recover = 0.5; this.setState('combat'); }
@@ -841,6 +848,27 @@ export class Monster {
         if (res === 'hit' && h.dmg > 0) this.ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
       }
     }
+  }
+
+  /** Mutator-Tick (nur Autoritaet, deterministisch ueber this.time): regenPct + lagSpike. */
+  mutatorTick(dt) {
+    const mm = this.mm;
+    if (!mm || !this.alive) return;
+    this._sinceHit = (this._sinceHit ?? 99) + dt;
+    if (mm.regenPct && this._sinceHit >= 2 && this.hp < this.maxHp && this.state !== 'sleep') {
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * mm.regenPct / 100 * dt);
+    }
+    const ls = mm.lagSpike;
+    if (ls && this.state === 'combat' && !this.attack && !this.chainNext) {
+      this._lagT = (this._lagT ?? 0) + dt;
+      const sp = Math.hypot(this.vel.x, this.vel.z);
+      if (this._lagT >= ls.period && sp > 1) { // Position-Sprung nur im Bewegen; Telegraphs (this.attack) bleiben unberuehrt
+        this._lagT = 0;
+        this.pos.x += this.vel.x * ls.skip; this.pos.z += this.vel.z * ls.skip;
+        this.ctx.world.collide?.(this.pos, this.bodyRadius * 0.5);
+        this.pos.y = this.ctx.world.heightAt(this.pos.x, this.pos.z) + (this.air ?? 0);
+      }
+    } else if (ls) this._lagT = Math.min(this._lagT ?? 0, ls.period);
   }
 
   /** Remote clients: advance a replayed attack. */
@@ -1111,7 +1139,7 @@ export class Monster {
     for (const part of this.parts) {
       if (part.gone) continue;
       let r = 0, g = 0, b = 0;
-      if (tele && tele.includes(part.id)) { if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
+      if (tele && tele.includes(part.id)) { if (this.mm?.hideColorCues) { /* nur Ton */ } else if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
       else if (this.hitFlash > 0) { r = g = b = 0.45; }
       else if (this.rage) { r = 0.22; }
       else if (trap) { r = 0.2; g = 0.2; }

@@ -1,4 +1,5 @@
 // Station panels B: Kochtopf, Auftragsbrett, Spiegel, Optionen.
+import { MUTATORS, MUTATOR_ORDER, MAX_MUTATORS, resolveMods, rewardLabel } from '../data/mutators.js';
 import { FOODS, FOOD_ORDER } from '../data/foods.js';
 import { questList } from '../data/quests.js';
 import { monsters } from '../game/monsters/index.js';
@@ -50,27 +51,29 @@ export function createLocalBoard({ name, start }) {
   const emit = () => subs.forEach((f) => f());
   return {
     getPosted: () => (post ? [post] : []),
-    post(questId) { post = { id: 'local', quest: questId, host: name(), members: [{ name: name(), ready: false, me: true }], joined: true, mine: true }; emit(); },
+    post(questId, mutators = []) { post = { id: 'local', quest: questId, mutators, host: name(), members: [{ name: name(), ready: false, me: true }], joined: true, mine: true }; emit(); },
     join() {},
     unpost() { post = null; emit(); },
     setReady(b) {
       if (!post) return;
       post.members[0].ready = !!b; emit();
-      if (b && post.members.length === 1) start(post.quest);
+      if (b && post.members.length === 1) start(post.quest, post.mutators);
     },
     onChange(fn) { subs.add(fn); return () => subs.delete(fn); },
   };
 }
 
-export function startSolo(app, store, questId) {
+export function startSolo(app, store, questId, mutators = []) {
   const save = store.get();
-  app.goto('hunt', { quest: questId, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
+  app.goto('hunt', { quest: questId, mutators, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
 }
 
 export function createBrett(ctx) {
-  const adapter = ctx.adapter ?? createLocalBoard({ name: () => ctx.save.name, start: (q) => { ctx.close(); startSolo(ctx.app, ctx.store, q); } });
+  const adapter = ctx.adapter ?? createLocalBoard({ name: () => ctx.save.name, start: (q, mu) => { ctx.close(); startSolo(ctx.app, ctx.store, q, mu); } });
   const unsub = adapter.onChange?.(() => ctx.rerender());
   let sel = null;
+  const chosen = []; // 0-2 Mutatoren fuer den naechsten Posten
+  const mutHtml = (ids) => ids.map((i) => MUTATORS[i]).filter(Boolean).map((m) => `${esc(m.name)}${rewardLabel(m) ? ` (${rewardLabel(m)})` : ''}`).join(' · ');
   return {
     dispose() { unsub?.(); },
     render() {
@@ -89,16 +92,20 @@ export function createBrett(ctx) {
         const me = p.members.find((m) => m.me);
         const alone = p.members.length <= 1;
         return `<div class="card post"><b>${esc(q?.name ?? p.quest)}</b> <small>von ${esc(p.host)}</small>
-          <div class="note">${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(' · ')}</div>
+          ${p.mutators?.length ? `<div class="note">Mutatoren: ${mutHtml(p.mutators)}</div>` : ''}<div class="note">${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(' · ')}</div>
           ${p.joined ? `<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>${p.mine ? `<button class="btn small" data-a="unpost">Zurückziehen</button>` : ''}`
           : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
       }).join('') : '<div class="note">Niemand hat etwas gepostet. Sei der Erste.</div>';
-      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}`;
+      const chips = MUTATOR_ORDER.map((id) => { const m = MUTATORS[id], on = chosen.includes(id);
+        return `<button class="btn small${on ? ' go' : ''}" style="min-height:44px;min-width:44px;margin:2px;text-align:left" aria-pressed="${on}" data-a="mut" data-k="${id}"><b>${esc(m.name)}</b> <small>${esc(rewardLabel(m))}</small><br><small>${esc(m.desc)}</small></button>`; }).join('');
+      const mb = `<div class="sub">Mutatoren vor Abflug (0–${MAX_MUTATORS}) <small>${chosen.length ? esc(rewardLabel(resolveMods(chosen))) : 'normal'}</small></div><div class="muts">${chips}</div>`;
+      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `${mb}<div class="sub">Aufträge · Jägerrang ${s.jr}</div>${list}`;
       return posted.length ? pb + qb : qb + pb; // posts first once something is posted
     },
     click(a, d) {
       if (a === 'qsel') { sel = d.k; return true; }
-      if (a === 'post') { adapter.post(d.k); return true; }
+      if (a === 'mut') { const i = chosen.indexOf(d.k); if (i >= 0) chosen.splice(i, 1); else { if (chosen.length >= MAX_MUTATORS) chosen.shift(); chosen.push(d.k); } return true; }
+      if (a === 'post') { adapter.post(d.k, [...chosen]); return true; }
       if (a === 'join') { adapter.join(d.k); return true; }
       if (a === 'unpost') { adapter.unpost?.(); return true; }
       if (a === 'ready') { adapter.setReady(d.r === '1'); return true; }

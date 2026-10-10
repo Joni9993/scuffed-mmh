@@ -7,6 +7,7 @@ import { createCameraRig } from '../render/camera.js';
 import { createDebugViz } from '../render/debugviz.js';
 import { createHud } from '../ui/hud.js';
 import { Player } from './player.js';
+import { resolveMods } from '../data/mutators.js';
 import { Monster } from './monsters/monster.js';
 import { getMonsterDef } from './monsters/index.js';
 import { spawnPack } from './monsters/jaggling.js';
@@ -43,7 +44,10 @@ export class Hunt {
     this.seed = Number(opts.seed ?? 1);
     this.rng = createRng(this.seed);
     this.quest = getQuest(opts.quest ?? 'jaggo');
-    this.timeLeft = this.quest.timeLimit;
+    this.mods = resolveMods([...(this.quest.mutators ?? []), ...(opts.mutators ?? [])]); // GDD 16.5; Brocken lesen ctx.mods.monster
+    this.boardMods = resolveMods(opts.mutators ?? []); // nur die vor Abflug gewaehlten (Beute-Bonus; feste Quest-Mutatoren stecken schon in quest.matMul)
+    this.timeLimit = this.quest.timeLimit * (this.mods.hunt.timeMul ?? 1);
+    this.timeLeft = this.timeLimit;
     this.time = 0;
     this.teamKo = 0;
     this.result = null; // 'win' | 'fail'
@@ -60,7 +64,8 @@ export class Hunt {
     this.world = createWorld(opts.world || this.quest.world || 'schotterklamm', { seed: this.seed }); // [K] world id override (?world=arena) + hunt seed
     const env = this.world.env;
     this.scene.background = new THREE.Color(env.background);
-    this.scene.fog = new THREE.Fog(env.fog.color, env.fog.near, env.fog.far);
+    const fogK = this.mods.hunt.fog ?? 1; // >1 = dichter
+    this.scene.fog = new THREE.Fog(env.fog.color, env.fog.near / fogK, env.fog.far / fogK);
     this.scene.add(this.world.mesh);
 
     this.camera = new THREE.PerspectiveCamera(60, app.renderer.aspect, 0.1, 170);
@@ -79,6 +84,7 @@ export class Hunt {
     this.loadout = lo;
     const p = new Player({ id: opts.playerId ?? 'p1', name: lo.name ?? opts.name ?? 'Pirscher', weapon: lo.weapon.type, tier: lo.weapon.tier, branch: lo.weapon.branch, gear: makeGear(lo), ctx: this }); // [G] gear looks
     p.god = !!opts.god;
+    if (this.mods.player.staminaMul) p.v.regenMul = this.mods.player.staminaMul;
     p.spawnAt(sp.x, sp.z, sp.yaw);
     this.players.push(p);
     this.player = p;
@@ -146,9 +152,9 @@ export class Hunt {
 
   // [P] Rotglut variants: more HP, permanent rage
   #applyQuestVariant(m) {
-    const q = this.quest;
-    if (q.hpMul) { m.maxHp = Math.round(m.maxHp * q.hpMul); m.hp = m.maxHp; }
-    if (q.rage === 'always') { m.rageUsed = true; m.rage = true; m.rageT = 1e9; m.def.onRage?.(m, true); }
+    const q = this.quest, mm = this.mods.monster, hpMul = (q.hpMul ?? 1) * (mm.hpMul ?? 1);
+    if (hpMul !== 1) { m.maxHp = Math.round(m.maxHp * hpMul); m.hp = m.maxHp; }
+    if (q.rage === 'always' || mm.rageAlways) { m.rageUsed = true; m.rage = true; m.rageT = 1e9; m.def.onRage?.(m, true); }
   }
 
   /** [N] Brocken-HP nach Anzahl Pirscher (coopScale.js); bei Beitritt/Verlassen erneut aufrufen. */
@@ -197,7 +203,7 @@ export class Hunt {
     const st = player.stats;
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
-    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (player.def.dmgMul?.(player.weapon) ?? 1) }; // [KT] Schliff
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) }; // [KT] Schliff
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     res.attackerId = player.id;
@@ -276,12 +282,12 @@ export class Hunt {
     this.result = result;
     this.reason = reason;
     if (this.net?.isHost) this.net.sendEnd(result, reason); // [N]
-    this.bus.emit(result === 'win' ? 'questComplete' : 'questFailed', { quest: this.quest, time: this.quest.timeLimit - this.timeLeft, reason, stats: this.stats });
+    this.bus.emit(result === 'win' ? 'questComplete' : 'questFailed', { quest: this.quest, time: this.timeLimit - this.timeLeft, reason, stats: this.stats });
     if (this.meta.onFinish(result, reason) || this.opts.noOverlay) return; // [P] carve window / results scene
     const ov = document.createElement('div');
     ov.className = 'screen ui-hit';
     ov.innerHTML = `<div class="panel"><h2>${result === 'win' ? 'Auftrag erfüllt' : 'Auftrag gescheitert'}</h2>
-      <p>${result === 'win' ? `${this.quest.name} in ${Math.floor((this.quest.timeLimit - this.timeLeft) / 60)}:${String(Math.floor((this.quest.timeLimit - this.timeLeft) % 60)).padStart(2, '0')}.<br>Schrott gibt es später. Jetzt Daumen hoch.` : `${reason || 'Zeit abgelaufen'}.<br>Nächstes Mal mit mehr Rollen.`}</p>
+      <p>${result === 'win' ? `${this.quest.name} in ${Math.floor((this.timeLimit - this.timeLeft) / 60)}:${String(Math.floor((this.timeLimit - this.timeLeft) % 60)).padStart(2, '0')}.<br>Schrott gibt es später. Jetzt Daumen hoch.` : `${reason || 'Zeit abgelaufen'}.<br>Nächstes Mal mit mehr Rollen.`}</p>
       <button class="btn">Weiter</button></div>`;
     ov.querySelector('button').addEventListener('click', () => this.#leave()); // [N]
     this.app.ui.appendChild(ov);

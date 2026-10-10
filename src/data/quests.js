@@ -1,8 +1,10 @@
+import { resolveMods } from './mutators.js';
 // Quest data (GDD 8.4).
 //   type      'hunt' (default, kill `monster`) | 'gather' (hand in `gather.n` x `gather.id`, no Brocken)
 //   world     key of the world registry (game/world/index.js). Other agents may re-point this to 'schotterklamm'.
 //   jr        Jägerrang needed to take the quest      jrUp  Jägerrang you reach by finishing it the first time
-//   variant   'rotglut' -> Brocken starts in permanent Rotglut with hpMul x HP; matMul multiplies all material drops
+//   variant   'rotglut' (Anzeige); mutators: ['id'] feste Mutatoren (data/mutators.js: Preset rotglut = hpMul 1,4, Dauerwut, Beute x2)
+//   matMul    optionaler Beute-Faktor des Auftrags (Mutator-reward kommt dazu)
 export const quests = {
   kraeuterlauf: {
     id: 'kraeuterlauf', name: 'Kräuterlauf', type: 'gather', monster: null, world: 'schotterklamm', timeLimit: 15 * 60, reward: 100, jr: 1,
@@ -23,20 +25,22 @@ export const quests = {
   },
   jaggo_rotglut: {
     id: 'jaggo_rotglut', name: 'Rotglut: Jaggo', type: 'hunt', monster: 'jaggo', world: 'schotterklamm', timeLimit: 20 * 60, reward: 600, jr: 4,
-    variant: 'rotglut', hpMul: 1.4, rage: 'always', matMul: 2,
+    variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
     desc: 'Jaggo, dauerwütend, 40 % zäher. Doppelte Materialien für doppelte Nerven.',
   },
   barrotz_rotglut: {
     id: 'barrotz_rotglut', name: 'Rotglut: Barrotz', type: 'hunt', monster: 'barrotz', world: 'schotterklamm', timeLimit: 20 * 60, reward: 900, jr: 4,
-    variant: 'rotglut', hpMul: 1.4, rage: 'always', matMul: 2,
+    variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
     desc: 'Barrotz, dauerwütend, 40 % zäher. Der Schlamm kocht.',
   },
   brathalos_rotglut: {
     id: 'brathalos_rotglut', name: 'Rotglut: Brathalos', type: 'hunt', monster: 'brathalos', world: 'schotterklamm', timeLimit: 20 * 60, reward: 1400, jr: 4,
-    variant: 'rotglut', hpMul: 1.4, rage: 'always', matMul: 2,
+    variant: 'rotglut', mutators: ['rotglut'], // hpMul 1,4 + Dauerwut + Beute x2 kommen aus dem Mutator-Preset
     desc: 'Brathalos, dauerwütend, 40 % zäher. Sag nicht, wir hätten dich nicht gewarnt.',
   },
 };
+// Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
+for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
 export function getQuest(id) {

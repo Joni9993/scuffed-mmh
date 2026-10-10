@@ -1,8 +1,9 @@
 import { MSG, MAX_PLAYERS } from './protocol.js';
+import { cleanMutatorIds } from '../data/mutators.js';
 
 /**
  * Auftragsbrett-Zustand (rein, unit-getestet). Der Raum-Host ist die Wahrheit; Gäste spiegeln `snapshot()`.
- * post = { postId, questId, hostId (Poster = Jagd-Host), members:[{id, ready}] }
+ * post = { postId, questId, hostId (Poster = Jagd-Host), members:[{id, ready}], mutators:[id] (0-2, sichtbar vor Abflug) }
  * Regeln: ein Mitglied ist in höchstens einem Auftrag; sind alle Mitglieder eines Auftrags bereit, startet er
  * (Auftrag verschwindet, Mitglieder gelten als „unterwegs" bis `back`); Poster weg -> Auftrag gelöscht.
  */
@@ -12,7 +13,7 @@ export class QuestBoardState {
   snapshot() { return JSON.parse(JSON.stringify({ posts: this.posts, busy: [...this.busy] })); }
   load(s) { this.posts = s.posts; this.busy = new Set(s.busy); }
 
-  /** msg: { a:'post', questId } | { a:'join', postId } | { a:'ready', r } | { a:'leave' } | { a:'back' } → { changed, start } */
+  /** msg: { a:'post', questId, mutators? } | { a:'join', postId } | { a:'ready', r } | { a:'leave' } | { a:'back' } → { changed, start } */
   apply(from, msg, seed = 1) {
     const res = { changed: false, start: null };
     if (msg.a === 'back') { res.changed = this.busy.delete(from); return res; }
@@ -21,7 +22,7 @@ export class QuestBoardState {
     switch (msg.a) {
       case 'post':
         if (mine || typeof msg.questId !== 'string') break;
-        this.posts.push({ postId: `${from}-${++this.n}`, questId: msg.questId, hostId: from, members: [{ id: from, ready: false }] });
+        this.posts.push({ postId: `${from}-${++this.n}`, questId: msg.questId, mutators: cleanMutatorIds(msg.mutators), hostId: from, members: [{ id: from, ready: false }] });
         res.changed = true;
         break;
       case 'join': {
@@ -42,7 +43,7 @@ export class QuestBoardState {
         if (mine.members.every((x) => x.ready)) {
           this.posts = this.posts.filter((p) => p !== mine);
           for (const x of mine.members) this.busy.add(x.id);
-          res.start = { postId: mine.postId, questId: mine.questId, hostId: mine.hostId, members: mine.members.map((x) => x.id), seed };
+          res.start = { postId: mine.postId, questId: mine.questId, mutators: mine.mutators ?? [], hostId: mine.hostId, members: mine.members.map((x) => x.id), seed };
         }
         break;
       }
@@ -103,13 +104,13 @@ export function createQuestBoard(session) {
     state: st,
     getPosted() {
       return st.posts.map((p) => ({
-        postId: p.postId, questId: p.questId, hostId: p.hostId, hostName: session.member(p.hostId)?.name ?? '?',
+        postId: p.postId, questId: p.questId, mutators: p.mutators ?? [], hostId: p.hostId, hostName: session.member(p.hostId)?.name ?? '?',
         members: p.members.map((m) => ({ ...m, name: session.member(m.id)?.name ?? '?' })), joined: p.members.some((m) => m.id === session.myId),
         ready: p.members.find((m) => m.id === session.myId)?.ready ?? false, full: p.members.length >= MAX_PLAYERS,
       }));
     },
     myPost() { return api.getPosted().find((p) => p.joined) ?? null; },
-    post(questId) { act({ a: 'post', questId }); },
+    post(questId, mutators = []) { act({ a: 'post', questId, mutators: cleanMutatorIds(mutators) }); },
     join(postId) { act({ a: 'join', postId }); },
     leavePost() { act({ a: 'leave' }); },
     setReady(r) { act({ a: 'ready', r: !!r }); },
