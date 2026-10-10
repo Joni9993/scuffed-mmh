@@ -6,6 +6,7 @@ import { jaggo } from '../../src/game/monsters/jaggo.js';
 import { jaggling } from '../../src/game/monsters/jaggling.js';
 import { barrotz } from '../../src/game/monsters/barrotz.js';
 import { brathalos } from '../../src/game/monsters/brathalos.js';
+import { monsters } from '../../src/game/monsters/index.js';
 import { AttackInstance } from '../../src/game/monsters/attack.js';
 import { Player } from '../../src/game/player.js';
 import { ROLL, rollPhase } from '../../src/game/vitals.js';
@@ -104,7 +105,8 @@ const CASES = [
   [brathalos, 'brathalos_bruellen', [4, 8]],
 ];
 // Brocken 2.0: neue Angriffe melden sich selbst an über attack.audit = [Distanzen] (Pflicht für jeden neuen Angriff mit hits).
-for (const def of [jaggo, barrotz, brathalos]) {
+// alle Brocken der Registry (neue wie kroll/gorgo/voltaro melden ihre Angriffe per attack.audit an)
+for (const def of Object.values(monsters).filter((d) => !d.minor && !d.ai && d.attacks)) {
   for (const atk of Object.values(def.attacks)) {
     if (atk.audit && !CASES.some(([d, id]) => d === def && id === atk.id)) CASES.push([def, atk.id, atk.audit]);
   }
