@@ -77,6 +77,18 @@ export class Monster {
     this._tgt = { ...MREST };
     this._stamp = 0; this._hpStamp = -1; this._lpStamp = -1;
     this.marker = null;
+    // ---- Brocken 2.0 (alle Felder optional per def; ohne def-Daten inaktiv)
+    this._b2 = !this.minor && (def.brocken2 ?? !!(def.chains || def.phases || def.teachAttack || def.stamina || def.flinchDmg !== undefined));
+    this._stamOn = !this.minor && !!(def.stamina || Object.values(def.attacks ?? {}).some((a) => a.stam !== undefined));
+    this._flOn = !this.minor && def.flinchDmg !== undefined;
+    this.stamina = 100; this.tiredT = 0; this.tired = false;
+    this.phase = 0; this.phaseT = 0; this.phaseSpecial = null;
+    this.chain = null; this.chainNext = null;
+    this._flLog = []; this._flLast = -99;
+    this._combatT = 0; this._atkCount = 0; this._rtT = 0;
+    this._rollLog = new Map(); this._rollPrev = new Map();
+    this._offs = [];
+    if (def.chains && !this.minor) this._offs.push(ctx.bus.on('glitchCounter', (e) => { if (e?.monster && e.monster !== this) return; this._chainBreak(); }));
 
     const built = def.build();
     this.mesh = built.root;
@@ -102,7 +114,7 @@ export class Monster {
   get alive() { return this.state !== 'dead'; }
   get sleeping() { return this.state === 'sleep'; }
   get invulnerable() { return false; }
-  get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1); }
+  get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1); }
   get dmgMul() { return this.rage ? 1.15 : 1; }
   get limping() { return this.hp <= this.maxHp * LIMP_HP && this.alive && !this.minor; }
   get eating() { return this.state === 'fressen'; } // [L] predator busy with its prey: sneak-hit window
@@ -274,6 +286,7 @@ export class Monster {
       else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= this.maxHp * RAGE_BURST_PCT) this._enrage();
     }
     if (this.hp <= 0) { this._die(); ev.killed = true; return ev; }
+    if (this._flOn && this.authority) this._flinchCheck(total);
     if (this.minor) this._flinch(pid, total);
     if (this.state === 'fly' && !this.attack && this.flyDamage >= (this.def.fly?.dropDamage ?? 250)) this._startFall(4);
     if (wasSleeping) { this._interrupt(); this.setState('combat'); this.recover = 1.2; }
@@ -341,6 +354,9 @@ export class Monster {
     this.def.onRage?.(this, true);
   }
   _die() {
+    for (const off of this._offs) off?.();
+    this._offs.length = 0;
+    this.chain = this.chainNext = null; this.tired = false;
     this._interrupt();
     this.queued = null;
     this.setState('dead');
@@ -350,6 +366,7 @@ export class Monster {
     this.ctx.bus.emit('sfx', { name: 'roar', pos: this.pos, low: true });
   }
   _interrupt() {
+    this.chain = null; this.chainNext = null;
     if (this.attack) { this.attack = null; this.ctx.fx.clearMarker?.(this.id); this.recover = 0.4; }
   }
   _startFlee() {
@@ -370,12 +387,31 @@ export class Monster {
     this.cds[def.id] = def.cooldown ?? 3;
     if (this.authority) this.ctx.bus.emit('monsterAttack', { monsterId: this.id, ...params, rage: inst.rage });
     this.ctx.bus.emit('sfx', { name: 'telegraph', pos: this.pos, big: !this.minor });
+    this.ctx.bus.emit('attackStart', { monster: this, attackId: params.attackId, inst, chainIdx: params.chainIdx ?? 0, teach: !!params.teach, cue: def.cue });
+    if (params.teach) this.ctx.bus.emit('teach', { monster: this, attackId: params.attackId });
     return inst;
   }
 
   /** Authority: start attack `attackId` aimed at the current target from the current position. */
   beginAttack(attackId, extra = {}) {
     const tgt = this.target;
+    const ad = this.def.attacks[attackId];
+    if (this.authority && ad) {
+      if (this._b2 && extra.tgMul === undefined) {
+        let mul = 1;
+        if (extra.teach) mul = 1.4;
+        else if (ad.tgVar !== false) {
+          mul = 0.85 + this.rng() * 0.4;
+          if (ad.punishRoll && this._rollCount() >= 4) mul = Math.min(1.25 + this.rng() * 0.15, Math.max(1, 1.1 / ad.telegraph));
+        }
+        if (mul !== 1) extra = { ...extra, tgMul: Math.round(mul * 1000) / 1000 };
+      }
+      if (extra.chainIdx === 0) { extra = { ...extra }; delete extra.chainIdx; }
+      if (this.def.chains && !extra.teach) this.chain = { idx: extra.chainIdx ?? 0, broken: false };
+      this._atkCount++;
+      if (this._stamOn && attackId !== this.def.tiredAttack) this.stamina = Math.max(0, this.stamina - (ad.stam ?? 8) * ((extra.chainIdx ?? 0) > 0 ? 1.5 : 1) * (this.rage ? 0.7 : 1));
+      if (tgt && this._b2) { const ag = (this.ctx._aggro ??= new Map()); ag.set(tgt.id, { t: this._clock(), id: this.id }); }
+    }
     return this.startAttack({
       attackId, t0: this.time, origin: { x: this.pos.x, y: this.pos.y - this.air, z: this.pos.z },
       yaw: this.rot, targetPos: tgt ? { x: tgt.pos.x, y: tgt.pos.y, z: tgt.pos.z } : undefined, seed: Math.floor(this.rng() * 1e9), ...extra,
@@ -391,6 +427,7 @@ export class Monster {
       if ((this.cds[def.id] ?? 0) > 0) continue;
       if (dist < def.range[0] || dist > def.range[1]) continue;
       if (def.cond && !def.cond(this, this.ctx)) continue;
+      if (!this._atkAllowed(def)) continue;
       cands.push(def);
       total += this._weightOf(def, dist);
     }
@@ -401,12 +438,114 @@ export class Monster {
   }
 
   /** Attack weight; defs may use a function (m, dist) -> number. */
-  _weightOf(def, dist) { const w = def.weight; return typeof w === 'function' ? w(this, dist) : (w ?? 1); }
+  _weightOf(def, dist) {
+    const w = def.weight;
+    let v = typeof w === 'function' ? w(this, dist) : (w ?? 1);
+    if (def.punishRoll && this._b2) { const n = this._rollCount(); if (n >= 4) v *= n >= 7 ? 3 : 2; }
+    return v;
+  }
+  /** Teilbruch-/Phasen-Filter (needsBroken, lockedByBreak, phase). */
+  _atkAllowed(def) {
+    if (def.needsBroken && !this.partById[def.needsBroken]?.broken) return false;
+    if (def.lockedByBreak && this.partById[def.lockedByBreak]?.broken) return false;
+    if ((def.phase ?? 0) > this.phase) return false;
+    return true;
+  }
+  _clock() { return this.ctx.simTime ?? this.time; }
+  /** Anti-Rollen-Spam: Rollen des Ziels in den letzten 10 s ohne laufenden Angriff. */
+  _rollCount() {
+    const l = this._rollLog.get(this.target?.id);
+    if (!l) return 0;
+    while (l.length && this.time - l[0] > 10) l.shift();
+    return l.length;
+  }
+  _chainBreak() { if (this.chain) this.chain.broken = true; this.chainNext = null; }
+
+  _b2Tick(dt) {
+    for (const p of this.ctx.players) {
+      const r = p.state === 'roll';
+      if (r && !this._rollPrev.get(p.id) && !this.attack) { if (!this._rollLog.has(p.id)) this._rollLog.set(p.id, []); this._rollLog.get(p.id).push(this.time); }
+      this._rollPrev.set(p.id, r);
+    }
+    if (this._rtT > 0) { this._rtT -= dt; if (this._rtT <= 0) this.ctx.fx.clearMarker?.(this.id + ':rt'); }
+    if (this._stamOn && this.state === 'combat') {
+      if (this.tired) {
+        this.tiredT -= dt;
+        if (this.tiredT <= 0) { this.tired = false; this.stamina = 60; this.ctx.bus.emit('monsterTired', { monster: this, on: false }); }
+      } else if (!this.attack) {
+        const fast = Math.hypot(this.vel.x, this.vel.z) > (this.def.walk ?? 2) * 1.5;
+        if (fast) this.stamina = Math.max(0, this.stamina - 2 * dt * (this.rage ? 0.7 : 1));
+        else if (!this.chainNext && this.stamina > 0) this.stamina = Math.min(100, this.stamina + 6 * dt);
+        if (this.stamina <= 0) {
+          this.tired = true; this.tiredT = 4 + this.rng() * 2; this.stamina = 0;
+          this.queued = null; this._interrupt();
+          this.ctx.bus.emit('monsterTired', { monster: this, on: true });
+        }
+      }
+    }
+    const ph = this.def.phases?.[this.phase];
+    if (ph && this.state === 'combat' && this.hp / this.maxHp <= ph.at) {
+      this.phase++;
+      this._interrupt();
+      this.queued = null; this.phaseT = 1.2; this.phaseSpecial = ph.special ?? null;
+      this.ctx.bus.emit('monsterPhase', { monster: this, idx: this.phase, name: ph.name, cue: ph.cue });
+      ph.enter?.(this);
+    }
+  }
+
+  _flinchCheck(dmg) {
+    this._flLog.push({ t: this.time, dmg });
+    this._flLog = this._flLog.filter((e) => this.time - e.t <= 3);
+    const fd = this.def.flinchDmg;
+    const thr = fd === true ? this.maxHp * 0.06 : fd;
+    if (this.state !== 'combat' || this.stunT > 0 || this.time - this._flLast < 8) return;
+    if (this._flLog.reduce((s, e) => s + e.dmg, 0) < thr) return;
+    if (this.attack && this.attack.inst.sample(this.attack.t).phase !== 'telegraph') return;
+    this._interrupt();
+    this.stagT = Math.max(this.stagT, 0.5);
+    this.recover = Math.max(this.recover, 0.5);
+    this._flLast = this.time; this._flLog = [];
+    this.ctx.bus.emit('monsterFlinch', { monster: this });
+  }
+
+  /** Ende eines Angriffs (Host): Folgeglied würfeln oder Kette beenden. */
+  _chainStep(id) {
+    const ch = this.chain; this.chain = null;
+    if (!ch) return;
+    const list = this.def.chains?.[id], tgt = this.target;
+    if (!ch.broken && list && ch.idx < 2 && this.state === 'combat' && !this.tired && this.stamina > 0 && this.stunT <= 0 && this.stagT <= 0 && tgt?.alive) {
+      const dist = Math.hypot(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z);
+      const opts = list.filter((o) => {
+        if (o.atk === null) return true;
+        const a = this.def.attacks[o.atk];
+        return a && this._atkAllowed(a) && (!a.rageOnly || this.rage) && dist >= a.range[0] && dist <= a.range[1] && (!o.cond || o.cond(this, dist));
+      });
+      let total = 0;
+      for (const o of opts) total += o.w ?? 1;
+      if (total > 0) {
+        let r = this.rng() * total, pick = opts[opts.length - 1];
+        for (const o of opts) { r -= o.w ?? 1; if (r <= 0) { pick = o; break; } }
+        if (pick.atk !== null) {
+          this.chainNext = { id: pick.atk, idx: ch.idx + 1 };
+          this.recover = 0.1 + this.rng() * 0.15;
+          return;
+        }
+      }
+    }
+    if (ch.idx > 0 && !ch.broken) this.recover = Math.max(this.recover, 1.0);
+  }
+
+  _aggroOk() {
+    const tgt = this.target, e = this.ctx._aggro?.get(tgt?.id);
+    return !e || e.id === this.id || this._clock() - e.t >= 0.6;
+  }
+
 
   // ---------- targeting
   _pickTarget() {
     const alive = this.ctx.players.filter((p) => p.alive);
     if (!alive.length) { this.target = null; return; }
+    if (this._b2) return this._pickTargetB2(alive);
     let best = null, bt = -1;
     for (const p of alive) {
       const th = this.threatOf(p.id) + 1 / (1 + Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z));
@@ -414,6 +553,29 @@ export class Monster {
     }
     if (alive.length > 1 && this.rng() < 0.15) best = alive[Math.floor(this.rng() * alive.length)];
     this.target = best;
+  }
+  _pickTargetB2(alive) {
+    let maxT = 1;
+    for (const p of alive) maxT = Math.max(maxT, this.threatOf(p.id));
+    const recovering = !this.attack && this.recover > 0;
+    let best = null, bs = -1;
+    for (const p of alive) {
+      const d = Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
+      let sc = this.threatOf(p.id) / maxT + 0.6 / (1 + d / 8);
+      if (recovering && p.weaponId === 'bow') sc += 0.4;
+      if (this.rage) sc += 1 - (p.v?.hp ?? p.hp ?? 1) / (p.v?.maxHp ?? p.maxHp ?? 1);
+      if (p === this.target) sc += 0.15;
+      if (sc > bs) { bs = sc; best = p; }
+    }
+    if (alive.length > 1 && this.rng() < 0.15) best = alive[Math.floor(this.rng() * alive.length)];
+    const old = this.target;
+    this.target = best;
+    if (old && old.alive && best && best !== old) {
+      this.recover = Math.max(this.recover, 0.5);
+      this._rtT = 0.5;
+      this.ctx.fx.marker?.(this.id + ':rt', { x: best.pos.x, y: this.ctx.world.heightAt(best.pos.x, best.pos.z), z: best.pos.z }, 1.2, '#ffd040', false);
+      this.ctx.bus.emit('retarget', { monster: this, playerId: best.id });
+    }
   }
   _nearestPlayer() {
     let best = null, bd = Infinity;
@@ -440,6 +602,7 @@ export class Monster {
       else this._rageSteam(dt);
     }
     if (st.poisonT > 0 && this.alive && this.authority) this._poisonTick(dt);
+    if (this._b2 && this.alive && this.authority) this._b2Tick(dt);
     if (this.kb && this.kb.t > 0 && this.authority && this.alive) {
       const s = Math.min(dt, this.kb.t);
       this.pos.x += this.kb.x * s; this.pos.z += this.kb.z * s;
@@ -568,8 +731,10 @@ export class Monster {
   _combat(dt) {
     if (this.attack) { this._runAttack(dt); return; }
     if (!this.minor && !this.fleeUsed && this.hp <= this.maxHp * FLEE_HP) { this._startFlee(); return; }
+    this._combatT += dt;
+    if (this.chainNext && !this.target?.alive) this.chainNext = null;
     this.retargetT -= dt;
-    if (!this.target || !this.target.alive || this.retargetT <= 0) { this._pickTarget(); this.retargetT = 5; }
+    if (!this.chainNext && (!this.target || !this.target.alive || this.retargetT <= 0)) { this._pickTarget(); this.retargetT = 5; }
     const tgt = this.target;
     if (!tgt) { this._brake(dt); this.setState('wander'); this.wanderT = 3; return; }
     if (this.st.stink > 0) { this._stinkFlee(dt); return; }
@@ -580,6 +745,24 @@ export class Monster {
     const diff = Math.abs(angleDiff(this.rot, want));
     const turn = this.def.turn ?? 1;
     if (this.recover > 0) { this._faceTarget(dt, 1.2 * turn); this._brake(dt); return; }
+    if (this.phaseT > 0) {
+      this.phaseT -= dt; this._faceTarget(dt, 1.2 * turn); this._brake(dt);
+      if (this.phaseT <= 0 && this.phaseSpecial) { this.queued = this.phaseSpecial; this.phaseSpecial = null; }
+      return;
+    }
+    if (this.tired) {
+      this._faceTarget(dt, 1.2 * turn); this._brake(dt);
+      const ta = this.def.tiredAttack;
+      if (ta && (this.cds[ta] ?? 0) <= 0 && dist >= this.def.attacks[ta].range[0] && dist <= this.def.attacks[ta].range[1] && diff < 0.4) this.beginAttack(ta);
+      return;
+    }
+    if (this.chainNext) {
+      if (diff > 1.0) { this._faceTarget(dt, 6 * turn); this._brake(dt); return; }
+      const cn = this.chainNext;
+      this.chainNext = null;
+      this.beginAttack(cn.id, { chainIdx: cn.idx });
+      return;
+    }
     if (this.queued) {
       if (diff > 0.4) { this._faceTarget(dt, 3.6 * turn); this._brake(dt); return; }
       const id = this.queued;
@@ -587,10 +770,16 @@ export class Monster {
       this.beginAttack(id);
       return;
     }
-    const def = this._chooseAttack(dist);
+    let def = null, teach = false;
+    if (this._b2 && this._atkCount === 0 && this._combatT < 30) {
+      const td = this.def.teachAttack && this.def.attacks[this.def.teachAttack];
+      def = td && this._atkAllowed(td) && dist >= td.range[0] && dist <= td.range[1] ? td : this._chooseAttack(dist);
+      teach = !!def;
+    } else def = this._chooseAttack(dist);
     if (def) {
       if (diff > 0.4 && !def.noFace) { this._faceTarget(dt, 3.4 * turn); this._brake(dt); return; }
-      this.beginAttack(def.id);
+      if (this._b2 && !this._aggroOk()) { this.recover = 0.2; return; }
+      this.beginAttack(def.id, teach ? { teach: true } : {});
       return;
     }
     const prefer = this.def.prefer ?? 4.5;
@@ -622,6 +811,7 @@ export class Monster {
       this.attack = null;
       this.ctx.fx.clearMarker?.(this.id);
       this.recover = this.def.recoverAfter?.(this) ?? (this.minor ? 0.5 : 0.35 + this.rng() * 0.5) / this.speedMul;
+      if (this.authority) this._chainStep(id);
       this.def.onAttackEnd?.(this, id, inst);
       if (this.state === 'enrage') { this.recover = 0.5; this.setState('combat'); }
     }
@@ -939,9 +1129,9 @@ export class Monster {
   snapshot() {
     return {
       id: this.id, def: this.def.id, pos: [this.pos.x, this.pos.y, this.pos.z], rot: this.rot, state: this.state,
-      hpPct: this.hp / this.maxHp, rage: this.rage, air: this.air,
+      hpPct: this.hp / this.maxHp, rage: this.rage, air: this.air, phase: this.phase,
       parts: this.parts.map((p) => ({ id: p.id, hp: p.hp, broken: p.broken })),
-      flags: { blind: this.blind, trap: this.trapped, poison: this.poisoned, stun: this.stunT > 0, ...(this.def.snapExtra?.(this) ?? {}) },
+      flags: { blind: this.blind, trap: this.trapped, poison: this.poisoned, stun: this.stunT > 0, tired: this.tired, ...(this.def.snapExtra?.(this) ?? {}) },
     };
   }
 }

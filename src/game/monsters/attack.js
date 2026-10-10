@@ -35,8 +35,9 @@ export class AttackInstance {
     this.hitSet = new Set();
     this.firedEvents = new Set();
 
-    const tg = def.telegraph;
-    this.tgWall = this.rage ? Math.max(MIN_TELEGRAPH, tg * RAGE_TELEGRAPH) : tg;
+    const tg = def.telegraph, mul = params.tgMul ?? 1;
+    const tgBase = mul === 1 ? tg : Math.max(MIN_TELEGRAPH, tg * mul); // Timing-Variation (Brocken 2.0); Rage-Kürzung kommt danach
+    this.tgWall = this.rage ? Math.max(MIN_TELEGRAPH, tgBase * RAGE_TELEGRAPH) : tgBase;
     this.speed = this.rage ? RAGE_SPEED : 1;
     this.duration = this.tgWall + (def.duration - tg) / this.speed;
     this.landing = null;
