@@ -487,7 +487,7 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 
 - Gestrichen: lokales Zeitfenster für alle, Duplikat-Pirscher, Wand-Phasing, No-Clip-Pfeil, Save-State.
 
-### 16.3 Brocken 2.0 (Phase 1, an Jaggo/Barrotz/Brathalos)
+### 16.3 Brocken 2.0 (Phase 1 – gebaut & live, Okt 2026)
 - **Angriffs-Ketten:** `chains: { lastId → [{ atk, w, cond }] }`, 2–3 Glieder, Zwischenpause 0,1–0,25 s, Telegraph je Glied, letztes Glied Erholung ≥ 1,0 s.
 - **Flinch / Kettenabbruch durch Spieler** (Glitch-Konter, Teilbruch, Betäubung bricht Kette ab).
 - **Erschöpfung:** Ketten/Sprints kosten Monster-Ausdauer; leer → 4–6 s Keuchen (Angriffsfenster).
@@ -496,6 +496,20 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 - **Variation über Timing/Windup-Länge** (Seed pro Jagd) + **Anti-Rollen-Spam** (einzige adaptive Regel).
 - **Koop-Zielwechsel** (Bedrohung + Rollen, Marker 0,5 s vorher, globales Aggro-Token-Budget).
 - **Lesbarkeit:** eigener Windup-**Ton** pro Angriff + **Farbcue** (redundant), Kamera-Auto-Framing bei Ketten, **Lehrangriff** in den ersten ~30 s, lokales **Tod-Log** (welcher Angriff tötet wie oft).
+- **Gebaut je Brocken:**
+  - **Jaggo:** neu Zickzack-Biss (Seite an Körperneigung), Rückhüpfer mit Schwanzpeitsche (punishRoll), Hetzjagd (Phase-Special „Rudelführer" bei 50 %). Ketten: Bissreihe → Hüpfer/Rückhüpfer/Schwanz; Zickzack → Bissreihe; Rudelruf → Hetzjagd/Hüpfer. Kammbruch sperrt Rudelruf, mehr Biss-Ketten. Lehrangriff Bissreihe. Kürzere Grundpause (gleicht Erschöpfung aus).
+  - **Barrotz:** neu Doppel-Stampfer (2 versetzte Schockwellen, Phase-Special „Schlammwut" bei 45 %), Hörnerschwung (Wurf, punishRoll), Kopfstoß (nur nach Kopfplattenbruch; Hammer dann gesperrt). Ketten: Hammer → Feger/Doppel-Stampfer; Wälzer → Spritzer → Ramm → Hörnerschwung; Kopfstoß → Feger/Kopfstoß. Ramm kostet viel Ausdauer.
+  - **Brathalos:** neu Feuerteppich (3 Feuerbälle im Fächer, Phase-Special „Glutsturm" bei 45 %), Flammenstoß (Nahkegel + Brennen, ersetzt Böe nach Flügelbruch). Ketten nur am Boden: Feuer → Feuerteppich/Schwanz; Schwanz → Böe|Flammenstoß/Feuer; Böe → Feuer. Lehrangriff ist der erste Boden-Angriff (nicht Aufflug).
+  - Alle: Ausdauer/Erschöpfung (4–6 s Keuchen), Flinch bei Schadensspitzen, Timing-Variation 0,85–1,25 × Telegraph, Anti-Rollen-Spam, Koop-Zielwechsel mit Marker, Windup-Ton + Farbe je Angriff, Kamera-Framing bei Ketten, Tod-Log.
+- **Messung** (`METRIC=1 npx vitest run tests/unit/variety.metric.test.js`, 5 Seeds × 240 s):
+
+| Brocken | Moves vorher → nachher | versch. 3er-Folgen | Angriffe/240 s |
+|---|---|---|---|
+| Jaggo | 4,0 → 5,8 | 17,4 → 27,6 | 39,8 → 38,2 (dafür Ketten = dichtere Bursts) |
+| Barrotz | 4,0 → 6,0 | 14,2 → 29,4 | 58,4 → 59,6 |
+| Brathalos | 4,0 → 5,2 | 14,6 → 22,8 | 55,6 → 58,2 |
+
+- Offen aus 16.3 (bewusst nicht gebaut): Schlammspur nach Ramm (kein Boden-Flächensystem), Brandflächen beim Feuerteppich, Gelände-Nutzung. Owner-Test auf dem Handy steht aus (Metrik „Tester erklären ihre Tode", „unfaire Tode < 10 %" → Tod-Log im Spiegel).
 - Redesign-Ideen je Brocken: `docs/NEXT.md` §3. Jede neue Mechanik mit Fairness-Test (`tests/unit/p3fairness.test.js`) + Determinismus-Test.
 
 ### 16.4 Koop-Skalierung (gebaut)
@@ -518,10 +532,11 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Feature, Stimmungssystem, Finten als eigenes System, Ökologie/Weltevents, Mastery-Journal, KI-Begleiter, Solo-HP-Erhöhung, Deckbau, Rhythmus.
 
 ### 16.8 Roadmap (gültig)
-- **Phase 1 – Brocken 2.0 (schwerer + abwechslungsreicher):** 16.3 für Jaggo → Barrotz → Brathalos. *Metrik:* mehr verschiedene 3er-Move-Folgen pro Jagd als heute; Tester erklären ihre Tode; „unfaire" Tode im Tod-Log < 10 %; Jagddauer bleibt ~5–6 min.
+- ✅ **Phase 1 – Brocken 2.0 (schwerer + abwechslungsreicher) – gebaut, live seit Okt 2026, siehe 16.3:** 16.3 für Jaggo → Barrotz → Brathalos. *Metrik:* mehr verschiedene 3er-Move-Folgen pro Jagd als heute; Tester erklären ihre Tode; „unfaire" Tode im Tod-Log < 10 %; Jagddauer bleibt ~5–6 min.
 - **Phase 2 – Glitch Hunter:** Umbenennung, Glitch-Energie + Glitch-Modus mit Pflicht-Optik, 4 Waffen-Glitches (16.2), Mutator-System + 6 Start-Mutatoren (16.5), Koop-Zielwechsel, End-Auszeichnungen, „Link teilen". *Metrik:* Glitch-Anteil am Schaden 40–50 %; ≥ 40 % lösen in Jagd 2 den Glitch-Modus aus.
 - **Phase 3 – Breite:** Rostwerke (§15) mit Kroll/Gorgo/Voltaro direkt auf Brocken-2.0-Bausteinen + Glitch-Stellen + Mutator-Hooks · erste Multi-Jagd „Revierstreit" · Rotglut als Mutator-Preset.
 - Erledigt vorab: Koop-HP-Skalierung (16.4).
+- **Als Nächstes: Phase 2.** „Link teilen" und Lehrangriff/Kamera/Tod-Log aus der alten Phase-1-Liste sind teils schon erledigt (Lehrangriff, Kamera, Tod-Log ✅; „Link teilen" → Phase 2).
 
 ---
 

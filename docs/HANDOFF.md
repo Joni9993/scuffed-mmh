@@ -18,14 +18,14 @@
 ## 3. Stand (was fertig & live ist)
 - **Kampf:** Pirscher mit Laufen/Sprint, Puste, Prellung, Rolle mit i-Frames (0,06–0,30 s), Perfekt-Ausweichen → Glitch-Konter (Zeitlupe, +50 % nächster Treffer). Hitstop, Screenshake, Teilbrüche, Betäubung, Lock-On (Toggle; Wischen = Teil wechseln).
 - **4 Waffen:** Plattmacher (Großschwert, zweihändig, Aufladen + „Sauber!"), Zwillingsklingen (Rausch, Schrottwirbel), Spannbogen (Spannstufen, Rhythmus, Sweet Spot, Spitzen, Pfeilregen), Katana (Ziehschnitt, Konterhaltung → Schliff 0–3, Mondsichel). DPS-Balance: db ≈ 92 %, bow ≈ 88 %, kt ≈ 89–94 % vom Großschwert.
-- **Brocken:** Jaggo (Rudel-Raptor, ruft Jagglinge), Barrotz (Schlamm-Rammbock, Schlammpanzer), Brathalos (Feuer-Wyvern, Flug ~20 % der Zeit, abtrennbarer Schwanz). HP 7000/9000/12000 (≈5–6 min solo). Alle Angriffe deterministisch aus Startparametern (wichtig fürs Netz) und per Fairness-Test geprüft (Telegraph ≥ 0,5 s, ausweichbar). Wegfindung: Nav-Grid + A* (`src/game/monsters/nav.js`).
+- **Brocken:** Jaggo (Rudel-Raptor, ruft Jagglinge), Barrotz (Schlamm-Rammbock, Schlammpanzer), Brathalos (Feuer-Wyvern, Flug ~20 % der Zeit, abtrennbarer Schwanz). HP 7000/9000/12000 (≈5–6 min solo). Alle Angriffe deterministisch aus Startparametern (wichtig fürs Netz) und per Fairness-Test geprüft (Telegraph ≥ 0,5 s, ausweichbar). Wegfindung: Nav-Grid + A* (`src/game/monsters/nav.js`). **Brocken 2.0 (Phase 1) live:** Ketten, Phasen mit Special, Erschöpfung, Flinch, Timing-Variation, Anti-Rollen-Spam, Teilbruch ändert Moveset, Lehrangriff, Koop-Zielwechsel, je Brocken 2–3 neue Angriffe, Windup-Ton + Farbcue, Kamera-Framing, Tod-Log (Spiegel). Details GDD §16.3, Framework `docs/ARCHITECTURE.md` (Brocken 2.0). Koop-HP-Skalierung ×1/1,7/2,3/2,8.
 - **Welt:** Schotterklamm, 4 Zonen (Wackelwiese/Camp, Knochengrube, Schlammsenke, Glutkamm), 32 Sammelpunkte, Schlamm/Lava, Minimap. Leben: Jagglinge-Rudel, Mampfer-Herden (grasen, Stampede, werden von Brocken gefressen = Angriffsfenster), Hoppler, Vögel/Insekten.
 - **Meta:** Rostnest als begehbare 3D-Stadt (Schmiede, Krämerladen, Truhe, Kochtopf, Auftragsbrett, Abflugtor, Spiegel mit Erfolgen/Statistik). Items im Kampf (bindende Nutzung), Crafting, Waffenbäume (Stufe 1–4, Ast bei Stufe 3), 6 Rüstungs-Sets mit sichtbarer Optik-Steigerung, Camp-Truhe auf der Jagd, Speicherstand (localStorage, v2, Export-Code).
 - **Koop:** PeerJS/WebRTC, Raumcode (4 Buchstaben) = gemeinsame Stadt, Aufträge posten/beitreten, Host-autoritative Brocken, Client-autoritative eigene Treffer/Ausweichen, STUN + öffentlicher TURN-Fallback (openrelay.metered.ca). Nicht auf echtem Mobilfunk verifiziert.
 - **Mobil:** Touch-Layout-Solver (keine Überlappungen, ≥ 44 px), PWA (Manifest + Service Worker, Installieren-Button), Auto-Grafik (360–800 px intern, Standard 640), Onboarding-Overlay.
 
 ## 4. Offene Punkte / bekannte Baustellen
-- Brocken zu vorhersehbar + USP fehlt → **entschieden**, siehe `docs/GDD.md` §16 (Name Glitch Hunter, Glitch pro Waffe, Brocken 2.0, Mutatoren, Roadmap). Koop-HP-Skalierung ist gebaut.
+- Brocken zu vorhersehbar + USP fehlt → **entschieden**, siehe `docs/GDD.md` §16 (Name Glitch Hunter, Glitch pro Waffe, Brocken 2.0, Mutatoren, Roadmap). Koop-HP-Skalierung ist gebaut. **Phase 1 (Brocken 2.0) ist live** – Owner-Handytest + Tod-Log-Auswertung ausstehend; nächster Schritt Phase 2 (GDD §16.8).
 - Schwarzer Balken oben auf Android war nicht reproduzierbar (Fix-Versuch gemerged: kein dvh, Fullscreen-Retry) – Owner-Bestätigung ausstehend.
 - Rostwerke (2. Map, Kroll/Gorgo/Voltaro, Stufe 5) = Issue #4, Spec GDD §15. Noch nicht gebaut.
 - Ungetestet: öffentliches PeerJS-Signaling + TURN über Mobilfunk; iOS-Installation.
@@ -38,9 +38,11 @@
 - Debug: `window.__SH` (press/stick/sim/step/pause/god/debugHitboxes/town/save…), URL-Params `?scene=hunt&quest=jaggo&weapon=gs|db|bow|kt&seed=1&god=1&aggro=1&nofx=1&noambient=1&nofauna=1`, Netz-Tests `peerhost=localhost&peerport=9000&peersecure=0`.
 
 ## 6. Testen (so wurde verifiziert)
-- `npm test` (Vitest, ~655 Tests, inkl. Fairness-Audit; voll: `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js`), `npm run build`.
+- `npm test` (Vitest, ~744 Tests, inkl. Fairness-Audit; voll: `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js`), `npm run build`.
 - e2e mit Playwright (vorinstalliert unter `/opt/node-tools/node_modules/playwright`, Chromium-Args `--use-gl=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist`, nie `playwright install`): Build in `dist/` mit `python3 -m http.server 8080` servieren, dann `SH_URL=http://127.0.0.1:8080/ node tools/<x>.mjs`:
-  - `net-e2e` (2 Peers, braucht lokalen PeerJS-Server auf :9000 – `npx peer --port 9000` bzw. npm-Paket `peer`), `fauna-e2e`, `panel-e2e` (Stadt-Input-Bug), `hunt-panels-e2e` (Camp-Truhe), `forge-e2e`, `mobile-e2e` (Layout 3 Größen), `edge-e2e` (Vollbild/Insets), `flee-e2e`, `perf-probe`, `weapon-dps`.
+  - `net-e2e` (2 Peers, braucht lokalen PeerJS-Server auf :9000 – `npx peer --port 9000` bzw. npm-Paket `peer`), `fauna-e2e`, `panel-e2e` (Stadt-Input-Bug), `hunt-panels-e2e` (Camp-Truhe), `forge-e2e`, `mobile-e2e` (Layout 3 Größen), `edge-e2e` (Vollbild/Insets), `flee-e2e`, `perf-probe`, `weapon-dps`, `b2-probe <jaggo|barrotz|brathalos>` (zählt Ketten/Phasen/Erschöpfung/Lehrangriff in echter Jagd).
+- Vielfalts-Metrik: `METRIC=1 npx vitest run tests/unit/variety.metric.test.js`. Neue Brocken-Angriffe brauchen `audit:[Distanzen]` → automatisch im Fairness-Audit.
+- Lokaler PeerJS-Server im Container: `npx peer --port 9000 --host 127.0.0.1` (IPv6 fehlt).
 - Performance-Referenz: Sim ~0,7 ms/Schritt bei 42 Monstern (Achtung: Nav-Grid-Aufrufe drosseln – ungedrosselt waren es 20 ms → massiver Lag).
 
 ## 7. Prozess-Lehren
@@ -48,3 +50,4 @@
 - Parallele Agents nur mit klarer Datei-Zuständigkeit; Konflikte entstehen v. a. in `hunt.js`, `player.js`, `sync.js`, `rig.js`.
 - Session-Limits (HTTP 429) kamen bei 4–5 parallelen Agents → Agents nach Reset per SendMessage fortsetzen.
 - Nach jedem Merge: Branch `ccr-…` auf `origin/main` zurücksetzen, nie auf bereits gemergte Historie stapeln.
+- Phase 1 lief gut mit: Welle 1 = Framework (`monster.js`) ∥ Lesbarkeit (`cues.js`/sfx/camera), Welle 2 = je Brocken ein Agent (nur eigene Datei + eigener Test). Gemeinsame Testlisten vorher erweiterbar machen (z. B. `attack.audit`), sonst Merge-Konflikte. Caveman-Prompts (Reports ≤ 10 Zeilen) ≈ 90–125k Tokens pro Agent.

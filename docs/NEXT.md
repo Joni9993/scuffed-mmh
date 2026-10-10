@@ -1,6 +1,6 @@
 # NEXT – Brainstorming: Brocken-Design & USP (Stand Okt 2026)
 
-> **Entscheidungen getroffen → `docs/GDD.md` §16 ist autoritativ.** Dieses Dokument bleibt als Herleitung.
+> **Entscheidungen getroffen → `docs/GDD.md` §16 ist autoritativ.** Dieses Dokument bleibt als Herleitung. **Phase 1 (Brocken 2.0) ist gebaut** (GDD §16.3), weiter mit Phase 2.
 
 > Kontext: zuerst `docs/HANDOFF.md` lesen. Dieses Dokument ist das Ergebnis einer Brainstorming-Runde (Monster-Designer, USP-Recherche, Kritiker) auf Wunsch des Owners. **Owner will das mit einem neuen Agent durchsprechen, bevor gebaut wird.** Abschnitt 7 = offene Entscheidungen. Verknüpft mit GitHub-Issue #4 (Rostwerke).
 
