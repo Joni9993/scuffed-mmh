@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import * as THREE from 'three';
 import { SLOTS, SLOT_NAMES, ARMOR_SETS, SET_ORDER, getPiece } from '../../src/data/armor.js';
 import { GEAR_SETS, SET_TIER, encodeGear, decodeGear, makeGear, gearFxLevel, armorSets } from '../../src/data/gearlook.js';
@@ -94,12 +94,15 @@ describe('armor mesh builder', () => {
 describe('draw-call budget (hunter incl. gear, idle pose)', () => {
   const combos = [];
   for (const set of SET_ORDER) for (const [type, tier, branch] of [['gs', 1, null], ['gs', 4, null], ['db', 4, null], ['bow', 4, null], ['db', 3, 'b'], ['bow', 3, 'b']]) combos.push([set, type, tier, branch]);
+  const table = {};
+  afterAll(() => { console.log('hunter draw calls (idle, incl. shadow + particles):', JSON.stringify(Object.entries(table).map(([k, v]) => `${k}:${v}`))); });
   it.each(combos)('%s + %s t%d%s <= 10 draw calls', (set, type, tier, branch) => {
     const gear = { weapon: { type, tier, branch }, armor: armorOf(set) };
     const def = getWeapon(type);
     const rig = buildHunterRig({ merged: true, gear, weaponMesh: def.buildMesh({ tier, branch }) });
     rig.apply({ ...REST, ...def.rest });
     const n = countDraws(rig.root, [rig.shadow]);
+    table[`${set}/${type}${tier}${branch ?? ''}`] = n;
     expect(n).toBeLessThanOrEqual(10);
     // 4 players in view = 4 x n
     expect(4 * n).toBeLessThanOrEqual(40);

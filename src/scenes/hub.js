@@ -362,7 +362,7 @@ export const hubScene = {
     if (session.role === 'solo') { this.app.goto('hunt', { ...base, aggro: o.aggro }); return; }
     const board = this.board;
     const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, onDispose: () => board.returned() });
-    const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, gear: m?.gear, slot }; });
+    const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, gear: id === session.myId ? this._gearCode : this.presence.sample(id)?.gear ?? m?.gear, slot }; }); // [G] freshest known outfit (presence beats the join-time roster)
     const slot = st.members.indexOf(session.myId);
     this.app.goto('hunt', { ...base, net: channel, players, playerId: session.myId, slot: Math.max(0, slot), coop: true, aggro: st.hostId === session.myId ? o.aggro : false });
   },

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
-import { GearParts } from '../../render/gearfx.js'; // [G]
 import { buildBowLook, BOW_H } from '../gear/weaponLook.js'; // [G]
 import { angleDiff, stepAngle, yawOf } from '../../core/math.js';
 
@@ -261,35 +260,39 @@ const anims = {
 };
 
 // ---------- visuals
-/** [G] opts: { tier, branch } -> merged tier look (gear/weaponLook.js) + animated string and nocked arrow. Held in the LEFT hand. */
+/**
+ * [G] opts: { tier, branch } -> merged tier look (gear/weaponLook.js) + ONE LineSegments for string and nocked arrow (1 draw call).
+ * Held in the LEFT hand. Vertices 0-3 = string (tipTop -> nock -> tipBottom), 4+ = arrow (shaft, head, fletching); the arrow is shown via drawRange.
+ */
 export function buildBowMesh({ tier = 1, branch = null } = {}) {
   const g = buildBowLook(tier, branch);
-  const sinew = new THREE.LineBasicMaterial({ color: '#efe6c8', fog: false });
-  const H = BOW_H;
-  // string (Line: tipTop -> nock -> tipBottom) + nocked arrow, animated in updateMesh
   const sg = new THREE.BufferGeometry();
-  sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
-  const string = new THREE.Line(sg, sinew);
+  const N = 4 + 2 + 8 + 8;
+  sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  const col = new Float32Array(N * 3), c = new THREE.Color();
+  const paint = (a, b, hex) => { c.set(hex); for (let k = a; k < b; k++) { col[k * 3] = c.r; col[k * 3 + 1] = c.g; col[k * 3 + 2] = c.b; } };
+  paint(0, 4, '#efe6c8'); paint(4, 6, '#d8c090'); paint(6, 14, '#d8dde6'); paint(14, N, '#e8e0c8');
+  sg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const string = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ vertexColors: true, fog: false }));
   string.frustumCulled = false;
-  const A = new GearParts();
-  A.box(0.035, 0.035, 0.95, '#d8c090');
-  A.box(0.09, 0.09, 0.14, '#d8dde6', { z: 0.5 });
-  A.box(0.1, 0.012, 0.16, '#e8e0c8', { z: -0.4 });
-  A.box(0.012, 0.1, 0.16, '#e8e0c8', { z: -0.4 });
-  const arrow = new THREE.Mesh(A.merge(), g.userData.glow);
+  const arrow = { set visible(v) { sg.setDrawRange(0, v ? N : 4); }, get visible() { return sg.drawRange.count > 4; } };
+  g.add(string);
+  g.userData.bow = { string, arrow, H: BOW_H, k: 0 };
   arrow.visible = false;
-  g.add(string, arrow);
-  g.userData.bow = { string, arrow, H, k: 0 };
   setString(g.userData.bow, 0);
   return g;
 }
 function setString(b, pull) {
   const a = b.string.geometry.attributes.position;
-  a.setXYZ(0, 0, b.H, 0);
-  a.setXYZ(1, 0, 0, -pull);
-  a.setXYZ(2, 0, -b.H, 0);
+  let v = 0;
+  const put = (x, y, z) => a.setXYZ(v++, x, y, z);
+  put(0, b.H, 0); put(0, 0, -pull);
+  put(0, 0, -pull); put(0, -b.H, 0);
+  const z0 = -pull - 0.1, z1 = -pull + 0.88;
+  put(0, 0, z0); put(0, 0, z1); // shaft
+  for (const [x, y] of [[0.06, 0], [-0.06, 0], [0, 0.06], [0, -0.06]]) { put(0, 0, z1); put(x, y, z1 - 0.13); } // head
+  for (const [x, y] of [[0.07, 0], [-0.07, 0], [0, 0.07], [0, -0.07]]) { put(0, 0, z0 + 0.02); put(x, y, z0 - 0.1); } // fletching
   a.needsUpdate = true;
-  b.arrow.position.set(0, 0, -pull + 0.38);
 }
 
 export const bow = {
