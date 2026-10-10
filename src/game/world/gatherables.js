@@ -11,7 +11,7 @@ const ZONE_BOXES = { 1: [-100, -100, -14, -14], 2: [-100, 14, -14, 100], 3: [14,
 const J = (rng, a) => (rng() - 0.5) * a;
 const tint = (hex, k) => { const c = new THREE.Color(hex).multiplyScalar(k); return [c.r, c.g, c.b]; };
 
-const BUILDERS = {
+export const BUILDERS = {
   kraeuterbusch(rng, zone) {
     const parts = [];
     const leaf = zone === 3 ? ['#6a8a3a', '#7a9a48', '#4a7a50'] : ['#58a838', '#6cc040', '#3f8a30'];
@@ -127,6 +127,7 @@ function placePoints({ layout, seed }) {
   for (const zone of [1, 2, 3, 4]) {
     const b = ZONE_BOXES[zone];
     for (const [kind, def] of Object.entries(GATHER_KINDS)) {
+      if (def.world) continue; // map-specific kinds are placed by their own world (e.g. Rostwerke)
       const n = def.zones[zone] ?? 0;
       for (let i = 0; i < n; i++) {
         let spot = null;
@@ -155,8 +156,8 @@ function placePoints({ layout, seed }) {
 }
 
 // ---------------------------------------------------------------- the gatherable system
-export function createGatherables({ layout, seed = 1, bus = null }) {
-  const points = placePoints({ layout, seed });
+export function createGatherables({ layout, seed = 1, bus = null, points: given = null, builders = BUILDERS }) {
+  const points = given ?? placePoints({ layout, seed });
   const byId = new Map(points.map((p) => [p.id, p]));
   const group = new THREE.Group();
   group.name = 'gatherables';
@@ -165,7 +166,7 @@ export function createGatherables({ layout, seed = 1, bus = null }) {
   const mat = basic({ vertexColors: true });
   const cells = new Map();
   for (const p of points) {
-    const key = `${Math.floor((p.pos.x + 120) / 40)}|${Math.floor((p.pos.z + 120) / 40)}`;
+    const key = `${Math.floor((p.pos.x + 130) / 40)}|${Math.floor((p.pos.z + 130) / 40)}`;
     if (!cells.has(key)) cells.set(key, []);
     cells.get(key).push(p);
   }
@@ -174,7 +175,7 @@ export function createGatherables({ layout, seed = 1, bus = null }) {
     let offset = 0;
     for (const p of cp) {
       const rng = createRng(hashSeed(`${p.id}|geo`));
-      const g = bakeShade(BUILDERS[p.kind](rng, p.zone), 0.62);
+      const g = bakeShade(builders[p.kind](rng, p.zone), 0.62);
       put(g, p.pos.x, p.pos.y, p.pos.z, p.yaw, 1.35);
       p.vstart = offset; p.vcount = g.attributes.position.count; offset += p.vcount;
       geos.push(g);

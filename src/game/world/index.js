@@ -2,11 +2,13 @@
 // plus the phase 2 additions: nestFor, routeFor, zoneAt, groundType, gatherPoints, setGatherState, minimap.
 import { createTestArena } from './testArena.js';
 import { createSchotterklamm } from './schotterklamm.js';
+import { createRostwerke } from './rostwerke.js';
 
 export const worlds = {
   test: createTestArena,
   arena: createTestArena, // ?world=arena
   schotterklamm: createSchotterklamm,
+  rostwerke: createRostwerke,
 };
 
 /** Fill in the phase 2 interface for simple worlds (the test arena) so callers never have to special-case. */

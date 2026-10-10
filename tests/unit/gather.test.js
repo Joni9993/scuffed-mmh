@@ -5,7 +5,7 @@ import { createBus } from '../../src/core/events.js';
 import { GATHER_KINDS, GATHER_TIME, rollGather, dropTable } from '../../src/data/gather.js';
 import { createHazards } from '../../src/game/world/hazards.js';
 
-const ITEM_IDS = new Set('knisterkraut blaublatt wabbelpilz stinkmorchel schrotterz glimmstein altknochen grossknochen brummkaefer blitzkaefer glutbrocken sprudelwasser'.split(' '));
+const ITEM_IDS = new Set('knisterkraut blaublatt wabbelpilz stinkmorchel schrotterz glimmstein altknochen grossknochen brummkaefer blitzkaefer glutbrocken sprudelwasser kupferdraht schlacke rostkaefer giftschlamm funkenstein'.split(' '));
 
 describe('gather data', () => {
   it('drop tables only use contract item ids and positive weights', () => {
@@ -32,7 +32,7 @@ describe('gather data', () => {
     expect(rare).toBeGreaterThan(0);
   });
   it('every kind of the GDD table exists and a roll always returns 1+ items', () => {
-    expect(Object.keys(GATHER_KINDS).length).toBe(7);
+    expect(Object.keys(GATHER_KINDS).filter((k) => !GATHER_KINDS[k].world).length).toBe(7); // + 5 Rostwerke kinds
     for (const [kind, k] of Object.entries(GATHER_KINDS)) for (const zone of Object.keys(k.zones)) expect(rollGather(7, 'p', kind, Number(zone), 1).length).toBeGreaterThanOrEqual(1);
   });
 });

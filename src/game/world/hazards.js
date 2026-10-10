@@ -10,13 +10,18 @@ const STEP = {
   rock: { color: '#bfb6c8', n: 3, speed: 1.9, up: 0 },
   mud: { color: '#5a3d24', n: 5, speed: 2.4, up: 1 },
   lava: { color: '#ff8a2a', n: 4, speed: 2.6, up: 1 },
+  slag: { color: '#6a5a50', n: 3, speed: 1.8, up: 0 },
+  metal: { color: '#a89c90', n: 2, speed: 2.0, up: 0 },
+  toxic: { color: '#8aff4a', n: 5, speed: 2.4, up: 1 },
 };
+const STEP_SFX = { slag: 'rock', metal: 'rock', toxic: 'mud' }; // existing step sounds reused for the Rostwerke ground types
+export const TOXIC_DELAY = 1.5; // standing in Giftschlamm this long -> Gift status
 
 export function createHazards(layout) {
   const st = new Map(); // player -> { lx, lz, dist, lavaT }
   const of = (p) => {
     let s = st.get(p);
-    if (!s) { s = { lx: p.pos.x, lz: p.pos.z, dist: 0, lavaT: 0.3, side: 1 }; st.set(p, s); }
+    if (!s) { s = { lx: p.pos.x, lz: p.pos.z, dist: 0, lavaT: 0.3, toxT: 0, side: 1 }; st.set(p, s); }
     return s;
   };
 
@@ -38,7 +43,7 @@ export function createHazards(layout) {
           const fx = hunt.fx;
           const at = { x: p.pos.x, y: p.pos.y + 0.08, z: p.pos.z };
           fx?.spark(at, f.n + (p.state === 'roll' ? 3 : 0), f.color, f.speed);
-          hunt.bus.emit('sfx', { name: `step_${g}`, pos: p.pos, run: p.sprinting ? 1 : 0 });
+          hunt.bus.emit('sfx', { name: `step_${STEP_SFX[g] ?? g}`, pos: p.pos, run: p.sprinting ? 1 : 0 });
         }
       }
       // ---- lava
@@ -55,6 +60,13 @@ export function createHazards(layout) {
           hunt.bus.emit('sfx', { name: 'sizzle', pos: p.pos });
         }
       } else s.lavaT = Math.min(s.lavaT, 0.3);
+      // ---- Giftschlamm (Rostwerke): after TOXIC_DELAY s of standing in it the Pirscher is poisoned (refreshed while he stays)
+      if (g === 'toxic' && grounded && p.alive !== false) {
+        s.toxT += dt;
+        if (s.toxT >= TOXIC_DELAY) {
+          if (!p.status?.poison || p.status.poison.t < 6) { p.addStatus?.('poison', { t: 8 }); hunt.fx?.spark({ x: p.pos.x, y: p.pos.y + 0.4, z: p.pos.z }, 6, '#9be15a', 2.5); }
+        }
+      } else s.toxT = Math.max(0, s.toxT - dt * 2);
     }
   }
   return { update };
