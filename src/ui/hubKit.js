@@ -35,3 +35,16 @@ export const REASONS = {
   none: 'Nichts da.', unknown: 'Unbekannt.',
 };
 export const reasonText = (r) => REASONS[r.reason] ?? 'Geht nicht.';
+
+/** Item detail card (name, kind, description/effect, owned, sell value, carry max). `actions` = extra html (buy/sell buttons). */
+export function itemDetail(id, save, actions = '') {
+  const it = ITEMS[id];
+  if (!it) return '<div class="note">Tippe einen Gegenstand an.</div>';
+  const kind = it.kind === 'material' ? 'Material' : it.kind === 'ammo' ? 'Munition' : 'Verbrauchbar';
+  const own = save.box[id] ?? 0;
+  const facts = [`<span>Im Besitz <b>×${own}</b></span>`, `<span>Wert ${iconHtml('schrott')}${Math.floor(it.baseValue * 0.4)} <small>(Verkauf)</small></span>`];
+  if (it.kind !== 'material') facts.push(`<span>Max. dabei <b>${it.max}</b></span>`);
+  if (it.time) facts.push(`<span>Dauer ${it.time} s</span>`);
+  return `<div class="idet"><div class="idet-h">${iconHtml(id)}<b>${esc(it.name)}</b><small>${kind}</small></div>
+    <div class="idet-d">${esc(it.desc)}</div><div class="idet-f">${facts.join('')}</div>${actions}</div>`;
+}

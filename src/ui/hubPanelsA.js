@@ -9,7 +9,7 @@ import { armorProtection, armorSkills, damageReduction, skillEffects, buildLoado
 import { GearPreview, previewSlot } from './gearPreview.js'; // [G]
 import { makeGear } from '../data/gearlook.js'; // [G]
 import { SHOP_STOCK, buy, sell, sellPrice } from '../meta/shop.js';
-import { esc, costChips, delta, reasonText } from './hubKit.js';
+import { esc, costChips, delta, reasonText, itemDetail } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 
 const tabs = (cur, list) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
@@ -126,8 +126,9 @@ export function createTruhe(ctx) {
     const s = ctx.save;
     const ids = ITEM_IDS.filter((id) => (s.box[id] ?? 0) > 0);
     if (!ids.length) return '<div class="note">Die Truhe ist leer. Geh jagen, sammeln, zerlegen.</div>';
-    return `<div class="grid">${ids.map((id) => `<button class="cell${info === id ? ' sel' : ''}" data-a="info" data-k="${id}">${iconHtml(id)}<span>${esc(ITEMS[id].name)}</span><b>${s.box[id]}</b></button>`).join('')}</div>
-      ${info && ITEMS[info] ? `<div class="card"><b>${esc(ITEMS[info].name)}</b> <small>${ITEMS[info].kind === 'material' ? 'Material' : 'Verbrauchbar'}</small><div class="note">${esc(ITEMS[info].desc)}</div></div>` : ''}`;
+    if (!ids.includes(info)) info = ids[0];
+    return `<div class="split"><div class="list"><div class="grid">${ids.map((id) => `<button class="cell${info === id ? ' sel' : ''}" data-a="info" data-k="${id}">${iconHtml(id)}<span>${esc(ITEMS[id].name)}</span><b>${s.box[id]}</b></button>`).join('')}</div></div>
+      <div class="detail">${itemDetail(info, s)}</div></div>`;
   }
 
   function craft() {
@@ -176,27 +177,40 @@ export function createTruhe(ctx) {
 
 // ============================================================ Krämerladen
 export function createLaden(ctx) {
-  let tab = 'buy';
+  let tab = 'buy', selBuy = 0, selSell = null;
+  const sellIds = () => ITEM_IDS.filter((id) => (ctx.save.box[id] ?? 0) > 0 && sellPrice(id) > 0);
   const buyTab = () => {
     const s = ctx.save;
-    return SHOP_STOCK.map((e, i) => {
+    const list = SHOP_STOCK.map((e, i) => {
       const lock = s.jr < e.jr;
-      return `<div class="row${lock ? ' lock' : ''}">${iconHtml(e.id)}<span class="nm">${esc(ITEMS[e.id].name)}${e.n > 1 ? ` ×${e.n}` : ''} <small>(${s.box[e.id] ?? 0})</small></span>
-        ${lock ? `<small>JR ${e.jr}</small>` : `<span class="chip ${s.schrott >= e.price ? 'ok' : 'no'}">${iconHtml('schrott')}${e.price}</span><button class="btn small${s.schrott >= e.price ? ' go' : ' dis'}" data-a="buy" data-k="${i}">Kaufen</button>`}</div>`;
+      return `<button class="rowbtn${i === selBuy ? ' sel' : ''}${lock ? ' lock' : ''}" data-a="pick" data-k="${i}">${iconHtml(e.id)}<span class="nm">${esc(ITEMS[e.id].name)}${e.n > 1 ? ` ×${e.n}` : ''} <small>(${s.box[e.id] ?? 0})</small></span>
+        ${lock ? `<small>JR ${e.jr}</small>` : `<span class="chip ${s.schrott >= e.price ? 'ok' : 'no'}">${iconHtml('schrott')}${e.price}</span>`}</button>`;
     }).join('');
+    const e = SHOP_STOCK[selBuy];
+    const lock = s.jr < e.jr, can = !lock && s.schrott >= e.price;
+    const act = `<div class="idet-a"><span class="chip ${can || lock ? 'ok' : 'no'}">${iconHtml('schrott')}${e.price}${e.n > 1 ? ` für ${e.n}` : ''}</span>
+      ${lock ? `<small>Ab Jägerrang ${e.jr}</small>` : `<button class="btn small${can ? ' go' : ' dis'}" data-a="buy" data-k="${selBuy}">Kaufen</button>`}</div>`;
+    return { list, detail: itemDetail(e.id, s, act) };
   };
   const sellTab = () => {
-    const s = ctx.save;
-    const ids = ITEM_IDS.filter((id) => (s.box[id] ?? 0) > 0 && sellPrice(id) > 0);
-    if (!ids.length) return '<div class="note">Du hast nichts zu verkaufen. Kiesel guckt enttäuscht.</div>';
-    return ids.map((id) => `<div class="row">${iconHtml(id)}<span class="nm">${esc(ITEMS[id].name)} <small>×${s.box[id]}</small></span><span class="chip ok">${iconHtml('schrott')}${sellPrice(id)}</span>
-      <button class="sm" data-a="sell1" data-k="${id}">1</button><button class="sm" data-a="sellall" data-k="${id}">alle</button></div>`).join('');
+    const s = ctx.save, ids = sellIds();
+    if (!ids.length) return { list: '<div class="note">Du hast nichts zu verkaufen. Kiesel guckt enttäuscht.</div>', detail: '' };
+    if (!ids.includes(selSell)) selSell = ids[0];
+    const list = ids.map((id) => `<button class="rowbtn${id === selSell ? ' sel' : ''}" data-a="pick" data-k="${id}">${iconHtml(id)}<span class="nm">${esc(ITEMS[id].name)} <small>×${s.box[id]}</small></span><span class="chip ok">${iconHtml('schrott')}${sellPrice(id)}</span></button>`).join('');
+    const act = `<div class="idet-a"><span class="chip ok">${iconHtml('schrott')}${sellPrice(selSell)} pro Stück</span>
+      <button class="btn small go" data-a="sell1" data-k="${selSell}">1 verkaufen</button><button class="btn small" data-a="sellall" data-k="${selSell}">Alle (${s.box[selSell]})</button></div>`;
+    return { list, detail: itemDetail(selSell, s, act) };
   };
   return {
-    render: () => `<div class="note">Kiesel: „Ich kaufe alles. Für 40 %. Das ist Fairness, nur anders.“</div>` + tabs(tab, [['buy', 'Kaufen'], ['sell', 'Verkaufen']]) + (tab === 'buy' ? buyTab() : sellTab()),
+    render() {
+      const t = tab === 'buy' ? buyTab() : sellTab();
+      return `<div class="split"><div class="list"><div class="note">Kiesel: „Ich kaufe alles. Für 40 %. Das ist Fairness, nur anders.“</div>${tabs(tab, [['buy', 'Kaufen'], ['sell', 'Verkaufen']])}${t.list}</div>
+        <div class="detail">${t.detail}</div></div>`;
+    },
     click(a, d) {
       const s = ctx.save;
       if (a === 'tab') tab = d.k;
+      else if (a === 'pick') { if (tab === 'buy') selBuy = Number(d.k); else selSell = d.k; }
       else if (a === 'buy') { const r = buy(s, Number(d.k)); if (r.ok) { ctx.commit(); ctx.toast(`${ITEMS[r.id].name} ×${r.n} gekauft.`); } else ctx.toast(reasonText(r), true); }
       else if (a === 'sell1' || a === 'sellall') { const r = sell(s, d.k, a === 'sell1' ? 1 : 99); if (r.ok) { ctx.commit(); ctx.toast(`+${r.gain} Schrott.`); } else ctx.toast(reasonText(r), true); }
     },

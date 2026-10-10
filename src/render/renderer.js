@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { settings } from '../core/settings.js';
 import { setSnapGrid } from './ps1.js';
+import { updateLabels } from './labels.js';
 
 /**
  * Low-res PS1 pipeline: render at internal width (480 / 360), canvas is CSS-upscaled with
@@ -27,9 +28,10 @@ export function createRenderer(container) {
     },
     onResize: new Set(),
     setResolution(w) { settings.res = w; this.resize(); },
-    render(scene, camera) { renderer.render(scene, camera); },
+    render(scene, camera) { renderer.render(scene, camera); updateLabels(scene, camera); },
   };
   window.addEventListener('resize', () => api.resize());
+  window.visualViewport?.addEventListener('resize', () => api.resize());
   window.addEventListener('orientationchange', () => setTimeout(() => api.resize(), 120));
   api.resize();
   return api;

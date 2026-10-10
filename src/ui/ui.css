@@ -13,18 +13,18 @@
 img { -webkit-user-drag: none; user-drag: none; }
 button { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font: inherit; }
 html, body {
-  margin: 0; padding: 0; position: fixed; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh;
   overflow: hidden; overscroll-behavior: none; touch-action: none; background: #0c0816; color: var(--ink);
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; font-family: var(--font);
 }
-#stage { position: fixed; inset: 0; background: #0c0816; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100dvh; background: #0c0816; }
 #game {
-  position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none;
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; touch-action: none;
   image-rendering: pixelated; image-rendering: crisp-edges;
 }
 #game.glitch { filter: url(#sh-rgb) contrast(1.15) saturate(1.4); }
-#fxlayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
-#ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#fxlayer { position: fixed; inset: 0; height: 100dvh; pointer-events: none; overflow: hidden; z-index: 5; }
+#ui { position: fixed; inset: 0; height: 100dvh; pointer-events: none; z-index: 10; }
 #ui .ui-hit, #ui button, #ui .btn { pointer-events: auto; }
 
 /* scanlines + vignette */
@@ -128,6 +128,9 @@ body.touch #touch { display: block; }
 /* context button: own reserved slot, pulsing, bright */
 .btn-ctx .tv { background: rgba(214,170,28,.9); border-color: #fff6c0; color: #1a1200; text-shadow: none; box-shadow: 0 0 0 2px #000, 0 0 12px 3px rgba(255,216,74,.65); opacity: 1; font-weight: bold; animation: pulse .9s steps(2) infinite; }
 .btn-ctx.down .tv { background: #fff2a0; }
+.btn-bar { display: none; } body.has-bar .btn-bar { display: block; }
+.btn-bar .tv, .tmenu .tv { font-size: 14px; border-radius: 4px; }
+body.strip-open .btn-bar .tv { border-color: #ffd84a; background: rgba(90,58,192,.8); }
 .tmenu .tv { border-radius: 4px; background: rgba(10,8,40,.5); border: 1px solid rgba(244,240,208,.6); }
 @keyframes blink { 50% { opacity: .3; } }
 @keyframes pulse { 50% { box-shadow: 0 0 0 2px #000, 0 0 16px 6px rgba(255,216,74,.9); } }
@@ -149,3 +152,10 @@ body.touch #touch { display: block; }
 /* [K] zone name toast + gather ring helper */
 .hud-zone { position: absolute; left: 50%; top: 9vmin; transform: translateX(-50%); font-size: max(11px, 3.3vmin); color: #f4f0d0; text-shadow: 1px 1px 0 #000, -1px 1px 0 #000; letter-spacing: .08em; opacity: 0; transition: opacity .5s; white-space: nowrap; pointer-events: none; }
 .hud-zone.show { opacity: 1; }
+
+/* crisp world labels (render/labels.js) */
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.wlabel { position: absolute; left: 0; top: 0; white-space: nowrap; font-family: var(--font); font-size: max(10px, 2.3vmin); padding: .25em .5em; background: rgba(10, 8, 40, .72);
+  text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; will-change: transform; line-height: 1.2; }
+.wlabel.sm { font-size: max(9px, 1.9vmin); padding: .15em .4em; }
+.wlabel.bub { font-size: max(11px, 2.6vmin); border: 1px solid rgba(244, 240, 208, .6); }

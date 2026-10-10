@@ -1,16 +1,20 @@
 {
+  "id": "./",
   "name": "Scuffed Hunter",
   "short_name": "Scuffed Hunter",
   "description": "PS1-Koop-Brockenjagd",
+  "lang": "de",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "orientation": "landscape",
   "background_color": "#120d1c",
   "theme_color": "#120d1c",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

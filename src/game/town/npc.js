@@ -1,31 +1,7 @@
 import * as THREE from 'three';
 import { Parts, vcLit } from '../../render/vcolor.js';
 
-/** Pixel label sprite (name tags above NPCs / stations). */
-export function labelSprite(text, { color = '#ffd84a', scale = 0.42 } = {}) {
-  const c = document.createElement('canvas');
-  const w = Math.max(16, text.length * 6 + 8), h = 12;
-  c.width = w; c.height = h;
-  const g = c.getContext('2d');
-  if (g) {
-    g.fillStyle = 'rgba(10,8,40,.65)';
-    g.fillRect(0, 0, w, h);
-    g.font = 'bold 8px monospace';
-    g.textBaseline = 'middle';
-    g.textAlign = 'center';
-    g.fillStyle = '#000';
-    g.fillText(text, w / 2 + 1, h / 2 + 1);
-    g.fillStyle = color;
-    g.fillText(text, w / 2, h / 2);
-  }
-  const tx = new THREE.CanvasTexture(c);
-  tx.magFilter = tx.minFilter = THREE.NearestFilter;
-  tx.generateMipmaps = false;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthTest: false, fog: false }));
-  sp.scale.set((w / h) * scale, scale, 1);
-  sp.renderOrder = 20;
-  return sp;
-}
+export { labelSprite } from '../../render/labels.js'; // crisp DOM labels (see render/labels.js)
 
 const LOOKS = {
   smith: { shirt: '#5a4636', pants: '#3a3034', skin: '#d89a74' },
