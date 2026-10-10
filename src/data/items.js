@@ -62,6 +62,47 @@ export const ITEMS = {
 const BASE = { flickbrause: 30, knisterkraut: 8, sprudelwasser: 10, blaublatt: 15, altknochen: 12, brennspitze: 6, giftspitze: 6, klebefalle: 120, blendknolle: 70, rohfleisch: 14, mampfer_fell: 36, grillsteak: 60 };
 for (const it of Object.values(ITEMS)) it.baseValue = BASE[it.id] ?? Math.max(1, it.value * 2);
 
+// info = one-line, factual effect / use (shown when an item is tapped in crafting, chests). Values mirror the effects above.
+const INFO = {
+  knisterkraut: 'Material: für Flickbrause.',
+  blaublatt: 'Material: für Pustekuchen.',
+  wabbelpilz: 'Material: für Dicke Flickbrause, Klebefalle, Pilzpfanne.',
+  stinkmorchel: 'Material: für Blendknolle, Stinkbombe, Giftspitzen.',
+  schrotterz: 'Material: für Bummspitzen und Waffen-Upgrades.',
+  glimmstein: 'Material: für die höchste Waffenstufe.',
+  altknochen: 'Material: für Knallgurke, Bogenspitzen, Waffen und Rüstung.',
+  grossknochen: 'Material: für Klebefalle und Rüstung.',
+  brummkaefer: 'Material: für Pustekuchen.',
+  blitzkaefer: 'Material: für Blendknolle.',
+  glutbrocken: 'Material: für Knallgurke, Grillsteak, Brenn-/Bummspitzen, Glutgulasch.',
+  jaggo_schuppe: 'Material: für Jaggo-Waffen und -Rüstung.',
+  jaggo_fell: 'Material: für Jaggo-Waffen und -Rüstung.',
+  jaggo_kamm: 'Material: seltenes Teil für Jaggo-Waffen und -Rüstung.',
+  jaggling_schuppe: 'Material: nur zum Verkaufen.',
+  barrotz_kruste: 'Material: für Barrotz-Waffen und -Rüstung.',
+  barrotz_platte: 'Material: für Barrotz-Waffen und -Rüstung.',
+  barrotz_schwanzleder: 'Material: für Barrotz-Waffen und -Rüstung.',
+  brathalos_schuppe: 'Material: für die höchste Waffenstufe und Brathalos-Rüstung.',
+  brathalos_membran: 'Material: für die höchste Waffenstufe und Brathalos-Rüstung.',
+  glutsack: 'Material: für die höchste Waffenstufe und Brathalos-Rüstung.',
+  brathalos_rubin: 'Material: nur zum Verkaufen, sehr wertvoll.',
+  rohfleisch: 'Material: für Grillsteak und Mampfer-Ragout.',
+  mampfer_fell: 'Material: für Mampfer-Rüstung.',
+  flickbrause: 'Heilt 35 HP über 1 s.',
+  dicke_flickbrause: 'Heilt 80 HP über 1 s und die Prellung komplett.',
+  pustekuchen: 'Halbiert den Puste-Verbrauch für 60 s.',
+  sprudelwasser: 'Entfernt Schlamm, Brennen und Gift.',
+  blendknolle: 'Wurf (6 m): blendet Brocken 4 s, holt Fliegende runter.',
+  stinkbombe: 'Wurf (6 m): Brocken wechselt Ziel oder Zone und lässt das Fressen.',
+  klebefalle: 'Platzieren: Brocken klebt 6 s fest (1× pro Brocken pro 60 s).',
+  knallgurke: 'Platzieren: nach 3 s Lunte 120 Schaden und Betäubung.',
+  grillsteak: 'Heilt 40 HP und gibt +25 Max-Puste bis Jagdende.',
+  brennspitze: 'Bogen-Munition mit Feuer (+12). Wechsel 0,4 s.',
+  giftspitze: 'Bogen-Munition, baut Gift auf (20). Wechsel 0,4 s.',
+  bummspitze: 'Bogen-Munition, kleine Explosion mit Betäubung (8). Wechsel 0,4 s.',
+};
+for (const it of Object.values(ITEMS)) it.info = INFO[it.id] ?? it.desc;
+
 export const ITEM_IDS = Object.keys(ITEMS);
 export const getItem = (id) => ITEMS[id] ?? null;
 export const itemName = (id) => ITEMS[id]?.name ?? id;
