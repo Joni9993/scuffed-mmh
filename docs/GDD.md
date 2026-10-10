@@ -553,6 +553,7 @@ Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Featur
   - **Feldstudie** (`src/meta/fieldstudy.js`): ISO-Kalenderwoche = Seed → Brocken + 2 Mutatoren + Bonus, Bestzeit pro Woche lokal, oben im Auftragsbrett, Koop gleicher Seed.
   - **Vielfalt** (`variety.metric`, 5 Seeds × 240 s, HP ≥ 50 %): Kroll 22,8 / Gorgo 22,0 / Voltaro 42,6 versch. 3er-Folgen (Kroll-Phase-2-Angriffe erst nach Panzerbruch).
   - **Nachgezogen:** Turbinen-Wind in Zone 4 (`src/game/world/turbinenWind.js`: Böe alle 8–14 s für 2–3 s, 1 s Ankündigung über Staub/Windton, Schub 2,5 m/s, kein Schaden, deterministisch aus Seed; Gorgo-Rüstung „Wühler" macht immun – gemessen 0 m vs. 10,8 m in 30 s), Katana Stufe 5/6 mit eigenen Looks je Ast, Gorgo eingegraben = pulsierender oranger Ring auf der Minimap.
+  - **Waffen-Optik neu (Owner-Feedback):** jede Stufe/jeder Ast aller 4 Waffen hat eigene Silhouette + Palette aus den Teilen des Brocken (1 Rost, 2 Knochen, 3a Jaggo-Kamm/Zähne, 3b Barrotz-Kopfplatte/Horn, 4 Brathalos-Flügel/Horn/Glut, 5k Kroll-Kesselblech/Scheren/Nieten, 5g Gorgo-Segmente/Glutrisse, 5v Voltaro-Kupfer/Spulen/Funken, 6 Funkenfürst) statt „Stufe-4-Basis + Aufbauten". Übersicht: `tools/weapon-looks.mjs`.
   - **Offen:** Owner-Handytest.
 - **Als Nächstes:** Owner-Tests auf dem Handy, Balancing nach Tod-Log; danach Ideen aus `docs/NEXT.md` (weitere Multi-Jagden, Rotglut+).
 
