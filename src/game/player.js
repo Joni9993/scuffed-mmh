@@ -382,6 +382,7 @@ export class Player {
   }
 
   #startRoll(free = false) {
+    if (this.local && this.ctx.stats) this.ctx.stats.rolls = (this.ctx.stats.rolls ?? 0) + 1; // Auszeichnung „Rollmops"
     const d = this.#moveDir();
     const lp = this.lockPoint();
     let dir;

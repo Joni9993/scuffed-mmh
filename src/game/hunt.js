@@ -57,7 +57,7 @@ export class Hunt {
     this.net = null; // [N] HuntNet in coop (hunt.net: isHost, send, on, peers), null in solo
     this.players = [];
     this.monsters = [];
-    this.stats = { damage: 0, hits: 0, perfect: 0, kos: 0, glitchDmg: 0 }; // glitchDmg: Schaden im Glitch-Modus (lokal)
+    this.stats = { damage: 0, hits: 0, perfect: 0, kos: 0, glitchDmg: 0, rolls: 0 }; // glitchDmg: Schaden im Glitch-Modus (lokal)
     this._n = 0;
     this._lastRender = performance.now();
 
