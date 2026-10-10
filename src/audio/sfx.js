@@ -388,17 +388,21 @@ if (typeof window !== 'undefined' && window.addEventListener) {
 export function installAudioAutoResume(doc = typeof document !== 'undefined' ? document : null, win = typeof window !== 'undefined' ? window : null) {
   if (typeof doc?.addEventListener !== 'function' || typeof win?.addEventListener !== 'function') return () => {};
   const gesture = () => { if (!ctx || ctx.state !== 'running') sfx.unlock(); };
-  const vis = () => { if (!doc.hidden) { if (ctx && ctx.state !== 'running') sfx.unlock(); } };
+  // App minimiert / Tab im Hintergrund → Audio (Musik + SFX) anhalten; sichtbar → weiter
+  const vis = () => { if (doc.hidden) { if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); } else if (ctx && ctx.state !== 'running') sfx.unlock(); };
+  const hide = () => { if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); };
   const evs = ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown', 'click'];
   for (const e of evs) doc.addEventListener(e, gesture, { passive: true, capture: true });
   doc.addEventListener('visibilitychange', vis);
   win.addEventListener('pageshow', vis);
   win.addEventListener('focus', vis);
+  win.addEventListener('pagehide', hide);
   return () => {
     for (const e of evs) doc.removeEventListener(e, gesture, { capture: true });
     doc.removeEventListener('visibilitychange', vis);
     win.removeEventListener('pageshow', vis);
     win.removeEventListener('focus', vis);
+    win.removeEventListener('pagehide', hide);
   };
 }
 installAudioAutoResume();

@@ -116,7 +116,7 @@ describe('onboarding + a2hs + audio', () => {
     const doc = { hidden: false, addEventListener: (e, f) => { reg[e] = f; }, removeEventListener() {} };
     const win = { addEventListener: (e, f) => { reg['w:' + e] = f; }, removeEventListener() {} };
     const off = installAudioAutoResume(doc, win);
-    expect(Object.keys(reg)).toEqual(expect.arrayContaining(['touchend', 'click', 'visibilitychange', 'w:pageshow']));
+    expect(Object.keys(reg)).toEqual(expect.arrayContaining(['touchend', 'click', 'visibilitychange', 'w:pageshow', 'w:pagehide'])); // pagehide: Audio stoppen beim Minimieren
     off();
   });
   it('timeout error is the German network hint', () => { expect(ERR.timeout).toContain('anderes Netz'); });
