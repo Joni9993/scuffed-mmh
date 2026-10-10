@@ -116,10 +116,10 @@ export class Monster {
 
   get alive() { return this.state !== 'dead'; }
   get sleeping() { return this.state === 'sleep'; }
-  get invulnerable() { return false; }
+  get invulnerable() { return !!this.burrowed; } // def-gesetzt (Gorgo eingegraben): keine Hurtboxen/Lock-Punkte, nur Umgebungsschaden greift
   /** Mutator-Hooks (GDD 16.5, data/mutators.js): generisch fuer alle Brocken, nie fuer Kleinvieh. */
   get mm() { return this.minor ? null : this.ctx.mods?.monster ?? null; }
-  get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1) * (this.mm?.speedMul ?? 1); }
+  get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1) * (this.mm?.speedMul ?? 1) * (this.def.speedFactor?.(this) ?? 1); }
   get dmgMul() { return (this.rage ? 1.15 : 1) * (this.mm?.dmgMul ?? 1); }
   get limping() { return this.hp <= this.maxHp * LIMP_HP && this.alive && !this.minor; }
   get eating() { return this.state === 'fressen'; } // [L] predator busy with its prey: sneak-hit window
@@ -143,7 +143,7 @@ export class Monster {
   // [B] perf: the lists (and their entries) are pooled and cached until the monster's next pose update (`_stamp`).
   // Callers must not keep entries across sim steps (all current callers use them immediately).
   hurtParts() {
-    if (this.culled) return NO_PARTS;
+    if (this.culled || this.invulnerable) return NO_PARTS;
     if (this._hpList && this._hpStamp === this._stamp) return this._hpList;
     const out = (this._hpList ??= []);
     const sc = this.def.scale;
@@ -166,7 +166,7 @@ export class Monster {
     return out;
   }
   lockPoints() {
-    if (this.culled) return NO_PARTS;
+    if (this.culled || this.invulnerable) return NO_PARTS;
     if (this._lpList && this._lpStamp === this._stamp) return this._lpList;
     const pts = (this._lpList ??= []);
     let n = 0;
