@@ -784,13 +784,20 @@ export class Monster {
         n.avoid = avoid; n.avoidT = 4; n.path = null; n.slide = 0.7; n.sd = -n.sd;
       }
     }
-    if (Math.hypot(dx, dz) < 3 || nav.los(this.pos.x, this.pos.z, gx, gz)) { n.path = null; return [dx, dz]; }
-    if (!n.path || Math.hypot(gx - n.gx, gz - n.gz) > 3 || n.age > 2.5) {
+    // perf: LOS re-checked at most every 0.25 s, A* at most every 0.5 s, failed searches back off 1.5 s
+    n.losT = (n.losT ?? 0) - dt;
+    if (Math.hypot(dx, dz) < 3) { n.path = null; return [dx, dz]; }
+    if (n.losT <= 0) { n.losT = 0.25; n.losOk = nav.los(this.pos.x, this.pos.z, gx, gz); }
+    if (n.losOk) { n.path = null; return [dx, dz]; }
+    n.failT = (n.failT ?? 0) - dt;
+    if ((!n.path || (n.age > 0.5 && Math.hypot(gx - n.gx, gz - n.gz) > 3) || n.age > 2.5) && n.failT <= 0) {
       n.path = nav.find(this.pos.x, this.pos.z, gx, gz, n.avoid) ?? (n.avoid ? nav.find(this.pos.x, this.pos.z, gx, gz) : null);
       n.i = 0; n.age = 0; n.gx = gx; n.gz = gz;
-      if (!n.path) return [dx, dz];
+      if (!n.path) n.failT = 1.5;
     }
-    while (n.i < n.path.length - 1 && (Math.hypot(n.path[n.i].x - this.pos.x, n.path[n.i].z - this.pos.z) < 2.2 || nav.los(this.pos.x, this.pos.z, n.path[n.i + 1].x, n.path[n.i + 1].z))) n.i++;
+    if (!n.path) return [dx, dz];
+    while (n.i < n.path.length - 1 && Math.hypot(n.path[n.i].x - this.pos.x, n.path[n.i].z - this.pos.z) < 2.2) n.i++;
+    if (n.i < n.path.length - 1 && n.losT === 0.25 && nav.los(this.pos.x, this.pos.z, n.path[n.i + 1].x, n.path[n.i + 1].z)) n.i++;
     const w = n.path[n.i];
     let ax = w.x - this.pos.x, az = w.z - this.pos.z;
     if (n.slide > 0) { // slide along the wall: sdf gradient tangent
