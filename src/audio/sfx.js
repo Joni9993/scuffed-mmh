@@ -130,6 +130,7 @@ const SOUNDS = {
     tone({ f0: 440, f1: 880, dur: 0.15, type: 'square', vol: 0.12, delay: 0.25 });
   },
   glitchOff: () => { noise({ dur: 0.3, vol: 0.2, f0: 4000, f1: 150, type: 'highpass' }); tone({ f0: 600, f1: 60, dur: 0.35, type: 'sawtooth', vol: 0.14 }); },
+  mutheal: () => { tone({ f0: 520, f1: 880, dur: 0.09, type: 'square', vol: 0.07 }); tone({ f0: 880, f1: 1320, dur: 0.1, type: 'square', vol: 0.06, delay: 0.07 }); noise({ dur: 0.08, vol: 0.05, f0: 6000, f1: 2000, type: 'highpass' }); }, // Speicherleck: kleiner Heil-Blip
   glitch: () => {
     for (let i = 0; i < 9; i++) tone({ f0: 200 + Math.random() * 2200, dur: 0.03, type: i % 2 ? 'square' : 'sawtooth', vol: 0.12, delay: i * 0.035 });
     noise({ dur: 0.38, vol: 0.22, f0: 7000, f1: 300, type: 'highpass' });

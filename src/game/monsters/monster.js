@@ -19,6 +19,7 @@ const POISON_THRESHOLD = 100, POISON_TIME = 15, POISON_PCT = 0.03, TRAP_TIME = 6
 export const LIMP_HP = 0.3;
 export const RUST_THRESHOLD = 100, RUST_TIME = 15, RUST_FACTOR = 0.15, RUST_PART_MUL = 1.5, SCALD_TIME = 10, SCALD_FACTOR = 0.1;
 const GL_CYAN = [0.0, 0.7, 0.85], GL_MAGENTA = [0.9, 0.0, 0.7];
+const GHOST_MAT = new THREE.MeshBasicMaterial({ color: 0x7fe8ff, transparent: true, opacity: 0.35, depthWrite: false, wireframe: true });
 const MINOR_CULL_R2 = 65 * 65; // [B] perf: small monsters farther than this from every local hunter are neither posed nor drawn (nor hittable)
 const NO_PARTS = Object.freeze([]);
 const _v = new THREE.Vector3();
@@ -898,25 +899,82 @@ export class Monster {
     const mm = this.mm;
     if (!mm || !this.alive) return;
     this._sinceHit = (this._sinceHit ?? 99) + dt;
-    if (mm.regenPct && this._sinceHit >= 2 && this.hp < this.maxHp && this.state !== 'sleep') {
-      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * mm.regenPct / 100 * dt);
+    if (mm.regenPct && this._sinceHit >= 2 && this.hp < this.maxHp && this.state !== 'sleep') { // auch im Flug/Sprung
+      const add = Math.min(this.maxHp - this.hp, this.maxHp * mm.regenPct / 100 * dt);
+      this.hp += add;
+      this._regenFx(add, dt);
     }
     const ls = mm.lagSpike;
-    if (ls && this.state === 'combat' && !this.attack && !this.chainNext) {
+    // Spruenge nie waehrend eines Angriffs (Telegraph/Hitboxen bleiben fair); auch im Flug und beim Annaehern
+    if (ls && (this.state === 'combat' || this.state === 'fly') && !this.attack && !this.chainNext) {
       this._lagT = (this._lagT ?? 0) + dt;
       const sp = Math.hypot(this.vel.x, this.vel.z);
-      if (this._lagT >= ls.period && sp > 1) { // Position-Sprung nur im Bewegen; Telegraphs (this.attack) bleiben unberuehrt
+      if (this._lagT >= ls.period && sp > 0.8) {
         this._lagT = 0;
+        this._lagGhost();
         this.pos.x += this.vel.x * ls.skip; this.pos.z += this.vel.z * ls.skip;
         this.ctx.world.collide?.(this.pos, this.bodyRadius * 0.5);
         this.pos.y = this.ctx.world.heightAt(this.pos.x, this.pos.z) + (this.air ?? 0);
+        this.lagCount = (this.lagCount ?? 0) + 1;
       }
     } else if (ls) this._lagT = Math.min(this._lagT ?? 0, ls.period);
+    this._ghostTick(dt);
+  }
+
+  /** Speicherleck-Feedback (Host real, Gast aus beobachteter hp-Aenderung): jede Sekunde gruene „+Σ"-Zahl, Funken, Ton, HUD-Flackern. */
+  _regenFx(amt, dt) {
+    this._rgA = (this._rgA ?? 0) + amt; this._rgT = (this._rgT ?? 0) + dt;
+    if (this._rgT < 1 || this.minor) return;
+    const got = this._rgA; this._rgT = 0; this._rgA = 0;
+    if (got <= 0) return;
+    const at = { x: this.pos.x, y: this.pos.y + this.def.scale * 1.6 + (this.air ?? 0), z: this.pos.z };
+    this.ctx.fx.number(at, `+Σ ${Math.round(got)}`, 'mheal');
+    this.ctx.fx.spark?.(at, 8, '#5dff9a', 2.5);
+    this.ctx.bus.emit('sfx', { name: 'mutheal', pos: this.pos });
+    this.ctx.bus.emit('mutfx', { kind: 'heal', monster: this });
+  }
+
+  /** Lag-Spitze-Feedback: Geisterbild an der alten Position (ausblendend), Glitch-Ton, kurzes Flimmern. */
+  _lagGhost() {
+    this.ctx.bus.emit('sfx', { name: 'glitch', pos: this.pos, vol: 0.55 });
+    this.ctx.bus.emit('mutfx', { kind: 'lag', monster: this });
+    this.ctx.fx.spark?.({ x: this.pos.x, y: this.pos.y + this.def.scale, z: this.pos.z }, 10, '#7fe8ff', 3);
+    const parent = this.mesh.parent;
+    if (!parent || this.minor) return;
+    const g = this.mesh.clone(true);
+    g.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.material = GHOST_MAT; o.castShadow = false; } });
+    g.matrixAutoUpdate = true; parent.add(g);
+    (this._ghosts ??= []).push({ g, t: 0.5 });
+    this.hitFlash = Math.max(this.hitFlash, 0.08); // Original flackert kurz
+  }
+
+  _ghostTick(dt) {
+    const L = this._ghosts; if (!L?.length) return;
+    for (let i = L.length - 1; i >= 0; i--) {
+      L[i].t -= dt;
+      if (L[i].t <= 0) { L[i].g.removeFromParent(); L.splice(i, 1); }
+      else L[i].g.visible = Math.floor(L[i].t * 24) % 2 === 0; // Flimmern
+    }
+  }
+
+  /** Gast: Host-Effekte aus beobachteter Aenderung ableiten (hp steigt ohne Treffer; Lag-Takt lokal, Sprung selbst kommt per Snapshot). */
+  _mutatorObserve(dt) {
+    const mm = this.mm;
+    if (!mm || !this.alive) { this._ghostTick(dt); return; }
+    const prev = this._obsHp ?? this.hp; this._obsHp = this.hp;
+    if (mm.regenPct) this._regenFx(Math.max(0, this.hp - prev), dt);
+    const ls = mm.lagSpike;
+    if (ls && (this.state === 'combat' || this.state === 'fly') && !this.attack) {
+      this._lagT = (this._lagT ?? 0) + dt;
+      if (this._lagT >= ls.period && Math.hypot(this.vel.x, this.vel.z) > 0.8) { this._lagT = 0; this._lagGhost(); }
+    }
+    this._ghostTick(dt);
   }
 
   /** Remote clients: advance a replayed attack. */
   tickRemote(dt) {
     this.time += dt;
+    if (this.mm) this._mutatorObserve(dt);
     this._statusTick(dt, true);
     if (this.attack) this._runAttack(dt);
     this.projectiles.update(dt);
