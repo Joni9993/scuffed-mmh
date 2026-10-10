@@ -398,7 +398,9 @@ Verkauf: jedes Material zu 40 % seines Basiswerts (Brocken-Material hat Basiswer
 
 ---
 
-## 15. Rostwerke – zweite Map & Endgame (ab JR 5)
+## 15. Rostwerke – zweite Map & Endgame (ab JR 5) — ✅ gebaut & live (Phase 3, Okt 2026)
+
+> **Umsetzung:** Map `src/game/world/rostwerke*.js`, Umgebung `src/game/world/interactables.js`, Brocken `src/game/monsters/{kroll,gorgo,voltaro}.js`, Daten `src/data/{items,recipes,weapons,armor,drops,quests,gather}.js`. Verträge: `docs/PHASE3_CONTRACTS.md`. Abweichungen/Ergänzungen stehen in §16.8 (Phase 3).
 
 Freigeschaltet nach dem ersten Brathalos (JR 4 → Auftrag „Rauch am Horizont" schaltet JR 5 frei). Schwieriger als die Schotterklamm: schnellere Brocken, kürzere Erholungsfenster (aber Ankündigung bleibt ≥ 0,5 s), Umgebung als Waffe.
 
@@ -538,10 +540,20 @@ Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Featur
 ### 16.8 Roadmap (gültig)
 - ✅ **Phase 1 – Brocken 2.0 (schwerer + abwechslungsreicher) – gebaut, live seit Okt 2026, siehe 16.3:** 16.3 für Jaggo → Barrotz → Brathalos. *Metrik:* mehr verschiedene 3er-Move-Folgen pro Jagd als heute; Tester erklären ihre Tode; „unfaire" Tode im Tod-Log < 10 %; Jagddauer bleibt ~5–6 min.
 - ✅ **Phase 2 – Glitch Hunter – gebaut, live seit Okt 2026:** Umbenennung, Glitch-Energie + Glitch-Modus mit Pflicht-Optik, 4 Waffen-Glitches (16.2), Mutator-System + 6 Start-Mutatoren (16.5), Koop-Zielwechsel, End-Auszeichnungen, „Link teilen". *Metrik:* Glitch-Anteil am Schaden 40–50 %; ≥ 40 % lösen in Jagd 2 den Glitch-Modus aus.
-- **Phase 3 – Breite:** Rostwerke (§15) mit Kroll/Gorgo/Voltaro direkt auf Brocken-2.0-Bausteinen + Glitch-Stellen + Mutator-Hooks · erste Multi-Jagd „Revierstreit" · Rotglut als Mutator-Preset.
+- ✅ **Phase 3 – Breite – gebaut, live seit Okt 2026:** Rostwerke (§15) mit Kroll/Gorgo/Voltaro direkt auf Brocken-2.0-Bausteinen + Glitch-Stellen + Mutator-Hooks · erste Multi-Jagd „Revierstreit" · Rotglut als Mutator-Preset.
 - Erledigt vorab: Koop-HP-Skalierung (16.4).
 - Phase 2 umgesetzt: Umbenennung ✅, Glitch-Modus + 4 Waffen-Glitches ✅, Mutatoren ✅, „Link teilen" (`?join=ABCD`, Web Share/Zwischenablage) ✅, End-Auszeichnungen (`src/meta/awards.js`, bis zu 3 pro Jagd) ✅, Koop-Zielwechsel (aus Phase 1) ✅. Offen: Auszeichnungen im Koop nur mit lokaler Statistik (kein Stats-Austausch), Metrik „≥ 40 % lösen in Jagd 2 Glitch aus" braucht Spielertests.
-- **Als Nächstes: Phase 3** (Rostwerke, wöchentlicher Seed, „Revierstreit").
+- **Phase 3 umgesetzt (Okt 2026):**
+  - **Rostwerke** (4 Zonen, Bodentypen slag/metal/toxic – Gift nach 1,5 s im Giftschlamm, Waggon-Camp, 28 Sammelpunkte, eigener Industrial-Synthwave 'rost'). Draw Calls 78–98 (Schotterklamm 104–185), Sim 0,1 ms/Schritt.
+  - **Umgebung als Waffe:** 6 Dampfventile, 2 Schrottkräne, 4 Blitzableiter – host-autoritativ, Kontext-Taste, Gäste schicken Wunsch, Host broadcastet (+ Vollzustand alle 2 s für Nachzügler).
+  - **Status Rost** (Brocken: Verrostet 15 s, Teile +0,15 / Teil-HP ×1,5; Pirscher: Schutz −30 % 20 s). Items Rostbombe, Rostspitze, Erdungsstab (Schutzzone gegen Kettenblitz/Donnerschlag), Kühlbrause + 5 Sammel- und 10 Brocken-Materialien.
+  - **Kroll** (Panzerbruch → Phase 2 mit Scherenwirbel/Krabbensprung, Kesseldruck als Ring – unter ihm sicher, Blendknolle doppelt), **Gorgo** (Eingraben = unverwundbar, Durchbruch mit ≥ 0,8 s Bodenwarnung, Sog mit Rolle brechbar, Segmentbruch kürzt + verlangsamt, Knallgurke/Kran zwingen ihn raus), **Voltaro** (Ladung/Überladen über Blitzableiter, Kettenblitz springt 6 m, Donnerschlag, Plasmasprung, Phase 2 zerstört 2 Ableiter + Gewitter, Schwanz abtrennbar). Alle mit Brocken-2.0-Bausteinen, Glitch-Stellen (`def.glitchSpots`: flackern, ×2 Glitch-Energie) und Fairness-Audit (82 Prüfungen grün, voller Lauf).
+  - **Progression:** Waffen-Stufe 5 mit Kroll-/Gorgo-/Voltaro-Ast für alle 4 Waffen, Stufe 6 „Funkenfürst" über Voltaro-Herz; Rüstungen Kroll/Gorgo/Voltaro mit Macken (Panzerhaut, Wühler, Überladung, Erdung) + Gear-Optik; JR bis 7 (Brathalos → JR 5, Kroll/Gorgo → JR 6, Voltaro → JR 7); Aufträge Rauch am Horizont, Was da gräbt, Der Funkenfürst, Rostiger Ausflug, Rotglut-Varianten JR 7.
+  - **Revierstreit** (JR 4): Barrotz + Jaggo je 65 % HP, kämpfen erst gegeneinander (Uhr startet, wenn ein Pirscher < 45 m ist), verbünden sich nach 60 s oder > 8 % HP Pirscher-Schaden in 10 s; Offscreen-Pfeile; Sieg erst wenn beide fallen.
+  - **Feldstudie** (`src/meta/fieldstudy.js`): ISO-Kalenderwoche = Seed → Brocken + 2 Mutatoren + Bonus, Bestzeit pro Woche lokal, oben im Auftragsbrett, Koop gleicher Seed.
+  - **Vielfalt** (`variety.metric`, 5 Seeds × 240 s, HP ≥ 50 %): Kroll 22,8 / Gorgo 22,0 / Voltaro 42,6 versch. 3er-Folgen (Kroll-Phase-2-Angriffe erst nach Panzerbruch).
+  - **Offen:** Turbinen-Wind (Flag `windImmune` der Gorgo-Rüstung hat noch kein Gegenstück), Katana Stufe 5/6 nutzt Stufe-4-Optik, Gorgo-Minimap-Icon im eingegrabenen Zustand, Owner-Handytest.
+- **Als Nächstes:** Owner-Tests auf dem Handy, Balancing nach Tod-Log; danach Ideen aus `docs/NEXT.md` (weitere Multi-Jagden, Rotglut+).
 
 ---
 

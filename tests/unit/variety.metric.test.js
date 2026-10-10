@@ -5,6 +5,9 @@ import { Monster } from '../../src/game/monsters/monster.js';
 import { jaggo } from '../../src/game/monsters/jaggo.js';
 import { barrotz } from '../../src/game/monsters/barrotz.js';
 import { brathalos } from '../../src/game/monsters/brathalos.js';
+import { kroll } from '../../src/game/monsters/kroll.js';
+import { gorgo } from '../../src/game/monsters/gorgo.js';
+import { voltaro } from '../../src/game/monsters/voltaro.js';
 import { Player } from '../../src/game/player.js';
 import { time } from '../../src/core/time.js';
 import { makeCtx, DT } from './p3helpers.js';
@@ -37,9 +40,9 @@ function sim(def, seed) {
 }
 
 describe.skipIf(!RUN)('Metrik: Vielfalt der Angriffsfolgen', () => {
-  it('jaggo / barrotz / brathalos', () => {
+  it('alle Brocken', () => {
     const rows = [];
-    for (const def of [jaggo, barrotz, brathalos]) {
+    for (const def of [jaggo, barrotz, brathalos, kroll, gorgo, voltaro]) {
       const r = SEEDS.map((s) => sim(def, s));
       const avg = (k) => (r.reduce((s, x) => s + x[k], 0) / r.length).toFixed(1);
       rows.push(`${def.id.padEnd(10)} Angriffe/${SECS}s ${avg('n')}  versch. Moves ${avg('moves')}  versch. 3er-Folgen ${avg('tri')}`);

@@ -273,3 +273,13 @@ Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert,
 
 ## Mutatoren (Phase 2)
 `src/data/mutators.js`: Mutator = reine Daten `{ id, name, desc, reward, monster:{…}, player:{…}, hunt:{…} }`. `resolveMods(ids)` → `hunt.mods = { monster, player, hunt, reward, ids }` (Muls multiplizieren, regenPct addiert, Flags ODER). Monster liest `ctx.mods.monster` (nur Brocken, nicht Kleinvieh; Host-autoritativ), Spieler-Seite in `hunt.js` (dmgMul, staminaMul → `p.v.regenMul`), `items.js` (healItems), `glitch.js` (glitchGainMul). Auftrag trägt `mutators` (questboard post/snapshot/start). Neue Mutatoren = nur Eintrag in `MUTATORS`, kein Brocken-Code.
+
+## Phase 3 (Rostwerke) – Framework-Ergänzungen
+- `attack.tempo` (Grundtempo, Telegraph nie < 0,5 s); `def.speedFactor(m)` multipliziert `speedMul`; `def.noRage`; `get invulnerable()` = `burrowed` (Gorgo) → keine Hurtboxen/Lock-Punkte, nur Umgebungsschaden (`res.env`).
+- `def.glitchSpots = [partId]`: Teile flackern, ×2 Glitch-Energie (`m.isGlitchSpot`).
+- Status `'rost'` (`applyStatus('rost', {amount})`), `'scald'` (Verbrüht); Snapshot-Flags RUST/SCALD.
+- **Sonderzustand im Netz:** `def.snapExtra(m)` → Snapshot-Feld `xt` → Gast setzt flache Felder (oder `def.applySnapExtra`). Genutzt: Gorgo `burrowed`, Voltaro `charge/over`, Kroll `p2`, Brathalos `tailGone`.
+- Interactables: `hunt.interact` (`list, nearest, use, rods, damageRod, destroyRod`), Netz `MSG.EV {k:'ia'}` (Gast-Wunsch → Host → alle, Vollzustand alle 2 s). Bus `valveBurst`, `craneDrop`, `rodDestroyed`.
+- Multi-Brocken: `quest.monsters[]`, `hunt.bosses`, `ctx.revier` (Revierkampf, Aggro-Sperre 0,6 s gilt dann für alle Angriffe); Treffer Brocken→Brocken nur beim Host.
+- `res.partDmgMul` (Kroll-Ast) auch im Netz (`encodeHit` Feld `q`); Waffen-Element `rust` = Rost-Aufbau.
+
