@@ -76,5 +76,12 @@ export function itemDetail(id, save, actions = '') {
   const usesHtml = recHtml + (uses.length ? `<div class="idet-u"><b>Wofür?</b> ${uses.map((x) => `<span>${x.label}: ${x.names.map(esc).join(', ')}</span>`).join('')}</div>`
     : it.kind === 'material' ? '<div class="idet-u"><b>Wofür?</b> <span>Nur zum Verkaufen.</span></div>' : '');
   return `<div class="idet"><div class="idet-h">${iconHtml(id)}<b>${esc(it.name)}</b><small>${kind}</small></div>
-    <div class="idet-d">${esc(it.desc)}</div><div class="idet-f">${facts.join('')}</div>${usesHtml}${actions}</div>`;
+    <div class="idet-w">${esc(it.info)}</div><div class="idet-d"><i>${esc(it.desc)}</i></div><div class="idet-f">${facts.join('')}</div>${usesHtml}${actions}</div>`;
+}
+
+/** Compact info box for a tapped item (used in the hunt chest): name, effect, count. `extra` = html. */
+export function itemInfoBox(id, countTxt = '', extra = '') {
+  const it = ITEMS[id];
+  if (!it) return '<div class="note idet-box">Tippe einen Gegenstand an, um zu sehen, was er kann.</div>';
+  return `<div class="idet idet-box">${iconHtml(id)}<div><b>${esc(it.name)}</b> <small>${esc(countTxt)}</small><div class="idet-w">${esc(it.info)}</div>${extra}</div></div>`;
 }
