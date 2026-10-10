@@ -5,6 +5,7 @@ import { barrotz } from './barrotz.js';
 import { brathalos } from './brathalos.js'; // [M]
 import { dummy } from './dummy.js';
 import { mampfer, mampferbulle, mampferkalb, hoppler } from './mampfer.js'; // [L]
+import { kroll } from './kroll.js'; // [Rostwerke]
 
 export const monsters = {
   jaggo,
@@ -13,6 +14,7 @@ export const monsters = {
   barrotz, // [M]
   brathalos, // [M]
   mampfer, mampferbulle, mampferkalb, hoppler, // [L] neutral fauna
+  kroll, // [Rostwerke]
 };
 
 export function getMonsterDef(id) {
