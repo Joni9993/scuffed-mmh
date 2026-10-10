@@ -169,7 +169,7 @@ function breakArmor(m, why) {
 // ---- 1. Rammsturm: scharrt 0,9 s, rennt 15 m geradeaus (30 Schaden, wirft um). Rotglut: dreht und rennt nochmal.
 const RAMM_LEN = 15;
 const ramm = {
-  id: 'barrotz_ramm', range: [7, 26], weight: 4, cooldown: 6, telegraph: 0.9, flashParts: ['legs', 'head'], duration: 3.1,
+  id: 'barrotz_ramm', range: [7, 26], weight: 4, cooldown: 5, telegraph: 0.9, flashParts: ['legs', 'head'], duration: 3.1, stam: 18, cue: { color: '#ff8a30', tone: 'droehn' },
   marker: { at: 'landing', radius: 2.4 }, markerUntil: 2.1,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z;
@@ -201,7 +201,7 @@ const ramm = {
 
 // ---- 2. Plattenhammer: Kopf hebt sich 0,7 s, Schlag nach vorn + Schlamm-Schockwelle (4 m), 25 Schaden
 const hammer = {
-  id: 'barrotz_hammer', range: [0, 6.8], weight: 4, cooldown: 4, telegraph: 0.7, flashParts: ['head'], duration: 2.1,
+  id: 'barrotz_hammer', range: [0, 6.8], weight: 4, cooldown: 3, telegraph: 0.7, flashParts: ['head'], duration: 2.1, lockedByBreak: 'head', stam: 4, cue: { color: '#ffd84a', tone: 'brumm' },
   marker: { at: 'landing', radius: 4 }, markerUntil: 1.25,
   prepare(a) { a.landing = { x: a.origin.x + a.dir.x * 3.4, z: a.origin.z + a.dir.z * 3.4 }; },
   hits: [{ t0: 0.82, t1: 0.98, shape: 'sphere', at: [0, 0.4, 3.4], radius: 3.6, dmg: 25, knock: 'down' }],
@@ -226,7 +226,7 @@ const hammer = {
 
 // ---- 3. Schlammwälzer: wälzt sich 2 s (verwundbar), danach Schlammpanzer
 const waelzer = {
-  id: 'barrotz_waelzer', range: [0, 22], weight: 2, cooldown: 14, telegraph: 0.6, flashParts: ['body'], duration: 3.4,
+  id: 'barrotz_waelzer', range: [0, 22], weight: 2, cooldown: 14, telegraph: 0.6, flashParts: ['body'], duration: 3.4, stam: 2, cue: { color: '#8a6a3a', tone: 'knurr' },
   cond: (m) => !m.armor,
   hits: [],
   events: [{ t: 2.7, call: 'coat', all: true }],
@@ -245,7 +245,7 @@ const waelzer = {
 
 // ---- 4. Schlammspritzer (nur mit Panzer): schüttelt sich, 6 Schlammkleckse (10 Schaden + Verschlammt)
 const spritzer = {
-  id: 'barrotz_spritzer', range: [2, 15], weight: 3, cooldown: 8, telegraph: 0.7, flashParts: ['body'], duration: 2.4,
+  id: 'barrotz_spritzer', range: [2, 15], weight: 3, cooldown: 8, telegraph: 0.7, flashParts: ['body'], duration: 2.4, stam: 5, cue: { color: '#6ac04a', tone: 'zisch' },
   cond: (m) => !!m.armor,
   hits: [],
   events: [{ t: 0.95, call: 'spray', all: true }],
@@ -282,6 +282,68 @@ const feger = tailSweep({
     [0, {}], [0.5, { tailYaw: 55, bodyY: -0.1, bodyPitch: 3, head: 8 }], [0.62, { tailYaw: 55 }], [0.8, { tailYaw: -55 }, 'lin'], [1.15, { tailYaw: -55 }], [1.9, {}],
   ]),
 });
+feger.stam = 4;
+feger.cue = { color: '#c070ff', tone: 'klick' };
+
+// ---- 6. Doppel-Stampfer: hebt den Kopf, Stampfer 1 (Front), kurzer Halte-Cue (Kopf bleibt oben), Stampfer 2 (Ring um den Körper). Delay-Hit.
+const stampfWelle = (rx, rz, n = 14) => (m, ctx) => {
+  const x = m.pos.x + Math.sin(m.rot) * rz, z = m.pos.z + Math.cos(m.rot) * rz;
+  ctx.fx.spark({ x, y: ctx.world.heightAt(x, z) + 0.3, z }, n, '#6a4a2a', 7);
+  ctx.fx.shake(0.35, 0.3);
+  ctx.bus.emit('sfx', { name: 'heavy', pos: { x, y: 0, z } });
+};
+const doppel = {
+  id: 'barrotz_doppelstampfer', range: [0, 7], weight: 3, cooldown: 5, telegraph: 0.7, flashParts: ['head', 'legs'], duration: 2.1, stam: 8,
+  cue: { color: '#ff4a4a', tone: 'schrill' }, audit: [3, 6],
+  marker: { at: 'landing', radius: 3.2 }, markerUntil: 1.3,
+  prepare(a) {
+    const dist = Math.hypot(a.target.x - a.origin.x, a.target.z - a.origin.z);
+    a.step = Math.max(0, Math.min(5, dist - 4.5)); // schliesst Luecke, damit der Sondermove auch aus der Ferne ein Ziel hat
+    a.landing = { x: a.origin.x + a.dir.x * (2.6 + a.step), z: a.origin.z + a.dir.z * (2.6 + a.step) };
+  },
+  hits: [
+    { t0: 0.7, t1: 0.84, shape: 'sphere', at: [0, 0.4, 2.6], radius: 3.0, dmg: 20, knock: 'down' },
+    { t0: 1.1, t1: 1.24, shape: 'sphere', at: [0, 0.4, 0.2], radius: 5.0, dmg: 22, knock: 'down' },
+  ],
+  events: [{ t: 0.7, call: 'quake1', all: true }, { t: 1.1, call: 'quake2', all: true }],
+  calls: { quake1: stampfWelle(0, 2.6), quake2: stampfWelle(0, 0.2, 30) },
+  motion(tau, a) {
+    const k = smooth(clamp01((tau - 0.45) / 0.25)) * a.step;
+    return { x: a.origin.x + a.dir.x * k, z: a.origin.z + a.dir.z * k };
+  },
+  pose: mTrack([
+    [0, {}], [0.4, { neck: -0.6, head: -38, bodyPitch: -14, bodyY: 0.15, legL: -10, legR: -10 }], [0.62, { neck: -0.7, head: -42, bodyPitch: -16, bodyY: 0.2 }],
+    [0.72, { neck: 0.6, head: 30, bodyPitch: 12, bodyY: -0.3, legL: 20, legR: 20 }, 'lin'], [0.85, { neck: 0.4, head: 20, bodyPitch: 8, bodyY: -0.1 }],
+    [0.95, { neck: -0.8, head: -48, bodyPitch: -20, bodyY: 0.3, legL: -15, legR: -15 }], [1.08, { neck: -0.85, head: -50, bodyPitch: -22, bodyY: 0.35 }],
+    [1.14, { neck: 0.8, head: 38, bodyPitch: 16, bodyY: -0.4, legL: 25, legR: 25 }, 'lin'], [1.6, { neck: 0.6, head: 28, bodyPitch: 10, bodyY: -0.25 }], [2.1, {}],
+  ]),
+};
+
+// ---- 7. Hoernerschwung (Nahkampf): Kopf zur Seite, Schwung ueber ~100 Grad, schleudert den Jaeger weg. Bestraft Dauerrollen.
+const hoerner = {
+  id: 'barrotz_hoerner', range: [0, 5.5], weight: 3, cooldown: 4, telegraph: 0.6, flashParts: ['head'], duration: 1.7, stam: 6,
+  cue: { color: '#5ac8ff', tone: 'knurr' }, audit: [2.5, 4.5], punishRoll: true,
+  marker: { at: 'landing', radius: 3 }, markerUntil: 1.0,
+  prepare(a) { a.landing = { x: a.origin.x + a.dir.x * 2.8, z: a.origin.z + a.dir.z * 2.8 }; },
+  hits: [{ t0: 0.62, t1: 0.92, shape: 'capsule', from: [0, 1.2, 0.8], to: [0, 1.2, 4.2], radius: 1.0, dmg: 24, knock: 'down' }],
+  motion(tau, a) { return { yaw: a.yaw0 - 0.9 * smooth(clamp01(tau / 0.55)) + 1.8 * smooth(clamp01((tau - 0.55) / 0.4)) }; },
+  pose: mTrack([
+    [0, {}], [0.5, { head: 25, neck: 0.3, headYaw: -30, bodyRoll: -6, bodyY: -0.2, legL: 10 }], [0.62, { head: 25, neck: 0.3, headYaw: -30, bodyRoll: -6, bodyY: -0.2 }],
+    [0.9, { head: 15, neck: 0.2, headYaw: 30, bodyRoll: 8, bodyY: -0.15 }, 'lin'], [1.3, { head: 8, headYaw: 15, bodyRoll: 4 }], [1.7, {}],
+  ]),
+};
+
+// ---- 8. Kopfstoss (nur nach Kopfplattenbruch): schneller Stoss mit dem Stumpf, ersetzt den Plattenhammer
+const kopfstoss = {
+  id: 'barrotz_kopfstoss', range: [0, 6], weight: 6, cooldown: 2.5, telegraph: 0.55, flashParts: ['head'], duration: 1.6, stam: 6,
+  needsBroken: 'head', cue: { color: '#40e0d0', tone: 'klick' }, audit: [2.5, 5],
+  hits: [{ t0: 0.58, t1: 0.74, shape: 'capsule', from: [0, 1.4, 1.2], to: [0, 1.4, 3.8], radius: 1.0, dmg: 18, knock: 'flinch' }],
+  motion(tau, a) { const k = smooth(clamp01((tau - 0.5) / 0.15)) * 2.2; return { x: a.origin.x + a.dir.x * k, z: a.origin.z + a.dir.z * k }; },
+  pose: mTrack([
+    [0, {}], [0.4, { neck: -0.4, head: -20, bodyPitch: -8, bodyY: 0.1, legL: -15, legR: -15 }], [0.55, { neck: -0.45, head: -22, bodyPitch: -9 }],
+    [0.65, { neck: 0.7, head: 30, bodyPitch: 12, bodyY: -0.25 }, 'lin'], [1.0, { neck: 0.5, head: 20, bodyPitch: 8 }], [1.6, {}],
+  ]),
+};
 
 export const barrotz = {
   id: 'barrotz',
@@ -301,7 +363,20 @@ export const barrotz = {
     { id: 'tail', label: 'Schwanz', factor: 0.8, breakHp: 600, jitter: 0.06, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'tail1', offset: [0, 0, -0.7], r: 0.6 }, { node: 'tail2', offset: [0, 0, -1.2], r: 0.65 }] },
   ],
-  attacks: { barrotz_ramm: ramm, barrotz_hammer: hammer, barrotz_waelzer: waelzer, barrotz_spritzer: spritzer, barrotz_feger: feger },
+  attacks: {
+    barrotz_ramm: ramm, barrotz_hammer: hammer, barrotz_waelzer: waelzer, barrotz_spritzer: spritzer, barrotz_feger: feger,
+    barrotz_doppelstampfer: doppel, barrotz_hoerner: hoerner, barrotz_kopfstoss: kopfstoss,
+  },
+  // Brocken 2.0
+  teachAttack: 'barrotz_hammer', stamina: true, flinchDmg: true,
+  chains: {
+    barrotz_hammer: [{ atk: 'barrotz_feger', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_doppelstampfer', w: 3 }, { atk: null, w: 3 }],
+    barrotz_kopfstoss: [{ atk: 'barrotz_feger', w: 2, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_kopfstoss', w: 3 }, { atk: null, w: 2 }],
+    barrotz_waelzer: [{ atk: 'barrotz_spritzer', w: 1 }],
+    barrotz_spritzer: [{ atk: 'barrotz_ramm', w: 3 }, { atk: null, w: 1 }],
+    barrotz_ramm: [{ atk: 'barrotz_hoerner', w: 3 }, { atk: null, w: 2 }],
+  },
+  phases: [{ at: 0.45, name: 'Schlammwut', cue: '#ff4a4a', special: 'barrotz_doppelstampfer', enter: (m) => { m.cds.barrotz_doppelstampfer = 0; } }],
   build: () => buildBarrotz({ scale: SC }),
   init(m) { m.armor = null; m._chained = false; },
   onBreak(m, part) {

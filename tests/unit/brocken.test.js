@@ -180,7 +180,7 @@ describe('Barrotz', () => {
     expect(ids).toEqual(['head', 'legs', 'body', 'tail']);
     expect(barrotz.parts[0].breakHp).toBe(800);
     expect(barrotz.parts[0].factor).toBe(0.5);
-    expect(Object.keys(barrotz.attacks).length).toBe(5);
+    expect(Object.keys(barrotz.attacks).length).toBe(8);
   });
   it('head plate breaks at 800: factor 0.5 -> 0.9, plate mesh gone, partBreak emitted', () => {
     const { ctx, m } = make(barrotz);
