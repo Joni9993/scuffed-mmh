@@ -44,6 +44,94 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
   const discGeo = new THREE.CircleGeometry(1, 20);
   discGeo.rotateX(-Math.PI / 2);
 
+
+  // ---- Blitze (gezackte, kamerazugewandte Bänder, additiv), Strahlen (Kegel mit scrollender Textur), Schockringe
+  const MAX_BOLTS = 18, BOLT_SEG = 10, BR_N = 2, BR_SEG = 4, BOLT_MAXSEG = BOLT_SEG + BR_N * BR_SEG;
+  const bolts = [];
+  for (let i = 0; i < MAX_BOLTS; i++) {
+    const g = new THREE.BufferGeometry();
+    const bp = new Float32Array(BOLT_MAXSEG * 2 * 6 * 3), bc = new Float32Array(BOLT_MAXSEG * 2 * 6 * 3);
+    g.setAttribute('position', new THREE.BufferAttribute(bp, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(bc, 3));
+    const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+    mesh.frustumCulled = false; mesh.visible = false; mesh.renderOrder = 3;
+    scene.add(mesh);
+    bolts.push({ mesh, bp, bc, life: 0, max: 1, a: new THREE.Vector3(), b: new THREE.Vector3(), pts: [], col: new THREE.Color(), width: 0.3, jag: 1, rejag: 0, nseg: 0 });
+  }
+  let boltHead = 0;
+  const _d = new THREE.Vector3(), _u = new THREE.Vector3(), _w = new THREE.Vector3(), _s = new THREE.Vector3(), _m = new THREE.Vector3(), _q = new THREE.Vector3();
+  const jagPath = (bo) => {
+    const { a, b } = bo, len = a.distanceTo(b);
+    _d.subVectors(b, a).normalize();
+    _u.set(0, 1, 0); if (Math.abs(_d.y) > 0.9) _u.set(1, 0, 0);
+    _w.crossVectors(_d, _u).normalize(); _u.crossVectors(_w, _d).normalize();
+    const amp = Math.min(1.6, len * 0.09) * bo.jag;
+    const pts = bo.pts; pts.length = 0;
+    const main = [];
+    for (let i = 0; i <= BOLT_SEG; i++) {
+      const t = i / BOLT_SEG, k = Math.sin(Math.PI * t) * amp;
+      const p = new THREE.Vector3().lerpVectors(a, b, t);
+      if (i > 0 && i < BOLT_SEG) p.addScaledVector(_u, (Math.random() - 0.5) * 2 * k).addScaledVector(_w, (Math.random() - 0.5) * 2 * k);
+      main.push(p);
+    }
+    for (let i = 0; i < BOLT_SEG; i++) pts.push([main[i], main[i + 1], 1]);
+    for (let br = 0; br < BR_N; br++) { // Seitenäste
+      let p = main[2 + ((Math.random() * (BOLT_SEG - 4)) | 0)].clone();
+      const dir = new THREE.Vector3().copy(_d).addScaledVector(_u, (Math.random() - 0.5) * 1.6).addScaledVector(_w, (Math.random() - 0.5) * 1.6).normalize();
+      const step = len * 0.07;
+      for (let j = 0; j < BR_SEG; j++) {
+        const q = p.clone().addScaledVector(dir, step).addScaledVector(_u, (Math.random() - 0.5) * step * 0.8).addScaledVector(_w, (Math.random() - 0.5) * step * 0.8);
+        pts.push([p, q, 0.55 - j * 0.1]); p = q;
+      }
+    }
+    bo.nseg = pts.length;
+  };
+  const writeBolt = (bo) => {
+    const { bp, bc, pts } = bo, cam = camera.position;
+    const fade = Math.min(1, bo.life / bo.max * 2.2);
+    let o = 0;
+    for (let layer = 0; layer < 2; layer++) { // 0 = farbiger Schein (breit), 1 = weißer Kern (schmal)
+      const wk = layer ? 0.32 : 1, cr = layer ? 1 : bo.col.r, cg = layer ? 1 : bo.col.g, cb = layer ? 1 : bo.col.b;
+      for (let i = 0; i < BOLT_MAXSEG; i++) {
+        if (i >= bo.nseg) { for (let k = 0; k < 18; k++) bp[o + k] = 0; for (let k = 0; k < 18; k++) bc[o + k] = 0; o += 18; continue; }
+        const [p0, p1, wMul] = pts[i];
+        _m.addVectors(p0, p1).multiplyScalar(0.5);
+        _s.subVectors(p1, p0); _q.subVectors(cam, _m); _s.cross(_q).normalize().multiplyScalar(bo.width * wk * wMul * 0.5);
+        const v = [p0.x - _s.x, p0.y - _s.y, p0.z - _s.z, p0.x + _s.x, p0.y + _s.y, p0.z + _s.z, p1.x + _s.x, p1.y + _s.y, p1.z + _s.z,
+          p0.x - _s.x, p0.y - _s.y, p0.z - _s.z, p1.x + _s.x, p1.y + _s.y, p1.z + _s.z, p1.x - _s.x, p1.y - _s.y, p1.z - _s.z];
+        for (let k = 0; k < 18; k++) bp[o + k] = v[k];
+        for (let k = 0; k < 6; k++) { bc[o + k * 3] = cr * fade; bc[o + k * 3 + 1] = cg * fade; bc[o + k * 3 + 2] = cb * fade; }
+        o += 18;
+      }
+    }
+    bo.mesh.geometry.attributes.position.needsUpdate = true;
+    bo.mesh.geometry.attributes.color.needsUpdate = true;
+  };
+
+  // Strahl-Textur: helle Schlieren/Puffs (16 px, PS1)
+  const jetCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+  let jetTex = null;
+  if (jetCanvas) {
+    jetCanvas.width = jetCanvas.height = 16;
+    const g2 = jetCanvas.getContext('2d');
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const v2 = 150 + Math.random() * 105; g2.fillStyle = `rgba(${v2},${v2},${v2 + 10},${0.25 + Math.random() * 0.75})`; g2.fillRect(x, y, 1, 1); }
+    jetTex = new THREE.CanvasTexture(jetCanvas);
+    jetTex.magFilter = THREE.NearestFilter; jetTex.minFilter = THREE.NearestFilter;
+    jetTex.wrapS = jetTex.wrapT = THREE.RepeatWrapping; jetTex.repeat.set(2, 3);
+  }
+  const jetGeo = new THREE.CylinderGeometry(0.55, 1, 1, 10, 1, true); // Strahl: vorn schmaler, hinten voll (radius)
+  jetGeo.translate(0, 0.5, 0);
+  const jets = new Map();
+  const _up = new THREE.Vector3(0, 1, 0);
+
+  const rings = [];
+  for (let i = 0; i < 10; i++) {
+    const r = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    r.visible = false; r.renderOrder = 2; scene.add(r);
+    rings.push({ mesh: r, life: 0, max: 1, r0: 0, r1: 1 });
+  }
+  let ringHead = 0;
+
   let trauma = 0, shakeT = 0;
   const shakeOffset = new THREE.Vector3();
   let glitchT = 0;
@@ -128,6 +216,47 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       fx.flash('rgba(90,216,255,.45)', 0.25);
     },
 
+    /** Blitz von a nach b (gezackt, flackert, Seitenäste). opts: color, width (m), life (s), jag (Zackigkeit). */
+    bolt(a, b, { color = '#9fe8ff', width = 0.35, life = 0.22, jag = 1 } = {}) {
+      if (nofx) return;
+      const bo = bolts[boltHead]; boltHead = (boltHead + 1) % MAX_BOLTS;
+      bo.a.set(a.x, a.y, a.z); bo.b.set(b.x, b.y, b.z);
+      bo.col.set(color); bo.width = width; bo.life = bo.max = life; bo.jag = jag; bo.rejag = 0;
+      jagPath(bo); bo.mesh.visible = true;
+    },
+    /** Blitzeinschlag vom Himmel auf p (+ Schockring, kleiner Bildblitz). */
+    strike(p, { color = '#9fe8ff', radius = 2.2, height = 22 } = {}) {
+      if (nofx) return;
+      fx.bolt({ x: p.x + (Math.random() - 0.5) * 3, y: p.y + height, z: p.z + (Math.random() - 0.5) * 3 }, p, { color, width: 0.55, life: 0.26, jag: 1.3 });
+      fx.bolt({ x: p.x + (Math.random() - 0.5) * 5, y: p.y + height * 0.8, z: p.z + (Math.random() - 0.5) * 5 }, p, { color, width: 0.3, life: 0.16, jag: 1.6 });
+      fx.ring(p, radius * 0.3, radius * 1.15, { color, life: 0.35 });
+      fx.spark({ x: p.x, y: p.y + 0.6, z: p.z }, 18, '#d0f4ff', 7);
+    },
+    /** Kegelstrahl (Dampf/Wasser) von from nach to; erneuern, solange er läuft (key = Besitzer). */
+    jet(key, from, to, { radius = 1.4, color = '#e8f0f4', life = 0.2, opacity = 0.7 } = {}) {
+      if (nofx) return;
+      let j = jets.get(key);
+      if (!j) {
+        const mesh = new THREE.Mesh(jetGeo, new THREE.MeshBasicMaterial({ map: jetTex, color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }));
+        mesh.renderOrder = 3; scene.add(mesh);
+        j = { mesh, life: 0, max: life, op: opacity }; jets.set(key, j);
+      }
+      _d.set(to.x - from.x, to.y - from.y, to.z - from.z);
+      const len = _d.length() || 1;
+      j.mesh.position.set(from.x, from.y, from.z);
+      j.mesh.quaternion.setFromUnitVectors(_up, _d.multiplyScalar(1 / len));
+      j.mesh.scale.set(radius, len, radius);
+      j.mesh.material.color.set(color);
+      j.life = j.max = life; j.op = opacity; j.mesh.visible = true;
+    },
+    /** Sich ausbreitender Boden-Schockring (von r0 auf r1). */
+    ring(p, r0, r1, { color = '#ffffff', life = 0.4 } = {}) {
+      if (nofx) return;
+      const r = rings[ringHead]; ringHead = (ringHead + 1) % rings.length;
+      r.mesh.position.set(p.x, p.y + 0.12, p.z); r.mesh.material.color.set(color);
+      r.r0 = r0; r.r1 = r1; r.life = r.max = life; r.mesh.visible = true;
+    },
+
     /** Ground ring/disc marker for telegraphs. key identifies the owner. */
     marker(key, p, radius, color = '#ff3030', disc = false) {
       let m = markers.get(key);
@@ -156,6 +285,30 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       }
       geo.attributes.position.needsUpdate = true;
       geo.attributes.color.needsUpdate = true;
+      // Blitze: Flackern (neu zacken), ausblenden
+      for (const bo of bolts) {
+        if (bo.life <= 0) continue;
+        bo.life -= dt;
+        if (bo.life <= 0) { bo.mesh.visible = false; continue; }
+        bo.rejag -= dt;
+        if (bo.rejag <= 0) { bo.rejag = 0.045; jagPath(bo); }
+        writeBolt(bo);
+      }
+      for (const j of jets.values()) {
+        if (j.life <= 0) continue;
+        j.life -= dt;
+        if (j.life <= 0) { j.mesh.visible = false; continue; }
+        j.mesh.material.opacity = j.op * Math.min(1, j.life / j.max * 3);
+      }
+      if (jetTex) jetTex.offset.y -= dt * 3.2;
+      for (const r of rings) {
+        if (r.life <= 0) continue;
+        r.life -= dt;
+        if (r.life <= 0) { r.mesh.visible = false; continue; }
+        const k = 1 - r.life / r.max;
+        r.mesh.scale.setScalar(r.r0 + (r.r1 - r.r0) * (1 - (1 - k) * (1 - k)));
+        r.mesh.material.opacity = 0.9 * (1 - k);
+      }
       // shake
       if (shakeT > 0) {
         shakeT -= dt;
@@ -193,6 +346,10 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       geo.dispose();
       for (const n of nums) n.el.remove();
       for (const m of markers.values()) scene.remove(m);
+      for (const bo of bolts) { scene.remove(bo.mesh); bo.mesh.geometry.dispose(); bo.mesh.material.dispose(); }
+      for (const j of jets.values()) { scene.remove(j.mesh); j.mesh.material.dispose(); }
+      for (const r of rings) { scene.remove(r.mesh); r.mesh.material.dispose(); }
+      jetGeo.dispose(); jetTex?.dispose();
       glEl?.remove(); glEl = null; document.body.classList.remove('glitch-mode');
       setSnapScale(1); setGlobalJitter(0);
       canvas?.classList.remove('glitch');
