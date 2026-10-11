@@ -12,10 +12,17 @@ const noise = (cols) => (g, n, rnd) => {
 };
 registerTexture('mampfer_hide', noise(['#9aa468', '#8a9658', '#a8b274', '#7a8650', '#b8a070']));
 registerTexture('hoppler_fur', noise(['#c8a070', '#b88e5c', '#d8b484', '#a87c4c']));
+registerTexture('schlackbock_hide', noise(['#6a5a52', '#5a4a44', '#7a6a60', '#4a3c38', '#8a5a3a']));
+registerTexture('schrottler_fur', noise(['#7a7468', '#6a645a', '#8a8478', '#9a5a30']));
 void tex;
+// rost-skins for the Rostwerke (same behaviour, new look)
+const PAL_MAMPFER = { map: 'mampfer_hide', hide: '#9aa468', dark: '#7c8650', belly: '#d9c99a', horn: '#efe3c4', snout: '#c4b678', jaw: '#8a7a50', tip: '#c8603a' };
+const PAL_BOCK = { map: 'schlackbock_hide', hide: '#6a5a52', dark: '#4e403c', belly: '#8a7a6c', horn: '#b8b0a0', snout: '#8a7060', jaw: '#5e4a40', tip: '#e0802a' };
+const PAL_HOPPLER = { map: 'hoppler_fur', fur: '#c8a070', dark: '#a87c4c', light: '#eadcc0' };
+const PAL_SCHROTTLER = { map: 'schrottler_fur', fur: '#7a7468', dark: '#5a554c', light: '#b0a898' };
 
-function buildMampfer(k, bull) {
-  const hide = '#9aa468', dark = '#7c8650', belly = '#d9c99a', horn = '#efe3c4', hoof = '#4a3a2c', eye = '#201810';
+function buildMampfer(k, bull, pal = PAL_MAMPFER) {
+  const { hide, dark, belly, horn } = pal, hoof = '#4a3a2c', eye = '#201810';
   const bones = [
     { n: 'body', p: null, at: [0, 1.3, 0] }, { n: 'neck', p: 'body', at: [0, 0.25, 1.2] }, { n: 'head', p: 'neck', at: [0, 0, 0.8] }, { n: 'jaw', p: 'head', at: [0, -0.25, 0.25] },
     { n: 'legFL', p: 'body', at: [0.5, -0.5, 0.85] }, { n: 'legFR', p: 'body', at: [-0.5, -0.5, 0.85] }, { n: 'legBL', p: 'body', at: [0.5, -0.5, -0.9] }, { n: 'legBR', p: 'body', at: [-0.5, -0.5, -0.9] },
@@ -25,18 +32,18 @@ function buildMampfer(k, bull) {
     { b: 'body', s: [1.4, 1.2, 2.4], at: [0, 0, 0], c: hide }, { b: 'body', s: [1.0, 0.5, 1.0], at: [0, 0.75, 0.3], c: dark },
     { b: 'body', s: [1.2, 0.4, 1.8], at: [0, -0.55, 0.1], c: belly }, { b: 'body', s: [1.3, 1.0, 0.8], at: [0, 0, -1.15], c: dark },
     { b: 'neck', s: [0.7, 0.7, 0.9], at: [0, 0, 0.35], c: hide },
-    { b: 'head', s: [0.75, 0.65, 1.0], at: [0, 0, 0.4], c: hide }, { b: 'head', s: [0.6, 0.42, 0.35], at: [0, -0.1, 0.98], c: '#c4b678' },
+    { b: 'head', s: [0.75, 0.65, 1.0], at: [0, 0, 0.4], c: hide }, { b: 'head', s: [0.6, 0.42, 0.35], at: [0, -0.1, 0.98], c: pal.snout },
     { b: 'head', s: [0.1, 0.1, 0.1], at: [0.38, 0.15, 0.55], c: eye }, { b: 'head', s: [0.1, 0.1, 0.1], at: [-0.38, 0.15, 0.55], c: eye },
     { b: 'head', s: [0.3, 0.12, 0.25], at: [0.5, 0.2, 0.05], c: dark }, { b: 'head', s: [0.3, 0.12, 0.25], at: [-0.5, 0.2, 0.05], c: dark },
-    { b: 'jaw', s: [0.55, 0.16, 0.7], at: [0, 0, 0.5], c: '#8a7a50' },
-    { b: 'tail1', s: [0.32, 0.32, 0.9], at: [0, 0, -0.45], c: dark }, { b: 'tail2', s: [0.2, 0.2, 0.8], at: [0, 0, -0.4], c: dark }, { b: 'tail2', s: [0.34, 0.34, 0.3], at: [0, 0, -0.9], c: '#c8603a' },
+    { b: 'jaw', s: [0.55, 0.16, 0.7], at: [0, 0, 0.5], c: pal.jaw },
+    { b: 'tail1', s: [0.32, 0.32, 0.9], at: [0, 0, -0.45], c: dark }, { b: 'tail2', s: [0.2, 0.2, 0.8], at: [0, 0, -0.4], c: dark }, { b: 'tail2', s: [0.34, 0.34, 0.3], at: [0, 0, -0.9], c: pal.tip },
   ];
   for (const sx of [1, -1]) {
     boxes.push(bull ? { b: 'head', s: [0.14, 0.14, 0.5], at: [sx * 0.5, 0.4, 0.3], c: horn, rz: sx * 0.6 } : { b: 'head', s: [0.1, 0.18, 0.1], at: [sx * 0.3, 0.4, 0.2], c: horn });
     if (bull) boxes.push({ b: 'head', s: [0.12, 0.5, 0.12], at: [sx * 0.72, 0.6, 0.4], c: horn });
   }
   for (const n of ['legFL', 'legFR', 'legBL', 'legBR']) boxes.push({ b: n, s: [0.32, 0.7, 0.36], at: [0, -0.35, 0], c: dark }, { b: n, s: [0.38, 0.16, 0.46], at: [0, -0.72, 0.04], c: hoof });
-  const m = buildSkinned({ map: 'mampfer_hide', bones, boxes, pad: 0.8 });
+  const m = buildSkinned({ map: pal.map, bones, boxes, pad: 0.8 });
   m.root.scale.setScalar(k);
   const N = m.nodes;
   return {
@@ -100,23 +107,23 @@ const common = {
     m.herd.hurt(m, from, att);
   },
 };
-const mk = (id, name, hp, k, br, bull, walk, run) => ({
+const mk = (id, name, hp, k, br, bull, walk, run, pal) => ({
   ...common, id, name, hp, scale: k, bodyRadius: br, walk, run, bull,
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.2, elem: {}, lock: false, spheres: spheres('head') },
     { id: 'body', label: 'Körper', factor: 0.9, elem: {}, spheres: spheres('body') },
     { id: 'legs', label: 'Beine', factor: 0.7, elem: {}, lock: false, spheres: spheres('legs') },
   ],
-  build: () => buildMampfer(k, bull),
+  build: () => buildMampfer(k, bull, pal),
   ...(bull ? { attacks: { mampfer_stoss: stoss } } : {}),
 });
-export const mampfer = mk('mampfer', 'Mampfer', 120, 1.0, 1.05, false, 1.5, 5.2);
-export const mampferbulle = { ...mk('mampferbulle', 'Mampfer-Bulle', 150, 1.2, 1.25, true, 1.5, 5.4), dropId: 'mampfer' };
-export const mampferkalb = { ...mk('mampferkalb', 'Mampfer-Kalb', 45, 0.55, 0.55, false, 1.7, 5.0), dropId: 'mampferkalb' };
+export const mampfer = mk('mampfer', 'Mampfer', 120, 1.0, 1.05, false, 1.5, 5.2, PAL_MAMPFER);
+export const mampferbulle = { ...mk('mampferbulle', 'Mampfer-Bulle', 150, 1.2, 1.25, true, 1.5, 5.4, PAL_MAMPFER), dropId: 'mampfer' };
+export const mampferkalb = { ...mk('mampferkalb', 'Mampfer-Kalb', 45, 0.55, 0.55, false, 1.7, 5.0, PAL_MAMPFER), dropId: 'mampferkalb' };
 
 // ---------------------------------------------------------------- Hoppler
-function buildHoppler() {
-  const fur = '#c8a070', dark = '#a87c4c', light = '#eadcc0';
+function buildHoppler(pal = PAL_HOPPLER) {
+  const { fur, dark, light } = pal;
   const bones = [{ n: 'body', p: null, at: [0, 0.35, 0] }, { n: 'head', p: 'body', at: [0, 0.15, 0.35] }, { n: 'legL', p: 'body', at: [0.17, -0.1, -0.2] }, { n: 'legR', p: 'body', at: [-0.17, -0.1, -0.2] }];
   const boxes = [
     { b: 'body', s: [0.4, 0.38, 0.62], at: [0, 0, 0], c: fur }, { b: 'body', s: [0.3, 0.2, 0.4], at: [0, -0.16, 0.05], c: light }, { b: 'body', s: [0.14, 0.14, 0.14], at: [0, 0.05, -0.36], c: light },
@@ -124,7 +131,7 @@ function buildHoppler() {
     { b: 'head', s: [0.08, 0.36, 0.06], at: [0.1, 0.3, 0], c: dark }, { b: 'head', s: [0.08, 0.36, 0.06], at: [-0.1, 0.3, 0], c: dark },
     { b: 'legL', s: [0.14, 0.3, 0.3], at: [0, -0.12, 0.02], c: dark }, { b: 'legR', s: [0.14, 0.3, 0.3], at: [0, -0.12, 0.02], c: dark },
   ];
-  const m = buildSkinned({ map: 'hoppler_fur', bones, boxes, pad: 0.4 });
+  const m = buildSkinned({ map: pal.map, bones, boxes, pad: 0.4 });
   const N = m.nodes, extra = { hopY: 0 };
   return {
     root: m.root, nodes: { ...N, root: m.root, neck: N.head, tail1: N.body, tail2: N.body }, partMeshes: { body: [m.mesh], head: [] }, extra,
@@ -134,6 +141,9 @@ function buildHoppler() {
     },
   };
 }
+export const schlackbock = { ...mk('schlackbock', 'Schlackbock', 120, 1.0, 1.05, false, 1.5, 5.2, PAL_BOCK), dropId: 'mampfer' };
+export const schlackbullbock = { ...mk('schlackbullbock', 'Schlackbock-Bulle', 150, 1.2, 1.25, true, 1.5, 5.4, PAL_BOCK), dropId: 'mampfer' };
+export const schlackkitz = { ...mk('schlackkitz', 'Schlackbock-Kitz', 45, 0.55, 0.55, false, 1.7, 5.0, PAL_BOCK), dropId: 'mampferkalb' };
 export const hoppler = {
   ...common, id: 'hoppler', name: 'Hoppler', hp: 20, scale: 1, bodyRadius: 0.35, walk: 2.2, run: 6.4, dropId: 'hoppler', prey: false,
   parts: [{ id: 'body', label: 'Körper', factor: 1, elem: {}, spheres: [{ node: 'body', offset: [0, 0, 0], r: 0.4 }] }],
@@ -148,3 +158,5 @@ export const hoppler = {
     t.head = m.state === 'graze' ? 25 + Math.sin(m.time * 9) * 8 : -5; t.legR = t.legL;
   },
 };
+
+export const schrottler = { ...hoppler, id: 'schrottler', name: 'Schrottler', build: () => buildHoppler(PAL_SCHROTTLER) };
