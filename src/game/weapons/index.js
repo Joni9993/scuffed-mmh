@@ -3,12 +3,14 @@ import { greatsword } from './greatsword.js';
 import { dualblades } from './dualblades.js'; // [W]
 import { bow } from './bow.js'; // [W]
 import { katana } from './katana.js'; // [KT]
+import { krachkiste } from './krachkiste.js'; // [KK]
 
 export const weapons = {
   gs: greatsword,
   db: dualblades, // [W]
   bow, // [W]
   kt: katana, // [KT]
+  kk: krachkiste, // [KK]
 };
 
 export function getWeapon(id) {

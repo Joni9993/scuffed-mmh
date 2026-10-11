@@ -9,7 +9,7 @@ import './gearPreview.css';
 // [G] Rotating gear preview for the station panels (Truhe: what you wear, Schmiede: what you are about to craft).
 // One small canvas with its OWN tiny WebGL renderer (96x120, CSS-upscaled, pixelated); the rig is rebuilt only when the gear changes.
 const W = 96, H = 120; // default (small) size; { big: true } renders 144x180
-const SHOW = { gs: { arx: 42, sw: 125 }, db: { arx: 35, sw: 130, alx: 35, sl: 130, arz: 14, alz: 14 }, bow: { arx: 20, sw: -20 } };
+const SHOW = { gs: { arx: 42, sw: 125 }, db: { arx: 35, sw: 130, alx: 35, sl: 130, arz: 14, alz: 14 }, bow: { arx: 20, sw: -20 }, kk: { arx: 48, sw: 100 } }; // [KK]
 
 export class GearPreview {
   constructor({ big = false } = {}) {

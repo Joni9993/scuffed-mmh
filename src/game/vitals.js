@@ -49,7 +49,7 @@ export function healVitals(v, hp, healBruise = false) {
 
 /** Spend Puste. Reaching 0 triggers 1.2 s "Außer Puste". Returns true if stamina is now empty. */
 export function spendStamina(v, amount) {
-  v.stamina -= amount * v.costMul;
+  v.stamina -= amount * v.costMul * (v.buffMul ?? 1); // buffMul: Krachkiste-Buff Blau (buffs.js)
   v.sinceSpend = 0;
   if (v.stamina <= 0) { v.stamina = 0; v.exhaust = VIT.exhaustTime; return true; }
   return false;
