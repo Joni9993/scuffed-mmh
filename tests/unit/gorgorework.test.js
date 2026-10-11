@@ -113,7 +113,7 @@ describe('Gorgo-Rework: Schlackewelle', () => {
 });
 
 describe('Gorgo-Rework: Wurmwalze', () => {
-  it('~270°-Sweep mit großer Hitbox, wirft um, Telegraph >= 0,5 s', () => {
+  it('180°-Körperdrehung (Kopf + Schwanz = ganzer Kreis), wirft um, Telegraph >= 0,5 s', () => {
     const a = gorgo.attacks.gorgo_walze;
     expect(a.hits[0]).toMatchObject({ shape: 'capsule', knock: 'down' });
     expect(a.hits[0].radius).toBeGreaterThanOrEqual(1.6);
@@ -124,7 +124,9 @@ describe('Gorgo-Rework: Wurmwalze', () => {
     const yaws = [];
     for (let t = 0; t < i.duration; t += DT) yaws.push(i.sample(t).yaw);
     const lo = Math.min(...yaws), hi = Math.max(...yaws);
-    expect((hi - lo) * 180 / Math.PI).toBeGreaterThan(265); // von -60° (Ausholen) bis +210°: 270° Rundumschlag
+    expect((hi - lo) * 180 / Math.PI).toBeGreaterThan(175); // Ausholen -60°, Schwung 180° (Owner-Feedback: Körper bleibt im Ring)
+    // Hitbox reicht vom Schwanz bis zum Kopf = der echte Körper, nicht weiter als der Ring
+    expect(-a.hits[0].from[2] + a.hits[0].radius).toBeLessThanOrEqual(a.marker.radius + 0.01);
   });
   it('trifft stehende Pirscher vorn, seitlich und hinten (Rundumschlag)', () => {
     const { ctx, m, p } = mk(0, 5);
@@ -143,7 +145,7 @@ describe('Gorgo-Rework: Wurmwalze', () => {
   });
   it('Rolle weicht aus', () => {
     const r = [];
-    for (let tr = 0.3; tr <= 1.4; tr += 0.04) r.push(dmgAt('gorgo_walze', 4.5, { tr }) > 0);
+    for (const dir of [[-1, 0], [0, -1]]) for (let tr = 0.3; tr <= 1.4; tr += 0.04) r.push(dmgAt('gorgo_walze', 4.5, { tr, dir }) > 0);
     expect(r.some((x) => !x)).toBe(true);
   });
 });

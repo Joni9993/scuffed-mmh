@@ -419,6 +419,9 @@ export function fieldPoints(inst, over = false) {
   }
   return pts;
 }
+/** Weltpunkt über dem Antennenkamm (Ursprung der Blitze, die Voltaro selbst schleudert). */
+const crest = (m) => ({ x: m.pos.x + Math.sin(m.rot) * 0.6, y: m.pos.y + SC * 1.7, z: m.pos.z + Math.cos(m.rot) * 0.6 });
+
 const blitzfeld = {
   id: 'voltaro_blitzfeld', range: [0, 24], weight: normalW(5, 1.4), cooldown: 6, stam: 8, telegraph: 0.8, duration: 3.0, flashParts: ['antennenkamm', 'spulen'], tempo: 1,
   cue: { color: '#9fe8ff', tone: 'schrill' }, hits: [],
@@ -429,6 +432,7 @@ const blitzfeld = {
       fieldPoints(inst, over).forEach((p, i) => {
         const warn = BF.warn - (over ? 0.1 : 0) + p.d;
         addBolt(m, p.x, p.z, r, base + warn, warn, dmg, `${inst.key}:f${i}`, 'voltaro_blitzfeld');
+        ctx.fx.bolt?.(crest(m), { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.2, z: p.z }, { width: 0.22, life: 0.18 + i * 0.03, jag: 1.2 }); // setzt die Ladungen sichtbar
       });
       ctx.bus.emit('sfx', { name: 'zap', pos: inst.target });
     },
@@ -457,6 +461,8 @@ const aufladen = {
     bolt(m, ctx, inst) {
       const t = inst.target, y = ctx.world.heightAt(t.x, t.z);
       ctx.fx.spark({ x: t.x, y: y + 8, z: t.z }, 40, '#9fe8ff', 9);
+      ctx.fx.strike?.({ x: t.x, y: y + 6, z: t.z }, { radius: 3, height: 26 });
+      ctx.fx.bolt?.({ x: t.x, y: y + 6, z: t.z }, crest(m), { width: 0.45, life: 0.5, jag: 0.8 });
       ctx.fx.flash?.('rgba(159,232,255,.5)', 0.18);
       ctx.fx.shake(0.4, 0.3);
       ctx.bus.emit('sfx', { name: 'zap', pos: t });
@@ -474,6 +480,8 @@ const sturmruf = {
     storm(m, ctx) {
       ctx.fx.flash?.('rgba(255,255,255,.4)', 0.2); ctx.fx.shake(0.6, 0.6);
       ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 4, z: m.pos.z }, 40, '#9fe8ff', 9);
+      for (let i = 0; i < 4; i++) { const a = m.rot + i * Math.PI / 2 + 0.4, x = m.pos.x + Math.sin(a) * 5, z = m.pos.z + Math.cos(a) * 5; ctx.fx.strike?.({ x, y: ctx.world.heightAt(x, z), z }, { radius: 1.6 }); }
+      ctx.fx.bolt?.({ x: m.pos.x, y: m.pos.y + 30, z: m.pos.z }, crest(m), { width: 0.6, life: 0.4 });
       ctx.bus.emit('sfx', { name: 'roar', pos: m.pos, low: true });
       if (m.authority && m.over <= 0) m.charge = Math.min(100, m.charge + 35);
     },
@@ -492,6 +500,8 @@ const kettenblitz = {
     strike(m, ctx, inst) {
       const t = inst.target, y = ctx.world.heightAt(t.x, t.z);
       ctx.fx.spark({ x: t.x, y: y + 1, z: t.z }, 30, '#9fe8ff', 8);
+      ctx.fx.bolt?.(crest(m), { x: t.x, y: y + 0.3, z: t.z }, { width: 0.5, life: 0.3, jag: 1.1 }); // Hauptblitz vom Kamm aufs Ziel
+      ctx.fx.ring?.({ x: t.x, y, z: t.z }, 0.5, VOLTARO.CHAIN_HIT_R * 1.2, { color: '#9fe8ff', life: 0.35 });
       ctx.fx.shake(0.3, 0.25);
       ctx.bus.emit('sfx', { name: 'zap', pos: t });
       const ov = m.over > 0 || isOverSeed(inst.params.seed);
@@ -501,8 +511,11 @@ const kettenblitz = {
         addBolt(m, t.x + Math.sin(ang) * dd, t.z + Math.cos(ang) * dd, 2.4, m.time + w, w, 24, `${inst.key}:n${i}`, 'voltaro_kettenblitz');
       }
       m._lastChain = chain.map((c) => ({ id: c.p.id, gen: c.gen }));
+      let prev = { x: t.x, y: y + 0.6, z: t.z };
       for (const { p, gen } of chain) {
         ctx.fx.spark({ x: p.pos.x, y: p.pos.y + 1.2, z: p.pos.z }, 14, '#d0f4ff', 6);
+        const to = { x: p.pos.x, y: p.pos.y + 1.1, z: p.pos.z };
+        ctx.fx.bolt?.(prev, to, { width: 0.32, life: 0.28, jag: 1.4 }); prev = to; // Sprung von Pirscher zu Pirscher
         if (p.local) zap(m, p, VOLTARO.CHAIN_DMG, `${inst.key}:c${gen}`, 'voltaro_kettenblitz');
       }
     },
@@ -540,7 +553,15 @@ const plasma = {
     return { x: a.origin.x + (a.landing.x - a.origin.x) * e, z: a.origin.z + (a.landing.z - a.origin.z) * e, air: 7 * Math.sin(Math.PI * k) };
   },
   events: [{ t: 1.3, call: 'wave', all: true }],
-  calls: { wave(m, ctx) { for (let i = 0; i < 3; i++) ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.3, z: m.pos.z }, 16, '#9fe8ff', 8 + i * 3); ctx.fx.shake(0.55, 0.35); ctx.bus.emit('sfx', { name: 'zap', pos: m.pos }); } },
+  calls: {
+    wave(m, ctx) {
+      for (let i = 0; i < 3; i++) ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.3, z: m.pos.z }, 16, '#9fe8ff', 8 + i * 3);
+      const y = ctx.world.heightAt(m.pos.x, m.pos.z);
+      ctx.fx.ring?.({ x: m.pos.x, y, z: m.pos.z }, 1, 6.2, { color: '#9fe8ff', life: 0.4 }); // Schockwelle = Hitbox 6 m
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + m.rot; ctx.fx.bolt?.({ x: m.pos.x, y: y + 0.4, z: m.pos.z }, { x: m.pos.x + Math.sin(a) * 6, y: y + 0.2, z: m.pos.z + Math.cos(a) * 6 }, { width: 0.25, life: 0.25, jag: 1.3 }); }
+      ctx.fx.shake(0.55, 0.35); ctx.bus.emit('sfx', { name: 'zap', pos: m.pos });
+    },
+  },
   pose: mTrack([[0, {}], [0.6, { bodyY: -0.5, legL: 50, legR: 50, bodyPitch: 8, spread: 1 }], [0.95, { bodyY: 0.3, legL: -30, legR: -30, bodyPitch: -14 }], [1.3, { bodyPitch: 16, legL: 40, legR: 40, bodyY: -0.3 }, 'lin'], [1.7, { bodyPitch: 4, spread: 0.5 }], [2.4, {}]]),
 };
 
@@ -701,6 +722,7 @@ export const voltaro = {
       ctx.fx.clearMarker?.(mk);
       m._bolts.splice(i, 1);
       ctx.fx.spark({ x: b.x, y: ctx.world.heightAt(b.x, b.z) + 1, z: b.z }, 24, '#d0f4ff', 8);
+      ctx.fx.strike?.({ x: b.x, y: ctx.world.heightAt(b.x, b.z), z: b.z }, { radius: b.r, color: b.attackId === 'voltaro_donnerschlag' ? '#ffffff' : '#9fe8ff' });
       ctx.fx.shake(0.18, 0.2);
       ctx.bus.emit('sfx', { name: 'zap', pos: { x: b.x, y: 0, z: b.z } });
       for (const p of ctx.players ?? []) {
@@ -719,7 +741,7 @@ export const voltaro = {
         const nxt = m._trailHit.get(p.id) ?? 0;
         if (m.time >= nxt) { m._trailHit.set(p.id, m.time + 0.5); zap(m, p, FL.dps * 0.5, `trail:${Math.floor(m.time * 2)}`, 'voltaro_funkenlauf'); }
       }
-      if (ctx.fx.spark && Math.floor(m.time * 6) !== Math.floor((m.time - dt) * 6)) { const t = m._trail[(Math.floor(m.time * 6)) % m._trail.length]; if (t) ctx.fx.spark({ x: t.x, y: ctx.world.heightAt(t.x, t.z) + 0.3, z: t.z }, 2, '#ffe14d', 2.5); }
+      if (ctx.fx.spark && Math.floor(m.time * 6) !== Math.floor((m.time - dt) * 6)) { const t = m._trail[(Math.floor(m.time * 6)) % m._trail.length]; if (t) { const y0 = ctx.world.heightAt(t.x, t.z); ctx.fx.spark({ x: t.x, y: y0 + 0.3, z: t.z }, 2, '#ffe14d', 2.5); const u = m._trail[(Math.floor(m.time * 6) + 1) % m._trail.length]; if (u && u !== t) ctx.fx.bolt?.({ x: t.x, y: y0 + 0.25, z: t.z }, { x: u.x, y: ctx.world.heightAt(u.x, u.z) + 0.25, z: u.z }, { color: '#ffe14d', width: 0.18, life: 0.16, jag: 1.5 }); } }
     }
 
     // ---- Glühen (Gäste: aus laufenden Überladen-Angriffen abgeleitet)

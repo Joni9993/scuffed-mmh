@@ -185,7 +185,7 @@ describe('Gorgo: Phase + Spucke', () => {
     expect(ph[0]?.name).toBe('Glutkern');
     expect(atk).toContain('gorgo_glutspucke');
   });
-  it('Spucke: 3 Brocken (Glutspucke 5), bleiben 8 s, Rost, 20', () => {
+  it('Spucke: 3 Brocken (Glutspucke 5), bleiben 8 s, Rost, 24', () => {
     for (const [id, n] of [['gorgo_spucke', 3], ['gorgo_glutspucke', 5]]) {
       const { m } = mk(0, 14);
       if (id === 'gorgo_glutspucke') m.phase = 1;
@@ -196,7 +196,7 @@ describe('Gorgo: Phase + Spucke', () => {
       const pr = m.projectiles.list[0];
       expect(pr.def.hold).toBe(8);
       expect(pr.def.status.type).toBe('rost');
-      expect(pr.def.dmg).toBe(20);
+      expect(pr.def.dmg).toBe(24);
     }
   });
 });

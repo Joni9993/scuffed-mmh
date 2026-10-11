@@ -116,7 +116,7 @@ export function buildGorgo() {
   const layout = (p) => {
     const rise = p.neck, baseY = 1.3 + p.bodyY, ph = wave.phase, amp = wave.amp + p.legL * 0.02;
     const place = (node, u, z, riseK, extraYaw = 0) => {
-      const sway = Math.sin(ph - u * 0.9) * amp * (0.25 + 0.14 * u) + p.tailYaw * 0.06 * u * u * 0.3;
+      const sway = Math.sin(ph - u * 0.9) * amp * (0.25 + 0.14 * u) + (p.tailYaw / 60) * 3 * (u / 6) * (u / 6); // Schwanz-Krümmung: max ~3 m bei 60° (vorher quadratisch bis ~30 m -> Glieder flogen auseinander)
       node.position.set(sway, baseY + rise * riseK + Math.sin(ph * 0.5 - u) * 0.06, z);
       node.rotation.y = Math.cos(ph - u * 0.9) * 0.16 * amp + extraYaw;
     };
@@ -270,7 +270,7 @@ function spuckCall(n) {
       }
       const to = { x: tx, y: ctx.world.heightAt(tx, tz), z: tz };
       const dur = 0.85 + dist * 0.025 + inst.r(i + 3) * 0.12;
-      const def = { kind: 'fire', mode: 'impact', from: { ...from }, to, dur, arc: 7, radius: 0.5, splash: POOL_R, hold: POOL_SECS, dmg: 20, knock: 'flinch', status: { type: 'rost' }, key: `${inst.key}:s${i}`, attackId: inst.params.attackId };
+      const def = { kind: 'fire', mode: 'impact', from: { ...from }, to, dur, arc: 7, radius: 0.5, splash: POOL_R, hold: POOL_SECS, dmg: 24, knock: 'flinch', status: { type: 'rost' }, key: `${inst.key}:s${i}`, attackId: inst.params.attackId };
       m.projectiles.spawn(def, age);
       m.extra.pools.push({ x: tx, y: to.y, z: tz, t0: m.time + dur - age, t1: m.time + dur - age + POOL_SECS, mesh: null });
     }
@@ -282,7 +282,7 @@ const spuckPose = mTrack([
   [0, {}], [0.35, { neck: 2.4, head: -22, jaw: 30, bodyY: 0.1 }], [0.7, { neck: 3.0, head: -28, jaw: 40 }], [0.85, { neck: 2.4, head: 18, jaw: 10 }, 'lin'], [1.3, { neck: 1.6, head: 10, jaw: 4 }], [2.0, {}],
 ]);
 const spucke = {
-  id: 'gorgo_spucke', range: [7, 24], weight: 5, cooldown: 4, telegraph: 0.7, flashParts: ['kopf'], duration: 2.0, stam: 5, tempo: 1.2,
+  id: 'gorgo_spucke', range: [7, 24], weight: 7, cooldown: 3, telegraph: 0.7, flashParts: ['kopf'], duration: 2.0, stam: 5, tempo: 1.2,
   cue: { color: '#ff9a2a', tone: 'zisch' }, cond: (m) => m.phase < 1,
   hits: [], events: [{ t: 0.75, call: 'spuck', all: true }], calls: { spuck: spuckCall(3) }, pose: spuckPose,
 };
@@ -337,7 +337,7 @@ const peitsche = {
   cue: { color: '#c070ff', tone: 'klick' }, audit: [3, 6.5],
   marker: { at: 'self', radius: PEITSCHE_LEN }, markerUntil: 0.85,
   cond: (m) => brokenCount(m) < 4,
-  hits: [{ t0: 0.8, t1: 1.35, shape: 'capsule', from: [0, 1.2, 1.2], to: [0, 1.2, PEITSCHE_LEN], radius: 1.5, dmg: 30, knock: 'flinch' }],
+  hits: [{ t0: 0.8, t1: 1.35, shape: 'capsule', from: [0, 1.2, 1.2], to: [0, 1.2, PEITSCHE_LEN], radius: 1.5, dmg: 34, knock: 'flinch' }],
   motion(tau, a) {
     const sign = a.r(0) < 0.5 ? 1 : -1;
     return { yaw: a.yaw0 + sign * (-Math.PI / 2 * smooth(clamp01(tau / 0.7)) + Math.PI * smooth(clamp01((tau - 0.8) / 0.55))) };
@@ -370,23 +370,24 @@ const zubiss = {
   ]),
 };
 
-// ---- 8. Wurmwalze: der ganze Körper schwingt ~270° rundum (große, schnelle Sweep-Hitbox, wirft um). Rolle oder Abstand > 10 m
+// ---- 8. Wurmwalze: der ganze, gerade Körper dreht 180° um seine Mitte (Kopf + Schwanz fegen, Treffer = Körperkontakt, wirft um). Rolle oder Abstand > 10 m
 const WALZE_LEN = 10;
 const walze = {
   id: 'gorgo_walze', range: [0, 10.5], weight: (m) => (m.phase >= 1 ? 8 : 5), cooldown: 4, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3', 'segment4'], duration: 2.2, stam: 5, tempo: 1.1,
   cue: { color: '#ff4040', tone: 'droehn' }, audit: [3, 7],
   marker: { at: 'self', radius: WALZE_LEN }, markerUntil: 0.8,
   cond: (m) => brokenCount(m) < 5,
-  hits: [{ t0: 0.8, t1: 1.6, shape: 'capsule', from: [0, 1.2, 1.4], to: [0, 1.2, WALZE_LEN], radius: 1.7, dmg: 40, knock: 'down' }],
+  // Hitbox = der ganze Wurm (Kopf vorn bis Schwanzspitze hinten), der Körper bleibt gerade -> was der Körper berührt, trifft; Ring zeigt die Schwanz-Reichweite
+  hits: [{ t0: 0.8, t1: 1.35, shape: 'capsule', from: [0, 1.2, -(WALZE_LEN - 1.6)], to: [0, 1.2, HEAD_Z + 0.9], radius: 1.6, dmg: 52, knock: 'down' }],
   motion(tau, a) {
     const sign = a.r(1) < 0.5 ? 1 : -1;
-    const back = -60 * R * smooth(clamp01(tau / 0.7)), sweep = 270 * R * smooth(clamp01((tau - 0.8) / 0.8));
+    const back = -60 * R * smooth(clamp01(tau / 0.7)), sweep = 180 * R * smooth(clamp01((tau - 0.8) / 0.55)); // Kopf + Schwanz fegen je einen Halbkreis -> ganzer Kreis, jede Stelle genau einmal
     return { yaw: a.yaw0 + sign * (back + sweep) };
   },
   events: [{ t: 0.8, call: 'swing', all: true }],
   calls: { swing(m, ctx) { ctx.fx.shake?.(0.35, 0.5); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); } },
   pose: mTrack([
-    [0, {}], [0.7, { tailYaw: 50, neck: 0.8, head: -8, bodyY: -0.3, bodyRoll: 10 }], [0.8, { tailYaw: 50, neck: 0.8, bodyRoll: 10 }], [1.6, { tailYaw: -60, neck: 0.4, legL: 50, bodyRoll: -14 }, 'lin'], [2.2, {}],
+    [0, {}], [0.7, { tailYaw: 12, neck: 0.5, head: -8, bodyY: -0.3, bodyRoll: 10 }], [0.8, { tailYaw: 12, neck: 0.5, bodyRoll: 10 }], [1.35, { tailYaw: -12, neck: 0.3, bodyRoll: -14 }, 'lin'], [2.2, {}],
   ]),
 };
 

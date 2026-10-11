@@ -317,9 +317,18 @@ const dampf = {
   hits: Array.from({ length: DAMPF_TICKS }, (_, i) => ({
     t0: 0.8 + i * 0.25, t1: 0.8 + i * 0.25 + 0.2, shape: 'capsule', from: [0, 1.1, 1.5], to: [0, 1.1, 11.0], radius: 1.6, dmg: 10, knock: 'none', status: { type: 'rost' },
   })),
-  events: Array.from({ length: DAMPF_TICKS * 2 }, (_, i) => ({ t: 0.8 + i * 0.125, call: 'puff', all: true })),
+  events: [{ t: 0.4, call: 'hiss', all: true }, { t: 0.6, call: 'hiss', all: true }, ...Array.from({ length: DAMPF_TICKS * 2 }, (_, i) => ({ t: 0.8 + i * 0.125, call: 'puff', all: true }))],
   calls: {
+    // Vorwarnung: kurzer Dampfstoß aus dem Maul + Pfeifen
+    hiss(m, ctx) {
+      const fx = Math.sin(m.rot), fz = Math.cos(m.rot), y = m.pos.y + 1.1;
+      ctx.fx.jet?.(m.id + ':dampf', { x: m.pos.x + fx * 1.4, y, z: m.pos.z + fz * 1.4 }, { x: m.pos.x + fx * 3.2, y: y + 0.2, z: m.pos.z + fz * 3.2 }, { radius: 0.45, life: 0.15, opacity: 0.55 });
+      ctx.bus.emit('sfx', { name: 'telegraph', pos: m.pos });
+    },
     puff(m, ctx, inst) {
+      // sichtbarer Dampfstrahl (Kegel 1,5 -> 11 m, genau die Hitbox) – wird alle 0,125 s erneuert, solange er läuft
+      const fx = Math.sin(m.rot), fz = Math.cos(m.rot), y = m.pos.y + 1.1;
+      ctx.fx.jet?.(m.id + ':dampf', { x: m.pos.x + fx * 1.4, y, z: m.pos.z + fz * 1.4 }, { x: m.pos.x + fx * 11, y, z: m.pos.z + fz * 11 }, { radius: 1.6, life: 0.2, opacity: 0.75 });
       for (let i = 0; i < 3; i++) {
         const d = 1.6 + inst.r(i + ((m.time * 7) | 0)) * 9, s = (inst.r(i + 5) - 0.5) * 0.35 * d;
         ctx.fx.spark({ x: m.pos.x + Math.sin(m.rot) * d + Math.cos(m.rot) * s, y: m.pos.y + 1.1, z: m.pos.z + Math.cos(m.rot) * d - Math.sin(m.rot) * s }, 3, '#e8f0f4', 2.5);
