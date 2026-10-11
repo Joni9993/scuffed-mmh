@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MUTATORS, MUTATOR_SHORT } from '../data/mutators.js';
+import { FOODS } from '../data/foods.js';
 
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -16,8 +17,9 @@ export function createHud(root) {
   el.innerHTML = `
     <div class="hud-tl">
       <div class="hud-name"></div>
-      <div class="bar hp"><i class="bruise"></i><i class="fill"></i></div>
-      <div class="bar st"><i class="fill"></i></div>
+      <div class="bar hp"><i class="bruise"></i><i class="fill"></i><i class="bonus"></i></div>
+      <div class="bar st"><i class="fill"></i><i class="bonus"></i></div>
+      <div class="hud-food" style="display:none"></div><!-- Essens-Buff (Koch / Grillsteak) -->
       <div class="bar wu"><i class="fill"></i></div>
       <div class="bar gl"><i class="fill"></i></div><!-- Glitch-Energie -->
       <div class="hud-glitch"><i class="fill"></i><span><b>GLITCH</b><b class="gt"></b></span></div>
@@ -39,7 +41,7 @@ export function createHud(root) {
   root.appendChild(el);
   const q = (s) => el.querySelector(s);
   const refs = {
-    name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
+    name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), hpBar: q('.bar.hp'), hpBonus: q('.bar.hp .bonus'), stBonus: q('.bar.st .bonus'), food: q('.hud-food'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
     wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mut: q('.hud-mut'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
@@ -82,6 +84,18 @@ export function createHud(root) {
       const hp = Math.round((v.hp / v.maxHp) * 200) / 2, br = Math.round(((v.hp + v.bruise) / v.maxHp) * 200) / 2;
       set('hp', hp, (x) => (refs.hp.style.width = x + '%'));
       set('br', br, (x) => (refs.bruise.style.width = x + '%'));
+      // Max-HP/-Puste sichtbar: Balken wird länger (Basis 100 = Standardbreite), Essens-Anteil am Ende goldgerahmt
+      const baseHp = p._baseMaxHp ?? 100, baseSt = p._baseMaxStamina ?? 100;
+      set('hpw', Math.round(Math.min(1.6, v.maxHp / baseHp) * 100), (x) => (refs.hpBar.style.width = x + '%'));
+      set('stw', Math.round(Math.min(1.9, v.maxStamina / baseSt) * 85), (x) => (refs.st.style.width = x + '%'));
+      set('hpb', Math.round(((p.foodHp ?? 0) / v.maxHp) * 1000) / 10, (x) => { refs.hpBonus.style.width = x + '%'; refs.hpBonus.style.display = x > 0 ? '' : 'none'; });
+      set('stb', Math.round(((p.foodStamina ?? 0) / v.maxStamina) * 1000) / 10, (x) => { refs.stBonus.style.width = x + '%'; refs.stBonus.style.display = x > 0 ? '' : 'none'; });
+      const meal = p.mealId ? (FOODS[p.mealId]?.name ?? '') : '', gc = p.grillCount ?? 0;
+      set('food', `${meal}|${gc}`, () => {
+        const parts = [meal && `${meal}`, gc && `Grillsteak${gc > 1 ? ' ×' + gc : ''}`].filter(Boolean);
+        refs.food.style.display = parts.length ? '' : 'none';
+        refs.food.textContent = parts.length ? '◆ ' + parts.join(' · ') : '';
+      });
       const st = Math.round((v.stamina / v.maxStamina) * 100);
       set('st', st, (x) => (refs.stFill.style.width = x + '%'));
       set('stout', v.exhaust > 0, (x) => refs.st.classList.toggle('out', x));

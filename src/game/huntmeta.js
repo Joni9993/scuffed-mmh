@@ -51,6 +51,19 @@ export class HuntMeta {
     on('monsterDead', ({ monster }) => { if (hunt.bosses?.includes(monster) || monster === hunt.mainMonster) this.#addCorpse(monster, false); else if (monster.def.carve) this.#addFaunaCorpse(monster); });
     on('tailSevered', (e) => this.#addCorpse(e.monster, true, e.pos));
     on('partBreak', ({ part }) => { this.breaks.push(part); });
+    on('playerDown', ({ player }) => { if (player === hunt.player) this.loseFood(); });
+  }
+
+  /** Umkippen: alle Essens-Buffs (Koch + Grillsteak) sind weg, bis man wieder isst. */
+  loseFood() {
+    const p = this.hunt.player;
+    if (!this.loadout.food && !p.grillStamina) return;
+    this.foodLost = true;
+    p.grillStamina = 0; p.grillCount = 0;
+    this.loadout = this.hunt.loadout = { ...this.loadout, food: null };
+    this.applied = applyLoadout(p, this.loadout, { reapply: true });
+    this.items.speedBonus = 0;
+    this.hud.toast?.('Essen verdaut – Buffs weg', 'food');
   }
 
   // ---- hooks from Hunt
@@ -79,6 +92,7 @@ export class HuntMeta {
   }
   /** chest changed weapon/armor: rebuild stats, rig and (co-op) tell the others */
   applyGear(lo) {
+    if (this.foodLost) lo = { ...lo, food: null }; // nach dem Umkippen bringt die Truhe das Essen nicht zurück
     const h = this.hunt, p = h.player, w = lo.weapon;
     if (p.weaponId !== w.type || p.weaponTier !== w.tier || p.weaponBranch !== w.branch) p.setWeapon(w.type, w.tier, w.branch);
     this.loadout = h.loadout = lo;

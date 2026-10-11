@@ -74,6 +74,8 @@ body.scan #stage::after {
 .bar.hp .bruise { background: #7a1620; }
 .bar.hp .fill { background: repeating-linear-gradient(90deg, #4cff4c 0 3px, #1f9a1f 3px 4px); }
 .bar.st { height: 1.5vmin; width: 85%; }
+.bar .bonus { left: auto; right: 0; background: rgba(255, 200, 60, .28); box-shadow: inset 0 0 0 2px #ffc83c; display: none; } /* Essens-Anteil (Koch/Grillsteak) */
+.hud-food { font: 700 max(8px, 1.7vmin)/1.2 monospace; color: #ffc83c; text-shadow: 0 0 3px #000, 0 0 3px #000; white-space: nowrap; }
 .bar.st .fill { background: repeating-linear-gradient(90deg, #ffd84a 0 3px, #9a7a10 3px 4px); }
 .bar.st.out .fill { background: #8a6a20; }
 .bar.wu { height: .9vmin; width: 70%; }
