@@ -28,12 +28,10 @@ let lockedLandscape = false;
 function goFullscreen() {
   try {
     const d = document.documentElement;
-    // also in the installed PWA (display-mode: fullscreen): only element fullscreen makes Chrome honour
-    // viewport-fit=cover and draw into the camera cutout, otherwise that edge stays a black bar
-    const lock = () => { lockedLandscape = true; screen.orientation?.lock?.('landscape')?.catch?.(() => {}); };
-    if (!document.fullscreenElement && d.requestFullscreen) {
-      Promise.resolve(d.requestFullscreen({ navigationUI: 'hide' })).then(lock).catch(() => { if (!lockedLandscape) lock(); });
-    } else if (!lockedLandscape) lock();
+    const isFs = !!document.fullscreenElement || !!window.matchMedia?.('(display-mode: fullscreen)').matches;
+    if (!isFs && d.requestFullscreen) {
+      Promise.resolve(d.requestFullscreen({ navigationUI: 'hide' })).then(() => screen.orientation?.lock?.('landscape')?.catch(() => {})).catch(() => {});
+    } else if (!lockedLandscape) { lockedLandscape = true; screen.orientation?.lock?.('landscape')?.catch?.(() => {}); }
   } catch { /* unsupported */ }
 }
 // retry on every tap until it sticks, and again after the user/OS left fullscreen (app switch, back gesture)
