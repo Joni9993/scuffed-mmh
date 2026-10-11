@@ -509,7 +509,6 @@ export const kroll = {
   speedFactor: (m) => (m.phase >= 1 ? 1.12 : 1), // HP-Phase 2: schneller
   recoverAfter: (m) => (0.15 + m.rng() * 0.3) / (1.15 * m.speedMul),
   drops: ['kroll_panzer', 'kroll_schere', 'kroll_auge'],
-  glitchSpots: ['kesselpanzer', 'scherenL', 'scherenR'],
   parts: [
     { id: 'kesselpanzer', label: 'Kesselpanzer', factor: 0.35, breakHp: 1400, jitter: 0.05, elem: { fire: 0, shock: 12 }, blunt: true,
       spheres: [{ node: 'kessel', offset: [0, 0.5, 0], r: 1.0 }, { node: 'kessel', offset: [0, 1.1, 0], r: 0.7 }] },

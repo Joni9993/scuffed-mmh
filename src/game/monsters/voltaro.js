@@ -555,7 +555,6 @@ export const voltaro = {
   walk: 3.6, run: 9.5, detect: 36, prefer: 5, turn: 1.15,
   recoverAfter: (m) => (0.12 + m.rng() * 0.28) / m.speedMul,
   drops: ['voltaro_kamm', 'voltaro_spule', 'voltaro_fell', 'voltaro_herz'],
-  glitchSpots: ['antennenkamm', 'spulen'],
   parts: [
     { id: 'kopf', label: 'Kopf', factor: 1.0, jitter: 0.07, elem: { fire: 20, shock: 0, rost: 20 }, blunt: true, stunPart: true, spheres: [{ node: 'head', offset: [0, 0, 0.45], r: 0.5 }] },
     { id: 'antennenkamm', label: 'Antennenkamm', factor: 0.9, breakHp: 900, jitter: 0.07, elem: { fire: 20, shock: 0, rost: 20 }, blunt: false, spheres: [{ node: 'comb', offset: [0, 0.55, 0.0], r: 0.6 }] },
