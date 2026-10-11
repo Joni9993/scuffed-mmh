@@ -97,5 +97,5 @@ Umsetzung: Lead plant/misst/merged, je ein Sonnet-Agent pro Brocken + einer für
 - **Regel:** Koch-Mahlzeit und Grillsteak wirken, bis man umkippt. Beim Umkippen sind alle Essens-Buffs weg (Max-HP/-Puste, Angriff, Resistenz, Item-Tempo), Toast „Essen verdaut – Buffs weg"; die Camp-Truhe bringt sie nicht zurück, ein neues Grillsteak wirkt wieder (`huntmeta.loseFood`).
 - **Bug behoben:** Grillsteak-Puste ging beim Ausrüsten an der Camp-Truhe verloren (`applyLoadout` rechnete Max-Puste neu ohne Grillsteak) → jetzt `player.grillStamina` mitgezählt.
 - **HUD:** HP-/Puste-Balken werden mit Max-Wert länger (Basis 100 = Standardbreite, max. ×1,6 bzw. ×1,9), der Essens-Anteil ist am Balkenende goldgerahmt, darunter Zeile „◆ Schotter-Eintopf · Grillsteak ×2".
-- Hinweis: „+40 HP" beim Grillsteak ist Heilung (kein Max-HP), sichtbar nur, wenn man nicht voll ist.
+- **Nachtrag:** Grillsteak = **+40 Max-HP** (sofort aufgefüllt) + 25 Max-Puste. **Essen stapelt nicht:** genau ein Essens-Buff (Koch-Mahlzeit *oder* Grillsteak) bis zum Umkippen; ein weiteres Grillsteak wird mit Hinweis „Schon gegessen" abgelehnt und nicht verbraucht (`hasFoodBuff` in `game/items.js`). Nach dem Umkippen darf man wieder ein Grillsteak essen.
 - Test `tests/unit/food.test.js`.

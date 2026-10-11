@@ -67,7 +67,7 @@ export const ITEMS = {
   klebefalle: { id: 'klebefalle', name: 'Klebefalle', desc: 'Platzieren. Brocken klebt 6 s fest (1× pro Brocken pro 60 s).', kind: 'consumable', max: 1, time: 1.5, applyAt: 0.8, icon: { shape: 'trap', color: '#d0a050' }, value: 25, effect: { type: 'place', fx: 'trap' } },
   knallgurke: { id: 'knallgurke', name: 'Knallgurke', desc: 'Platzieren. 3 s Lunte, dann 120 Schaden + Betäubung.', kind: 'consumable', max: 2, time: 1.0, applyAt: 0.7, icon: { shape: 'cuke', color: '#4ac040' }, value: 25, effect: { type: 'place', fx: 'bomb' } },
 
-  grillsteak: { id: 'grillsteak', name: 'Grillsteak', desc: '+40 HP und +25 Max-Puste für den Rest der Jagd. Zischt noch.', kind: 'consumable', max: 3, time: 1.2, applyAt: 0.55, icon: { shape: 'meat', color: '#c8683a' }, value: 25, effect: { type: 'grill', hp: 40, over: 1, maxStamina: 25 } }, // [L]
+  grillsteak: { id: 'grillsteak', name: 'Grillsteak', desc: 'Essen: +40 Max-HP und +25 Max-Puste bis zum Umkippen. Nicht mit anderem Essen kombinierbar. Zischt noch.', kind: 'consumable', max: 3, time: 1.2, applyAt: 0.55, icon: { shape: 'meat', color: '#c8683a' }, value: 25, effect: { type: 'grill', maxHp: 40, maxStamina: 25 } }, // [L]
 
   // ---- bow tips (crafted in packs of 10)
   brennspitze: { id: 'brennspitze', name: 'Brennspitze', desc: 'Bogen-Munition mit Feuer (+12). Wechsel dauert 0,4 s.', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ff7a30' }, value: 2, effect: { type: 'tip' } },

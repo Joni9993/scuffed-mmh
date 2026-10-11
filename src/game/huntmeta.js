@@ -59,7 +59,7 @@ export class HuntMeta {
     const p = this.hunt.player;
     if (!this.loadout.food && !p.grillStamina) return;
     this.foodLost = true;
-    p.grillStamina = 0; p.grillCount = 0;
+    p.grillStamina = 0; p.grillHp = 0; p.grillCount = 0;
     this.loadout = this.hunt.loadout = { ...this.loadout, food: null };
     this.applied = applyLoadout(p, this.loadout, { reapply: true });
     this.items.speedBonus = 0;
