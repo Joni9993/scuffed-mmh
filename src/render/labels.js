@@ -16,13 +16,13 @@ function getLayer() {
   return layer;
 }
 
-export function labelSprite(text, { color = '#ffd84a', scale = 0.42 } = {}) {
+export function labelSprite(text, { color = '#ffd84a', scale = 0.42, tag = false } = {}) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
   sp.material.visible = false;
   sp.scale.set(0.01, 0.01, 1);
   if (typeof document === 'undefined' || typeof document.body?.appendChild !== 'function') return sp;
   const el = document.createElement('div');
-  el.className = 'wlabel' + (scale < 0.4 ? ' sm' : '') + (scale > 0.45 ? ' bub' : '');
+  el.className = tag ? 'wlabel tag' : 'wlabel' + (scale < 0.4 ? ' sm' : '') + (scale > 0.45 ? ' bub' : '');
   el.textContent = text;
   el.style.color = color;
   el.style.display = 'none';

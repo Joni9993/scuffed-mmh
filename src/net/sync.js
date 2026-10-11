@@ -7,6 +7,7 @@ import { clamp } from '../core/math.js';
 import { rollGather } from '../data/gather.js';
 import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
 import { PLAYER_COLORS } from '../meta/save.js';
+import { labelSprite } from '../render/labels.js';
 import { monsters as MONDEFS } from '../game/monsters/index.js';
 import { encodeKkBar, decodeKkBar } from '../game/buffs.js'; // [KK]
 import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
@@ -75,7 +76,7 @@ export class HuntNet {
     const sp = hunt.world.spawnPoints[(info.slot ?? 1) % hunt.world.spawnPoints.length];
     p.spawnAt(sp.x, sp.z, sp.yaw);
     p.remote = { state: 'free', rollT: 0, sprint: false, speed: 0, wp: null, air: 0 };
-    p.mesh.add(nameTag(info.name));
+    p.mesh.add(nameTag(info.name, gear?.color));
     hunt.scene.add(p.mesh, p.rig.shadow);
     hunt.players.push(p);
     this.peers.set(info.id, { id: info.id, name: info.name, rtt: 0, player: p, buf: new SnapBuffer({ angleKeys: ['rot'] }) });
@@ -468,29 +469,9 @@ export class HuntNet {
   }
 }
 
-/** Kleines Pixel-Namensschild über dem Kopf (Sprite, NearestFilter). */
-export function nameTag(name) {
-  const c = document.createElement('canvas');
-  const w = Math.max(16, name.length * 6 + 6), h = 11;
-  c.width = w; c.height = h;
-  const g = c.getContext('2d');
-  if (g) {
-    g.fillStyle = 'rgba(10,8,40,.6)';
-    g.fillRect(0, 0, w, h);
-    g.font = 'bold 8px monospace';
-    g.textBaseline = 'middle';
-    g.textAlign = 'center';
-    g.fillStyle = '#000';
-    g.fillText(name, w / 2 + 1, h / 2 + 1);
-    g.fillStyle = '#7dff7d';
-    g.fillText(name, w / 2, h / 2);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.magFilter = tex.minFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, fog: false }));
-  sp.scale.set((w / h) * 0.3, 0.3, 1);
-  sp.position.y = 2.3;
-  sp.renderOrder = 20;
+/** Dezentes Namensschild über dem Kopf (scharfes DOM-Label, gleicher Stil wie in der Stadt). */
+export function nameTag(name, color = '#7dff7d') {
+  const sp = labelSprite(name, { color, tag: true });
+  sp.position.y = 2.85;
   return sp;
 }

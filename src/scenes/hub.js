@@ -395,7 +395,7 @@ export const hubScene = {
     const holder = rec ?? this;
     if (holder.bubble) { holder.bubble.parent?.remove(holder.bubble); holder.bubble.material.map?.dispose(); holder.bubble.material.dispose(); }
     const b = labelSprite(text, { color: '#ffffff', scale: 0.5 });
-    b.position.y = 2.95;
+    b.position.y = 3.3;
     p.mesh.add(b);
     holder.bubble = b;
     holder.bubbleT = EMOTE_SECS;
@@ -448,8 +448,8 @@ export const hubScene = {
     p.mesh = p.rig.root;
     p._townRig = true;
     mountWeapon(p);
-    const tag = labelSprite(m?.name ?? id, { color: col, scale: 0.3 });
-    tag.position.y = 2.4;
+    const tag = labelSprite(m?.name ?? id, { color: col, tag: true });
+    tag.position.y = 2.85;
     p.mesh.add(tag);
     this.scene.add(p.mesh, p.rig.shadow);
     const rec = { player: p, tag, bubble: null, bubbleT: 0, lastN: -1, gearCode: s.gear ?? null, wTier: p.gear.weapon.tier, wBranch: p.gear.weapon.branch };
