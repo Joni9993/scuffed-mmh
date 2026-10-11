@@ -81,3 +81,8 @@ Umsetzung: Lead plant/misst/merged, je ein Sonnet-Agent pro Brocken + einer für
 - Kroll: Gäste sehen die nachdrehende Deckung mit fixer Blickrichtung; `safeLen` nutzt die Welt des zuletzt erzeugten Krolls (Modul-Variable).
 - Mutator-FX beim Gast nur per Code-Lesen geprüft (kein Koop-Test).
 
+
+## 5. Nachbesserung nach Handytest (11.10.)
+- **Speicherleck** zurück auf 0,4 %/s (war 1,2 – zu stark); FX (grüne Zahl, Ton) bleiben.
+- **Lag-Spitze** neu als Rubberband-Mechanik (vorher nur kosmetischer 1-m-Ruckler, löste kaum aus): alle ~6 s im Leerlauf friert der Brocken 0,55 s ruckelnd ein, Marker zeigt das Ziel, dann Sprung (fern: bis 8 m ran, nah: in die Flanke des Spielers), danach sofort handlungsfähig (kein Verschnaufen). Telegraphs/Hitboxen werden nie verschoben, Angriff bricht die Vorwarnung ab. Gäste erkennen den Sprung am Positionssprung (Geisterbild).
+- **Dauerleuchten Kroll/Gorgo/Voltaro:** waren die Glitch-Stellen (`glitchSpots`: Kroll Panzer + beide Scheren, Gorgo Kopf + Segment 3, Voltaro Kamm + Spulen), die Cyan/Magenta mit 20 Hz **dauerflackerten** – bei Kroll/Voltaro deckt das große Teile des Körpers (Voltaros Spulen wirkten dadurch rot/pink). Jetzt nur noch Puls alle 3,6 s für 0,45 s; Treffer-Bonus ×2 bleibt.

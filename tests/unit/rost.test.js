@@ -142,11 +142,12 @@ describe('Glitch-Stellen', () => {
     expect(m.isGlitchSpot('head')).toBe(false);
     p.glitch.energy = 0; emit('head'); expect(p.glitch.energy).toBeCloseTo(normal, 5);
   });
-  it('Flackern: Teil-Emissive wechselt zwischen cyan und magenta', () => {
+  it('Puls: Glitch-Stelle leuchtet nur kurz (cyan/magenta), sonst dunkel', () => {
     const { m } = make({ ...jaggo, glitchSpots: ['head'] });
     const mat = m.partById.head.mats.find((x) => x.emissive);
     const seen = new Set();
-    for (let i = 0; i < 30; i++) { m.update(DT); seen.add(mat.emissive.r > 0.3 ? 'magenta' : 'cyan'); }
-    expect(seen.size).toBe(2);
+    let lit = 0, n = 0;
+    for (let i = 0; i < 60 * 8; i++) { m.update(DT); n++; if (mat.emissive.r + mat.emissive.g + mat.emissive.b > 0.05) { lit++; seen.add(mat.emissive.r > 0.3 ? 'magenta' : 'cyan'); } }
+    expect(seen.size).toBe(2); expect(lit / n).toBeLessThan(0.2); expect(lit / n).toBeGreaterThan(0.05);
   });
 });

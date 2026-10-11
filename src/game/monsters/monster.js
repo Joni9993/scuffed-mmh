@@ -19,6 +19,7 @@ const POISON_THRESHOLD = 100, POISON_TIME = 15, POISON_PCT = 0.03, TRAP_TIME = 6
 export const LIMP_HP = 0.3;
 export const RUST_THRESHOLD = 100, RUST_TIME = 15, RUST_FACTOR = 0.15, RUST_PART_MUL = 1.5, SCALD_TIME = 10, SCALD_FACTOR = 0.1;
 const GL_CYAN = [0.0, 0.7, 0.85], GL_MAGENTA = [0.9, 0.0, 0.7];
+const GL_CYCLE = 3.6, GL_PULSE = 0.45; // Glitch-Stellen: Puls-Takt / -Dauer (s)
 const GHOST_MAT = new THREE.MeshBasicMaterial({ color: 0x7fe8ff, transparent: true, opacity: 0.35, depthWrite: false, wireframe: true });
 const MINOR_CULL_R2 = 65 * 65; // [B] perf: small monsters farther than this from every local hunter are neither posed nor drawn (nor hittable)
 const NO_PARTS = Object.freeze([]);
@@ -905,20 +906,64 @@ export class Monster {
       this._regenFx(add, dt);
     }
     const ls = mm.lagSpike;
-    // Spruenge nie waehrend eines Angriffs (Telegraph/Hitboxen bleiben fair); auch im Flug und beim Annaehern
-    if (ls && (this.state === 'combat' || this.state === 'fly') && !this.attack && !this.chainNext) {
-      this._lagT = (this._lagT ?? 0) + dt;
-      const sp = Math.hypot(this.vel.x, this.vel.z);
-      if (this._lagT >= ls.period && sp > 0.8) {
-        this._lagT = 0;
-        this._lagGhost();
-        this.pos.x += this.vel.x * ls.skip; this.pos.z += this.vel.z * ls.skip;
-        this.ctx.world.collide?.(this.pos, this.bodyRadius * 0.5);
-        this.pos.y = this.ctx.world.heightAt(this.pos.x, this.pos.z) + (this.air ?? 0);
-        this.lagCount = (this.lagCount ?? 0) + 1;
-      }
-    } else if (ls) this._lagT = Math.min(this._lagT ?? 0, ls.period);
+    if (ls) this._lagTick(dt, ls);
     this._ghostTick(dt);
+  }
+
+
+  /**
+   * Lag-Spitze (Rubberband): im Leerlauf (kein Angriff/keine Kette) friert der Brocken 0,55 s ruckelnd ein, ein Marker zeigt das Sprungziel,
+   * dann snappt er dorthin: weit weg -> bis zu `ls.skip` m ran, nah dran -> in die Flanke des Ziels. Danach sofort handlungsfaehig (keine Erholung).
+   * Telegraphs/Hitboxen werden nie verschoben; der naechste Angriff hat seinen normalen Telegraph. Nur Host (Position kommt per Snapshot zu den Gaesten).
+   */
+  _lagTick(dt, ls) {
+    const ok = this.state === 'combat' && !this.minor && !this.burrowed && this.target?.alive;
+    const w = this._lagWarn;
+    if (w) {
+      if (!ok || this.attack || this.stunT > 0 || this.stagT > 0) { this._lagCancel(); return; }
+      this.recover = Math.max(this.recover, 0.05); w.t -= dt; // Stillstand = der „Ruckler"
+      if (Math.floor(this.time * 30) % 3 === 0) this.hitFlash = Math.max(this.hitFlash, 0.03);
+      if (w.t <= 0) this._lagSnap(w);
+      return;
+    }
+    if (!ok) { this._lagT = Math.min(this._lagT ?? 0, ls.period * 0.5); return; }
+    this._lagT = (this._lagT ?? 0) + dt;
+    if (this._lagT < ls.period || this.attack || this.chainNext) return;
+    const dest = this._lagDest(ls.skip ?? 8);
+    if (!dest) { this._lagT = ls.period - 1; return; } // gerade nichts sinnvoll: bald nochmal
+    this._lagWarn = { t: 0.55, ...dest };
+    this.ctx.bus.emit('sfx', { name: 'glitch', pos: this.pos, vol: 0.5 });
+    this.ctx.fx.marker?.(this.id + '_lag', { x: dest.x, y: this.ctx.world.heightAt(dest.x, dest.z), z: dest.z }, this.bodyRadius + 0.6, '#7fe8ff', false);
+  }
+
+  /** Sprungziel: fern -> geradeaus ran; nah -> seitlich um das Ziel herum (Seite per Monster-Rng, deterministisch). */
+  _lagDest(maxJump) {
+    const t = this.target, dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1;
+    const stay = this.bodyRadius + 2.5;
+    let x, z;
+    if (d - stay >= 3) { const L = Math.min(maxJump, d - stay); x = this.pos.x + dx / d * L; z = this.pos.z + dz / d * L; }
+    else { // Flanke: ~100 Grad um das Ziel versetzt
+      const side = this.rng() < 0.5 ? -1 : 1, a = Math.atan2(this.pos.x - t.pos.x, this.pos.z - t.pos.z) + side * 1.75, r = Math.max(d, stay);
+      x = t.pos.x + Math.sin(a) * r; z = t.pos.z + Math.cos(a) * r;
+    }
+    const q = { x, y: 0, z }; this.ctx.world.collide?.(q, this.bodyRadius * 0.5);
+    if (Math.hypot(q.x - this.pos.x, q.z - this.pos.z) < 2.5) return null;
+    return { x: q.x, z: q.z };
+  }
+
+  _lagCancel() { this._lagWarn = null; this._lagT = 0; this.ctx.fx.clearMarker?.(this.id + '_lag'); }
+
+  _lagSnap(w) {
+    this.ctx.fx.clearMarker?.(this.id + '_lag');
+    this._lagWarn = null; this._lagT = 0;
+    this._lagGhost(); // Geisterbild an der alten Position
+    this.pos.x = w.x; this.pos.z = w.z;
+    this.pos.y = this.ctx.world.heightAt(w.x, w.z) + (this.air ?? 0);
+    this.vel.set(0, 0, 0);
+    this.recover = Math.min(this.recover, 0.1); // nach dem Sprung sofort wieder dran
+    this.lagCount = (this.lagCount ?? 0) + 1;
+    this.ctx.bus.emit('sfx', { name: 'glitch', pos: this.pos, vol: 0.7 });
+    this.ctx.fx.spark?.({ x: this.pos.x, y: this.pos.y + this.def.scale, z: this.pos.z }, 12, '#7fe8ff', 3.5);
   }
 
   /** Speicherleck-Feedback (Host real, Gast aus beobachteter hp-Aenderung): jede Sekunde gruene „+Σ"-Zahl, Funken, Ton, HUD-Flackern. */
@@ -963,10 +1008,9 @@ export class Monster {
     if (!mm || !this.alive) { this._ghostTick(dt); return; }
     const prev = this._obsHp ?? this.hp; this._obsHp = this.hp;
     if (mm.regenPct) this._regenFx(Math.max(0, this.hp - prev), dt);
-    const ls = mm.lagSpike;
-    if (ls && (this.state === 'combat' || this.state === 'fly') && !this.attack) {
-      this._lagT = (this._lagT ?? 0) + dt;
-      if (this._lagT >= ls.period && Math.hypot(this.vel.x, this.vel.z) > 0.8) { this._lagT = 0; this._lagGhost(); }
+    if (mm.lagSpike) { // Gast: Rubberband-Sprung (Host) an grossem Positionssprung erkennen -> Geisterbild an der alten Stelle
+      const o = this._obsPos; this._obsPos = { x: this.pos.x, z: this.pos.z };
+      if (o && Math.hypot(this.pos.x - o.x, this.pos.z - o.z) > 2.4 && this.state === 'combat') { const nx = this.pos.x, nz = this.pos.z; this.pos.x = o.x; this.pos.z = o.z; this._lagGhost(); this.pos.x = nx; this.pos.z = nz; }
     }
     this._ghostTick(dt);
   }
@@ -1244,7 +1288,7 @@ export class Monster {
       let r = 0, g = 0, b = 0;
       if (tele && tele.includes(part.id)) { if (this.mm?.hideColorCues) { /* nur Ton */ } else if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
       else if (this.hitFlash > 0) { r = g = b = 0.45; }
-      else if (spot && !part.broken) { const c = Math.floor(this.time * 20) % 2 ? GL_CYAN : GL_MAGENTA, k = 0.55 + 0.45 * Math.sin(this.time * 18); r = c[0] * k; g = c[1] * k; b = c[2] * k; }
+      else if (spot && !part.broken && (this.time + (this.id?.length ?? 0) * 0.37) % GL_CYCLE < GL_PULSE) { const c = Math.floor(this.time * 20) % 2 ? GL_CYAN : GL_MAGENTA, k = 0.55 + 0.45 * Math.sin(this.time * 18); r = c[0] * k; g = c[1] * k; b = c[2] * k; } // Owner-Feedback Okt 2026: nur kurzer Puls alle ~3,6 s statt Dauerflackern
       else if (this.rage) { r = 0.22; }
       else if (trap) { r = 0.2; g = 0.2; }
       else if (poison) { g = 0.16; }
