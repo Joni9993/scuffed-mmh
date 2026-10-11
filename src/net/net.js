@@ -1,5 +1,5 @@
 import Peer from 'peerjs';
-import { MSG, RELAY, IDEMPOTENT, MAX_PLAYERS, ERR, Dedupe, generateRoomCode, normalizeCode, isValidCode, peerIdFor, wrap } from './protocol.js';
+import { MSG, RELAY, IDEMPOTENT, MAX_PLAYERS, BUILD_ID, ERR, Dedupe, generateRoomCode, normalizeCode, isValidCode, peerIdFor, wrap } from './protocol.js';
 
 /**
  * PeerJS-Wrapper. Stern-Topologie: Host erzeugt den Peer `scuffedhunter-<CODE>`, Gäste verbinden nur zum Host.
@@ -148,6 +148,7 @@ export class Net {
     const reply = (x) => this.#raw(conn, wrap(MSG.HELLO, this.myId, 0, x));
     const old = [...this.peers.values()].find((p) => p.conn === conn);
     if (old) return;
+    if (d.v !== BUILD_ID) { reply({ err: 'version' }); setTimeout(() => conn.close(), 200); return; } // alter/neuer Tab: erst neu laden
     if (this.roster.length >= MAX_PLAYERS) { reply({ err: 'full' }); setTimeout(() => conn.close(), 200); return; }
     let n = 1;
     while (this.roster.some((r) => r.id === 'p' + n)) n++;
@@ -214,7 +215,7 @@ export class Net {
 
   // ---------- Gast
   #onWelcome(d) {
-    if (d.err) { this._joinFail?.(d.err === 'full' ? ERR.full : ERR.started); return; }
+    if (d.err) { this._joinFail?.(d.err === 'full' ? ERR.full : d.err === 'version' ? ERR.version : ERR.started); return; }
     this.myId = d.you;
     this.roster = this.roster.length ? this.roster : [];
     this._joinOk?.(this);
@@ -290,7 +291,7 @@ export function joinRoom(codeIn, { name = 'Pirscher', weapon = 'gs', tier = 1, g
       net.hostConn = conn;
       net._joinFail = fail;
       net._joinOk = () => { if (done) return; done = true; clearTimeout(to); resolve(net); };
-      conn.on('open', () => conn.send(wrap(MSG.HELLO, 'x', 0, { name, weapon, tier, ...(gear ? { gear } : {}) })));
+      conn.on('open', () => conn.send(wrap(MSG.HELLO, 'x', 0, { v: BUILD_ID, name, weapon, tier, ...(gear ? { gear } : {}) })));
       conn.on('data', (w) => net._dispatch(conn, w, null));
       conn.on('close', () => { if (!done) fail(ERR.notFound); else net._lost(ERR.lost); });
       conn.on('error', () => { if (!done) fail(ERR.timeout); else net._lost(ERR.lost); });

@@ -316,9 +316,9 @@ export const hubScene = {
   syncProfile() {
     const s = saveStore.get(), w = s.loadout.weapon, tier = s.weapons[w]?.tier ?? 1, branch = s.weapons[w]?.branch ?? null;
     // [G] gear = what everybody sees: armor per slot + weapon type/tier/branch + colour (compact code for the network)
-    const gear = makeGear(buildLoadout(s)), code = encodeGear(gear, Math.max(0, PLAYER_COLORS.indexOf(s.color)));
+    const col = this.myColor(s), gear = makeGear({ ...buildLoadout(s), color: col }), code = encodeGear(gear, Math.max(0, PLAYER_COLORS.indexOf(s.color))); // wire code keeps the CHOSEN colour (room resolves duplicates), avatar shows the resolved one
     session.setProfile({ name: s.name, weapon: w, tier, gear: code });
-    this.colors.set(session.myId, s.color);
+    this.colors.set(session.myId, col);
     const p = this.player;
     if (p.name !== s.name) p.name = s.name;
     if (p.weaponId !== w || p.stats == null || this._tier !== tier || this._branch !== branch) {
@@ -326,12 +326,21 @@ export const hubScene = {
       p.gear = gear;
       p.setWeapon(w, tier, branch); townify(p, null);
     }
-    if (this._gearCode !== code || this.colors.get('applied') !== s.color) {
+    if (this._gearCode !== code || this.colors.get('applied') !== col) {
       this._gearCode = code;
-      this.colors.set('applied', s.color);
+      this.colors.set('applied', col);
       p.gear = gear;
       p.rig.setGear(gear);
     }
+  },
+  /** My avatar colour = the room-resolved one (what the others see), so a duplicate default colour never shows me twice. */
+  myColor(s = saveStore.get()) { return PLAYER_COLORS[session.member(session.myId)?.colorIdx] ?? s.color; },
+  applyMyColor() {
+    const s = saveStore.get(), col = this.myColor(s);
+    if (!this.player || this.colors.get('applied') === col) return;
+    this.colors.set('applied', col); this.colors.set(session.myId, col);
+    const g = makeGear({ ...buildLoadout(s), color: col });
+    this.player.gear = g; this.player.rig.setGear(g);
   },
   refreshRoom() {
     this.hud?.setRoom({ code: session.code, solo: session.role === 'solo' });
@@ -339,6 +348,7 @@ export const hubScene = {
   },
   onMembers() {
     if (!this.hud) return;
+    this.applyMyColor();
     const list = session.members;
     const busy = this.board.state.busy;
     this.hud.setMembers(list.map((m) => ({ name: m.name, color: this.colors.get(m.id) ?? m.color, hunting: busy.has(m.id) })));
@@ -370,7 +380,7 @@ export const hubScene = {
     if (this.starting) return;
     this.starting = true;
     closeStation();
-    const save = saveStore.get(), loadout = buildLoadout(save), o = this.opts;
+    const save = saveStore.get(), loadout = { ...buildLoadout(save), color: this.myColor(save) }, o = this.opts; // room-resolved colour in the hunt too
     const base = { quest: st.questId, mutators: st.mutators ?? [], seed: st.seed, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: o.god, nofx: o.nofx };
     if (session.role === 'solo') { this.app.goto('hunt', { ...base, aggro: o.aggro }); return; }
     const board = this.board;
@@ -531,7 +541,7 @@ export const hubScene = {
       get lastCalls() { return self.lastCalls; },
       get session() { return session; },
       get board() { return self.board; },
-      get remotes() { return [...self.members].map(([id, r]) => ({ id, x: r.player.pos.x, z: r.player.pos.z, visible: r.player.mesh.visible, bubble: !!r.bubble })); },
+      get remotes() { return [...self.members].map(([id, r]) => ({ id, x: r.player.pos.x, z: r.player.pos.z, visible: r.player.mesh.visible, color: r.player.gear?.color, bubble: !!r.bubble })); },
       get bubble() { return !!self.bubble; },
       get nearStation() { return pickStation(self.player.pos.x, self.player.pos.z)?.id ?? null; },
       teleport(x, z, yaw = self.player.rot) { self.player.spawnAt(x, z, yaw); self.rig.snap(self.player.pos, yaw); },

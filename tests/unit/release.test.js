@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { resolveColorIdx, gearColorIdx } from '../../src/net/colors.js';
 import { Session } from '../../src/net/session.js';
 import { Net } from '../../src/net/net.js';
-import { MSG, wrap, ERR } from '../../src/net/protocol.js';
+import { MSG, wrap, ERR, BUILD_ID } from '../../src/net/protocol.js';
 import { AutoQuality } from '../../src/core/autoquality.js';
 import { Hunt, REAP_MINOR, REAP_MAJOR } from '../../src/game/hunt.js';
 import { shouldShowTips, showOnboarding, TIPS_MAX } from '../../src/ui/onboarding.js';
@@ -15,6 +15,7 @@ describe('co-op colours', () => {
     expect(resolveColorIdx([0, 1, 0])).toEqual([0, 1, 2]);
     expect(resolveColorIdx([4, 0, 0])).toEqual([4, 0, 1]);
     expect(resolveColorIdx([0])).toEqual([0]);
+    expect(resolveColorIdx([3, 3, 0])).toEqual([3, 1, 0]); // explicit duplicate -> free colour
   });
   it('reads the colour from the gear code', () => {
     expect(gearColorIdx('g1-aaa5')).toBe(5);
@@ -23,12 +24,25 @@ describe('co-op colours', () => {
 });
 
 const fakeConn = () => ({ open: true, sent: [], send(w) { this.sent.push(w); }, on() {}, close() {} });
+describe('build version check', () => {
+  it('host rejects a guest with another build (stale open tab)', () => {
+    const host = new Net({ isHost: true, peer: {}, code: 'ABCD', name: 'H' });
+    host.roster = [{ id: 'p0', name: 'H', weapon: 'gs', tier: 1, ready: true }];
+    const c = fakeConn();
+    host._dispatch(c, wrap(MSG.HELLO, 'x', 0, { v: 'alt', name: 'Alt' }), null);
+    host._dispatch(fakeConn(), wrap(MSG.HELLO, 'x', 0, { name: 'OhneVersion' }), null);
+    expect(host.roster.length).toBe(1);
+    expect(c.sent[0].d.err).toBe('version');
+    expect(ERR.version).toMatch(/neu laden/);
+    host.close();
+  });
+});
 describe('guest profile update', () => {
   it('host updates roster and rebroadcasts lobby; guest sends prof', () => {
     const host = new Net({ isHost: true, peer: {}, code: 'ABCD', name: 'H' });
     host.roster = [{ id: 'p0', name: 'H', weapon: 'gs', tier: 1, ready: true }];
     const c = fakeConn();
-    host._dispatch(c, wrap(MSG.HELLO, 'x', 0, { name: 'Gast', weapon: 'gs', tier: 1 }), null);
+    host._dispatch(c, wrap(MSG.HELLO, 'x', 0, { v: BUILD_ID, name: 'Gast', weapon: 'gs', tier: 1 }), null);
     const rec = [...host.peers.values()][0];
     const rosters = [];
     host.on('roster', (r) => rosters.push(JSON.parse(JSON.stringify(r))));

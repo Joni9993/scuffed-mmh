@@ -12,6 +12,8 @@ export const RELAY = new Set([MSG.P, MSG.FX, MSG.GATHER, MSG.TP]);
 export const IDEMPOTENT = new Set([MSG.HIT, MSG.GATHER, MSG.EV, MSG.FX, MSG.END]);
 
 export const MAX_PLAYERS = 6;
+/** Build-Kennung (vite define); Host lehnt Gäste mit anderem Build ab, sonst laufen alte offene Tabs mit altem Code mit. */
+export const BUILD_ID = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev';
 export const PEER_PREFIX = 'scuffedhunter-';
 
 // ---------- Raumcodes
@@ -162,6 +164,7 @@ export const wrap = (t, f, i, d) => ({ t, f, i, d });
 export const ERR = {
   notFound: 'Raum nicht gefunden',
   full: 'Raum voll',
+  version: 'Neue Version – bitte Seite neu laden',
   started: 'Jagd läuft schon',
   lost: 'Verbindung verloren',
   server: 'Server nicht erreichbar',

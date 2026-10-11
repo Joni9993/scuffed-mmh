@@ -147,6 +147,13 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 8. Multi-Brocken-Jagden: ok, frühestens nach Phase 2, als Hebel für besonders schwere Aufträge.
 9. Jagddauer bleibt wie jetzt (~5–6 min solo).
 
+### 7e. Nach dem ersten 6er-Test (11.10.2026)
+- **Eigene Farbe = Raumfarbe:** Der eigene Avatar nutzte die gespeicherte Farbe, alle anderen sahen die im Raum aufgelöste. Wer Standard-Cyan behielt, sah sich selbst gleich wie den Host („sich selbst nochmal“). Jetzt zeigt Stadt und Jagd die aufgelöste Farbe (`hub.js myColor/applyMyColor`); doppelt gewählte Farben bekommen ebenfalls eine freie (`colors.js`).
+- **Versionscheck beim Beitreten:** Gast schickt `v` (Build-Kennung, vite `define __APP_BUILD__`) im `hello`; Host lehnt anderen Build ab („Neue Version – bitte Seite neu laden“). Alte, vor dem Deploy offene Tabs liefen sonst mit altem Code (4er-Spawns, alte HP-Skalierung) mit.
+- **Schadenszahlen Alle / Eigene / Aus** (Einstellungen, `settings.dmgNumbers`, alte true/false werden migriert). Jagd-Host verteilt jede Trefferzahl als `MSG.EV {k:'dn', m, p, d, c, a}` an alle Jäger (`encodeDn/decodeDn`), Mitspieler-Zahlen leicht transparent (`.dmg.remote`). Bomben-Schaden wird (noch) nicht verteilt.
+- **Test:** `tools/net6-town-e2e.mjs` (6 Spieler über den echten Stadt-/Auftragsbrett-Ablauf: Mitglieder, Remotes, Farben, Positionen in Stadt und Jagd). Grün; ein Lauf von 3 hatte unter Last einen Beitritts-Timeout eines Gasts (6 Browser mit Software-Rendering).
+- **Offen:** „Nur 4 sichtbar“ aus dem Owner-Test ließ sich lokal nicht nachstellen (Relay, Präsenz, Jagd-Sync sind bei 6 korrekt). Verdacht: alte Tabs (jetzt durch Versionscheck abgefangen) oder Gäste, die per 10-s-Heartbeat rausflogen (Handy im Hintergrund) und solo weiterliefen. Der eingebaute TURN-Server `openrelay.metered.ca` ist nicht mehr zuverlässig – bei Mobilfunk-NAT ggf. eigenen TURN eintragen.
+
 ### 7d. 6 Pirscher (11.10.2026)
 - **Raum + Jagd bis 6 Pirscher** (`MAX_PLAYERS = 6`, 6 Spawnpunkte je Welt/Stadt, 6 Mitgliedsfarben). Koop-HP neu ×1 / 1,53 / 2,07 / 2,52 / 2,88 / 3,24 (Mehrspieler −10 %).
 - Offen: Host-Upload wächst mit (Stern über Host, grob ~60 KB/s bei 6), Betäubungs-/KO-Limit skalieren nicht mit, HUD-Party-Liste mit 5 Einträgen am Handy prüfen.

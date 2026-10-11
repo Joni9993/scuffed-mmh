@@ -74,7 +74,7 @@ URL-Parameter: `?scene=hunt&quest=jaggo&weapon=gs|db|bow&seed=1&god=1&nofx=1`, `
 `move{x,y}`, `camera{dx,dy}`, `attack` (down/up/held ms), `special`, `roll`, `lock`, `context`, `item`, `itemNext`, `itemPrev`, `menu`. Touch, Tastatur und Gamepad füllen dieselbe Struktur.
 
 ### Netzwerk-Protokoll (Kurzform)
-`hello{name, weapon, armor}`, `lobby{players, quest, seed}`, `start{seed, quest, t}`, `p{id, pos, rot, anim, animT, hp, flags}` (15 Hz), `m{id, pos, rot, state, anim, hpPct, parts, flags}` (10 Hz), `atk{monsterId, attackId, t0, origin, dir, target, seed}`, `hit{monsterId, part, dmg, blunt, elem, status}`, `gather{pointId}`, `ev{type, ...}`, `end{result}`.
+`hello{v (Build-Kennung, sonst Ablehnung „version“), name, weapon, armor}`, `lobby{players, quest, seed}`, `start{seed, quest, t}`, `p{id, pos, rot, anim, animT, hp, flags}` (15 Hz), `m{id, pos, rot, state, anim, hpPct, parts, flags}` (10 Hz), `atk{monsterId, attackId, t0, origin, dir, target, seed}`, `hit{monsterId, part, dmg, blunt, elem, status}`, `gather{pointId}`, `ev{type, ...}` (u. a. `dn` = Schadenszahl vom Jagd-Host an alle), `end{result}`.
 
 ---
 
@@ -258,7 +258,7 @@ Angewandt nach Spieler-Feedback (Tasten schwer zu treffen, Text nicht zentriert,
 - **Ambient-Packs:** `Hunt` spawnt beim Start (nur Host/Solo, `?noambient=1` schaltet ab) je 2 Rudel Jagglinge in Zone 1 und 2 (`spawnPack(..., {ambient:true})`, zählt nicht gegen das Rudelruf-Limit von 3). Gäste bekommen sie über die Brocken-Snapshots.
 - **Netz:** Gast-Pfeile werden per `fx {k:'arrow'}` gespiegelt (nur Optik, Schaden bleibt Gast-`hit`). Sammeln im Koop ist host-arbitriert: Gast sendet `gather {id, c:1}`, Host antwortet an den Absender mit `{id,u,it:[…]}` (oder `deny`) und meldet den neuen Stand an die übrigen. Gameplay-Item-Effekte (`flash/stink/trap/bomb`) wirken nur beim Host/Solo, Gäste spielen die Optik.
 - **Kamera:** `createCameraRig(camera, getGroundY, collide)` – Kollision gegen Gelände/Wände; `update({lockSize})` skaliert Abstand/Neigung mit `monster.bodyRadius`.
-- **Tools:** `tools/weapon-dps.mjs` (DPS-Sweep), `tools/net-e2e.mjs` (2-Peer-Test, braucht PeerJS-Server auf :9000), `tools/net6-e2e.mjs` (6-Peer-Test: Lobby/Voll/Jagd/HP-Skalierung/Spawns; PeerJS-Server an 127.0.0.1 binden), `tools/perf-probe.mjs` (renderer.info + Allokationen). `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js` = volles Fairness-Audit (~2 min).
+- **Tools:** `tools/weapon-dps.mjs` (DPS-Sweep), `tools/net-e2e.mjs` (2-Peer-Test, braucht PeerJS-Server auf :9000), `tools/net6-town-e2e.mjs` (6 Spieler über Stadt/Auftragsbrett), `tools/net6-e2e.mjs` (6-Peer-Test: Lobby/Voll/Jagd/HP-Skalierung/Spawns; PeerJS-Server an 127.0.0.1 binden), `tools/perf-probe.mjs` (renderer.info + Allokationen). `P3_FULL=1 npx vitest run tests/unit/p3fairness.test.js` = volles Fairness-Audit (~2 min).
 
 # Neutrale Tiere [L]
 - `monsters/mampfer.js` (Mampfer/-bulle/-kalb, Hoppler; `neutral`, `minor`, `carve`, `dropId`), `skinned.js` (1 SkinnedMesh pro Tier), `herd.js` (Herde: graze/migrate/flee, `def.ai`-Hook in `Monster._ai`), `predation.js` (Jaggo/Brathalos `predator`: jagen Mampfer, Zustand `fressen` = Ueberraschungstreffer x2), `game/fauna.js` (Spawn, `?nofauna=1`), `game/ambientFauna.js` (Voegel/Gluehkaefer/Schmetterlinge, 4 Draw Calls, lokal). Weide-Daten: `world.pastures` (`layout.buildPastures`).
