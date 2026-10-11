@@ -395,6 +395,11 @@ export const glitchaxt = {
       w.hooks.player?.ctx?.fx?.flash?.('rgba(255,120,255,.35)', 0.25);
     },
   },
+  /** KO/Respawn (WeaponState.reset): Axt, Druck 0, alle Kipp-Timer aus */
+  onReset(w) {
+    const d = w.data;
+    d.mode = 'axt'; d.druck = 0; d.blitzT = 0; d.tickT = 0; d.tickPh = 0; d.ticking = false; d.entlad = false;
+  },
   onUpdate(w, dt) {
     const d = st(w);
     const id = w.moveId;
@@ -430,7 +435,8 @@ export const glitchaxt = {
     }
   },
   /** Treffer-Hook (player.afterHit): Druck-Delta aus dem Hit. Im Glitch sinkt der Druck nicht. */
-  onHit(w, res, ah) {
+  onHit(p, res, ah) {
+    const w = p.weapon;
     if (ah?.group === 'zf') return;
     const dd = ah?.hit?.druck ?? 0;
     if (!dd) return;

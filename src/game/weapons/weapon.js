@@ -244,5 +244,6 @@ export class WeaponState {
   reset() {
     this.move = null; this.t = 0; this.events.length = 0; this.pend.A = this.pend.B = null;
     this.chargeLevel = 0; this.sauberOpen = false;
+    this.def.onReset?.(this); // [GA] waffeneigener Zustand (Modus/Druck/Timer) mit zuruecksetzen
   }
 }

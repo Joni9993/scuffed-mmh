@@ -44,7 +44,7 @@ function setup({ sinceRoll = 99, glitching = false } = {}) {
     tap(b = 'A', hold = 0.05) { api.press(b); api.step(hold); api.release(b); api.step(); },
     until(pred, max = 5) { for (let t = 0; t < max && !pred(); t += DT) api.step(); },
     /** Treffer simulieren (so wie player.afterHit es tut) */
-    hit(druck) { glitchaxt.onHit(w, {}, { hit: { druck }, group: 'x' }); },
+    hit(druck) { glitchaxt.onHit({ weapon: w }, {}, { hit: { druck }, group: 'x' }, {}); },
     mode(m, druck) { w.data.mode = m; w.data.druck = druck; },
   };
   return api;
@@ -82,7 +82,7 @@ describe('Glitchaxt: Registrierung und Daten', () => {
     for (const m of Object.values(glitchaxt.moves)) expect(glitchaxt.anims[m.anim], m.id).toBeTruthy();
   });
   it('Kraft je Stufe/Ast laut GDD 17.2', () => {
-    expect(WEAPON_ORDER).toEqual(['gs', 'db', 'bow', 'kt', 'ga']);
+    expect(WEAPON_ORDER).toEqual(['gs', 'db', 'bow', 'kt', 'kk', 'ga']);
     expect(WEAPON_TYPES.ga.tiers.length).toBe(6);
     expect(weaponStats('ga', 1).power).toBe(78);
     expect(weaponStats('ga', 2).power).toBe(97);
@@ -307,12 +307,12 @@ describe('Glitchaxt: Druck im Schwert', () => {
   it('Schwert-Treffer veraendern die Wucht-/Druck-Regeln nicht ausserhalb des Hits (kein Druck-Delta = nichts)', () => {
     const s = setup();
     s.mode('schwert', 50);
-    glitchaxt.onHit(s.w, {}, { hit: { mv: 10 }, group: 'q' });
+    glitchaxt.onHit({ weapon: s.w }, {}, { hit: { mv: 10 }, group: 'q' }, {});
     expect(s.w.data.druck).toBe(50);
   });
   it('Player.afterHit ruft den Waffen-Hook (Druck waechst durch echte Treffer)', () => {
     const m = make();
-    m.p.afterHit({ hitstop: 0, wucht: 3 }, { hit: { druck: 8 }, group: 'a1' });
+    m.p.afterHit({ hitstop: 0, wucht: 3 }, { hit: { druck: 8 }, group: 'a1' }, {});
     expect(m.w.data.druck).toBe(8);
     expect(m.w.wucht).toBe(3);
   });
@@ -589,7 +589,7 @@ describe('Glitch "Zustandsfehler"', () => {
   it('Zweittreffer aendert den Druck nicht', () => {
     const m = make();
     m.w.data.druck = 40;
-    m.p.afterHit({ hitstop: 0, wucht: 0 }, { hit: { druck: 8 }, group: 'zf' });
+    m.p.afterHit({ hitstop: 0, wucht: 0 }, { hit: { druck: 8 }, group: 'zf' }, {});
     expect(m.w.data.druck).toBe(40);
   });
   it('Druck sinkt nicht, jeder Wechsel geht ohne Mindestdruck und ist automatisch "Sauber!"', () => {
@@ -665,13 +665,13 @@ describe('HUD, Koop, Optik', () => {
     const g = m.userData.ga;
     const shaftPos = m.children[0].position.clone();
     updateGlitchaxtLook(m, { mode: 'axt', druck: 0 }, DT);
-    const axtY = g.blocks[9].mesh.position.y;
+    const axtY = g.blocks[GA_N - 1].mesh.position.y;
     for (let i = 0; i < 6; i++) updateGlitchaxtLook(m, { mode: 'schwert', druck: 50 }, DT);
     expect(g.k).toBeGreaterThan(0.4);
     expect(g.k).toBeLessThan(1);
     for (let i = 0; i < 8; i++) updateGlitchaxtLook(m, { mode: 'schwert', druck: 50 }, DT);
     expect(g.k).toBe(1);
-    const swY = g.blocks[9].mesh.position.y;
+    const swY = g.blocks[GA_N - 1].mesh.position.y;
     expect(swY).toBeLessThan(axtY - 0.3); // Reihe ist laenger als der Klumpen
     expect(m.children[0].position.equals(shaftPos)).toBe(true);
   });
@@ -681,14 +681,14 @@ describe('HUD, Koop, Optik', () => {
     const gl = (i) => g.blocks[i].mat.userData.glow.value;
     updateGlitchaxtLook(m, { mode: 'axt', druck: 30 }, DT);
     expect(gl(0)).toBeGreaterThan(0.7); // Griffnaher Block voll
-    expect(gl(2)).toBeGreaterThan(0.7);
+    expect(gl(1)).toBeGreaterThan(0.7);
     expect(gl(3)).toBe(0);
-    expect(gl(9)).toBe(0);
+    expect(gl(GA_N - 1)).toBe(0);
     updateGlitchaxtLook(m, { mode: 'axt', druck: 55 }, DT);
-    expect(gl(4)).toBeGreaterThan(0.7);
-    expect(gl(5)).toBeGreaterThan(0.2); // halber Block
-    expect(gl(5)).toBeLessThan(gl(4));
-    expect(gl(6)).toBe(0);
+    expect(gl(3)).toBeGreaterThan(0.7);
+    expect(gl(4)).toBeGreaterThan(0.2); // halber Block
+    expect(gl(4)).toBeLessThan(gl(3));
+    expect(gl(5)).toBe(0);
     updateGlitchaxtLook(m, { mode: 'axt', druck: 0 }, DT);
     for (let i = 0; i < GA_N; i++) expect(gl(i)).toBe(0);
     updateGlitchaxtLook(m, { mode: 'schwert', druck: 0, blitz: true }, DT);
@@ -728,6 +728,20 @@ describe('HUD, Koop, Optik', () => {
     m.w.data.mode = 'schwert'; m.w.data.druck = 40;
     m.step(30);
     expect(m.p.weaponMesh.userData.ga.k).toBeGreaterThan(0);
+  });
+  it('KO/Respawn leert den Glitchaxt-Zustand (Axt, Druck 0, kein offener Blitz/Timer)', () => {
+    const m = make();
+    m.w.data.mode = 'schwert'; m.w.data.druck = 0; m.w.data.blitzT = 0.3; m.w.data.entlad = true; m.w.data.ticking = true;
+    m.p.respawn(0, 0);
+    expect(m.w.data).toMatchObject({ mode: 'axt', druck: 0, blitzT: 0, entlad: false, ticking: false });
+    for (let i = 0; i < 60; i++) m.step();
+    expect(m.w.data.fehl | 0).toBe(0);
+    expect(m.w.moveId).toBeNull();
+    expect(settings.gaFehl | 0).toBe(0);
+    const s = setup();
+    s.mode('schwert', 0); s.step(0.02); s.w.reset(); s.step(0.6);
+    expect(s.w.data.mode).toBe('axt');
+    expect(s.w.data.fehl | 0).toBe(0);
   });
   it('addDruck/st sind sicher mit leerem Zustand', () => {
     const w = new WeaponState(glitchaxt, {});

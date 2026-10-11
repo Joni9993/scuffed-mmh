@@ -102,6 +102,13 @@ const WINDUP = {
   klick: (f, d, v) => { const n = Math.max(3, Math.round(d / 0.09)); for (let i = 0; i < n; i++) tone({ f0: f * 5, f1: f * 3, dur: 0.035, type: 'square', vol: 0.12 * v, delay: (d * i) / n }); },
 };
 
+// [KK] Krachkiste-Zonen-Voices (delay in s): r = Kopf DING, b = Koerper BUMM, g = Glieder TSCHAK
+const KK_ZONE = {
+  r: (d = 0) => { tone({ f0: 1568, dur: 0.55, vol: 0.34, delay: d }); tone({ f0: 2349, dur: 0.38, vol: 0.16, delay: d }); tone({ f0: 4330, dur: 0.22, type: 'triangle', vol: 0.09, delay: d }); },
+  b: (d = 0) => { tone({ f0: 165, f1: 42, dur: 0.3, vol: 0.8, delay: d }); noise({ dur: 0.03, vol: 0.2, f0: 1500, f1: 300, delay: d }); },
+  g: (d = 0) => { noise({ dur: 0.14, vol: 0.5, f0: 6000, f1: 2500, type: 'highpass', delay: d }); tone({ f0: 230, f1: 150, dur: 0.09, type: 'triangle', vol: 0.3, delay: d }); },
+};
+
 const SOUNDS = {
   windup: (o) => { const d = Math.max(0.15, Math.min(3, o?.dur ?? 0.5)); (WINDUP[o?.timbre] ?? WINDUP.brumm)(o?.f ?? 180, d, o?.teach ? 1.5 : 1); if (o?.teach) noise({ dur: 0.12, vol: 0.15, f0: 3000, f1: 800, type: 'bandpass' }); },
   tired: () => { noise({ dur: 0.3, vol: 0.2, f0: 1500, f1: 400, type: 'bandpass' }); noise({ dur: 0.3, vol: 0.2, f0: 1400, f1: 350, type: 'bandpass', delay: 0.4 }); tone({ f0: 160, f1: 90, dur: 0.5, vol: 0.2, lp: 500, delay: 0.1 }); },
@@ -131,6 +138,21 @@ const SOUNDS = {
   },
   glitchOff: () => { noise({ dur: 0.3, vol: 0.2, f0: 4000, f1: 150, type: 'highpass' }); tone({ f0: 600, f1: 60, dur: 0.35, type: 'sawtooth', vol: 0.14 }); },
   mutheal: () => { tone({ f0: 520, f1: 880, dur: 0.09, type: 'square', vol: 0.07 }); tone({ f0: 880, f1: 1320, dur: 0.1, type: 'square', vol: 0.06, delay: 0.07 }); noise({ dur: 0.08, vol: 0.05, f0: 6000, f1: 2000, type: 'highpass' }); }, // Speicherleck: kleiner Heil-Blip
+  // ---- [KK] Krachkiste: Zonen-Toene. IMMER gleich (egal welcher Brocken / welche Stufe) und klar unterscheidbar:
+  //      Kopf = DING (hohe Glocke) · Koerper = BUMM (tiefer Kick) · Glieder = TSCHAK (Snare). Abspiel-Beat = die Leiste nacheinander.
+  kkDing: () => KK_ZONE.r(0),
+  kkBumm: () => KK_ZONE.b(0),
+  kkTschak: () => KK_ZONE.g(0),
+  kkBeat: (o) => {
+    (o?.bar ?? []).forEach((c, i) => KK_ZONE[c]?.(i * 0.17));
+    if (o?.finale) { tone({ f0: 196, f1: 392, dur: 0.5, type: 'sawtooth', vol: 0.18, lp: 1800, delay: 0.5 }); noise({ dur: 0.5, vol: 0.3, f0: 4000, f1: 400, type: 'highpass', delay: 0.5 }); }
+  },
+  kkRemix: () => { // Remix: Akkord + steigender Sweep + Crash nach dem Beat
+    [523.25, 659.25, 783.99].forEach((f, i) => tone({ f0: f, dur: 0.5, type: 'triangle', vol: 0.2, delay: 0.5 + i * 0.05 }));
+    tone({ f0: 260, f1: 1500, dur: 0.45, type: 'sawtooth', vol: 0.14, lp: 3200, delay: 0.5 });
+    noise({ dur: 0.45, vol: 0.28, f0: 7000, f1: 800, type: 'highpass', delay: 0.5 });
+    tone({ f0: 90, f1: 45, dur: 0.4, vol: 0.5, delay: 0.5 });
+  },
   glitch: () => {
     for (let i = 0; i < 9; i++) tone({ f0: 200 + Math.random() * 2200, dur: 0.03, type: i % 2 ? 'square' : 'sawtooth', vol: 0.12, delay: i * 0.035 });
     noise({ dur: 0.38, vol: 0.22, f0: 7000, f1: 300, type: 'highpass' });
@@ -216,8 +238,8 @@ const SOUNDS = {
   },
 };
 
-const DUR = { tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
-const PRIO = { windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
+const DUR = { kkDing: 0.6, kkBumm: 0.35, kkTschak: 0.2, kkBeat: 1.2, kkRemix: 1.1, tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
+const PRIO = { kkDing: 3, kkBumm: 3, kkTschak: 3, kkBeat: 3, kkRemix: 3, windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
 const MIN_GAP = { windup: 0.05, step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
 
 // ------------------------------------------------------------------ ambient (per zone)

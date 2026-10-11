@@ -3,36 +3,42 @@ import { Parts } from '../../render/vcolor.js';
 import { GearParts, gearMaterial } from '../../render/gearfx.js';
 import { lambert } from '../../render/ps1.js';
 import { tex } from '../../render/textures.js';
-import { BROCKEN_PAL as PAL } from './weaponLook.js';
+import { PALETTES as PAL } from './weaponLook.js';
 
-// [GA] Glitchaxt-Optik (GDD 17.2): Stiel mit festem Anker-Teil + 10 lose Datenbloecke. Die Bloecke morphen in ~0,2 s zwischen
+// [GA] Glitchaxt-Optik (GDD 17.2): Stiel mit festem Anker-Teil + 8 Datenbloecke. Die Bloecke morphen in ~0,2 s zwischen
 // Axt-Anordnung (Klumpen am Stielende) und Schwert-Anordnung (Reihe entlang der Verlaengerung) und leuchten vom Griff aus magenta
 // (Druck). Je Stufe/Ast eigene Block-Form + Palette (Brocken-Material). Waffen-Frame wie alle Waffen: Griff im Ursprung, Kopf entlang -y,
 // Schneide/Vorderseite = -z. Ein gemergtes Mesh fuer Stiel + Anker, ein Mesh je Block (gemeinsame Geometrie je Look, 2 Varianten).
 
-export const GA_N = 10;
+export const GA_N = 8;
 const hash = (i) => { const s = Math.sin(i * 91.7 + 17.3) * 43758.5453; return s - Math.floor(s); };
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const ss = (t) => t * t * (3 - 2 * t);
 const MAGENTA = [1, 0.1, 0.8];
 const SEAM = '#8a1a78'; // unbeleuchtet dunkel, mit glow-Uniform x1,6 helles Magenta
-const TINT = 0.1; // schwacher Magenta-Schein ueber den ganzen Block
+const TINT = 0; // kein Magenta-Schein auf den Block-Flaechen: Magenta leuchtet nur in den Fugen
 export const MORPH_TIME = 0.2;
 
 // ------------------------------------------------------------------ Anordnungen: [x, y, z, sx, sy, sz, rx, ry, rz], Index 0 = naechster Block am Griff
-export const AXT = [
-  [0, -0.50, 0, 0.7, 0.9, 0.9, 0, 0, 0],
-  [0, -0.68, 0, 0.85, 0.9, 0.9, 0, 0, 0],
-  [0, -0.86, 0, 1.0, 1.0, 1.0, 0, 0, 0],
-  [0, -1.02, 0, 1.15, 1.2, 1.2, 0, 0, 0],
-  [0, -1.02, 0.21, 0.9, 1.0, 0.9, 0, 0, 0],
-  [0, -0.84, -0.22, 0.75, 1.0, 1.2, 0.35, 0, 0],
-  [0, -1.02, -0.27, 0.8, 1.2, 1.4, 0, 0, 0],
-  [0, -1.20, -0.22, 0.75, 1.0, 1.2, -0.35, 0, 0],
-  [0, -0.82, -0.47, 0.55, 1.0, 0.8, 0.55, 0, 0],
-  [0, -1.22, -0.47, 0.55, 1.0, 0.8, -0.55, 0, 0],
+// Axt: Kopf = zusammenhaengender Keil seitlich vom Stiel (Poll hinten +z, Schneide vorn -z). Kopf-Bloecke sind um y gedreht (breite Seite liegt in z),
+// ihre Querschnitte laufen nach vorn zur Schneide aus (wedge()). Reihenfolge = Glut-Reihenfolge ab Griff.
+const R = 1.5708;
+const AXT_RAW = [
+  [0, -0.78, 0, 0.7, 0.8, 1.6, 0, 0, 0],            // 0 Zwinge am Stiel
+  [0, -0.93, -0.10, 1.05, 1.1, 1.7, 0, R, 0],       // 1 oben Mitte
+  [0, -0.90, -0.32, 1.0, 1.1, 1.3, 0, R, 0.45],     // 2 oben Schneide (nach oben geklappt)
+  [0, -1.10, 0.10, 0.8, 0.9, 1.6, 0, R, 0],         // 3 Poll / Ruecken
+  [0, -1.10, -0.10, 1.05, 1.1, 1.7, 0, R, 0],       // 4 Kern
+  [0, -1.10, -0.33, 1.1, 1.05, 1.1, 0, R, 0],       // 5 Schneide Mitte
+  [0, -1.27, -0.10, 1.05, 1.1, 1.7, 0, R, 0],       // 6 unten Mitte
+  [0, -1.31, -0.32, 1.0, 1.1, 1.3, 0, R, -0.45],    // 7 unten Schneide
 ];
-export const SCHWERT = Array.from({ length: GA_N }, (_, i) => [0, -0.40 - i * 0.152, 0, 1.12 - i * 0.045 - (i === GA_N - 1 ? 0.2 : 0), 0.84 - (i === GA_N - 1 ? 0.12 : 0), 0.85 - i * 0.015, 0, 0, 0]);
+// Kopf 1,25x vergroessert (Lesbarkeit aus der Verfolgerkamera); Zwinge (0) bleibt klein
+export const AXT = AXT_RAW.map((a, i) => (i === 0 ? a : [a[0], -1.1 + (a[1] + 1.1) * 1.25, a[2] * 1.25, a[3] * 1.25, a[4] * 1.25, a[5] * 1.2, a[6], a[7], a[8]]));
+// Schwert: Klinge aus grossen Keil-Bloecken (breite Basis, Spitze), Schneide an +x, Ruecken an -x.
+export const SCHWERT = Array.from({ length: GA_N }, (_, i) => (i === GA_N - 1
+  ? [0, -0.45 - i * 0.18 - 0.02, 0, 0.75, 1.0, 0.9, 0, 0, Math.PI / 4]
+  : [0, -0.45 - i * 0.18, 0, 1.5 - i * 0.075, 1.1, 1.0, 0, 0, 0]));
 
 // ------------------------------------------------------------------ Block-Formen je Look (Bounding ~0.22 x 0.16 x 0.10, vorn = -z)
 function blockGeo(key, v) {
@@ -86,8 +92,16 @@ function blockGeo(key, v) {
       break;
   }
   // Fugen: duenne Magenta-Rahmen oben/unten, ragen seitlich ueber den Block -> leuchten vom Griff aus je nach Druck (glow = 1)
-  for (const y of [-1, 1]) P.box(0.238, 0.014, 0.116, SEAM, { y: y * 0.084, glow: 1 });
+  for (const y of [-1, 1]) P.box(0.24, 0.02, 0.12, SEAM, { y: y * 0.084, glow: 1 });
   return P.merge();
+}
+
+/** Keil-Querschnitt: Dicke (z) laeuft zur Schneide bei +x aus. */
+function wedge(geo) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i); if (x > 0) p.setZ(i, p.getZ(i) * (1 - 0.72 * Math.min(1, x / 0.11))); }
+  geo.computeVertexNormals();
+  return geo;
 }
 
 // ------------------------------------------------------------------ Stiel + Anker-Teil (festes Teil, morpht nie)
@@ -96,7 +110,7 @@ function shaftGeo(key, tier) {
   const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH } = PAL;
   const wood = { rust: '#5a4a38', bone: BONE[2], jag: JP[1], barr: BZ[4], brat: BR[1], kroll: KR[3], gorgo: GG[1], volt: VT[2], fuerst: VT[2] }[key];
   const wrap = { rust: '#a08a5a', bone: '#7a4a2a', jag: JP[0], barr: BZ[3], brat: BR[5], kroll: KR[2], gorgo: GG[3], volt: VT[1], fuerst: VT[6] }[key];
-  P.box(0.055, 1.5, 0.055, '#2a2438', { y: -0.4 }); // Kern (zwischen den Bloecken sichtbar)
+  P.box(0.055, 1.8, 0.055, '#2a2438', { y: -0.52 }); // Kern (zwischen den Bloecken sichtbar)
   P.box(0.075, 0.74, 0.075, wood, { y: 0.0 }); // Griffholz
   for (let i = 0; i < 6; i++) P.box(0.095, 0.04, 0.095, wrap, { y: -0.13 + i * 0.1, ry: i % 2 ? 0.3 : -0.3 }); // Wicklung
   P.box(0.11, 0.07, 0.11, wrap, { y: 0.4 }); // Knauf
@@ -125,8 +139,8 @@ export function gaLookKey(tier, branch) {
   return tier === 2 ? 'bone' : 'rust';
 }
 /** Wie schief die Bloecke sitzen: niedrige Stufe = schief + ruckelig, hohe = sauber. */
-const SKEW = { rust: 0.3, bone: 0.2, jag: 0.14, barr: 0.14, brat: 0.08, kroll: 0.05, gorgo: 0.05, volt: 0.04, fuerst: 0 };
-const BASE_EM = { rust: [0, 0, 0], bone: [0, 0, 0], jag: [0.04, 0.0, 0.1], barr: [0, 0.05, 0.06], brat: [0.2, 0.05, 0], kroll: [0, 0, 0], gorgo: [0.2, 0.05, 0], volt: [0, 0.06, 0.16], fuerst: [0.16, 0.14, 0.04] };
+const SKEW = { rust: 0.14, bone: 0.1, jag: 0.07, barr: 0.07, brat: 0.05, kroll: 0.03, gorgo: 0.03, volt: 0.02, fuerst: 0 };
+const BASE_EM = { rust: [0, 0, 0], bone: [0, 0, 0], jag: [0.04, 0.0, 0.1], barr: [0, 0.05, 0.06], brat: [0.1, 0.02, 0], kroll: [0, 0, 0], gorgo: [0.03, 0.01, 0], volt: [0, 0.06, 0.16], fuerst: [0.16, 0.14, 0.04] };
 
 const _e = new THREE.Euler(), _qb = new THREE.Quaternion(), _q = new THREE.Quaternion();
 const slotQ = (s, skew, i, out) => out.setFromEuler(_e.set(s[6] + (hash(i * 3 + 1) - 0.5) * 2 * skew, s[7] + (hash(i * 3 + 2) - 0.5) * 2 * skew * 0.8, s[8] + (hash(i * 3 + 3) - 0.5) * 2 * skew, 'YXZ'));
@@ -141,7 +155,7 @@ export function buildGlitchaxtLook(tier = 1, branch = null) {
   const root = new THREE.Group();
   const shaft = new THREE.Mesh(shaftGeo(key, top), lambert({ vertexColors: true, map: tex('grain', { size: 16 }) }));
   root.add(shaft);
-  const geos = [blockGeo(key, 0), blockGeo(key, 1)];
+  const geos = [wedge(blockGeo(key, 0)), wedge(blockGeo(key, 1))];
   const big = top >= 6 ? 1.12 : 1;
   const blocks = [];
   for (let i = 0; i < GA_N; i++) {

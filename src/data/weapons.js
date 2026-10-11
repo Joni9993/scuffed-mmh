@@ -90,8 +90,26 @@ export const WEAPON_TYPES = {
       { id: 'v', name: 'Funkenfürst-Glitchaxt', power: 174, crit: 0.05, elems: { shock: 32 } },
     ] },
   ] },
+  // [KK] Krachkiste (GDD 17.1): Support/Sampler. Zweig a = Jaggo-Kamm (Krit 15 %), Zweig b = Barrotz-Gong (stumpf+)
+  kk: { name: 'Krachkiste', tiers: [
+    { name: 'Blechkiste', power: 76, crit: 0.05, elems: {} },
+    { name: 'Schädel-Box', power: 95, crit: 0.05, elems: {} },
+    { name: 'Jaggo-Equalizer', power: 112, crit: 0.15, elems: {}, branches: [
+      { id: 'a', name: 'Jaggo-Equalizer', power: 112, crit: 0.15, elems: {} },
+      { id: 'b', name: 'Barrotz-Gong', power: 118, crit: 0.05, elems: {}, bluntMul: 1.3 },
+    ] },
+    { name: 'Brathalos-Schalltrichter', power: 134, crit: 0.05, elems: { fire: 22 } },
+    { name: 'Kroll-Dampforgel', power: 150, crit: 0.05, elems: {}, branches: [
+      { id: 'k', name: 'Kroll-Dampforgel', power: 150, crit: 0.05, elems: { rust: 20 }, partDmgMul: 1.25 },
+      { id: 'g', name: 'Gorgo-Subwoofer', power: 152, crit: 0.15, elems: { fire: 24 } },
+      { id: 'v', name: 'Voltaro-Teslabox', power: 156, crit: 0.05, elems: { shock: 26 } },
+    ] },
+    { name: 'Funkenfürst-Doppelspule', power: 180, crit: 0.05, elems: { shock: 36 }, branches: [
+      { id: 'v', name: 'Funkenfürst-Doppelspule', power: 180, crit: 0.05, elems: { shock: 36 } },
+    ] },
+  ] },
 };
-export const WEAPON_ORDER = ['gs', 'db', 'bow', 'kt', 'ga'];
+export const WEAPON_ORDER = ['gs', 'db', 'bow', 'kt', 'kk', 'ga'];
 
 /** Stats of (type, tier, branch). branch only matters at tier 3 (default 'a'). */
 export function weaponStats(type, tier = 1, branch = null) {
@@ -114,6 +132,7 @@ export const WEAPON_UPGRADES = {
     bow: { a: { cost: { schrott: 400, jaggo_kamm: 1, jaggo_schuppe: 3, jaggo_fell: 2 } }, b: { cost: { schrott: 500, barrotz_platte: 1, barrotz_kruste: 3, barrotz_schwanzleder: 1 } } },
     kt: { a: { cost: { schrott: 400, jaggo_schuppe: 3, jaggo_fell: 2, jaggo_kamm: 1, schrotterz: 2 } }, b: { cost: { schrott: 500, barrotz_kruste: 3, barrotz_platte: 1, barrotz_schwanzleder: 1, schrotterz: 2 } } }, // [KT]
     ga: { a: { cost: { schrott: 400, jaggo_schuppe: 3, jaggo_fell: 2, jaggo_kamm: 1, schrotterz: 2 } }, b: { cost: { schrott: 500, barrotz_kruste: 3, barrotz_platte: 1, barrotz_schwanzleder: 1, schrotterz: 2 } } }, // [GA]
+    kk: { a: { cost: { schrott: 400, jaggo_schuppe: 3, jaggo_fell: 2, jaggo_kamm: 1, schrotterz: 2 } }, b: { cost: { schrott: 500, barrotz_kruste: 3, barrotz_platte: 1, barrotz_schwanzleder: 1, schrotterz: 2 } } }, // [KK]
   },
   4: { cost: { schrott: 800, brathalos_schuppe: 4, brathalos_membran: 2, glutsack: 1, glimmstein: 2 } },
   // Stufe 5 (aus Stufe 4): Ast k = Kroll, g = Gorgo, v = Voltaro. Stufe 6 nur aus v (Voltaro-Herz).
@@ -123,6 +142,7 @@ export const WEAPON_UPGRADES = {
     bow: { k: { cost: { schrott: 1200, kroll_panzer: 3, kroll_schere: 2, kroll_auge: 3, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 4, gorgo_zahn: 3, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 2, voltaro_spule: 3, voltaro_fell: 3, funkenstein: 2 } } },
     kt: { k: { cost: { schrott: 1200, kroll_panzer: 4, kroll_schere: 3, kroll_auge: 2, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 4, gorgo_zahn: 3, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 1, voltaro_spule: 4, voltaro_fell: 3, funkenstein: 2 } } },
     ga: { k: { cost: { schrott: 1200, kroll_panzer: 4, kroll_schere: 2, kroll_auge: 2, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 4, gorgo_zahn: 2, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 2 } } }, // [GA]
+    kk: { k: { cost: { schrott: 1200, kroll_panzer: 4, kroll_schere: 3, kroll_auge: 2, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 4, gorgo_zahn: 3, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 1, voltaro_spule: 4, voltaro_fell: 3, funkenstein: 2 } } }, // [KK]
   },
   6: {
     gs: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_kamm: 2, funkenstein: 3 } },
@@ -130,6 +150,7 @@ export const WEAPON_UPGRADES = {
     bow: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 } },
     kt: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 } },
     ga: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_kamm: 1, funkenstein: 3 } }, // [GA]
+    kk: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 } }, // [KK]
   },
 };
 export const MAX_WEAPON_TIER = 6;
