@@ -18,7 +18,7 @@ describe('Gorgo: Definition', () => {
     expect(m.partById.kopf.factor).toBe(1);
     expect(m.partById.kopf.elem).toMatchObject({ shock: 20, rost: 25, fire: 0 });
     for (let i = 1; i <= 6; i++) { const p = m.partById['segment' + i]; expect(p.factor).toBe(0.6); expect(p.breakHp).toBe(500); expect(p.elem.fire).toBe(0); }
-    expect(gorgo.glitchSpots).toEqual(['kopf', 'segment3']);
+    expect(gorgo.glitchSpots).toBeUndefined(); // Owner Okt 2026: keine Glitch-Stellen an Rostwerke-Brocken
     expect(gorgo.teachAttack).toBe('gorgo_spucke');
     expect(gorgo.phases[0].at).toBe(0.5);
   });

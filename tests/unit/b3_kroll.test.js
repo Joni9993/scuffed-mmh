@@ -21,7 +21,7 @@ describe('Kroll', () => {
     expect(p.augen.factor).toBe(0.9);
     expect(p.beine.factor).toBe(0.8);
     expect(p.beine.elem.shock).toBe(25);
-    expect(kroll.glitchSpots).toEqual(['kesselpanzer', 'scherenL', 'scherenR']);
+    expect(kroll.glitchSpots).toBeUndefined(); // Owner Okt 2026: keine Glitch-Stellen an Rostwerke-Brocken
     expect(kroll.run).toBeGreaterThanOrEqual(6.5); // Nachsetzen im Rennen (nicht wegrennbar)
     expect(kroll.prefer).toBeLessThanOrEqual(5.5);
     const { m } = mk();

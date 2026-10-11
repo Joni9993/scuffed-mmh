@@ -23,7 +23,7 @@ describe('Voltaro: Definition', () => {
     expect(monsters.voltaro).toBe(voltaro);
     expect(voltaro.hp).toBe(18500);
     expect(voltaro.scale).toBe(2.4);
-    expect(voltaro.glitchSpots).toEqual(['antennenkamm', 'spulen']);
+    expect(voltaro.glitchSpots).toBeUndefined(); // Owner Okt 2026: keine Glitch-Stellen an Rostwerke-Brocken
     const ids = voltaro.parts.map((p) => p.id);
     for (const id of ['antennenkamm', 'prankeL', 'prankeR', 'spulen', 'tail', 'kopf', 'koerper']) expect(ids).toContain(id);
     const bp = (id) => voltaro.parts.find((p) => p.id === id);

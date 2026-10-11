@@ -450,7 +450,6 @@ export const gorgo = {
   recoverAfter: (m) => (0.2 + m.rng() * 0.3) / ((m.phase >= 1 ? 1.7 : 1.3) * m.speedMul),
   speedFactor: (m) => 1 - 0.07 * brokenCount(m), // jedes gebrochene Segment: Wurm wird langsamer
   drops: ['gorgo_segment', 'gorgo_zahn', 'gorgo_kern'],
-  glitchSpots: ['kopf', 'segment3'],
   parts: [
     { id: 'kopf', label: 'Kopf', factor: 1.0, elem: { fire: 0, shock: 20, rost: 25 }, blunt: true, stunPart: true,
       spheres: [{ node: 'head', offset: [0, 0, 0.9], r: 1.7 }] },
