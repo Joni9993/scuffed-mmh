@@ -80,12 +80,12 @@ describe('Monster-Hooks', () => {
     expect(mk(['rotglut']).m.mm.rageAlways).toBe(true);
     expect(mk(['fehlende_texturen']).m.mm.hideColorCues).toBe(true);
   });
-  it('lagSpike springt deterministisch nur im Bewegen ohne Angriff', () => {
+  it('lagSpike (Rubberband) ist deterministisch', () => {
     const run = () => {
-      const { m } = mk(['lag_spitze']); m.attack = null; m.chainNext = null; m.vel.set(0, 0, 5);
-      const z = []; for (let i = 0; i < 800; i++) { m.mutatorTick(DT); z.push(m.pos.z); } return z;
+      const { m } = mk(['lag_spitze']); m.attack = null; m.chainNext = null; m.recover = 0;
+      const z = []; for (let i = 0; i < 1500; i++) { m.mutatorTick(DT); z.push(m.pos.z); } return z;
     };
-    const a = run(); expect(a[799]).toBeGreaterThan(0); expect(JSON.stringify(a)).toBe(JSON.stringify(run()));
+    const a = run(); expect(a[1499]).toBeGreaterThan(0); expect(JSON.stringify(a)).toBe(JSON.stringify(run()));
   });
 });
 
@@ -97,11 +97,11 @@ describe('Sichtbare Mutatoren', () => {
     expect(Object.keys(mods.monster).length + Object.keys(mods.player).length).toBeGreaterThan(0);
     const { m } = mk(q.mutators); expect(m.mm).toBeTruthy();
   });
-  it('Speicherleck heilt in 10 s ohne Treffer >= 10 % maxHp, auch im Flug', () => {
+  it('Speicherleck heilt in 10 s ohne Treffer ~4 % maxHp (0,4 %/s), auch im Flug', () => {
     for (const st of ['combat', 'fly']) {
       const { m } = mk(['speicherleck']); m.state = st; m.hp = m.maxHp * 0.5; m._sinceHit = 5;
       for (let i = 0; i < 600; i++) m.mutatorTick(DT);
-      expect(m.hp - m.maxHp * 0.5).toBeGreaterThanOrEqual(m.maxHp * 0.1);
+      expect(m.hp - m.maxHp * 0.5).toBeGreaterThanOrEqual(m.maxHp * 0.035); expect(m.hp - m.maxHp * 0.5).toBeLessThan(m.maxHp * 0.05);
     }
   });
   it('Speicherleck-FX: gruene Zahl + sfx + mutfx', () => {
@@ -110,21 +110,34 @@ describe('Sichtbare Mutatoren', () => {
     m.hp = m.maxHp * 0.5; m._sinceHit = 5; for (let i = 0; i < 180; i++) m.mutatorTick(DT);
     expect(nums.length).toBeGreaterThanOrEqual(2); expect(nums[0][1]).toBe('mheal'); expect(ev).toContain('heal');
   });
-  it('Lag-Spitze loest in 20 s >= 3x aus, nie waehrend m.attack', () => {
-    const { m } = mk(['lag_spitze']); m.chainNext = null; m.vel.set(0, 0, 3);
-    let bad = 0, n0 = 0;
-    for (let i = 0; i < 1200; i++) {
-      m.attack = i % 600 > 400 ? { inst: {} } : null; // Telegraph/Angriff: Pos darf sich nicht sprunghaft aendern
-      const z0 = m.pos.z, c0 = m.lagCount ?? 0; m.mutatorTick(DT);
-      if ((m.lagCount ?? 0) > c0) { n0++; if (m.attack) bad++; }
-      else if (m.attack && m.pos.z !== z0) bad++;
+  it('Lag-Spitze: Vorwarnung (Marker) vor dem Sprung, Sprung zieht an den Spieler ran', () => {
+    const { ctx, m, p } = mk(['lag_spitze']); const marks = []; ctx.fx.marker = (id, pos) => marks.push(pos);
+    p.pos.z = 30; m.chainNext = null; m.attack = null; m.recover = 0;
+    let warned = -1, jumped = -1; const d0 = Math.hypot(p.pos.x - m.pos.x, p.pos.z - m.pos.z);
+    for (let i = 0; i < 900 && jumped < 0; i++) {
+      const c = m.lagCount ?? 0; m.mutatorTick(DT);
+      if (marks.length && warned < 0) warned = i;
+      if ((m.lagCount ?? 0) > c) jumped = i;
     }
-    expect(n0).toBeGreaterThanOrEqual(3); expect(bad).toBe(0);
+    expect(warned).toBeGreaterThan(0); expect(jumped - warned).toBeGreaterThanOrEqual(25); // >= ~0,45 s Vorwarnung
+    expect(Math.hypot(p.pos.x - m.pos.x, p.pos.z - m.pos.z)).toBeLessThan(d0 - 2);
+    expect(m.recover).toBeLessThanOrEqual(0.1);
   });
-  it('Lag-Spitze greift auch im Flug', () => {
-    const { m } = mk(['lag_spitze']); m.state = 'fly'; m.air = 5; m.vel.set(0, 0, 4);
-    for (let i = 0; i < 600; i++) m.mutatorTick(DT);
-    expect(m.lagCount).toBeGreaterThanOrEqual(1);
+  it('Lag-Spitze: nah am Ziel springt er in die Flanke, nie in den Spieler', () => {
+    const { m, p } = mk(['lag_spitze']); m.chainNext = null; m.attack = null; m.recover = 0; p.pos.z = 4;
+    for (let i = 0; i < 900 && !m.lagCount; i++) m.mutatorTick(DT);
+    expect(m.lagCount).toBe(1);
+    const d = Math.hypot(p.pos.x - m.pos.x, p.pos.z - m.pos.z); expect(d).toBeGreaterThanOrEqual(m.bodyRadius + 1.5);
+    expect(Math.abs(m.pos.x)).toBeGreaterThan(1.5); // seitlich versetzt
+  });
+  it('Lag-Spitze: nie waehrend eines Angriffs, Angriff bricht Vorwarnung ab', () => {
+    const { m, p } = mk(['lag_spitze']); p.pos.z = 30; m.chainNext = null; m.recover = 0; m.attack = null;
+    let inWarn = false;
+    for (let i = 0; i < 900; i++) { m.mutatorTick(DT); if (m._lagWarn) { inWarn = true; break; } }
+    expect(inWarn).toBe(true);
+    m.attack = { inst: {} }; const z0 = m.pos.z, n0 = m.lagCount ?? 0;
+    for (let i = 0; i < 120; i++) m.mutatorTick(DT);
+    expect(m._lagWarn).toBeNull(); expect(m.pos.z).toBe(z0); expect(m.lagCount ?? 0).toBe(n0);
   });
 });
 
