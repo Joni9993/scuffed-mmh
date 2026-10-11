@@ -14,6 +14,7 @@ export const WEAPON_TIPS = {
   db: 'Zwillingsklingen: schnelle Kombos, B = Wirbel. Rollen zum Ausweichen.',
   bow: 'Spannbogen: A halten = spannen, loslassen schießt. Schwachstellen per Lock anvisieren.',
   kt: 'Katana: Konter mit B im richtigen Moment, A-Ketten füllen die Klingenleiste.',
+  kk: 'Krachkiste: jeder Schlag nimmt ein Sample (Kopf ▲ · Körper ■ · Glieder ●). B spielt die Leiste ab und buffed alle im Umkreis.',
 };
 export const shouldShowTips = (s = settings) => !s.tipsSeen && (s.tipsShown ?? 0) < TIPS_MAX;
 

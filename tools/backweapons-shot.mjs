@@ -1,4 +1,4 @@
-// Screenshot of the 4 weapons stowed on the back (gearlab lineup, seen from behind). 844x390.
+// Screenshot of the weapons stowed on the back (gearlab lineup, seen from behind). 844x390.
 //   SH_URL=http://127.0.0.1:5173/ node tools/backweapons-shot.mjs out.png
 import { createRequire } from 'module';
 const require = createRequire('/opt/node-tools/');
@@ -13,7 +13,7 @@ await page.waitForFunction(() => window.__SH?.app?.scene?.show, null, { timeout:
 await page.evaluate(async () => {
   const { mountOnBack } = await import('/src/game/gear/backMount.js');
   const { REST } = await import('/src/game/anim.js');
-  const types = ['gs', 'kt', 'db', 'bow'];
+  const types = ['gs', 'kt', 'kk', 'db', 'bow']; // [KK]
   const sc = window.__SH.app.scene;
   sc.show(types.map((t) => ({ gear: { weapon: { type: t, tier: 1 } }, yaw: 0, pose: { ...REST }, noWeapon: true })), { spacing: 2.2, cam: [0, 1.5, -6], look: [0, 1.0, 0] });
   sc.camera.position.set(0, 1.5, -6); sc.camera.lookAt(0, 1.0, 0);
