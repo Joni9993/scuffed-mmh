@@ -1,6 +1,19 @@
 import * as THREE from 'three';
 import { MUTATORS, MUTATOR_SHORT } from '../data/mutators.js';
 import { FOODS } from '../data/foods.js';
+import { COLORS as BUFF_COLORS, SYMBOL as BUFF_SYMBOL, BUFF_NAME, BUFF as BUFF_CFG, buffKey } from '../game/buffs.js'; // [KK] Krachkiste-Buffs
+
+/** [KK] kleine Buff-Symbole ▲■● (Stufe als Zahl, Restzeit als Balken) fuer HP-Leiste und Party-Liste */
+export function buffIcons(p) {
+  let h = '';
+  for (const c of BUFF_COLORS) {
+    const b = p?.buffs?.[c];
+    if (!b || b.t <= 0) continue;
+    h += `<i class="bf ${c}" title="${BUFF_NAME[c]} Stufe ${b.lvl}" style="--k:${Math.round(Math.min(1, b.t / BUFF_CFG.DUR) * 5) * 20}%">${BUFF_SYMBOL[c]}${b.lvl > 1 ? `<sup>${b.lvl}</sup>` : ''}</i>`;
+  }
+  return h;
+}
+const buffSig = (p) => `${buffKey(p)}:${BUFF_COLORS.map((c) => Math.round(Math.min(1, Math.max(0, p?.buffs?.[c]?.t ?? 0) / BUFF_CFG.DUR) * 5)).join('')}`;
 
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -18,6 +31,7 @@ export function createHud(root) {
     <div class="hud-tl">
       <div class="hud-name"></div>
       <div class="bar hp"><i class="bruise"></i><i class="fill"></i><i class="bonus"></i></div>
+      <div class="hud-buffs"></div><!-- [KK] Krachkiste-Buffs -->
       <div class="bar st"><i class="fill"></i><i class="bonus"></i></div>
       <div class="hud-food" style="display:none"></div><!-- Essens-Buff (Koch / Grillsteak) -->
       <div class="bar wu"><i class="fill"></i></div>
@@ -42,7 +56,7 @@ export function createHud(root) {
   const q = (s) => el.querySelector(s);
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), hpBar: q('.bar.hp'), hpBonus: q('.bar.hp .bonus'), stBonus: q('.bar.st .bonus'), food: q('.hud-food'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
-    wstat: q('.wstat'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mut: q('.hud-mut'), mini: q('.mini'),
+    wstat: q('.wstat'), buffs: q('.hud-buffs'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mut: q('.hud-mut'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
   const g = refs.mini.getContext('2d');
@@ -111,10 +125,19 @@ export function createHud(root) {
           set('glt', Math.ceil(gs.t * 10), (x) => { refs.glTime.textContent = (x / 10).toFixed(1) + 's'; refs.glModeFill.style.width = Math.max(0, (gs.t / 8) * 100).toFixed(0) + '%'; });
         }
       }
+      set('buffs', buffSig(p), () => { refs.buffs.innerHTML = buffIcons(p); }); // [KK]
       const stat = p.def.status?.(p.weapon);
-      const sk = stat ? `${stat.text}|${stat.level}|${stat.max}|${stat.sauber}` : '';
+      const sk = stat ? `${stat.text}|${stat.level}|${stat.max}|${stat.sauber}|${stat.slots?.join('') ?? ''}` : '';
       set('stat', sk, () => {
+        refs.wstat.classList.toggle('kk', !!stat?.slots); // [KK]
         if (!stat) { refs.wstat.innerHTML = ''; refs.wstat.classList.remove('sauber'); return; }
+        if (stat.slots) { // [KK] Krachkiste: 3 Sample-Slots ▲■● in Zonen-Farbe (+ REMIX / Hinweis)
+          refs.wstat.innerHTML = `<span class="kk-bar${stat.remix ? ' remix' : ''}">${stat.slots.map((c) => `<i class="kk-s ${c}">${BUFF_SYMBOL[c] ?? '·'}</i>`).join('')}</span><em class="kk-t">${stat.remix && !stat.sauber ? 'REMIX' : stat.text}</em>`;
+          refs.wstat.classList.toggle('sauber', false);
+          refs.wstat.classList.toggle('kk-sauber', !!stat.sauber);
+          return;
+        }
+        refs.wstat.classList.remove('kk-sauber');
         const pips = stat.max ? Array.from({ length: stat.max }, (_, i) => `<b class="${i < stat.level ? 'on' : ''}"></b>`).join('') : '';
         refs.wstat.innerHTML = `${pips}<span>${stat.sauber ? 'Sauber!' : stat.text}</span>`;
         refs.wstat.classList.toggle('sauber', !!stat.sauber);
@@ -134,8 +157,8 @@ export function createHud(root) {
         set('ko', hunt.teamKo, (x) => { refs.ko.textContent = `Umgekippt ${x}/3`; refs.ko.classList.toggle('bad', x >= 2); });
       }
       const others = hunt.players.filter((o) => o !== p);
-      set('party', others.map((o) => `${o.name}${Math.round(o.v.hp)}`).join(','), () => { // [N] name + mini HP bar
-        refs.party.innerHTML = others.map((o) => `<div>${o.name} <span class="party-bar"><b style="width:${Math.round((o.v.hp / o.v.maxHp) * 100)}%"></b></span></div>`).join('');
+      set('party', others.map((o) => `${o.name}${Math.round(o.v.hp)}${buffSig(o)}`).join(','), () => { // [N] name + mini HP bar (+ [KK] Buff-Symbole)
+        refs.party.innerHTML = others.map((o) => `<div>${o.name} <span class="party-bar"><b style="width:${Math.round((o.v.hp / o.v.maxHp) * 100)}%"></b></span>${buffIcons(o)}</div>`).join('');
       });
       bannerT -= dt; if (bannerT <= 0) refs.banner.classList.remove('show');
       centerT -= dt; if (centerT <= 0) refs.center.classList.remove('show');

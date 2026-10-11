@@ -34,6 +34,7 @@ const KR = ['#9a4a26', '#7a3418', '#c8741e', '#4a4a50', '#d8d0c0', '#ffb030', '#
 const GG = ['#3a3330', '#241f1d', '#463d38', '#ff6a1a', '#ffb040', '#d8c8a8'];            // Gorgo: Schlacke, Spalt, Segment-Hi, Glut, Glut-hell, Zahn
 const VT = ['#b8642a', '#d88a4a', '#1a1e2a', '#2a3350', '#5ad0ff', '#fff0a0', '#ffd84a']; // Voltaro: Kupfer, Kupfer-hell, Navy, Navy-hell, Funke, Funke-hell, Gold
 const TOOTH = '#f0e8d0';
+export const PALETTES = { RUST, STEEL, BONE, JP, BZ, BR, KR, GG, VT, TOOTH }; // [KK] gemeinsame Brocken-Paletten fuer krachkisteLook.js
 
 const KEYS = ['rust', 'bone', 'jag', 'barr', 'brat', 'kroll', 'gorgo', 'volt', 'fuerst'];
 function lookKey(top, branch) {

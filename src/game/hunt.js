@@ -32,6 +32,7 @@ import { createAmbientFauna } from './ambientFauna.js'; // [L]
 import { openStation, closeStation } from '../ui/stations.js';
 import { attachGlitch, GLITCH } from './glitch.js';
 import { newTrain, trainRefill, trainHit, trainTick } from './training.js';
+import { atkMul as buffAtk } from './buffs.js'; // [KK] Krachkiste-Angriffs-Buff
 
 const MAX_KO = 3;
 
@@ -254,7 +255,7 @@ export class Hunt {
     const st = player.stats;
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
-    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) * (player.counterBuffUntil > this.time ? 1 + player.counterBuff.atk : 1) }; // x1,3 im Glitch-Modus; Überladung // [KT] Schliff
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) * (player.counterBuffUntil > this.time ? 1 + player.counterBuff.atk : 1) * buffAtk(player) }; // x1,3 im Glitch-Modus; Überladung // [KT] Schliff // [KK] Angriffs-Buff Rot
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     if (st.partDmgMul) res.partDmgMul = st.partDmgMul; // Kroll-Ast: Teil-HP-Schaden
@@ -268,7 +269,7 @@ export class Hunt {
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
     if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, ah.hit.sauberText ?? 'Sauber!', 'weak'); } // [KT]
     this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at, kind: res.weak ? 'weak' : res.crit ? 'crit' : undefined }); // [K] kind
-    player.afterHit(res, ah);
+    player.afterHit(res, ah, { hp, monster, at }); // [KK] Waffen-Hook def.onHit bekommt Teil + Treffpunkt
     this.stats.damage += res.dmg;
     this.stats.hits++;
     if (this.training) this.#trainHit(res.dmg);
@@ -435,6 +436,7 @@ export class Hunt {
 
     const p = this.player;
     this.fx.update(dt);
+    this.kkfx?.update(dt); // [KK] Boden-Ringe / fliegende Sample-Symbole (angelegt beim ersten Abspielen)
     this.rig.update(dt, {
       playerPos: p.pos, playerYaw: p.rot, moving: p.speed > 1, camInput: this.input.takeCamera(),
       lockPos: p.lockPoint(), lockSize: p.lock?.monster?.bodyRadius, shake: this.fx.shakeOffset,
@@ -470,6 +472,7 @@ export class Hunt {
     this.projectiles.dispose(); // [W]
     this.ambientFauna?.dispose(); // [L]
     this.fx.dispose();
+    this.kkfx?.dispose(); // [KK]
     this.world.dispose?.(); // [K] gather UI, ambient audio
     this.hud.dispose();
     this.meta?.dispose(); this.effects?.dispose(); this.interact?.dispose(); // [P]

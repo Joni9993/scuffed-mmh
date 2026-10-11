@@ -8,6 +8,8 @@ import { rollGather } from '../data/gather.js';
 import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
 import { PLAYER_COLORS } from '../meta/save.js';
 import { monsters as MONDEFS } from '../game/monsters/index.js';
+import { encodeKkBar, decodeKkBar } from '../game/buffs.js'; // [KK]
+import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
 
 export const RATE_P = 15;   // Hz  Pirscher
 export const NEUTRAL_R = 75; // [L] neutral animals farther than this from every hunter are not replicated
@@ -100,6 +102,9 @@ export class HuntNet {
     // Glitch-Modus des lokalen Pirschers -> alle (nur Optik; Schaden ist client-autoritativ)
     off.push(hunt.bus.on('glitchStart', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeGlitch(true)); }));
     off.push(hunt.bus.on('glitchEnd', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeGlitch(false)); }));
+    // [KK] Krachkiste: Abspielen (Position, Leiste, Stufen) und Leisten-Stand (nur Kragen-Optik) -> alle; jeder Client buffed seinen eigenen Pirscher
+    off.push(hunt.bus.on('kkPlay', (e) => { if (e?.player?.local && e.ev) n.sendAll(MSG.EV, e.ev); }));
+    off.push(hunt.bus.on('kkBar', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeKkBar(e.bar ?? [])); }));
     // lokales Einsammeln (K) -> alle
     off.push(hunt.bus.on('gathered', (e) => {
       if (e?.remote) return;
@@ -161,6 +166,12 @@ export class HuntNet {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
       case 'gear': this.#onGear(from, d.g); break;
       case 'ia': hunt.interact?.onNet(d, from); break;
+      case 'kk': if (this.peers.has(from)) onKkEvent(hunt, d); break; // [KK] Buff-Radius wird beim Empfaenger geprueft
+      case 'kkb': { // [KK] Leiste eines Mitspielers (Sample-Kragen)
+        const peer = this.peers.get(from), bar = decodeKkBar(d);
+        if (peer && bar) kkState(peer.player.weapon).bar = bar;
+        break;
+      }
       case 'glitch': {
         const peer = this.peers.get(from), gl = decodeGlitch(d);
         if (peer && gl) { peer.player.glitch.active = gl.on; peer.player.glitch.t = gl.on ? 9 : 0; }

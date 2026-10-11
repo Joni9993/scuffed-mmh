@@ -15,6 +15,7 @@ import { REST, sampleTrack, mirrorPose } from './anim.js';
 import { buildHunterRig } from './rig.js';
 import { stepLock } from '../input/lock.js';
 import { makeGear } from '../data/gearlook.js'; // [G]
+import { tickBuffs, clearBuffs, speedMul as buffSpeed, noFlinch } from './buffs.js'; // [KK] Krachkiste-Buffs
 
 const D2R = Math.PI / 180;
 const WALK = 4, RUN = 6, SPRINT = 8.5;
@@ -65,6 +66,7 @@ export class Player {
     this.flinkfuss = 0; // Macke level (0..2)
     this.flash = 0;
     this.status = {}; // [M] mud / burn / poison: { t, rollsLeft }
+    this.buffs = {}; // [KK] Krachkiste-Buffs { r|b|g: {lvl, t} } (buffs.js)
     this.pushT = 0; this.pushV = { x: 0, z: 0 }; // [M] wind push
     this._dotAcc = 0;
 
@@ -245,7 +247,7 @@ export class Player {
     if (sa === 'all') return 'hit';
     if (knock === 'pin') { this.#enter('pinned'); w.cancel(); return 'hit'; }
     if (knock === 'down') { this.#enter('down'); w.cancel(); this.#push(h, 3); return 'hit'; }
-    if (knock === 'flinch' && sa !== 'flinch') { this.#enter('flinch'); w.cancel(); this.#push(h, 1); }
+    if (knock === 'flinch' && sa !== 'flinch' && !noFlinch(this)) { this.#enter('flinch'); w.cancel(); this.#push(h, 1); } // [KK] Blau: kein Zurückstolpern bei leichten Treffern
     return 'hit';
   }
   /** [KT] returns 'block' so monsters / projectiles mark the hit as consumed. */
@@ -355,6 +357,7 @@ export class Player {
   respawn(x, z) {
     this.v.hp = this.v.maxHp; this.v.bruise = 0; this.v.stamina = this.v.maxStamina; this.v.exhaust = 0;
     this.clearStatus(); // [M]
+    clearBuffs(this); // [KK]
     this.state = 'free'; this.stateT = 0; this.invuln = 2.0; this.lock = null;
     this.weapon.reset(); this.weapon.wucht = 0;
     this.spawnAt(x, z, this.rot);
@@ -440,6 +443,7 @@ export class Player {
     if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
     tickPrellung(this.v, dt);
     tickStamina(this.v, dt);
+    tickBuffs(this, dt); // [KK]
     this.#tickStatus(dt); // [M]
 
     const inp = { A: input.b.attack, B: input.b.special };
@@ -511,7 +515,7 @@ export class Player {
       else speedTarget = WALK * clamp(d.mag / 0.7, 0.5, 1);
       if (v.exhaust > 0) speedTarget = Math.min(speedTarget, WALK);
       if (busy) speedTarget = WALK * w.moveSpeedMul() * (d.mag > 0.7 ? 1.4 : 1);
-      speedTarget *= this.def.speedMul?.(w) ?? 1; // [W] Rausch +15 %
+      speedTarget *= (this.def.speedMul?.(w) ?? 1) * buffSpeed(this); // [W] Rausch +15 % // [KK] Tempo-Buff Grün
       if (this.status.mud || mud) speedTarget *= 0.7; // [M] mud status / [K] mud ground (not stacked)
       wantYaw = yawOf(d.x, d.z);
     } else this.fullPushT = 0;
@@ -605,11 +609,12 @@ export class Player {
   }
 
   /** Called by hunt after a hit resolved: hitstop, Wucht, feedback. */
-  afterHit(res, ah) {
+  afterHit(res, ah, info = null) {
     this.hitstop = Math.max(this.hitstop, res.hitstop);
     let wucht = res.wucht;
     if (ah.glitch && !this.weapon.flags.glitchUsed) { wucht += 25; this.weapon.flags.glitchUsed = true; }
     this.weapon.addWucht(wucht);
+    if (info) this.def.onHit?.(this, res, ah, info); // [KK] Waffen-Hook: Krachkiste legt hier das Sample der getroffenen Zone in die Leiste
   }
 
   // [N] network avatar (local:false): state/pose come from snapshots, no input or physics.
@@ -618,6 +623,7 @@ export class Player {
     const r = this.remote;
     if (!r) return;
     this.time += dt;
+    tickBuffs(this, dt); // [KK] nur Anzeige (Party-HUD)
     this.lastState = this.state;
     if (this.state !== r.state) { this.state = r.state; this.stateT = 0; } else this.stateT += dt;
     if (this.glitch.active && (this.glitch.t -= dt) <= 0) { this.glitch.active = false; this.glitch.t = 0; } // [N] Sicherheitsnetz, falls das Ende-Event fehlt

@@ -558,7 +558,80 @@ Monster-Narben, teilbare Monster-Codes, Persönlichkeits-Seed als eigenes Featur
   - **Offen:** Owner-Handytest.
 - **Als Nächstes:** Owner-Tests auf dem Handy, Balancing nach Tod-Log; danach Ideen aus `docs/NEXT.md` (weitere Multi-Jagden, Rotglut+).
 
+## 17. Waffen 5 & 6: Krachkiste (`kk`) und Glitchaxt (`ga`) (Owner-Entscheidungen Okt 2026)
+
+> Herleitung + Skizzen: Design-Entwurf „Krachkiste & Glitchaxt" (Artifact). Dieser Abschnitt ist **autoritativ**. Zahlen sind Startwerte fürs Tuning.
+
+### 17.0 Regeln für beide
+- **Keine neuen Buttons.** A, B, A/B halten (wie Plattmacher/Katana), Rolle, Item, Lock, Glitch – wie alle Waffen.
+- **Familien-DNA der bestehenden Waffen übernehmen:** 3er-A-Kette (Schleife) · Rolle → A innerhalb 0,3 s = eigener Angriff · B tippen = Waffen-Kniff · **B halten (0,3 s) bei Wucht 100 = Finisher** (wie Zwillingsklingen/Katana, `overrideEvent`) · Rollen-Abbruch ab `rollCancelAt` · „sauber"-Feedback als kleine Schwebeschrift (wie „Blankgezogen!", `hit.sauberText`), **keine Warn-Banner** (Handy-Platz).
+- **Lesbarkeit vor Abwechslung:** Feedback-Farben/-Töne sind über alle Stufen/Brocken identisch, Brocken-Optik nur als Form + Akzent.
+- **Stufenbaum** wie alle Waffen (§8.1, `WEAPON_UPGRADES`): 1 Rost → 2 Knochen → 3a Jaggo / 3b Barrotz → 4 Brathalos → 5 k/g/v → 6 Funkenfürst (nur v). Jede Stufe/jeder Ast eigene Silhouette aus den Teilen des Brockens (`gear/weaponLook.js`).
+- **Ziel-DPS** (`tools/weapon-dps.mjs`, Stufe 1, ruhender Brocken): Krachkiste ≈ 40 (Support, dafür Buffs), Glitchaxt ≈ 48 (Axt ≈ 38, Schwert ≈ 58). **Glitch-Anteil** 38–46 % (`tools/glitch-share.mjs`).
+
+### 17.1 Krachkiste (`kk`) – der Sampler (Support, stumpf)
+Schrott-Lautsprecher auf Rohrstiel, zweihändig wie ein Hammer, Schlagfläche = Membran. Mittelschwer (Bewegung zwischen Plattmacher und Katana).
+- **Samples:** Jeder Schlag (max. **1 Sample pro Move**, erster getroffener Teil zählt) legt das Sample der **Zone** in die Leiste (3 Slots, FIFO):
+
+| Zone | Teile | Ton (immer gleich, jeder Brocken) | Farbe / Symbol | Buff |
+|---|---|---|---|---|
+| **Kopf** | head, kopf | „DING" hohe Glocke | Rot ▲ | Angriff +10 % |
+| **Körper** | body, koerper, Panzer, Spulen | „BUMM" tiefer Kick | Blau ■ | Puste-Verbrauch −25 % + kein Zurückstolpern bei leichten Treffern |
+| **Glieder** | legs, tail, Flügel, Pranken, Scheren, alles andere | „TSCHAK" Snare | Grün ● | Tempo +10 % + 15 HP Heilung (einmalig) |
+
+  Sample-Feedback: Zonen-Ton + kleines farbiges Symbol fliegt vom Treffpunkt in den Slot.
+- **A-Kette:** Schwinger (BW 30, 0,7 s) → Gegenschwinger (BW 30, 0,7 s) → Überkopf-Stampfer (BW 46, 1,0 s). Stumpf (Betäubung am Kopf, `blunt` wie Plattmacher-Hieb). Wucht: Treffer +4.
+- **A halten = Aufdrehen** (Charge, 1 Stufe, 0,8 s), Loslassen = Boden-Stampfer mit Schallring (BW 70, Radius 2,5 m, stumpf 35). Fenster 0,8–1,05 s = „Voll aufgedreht!" (+20 %, `sauber`).
+- **B = Abspielen** (~1,0 s, Gehen langsam möglich): Leiste wird als Beat abgespielt, Buff für alle Pirscher im Radius **8 m**, Dauer **45 s**, danach Leiste leer.
+  - 3 gleiche = Buff dieser Farbe **Stufe 3** (doppelte Stärke). 2 gleiche = Stufe 2 (×1,5). Sonst je Sample Stufe 1.
+  - **3 verschiedene = REMIX:** alle drei Buffs Stufe 1 + Druckwelle (BW 40, Radius 4 m).
+  - Leiste leer: kurzer Schallstoß (BW 10, stößt Kleinvieh weg).
+  - Boden-Ring in Leisten-Farben läuft bis 8 m (Reichweite sichtbar). Buff gleicher Farbe erneuert die Dauer, stärkere Stufe gewinnt.
+- **Rolle → A:** Rutsch-Schwinger (flach, BW 28, 2,5 m nach vorne, trifft tief).
+- **Finisher „Zugabe!"** (B halten 0,3 s bei Wucht 100): Riesen-Stampfer BW 200, stumpf 70, 3 m Radius; spielt die Leiste auf Stufe 3 ab (leer = nur Schaden).
+- **Glitch „Feedback-Schleife"** (8 s): Leiste spielt sich alle 2 s selbst ab (ohne Leeren), jeder A-Treffer erzeugt ein Echo (BW 12, Stagger-Wert erhöht). Optik: Equalizer-Balken um den Pirscher, Membran zittert magenta.
+- **HUD:** Status-Zeile zeigt 3 Slots (▲■● in Farbe), bei 3 verschiedenen „REMIX". Buffs als kleine Symbole an der eigenen HP-Leiste (auch Mitspieler).
+- **Netz:** Abspielen ist ein Event an alle (Position, Leiste, Stufe); jeder Client wendet den Buff auf seinen lokalen Pirscher an, wenn er im Radius steht (client-autoritativ wie eigene Treffer).
+- **Optik je Stufe = Instrument aus dem Brocken:** 1 Blechkiste · 2 Schädel-Box mit Rippen-Gitter · 3a Jaggo-Kamm als EQ-Zacken · 3b Barrotz-Kopfplatte als Gong · 4 Brathalos-Flügelhaut als Schalltrichter · 5k Kroll-Kessel mit Dampfpfeifen · 5g Gorgo-Lava-Subwoofer · 5v Voltaro-Tesla-Spule · 6 goldene Doppelspule.
+  - **Entfalten:** B klappt das Instrument auf (Flügel spreizen, Kiefer klappt, Zacken springen als EQ hoch, Spule funkt), Remix = maximal entfaltet.
+  - **Membran pumpt** bei jedem eigenen Treffer in Zonen-Farbe.
+  - **Fix:** Sample-Kragen ▲■● am Stiel, immer gleiche Stelle/Farben. Instrument ändert nur Optik, nie den Zonen-Ton.
+- Stufenwerte (Kraft): 76 → 95 → 3a 112 (Krit 15 %) / 3b 118 (`bluntMul` 1,3) → 134 (Feuer 22) → 5k 150 (Rost 20, `partDmgMul` 1,25) / 5g 152 (Feuer 24, Krit 15 %) / 5v 156 (Schock 26) → 6: 180 (Schock 36).
+- **Umsetzung (gebaut, Okt 2026):** Waffe `src/game/weapons/krachkiste.js` (Moves, Leiste, Abspielen, Glitch, HUD-`status`), Buff-System + Zonen-Zuordnung + Netz-Kodierung `src/game/buffs.js` (rein, getestet), Optik `src/game/gear/krachkisteLook.js` (9 Looks, Pivot-Gruppen zum Entfalten) + `weapons/krachkistefx.js` (Boden-Ring, fliegende Symbole, Equalizer), Töne `kkDing/kkBumm/kkTschak/kkBeat/kkRemix` in `audio/sfx.js`, Netz `EV {k:'kk'|'kkb'}` in `net/sync.js`, Integration §17.3 (WEAPON_TYPES/ORDER/UPGRADES, Save, Gear-Code `h`, Rückenhalterung, Onboarding, Schmiede/Kompendium über `WEAPON_ORDER`). Tests `tests/unit/krachkiste.test.js`, Bilder `tools/weapon-looks.mjs` (`KK_*`) + `tools/kk-shots.mjs`, DPS `tools/weapon-dps.mjs` (`ONLY=kk`, `BUFF=r3`).
+  - **Abweichungen/Ergänzungen:** (1) *Zonen:* Gorgos `segment1–6` (Wurm) zählen als Körper (sonst hätte er nur Kopf + Glieder-Fallback), Kroll-`augen` und Voltaro-`antennenkamm` als Kopf (Kroll hat sonst keinen Kopf-Teil → nie Rot); damit liefert jeder Grossbrocken ausser Gorgo (keine Glieder) alle drei Farben. Alles andere = Glieder. (2) *Zugwahl bei B:* leere Leiste = Schallstoß, 3 verschiedene = Remix, sonst Abspielen – als eigene Moves (`kk_stoss`/`kk_remix`/`kk_play`), reines Abspielen macht keinen Schaden. (3) *Heilung* skaliert mit der Stufe (15 / 22,5 / 30 HP) und gilt nur für lokale Pirscher; die Glitch-Schleife heilt nicht. (4) *Combo-Fenster* A-Kette 0,42–0,66 s / 0,42–0,66 s / 0,66–0,94 s (nach dem Treffer-Fenster), Aufdrehen vor 0,8 s losgelassen = normaler Schwinger, Zugabe/Remix/Schallstoß/Echo legen keine Samples ab. (5) *Echo:* BW 12, `blunt` 18 (Kettenschlag 14), 0,14 s verzögert, max. 6 offen, kein Echo vom Echo. (6) *Buff-Anzeige:* auch Mitspieler-Avatare im Radius bekommen den Buff nur zur Anzeige (Party-Liste), die Wirkung rechnet jeder Client auf seinem eigenen Pirscher. (7) Fliegendes Symbol endet an der Pirscher-Brust (nicht am Kragen), Kragen = 3 Würfel am Stiel (Slot i = i-tes Sample, von oben nach unten). (8) Waffe ist ×1,18 skaliert (Lesbarkeit aus der Verfolgerkamera), Rückenhalterung ×0,8.
+  - **Gemessen** (`tools/weapon-dps.mjs`, Jaggo ruhend, Stufe 1, 40 s, ideal): A-Kette **40,3** DPS (Plattmacher A-Kette 53,9 / Aufladen 48,7 → Krachkiste ≈ 75 %), Aufdrehen-Zyklus („Voll aufgedreht!") 26–28, Kette + Voll 34–35. Mit Rot-Buff: Stufe 1 **44,6** (+10 %), Stufe 3 **48,0** (+19 %). Glitch-Modus dauerhaft: 71,3 (Plattmacher 67,8 / 72,3). `tools/glitch-share.mjs` (ganze Jagd, Seed 4): **Glitch-Anteil 43 %** (Plattmacher 46 %), Ziel 38–46 % erreicht. Tuning gegenüber dem Entwurf: nur die Combo-Fenster (vorher 0,36 s → 44,8 DPS).
+
+### 17.2 Glitchaxt (`ga`) – Datenblöcke (2 Modi, Timing)
+Waffe aus 8 losen **Datenblöcken**, von Glitch-Energie zusammengehalten. Axt = Blöcke klumpen zum schweren Kopf. Schwert = Blöcke reihen sich als lange Klinge am Stiel.
+- **Druck** 0–100 %. Die **Waffe selbst ist die Anzeige**: Blöcke leuchten vom Griff aus magenta (Fugen), immer magenta, unabhängig von Stufe. HUD nur Modus-Chip (AXT/SCHWERT) + dünner Balken.
+- **Axt-Modus (Start):** Reichweite, Bewegung wie Katana. Treffer bauen Druck auf.
+  - A-Kette: Hieb (BW 32, +8 Druck) → Aufwärtshieb (BW 30, +8) → Rundumschlag (BW 40, +12, breit).
+  - A halten = Wilde Schwünge (wiederholt, solange gehalten, BW 22 je Schwung, +6 Druck, rückt vor, kostet Puste 12/s).
+  - B = **Schaltschlag** ins Schwert (BW 34, trifft beim Morph). Braucht ≥ 25 % Druck, sonst „hustet" die Waffe (kleiner Pixel-Puff + Klack, keine Strafe).
+  - Rolle → A: Sprungspalter (BW 38, 2,5 m).
+- **Schwert-Modus:** Schaden hoch, Bewegung wie Plattmacher. Jeder Treffer −8 Druck, zusätzlich −3 Druck/s.
+  - A-Kette: Schnitt (BW 34) → Doppelschnitt (2× BW 22) → Hochschnitt (BW 44).
+  - B = Schaltschlag zurück in die Axt (BW 30). Früh zurück = immer erlaubt, kein Bonus, keine Strafe.
+  - B halten = **Entladung**: Klinge rein, Mehrfachtreffer (6× BW 14 + Abschluss BW 40, mehr Druck = mehr Treffer, mindestens 2), verbraucht allen Druck, endet in der Axt.
+  - Rolle → A: Ausfallstich (BW 30, 3 m).
+- **Kipp-Regel (Kern-Twist):**
+  1. Druck ≤ 15 % im Schwert → Blöcke wackeln/ruckeln, **Ticken** wird schneller, Balken blinkt (Vorwarnung nur Ton + Bild).
+  2. Druck = 0 → **Blitz**: alle Blöcke weiß + heller „Pling", Fenster **0,4 s**.
+  3. **B im Blitz = „Sauber!"** (Schwebeschrift): Bonus-Schlag (BW 50), Axt-Modus, +25 % Druck.
+  4. **Blitz verpasst = „Fehlzündung"** (Schwebeschrift, rot): Blöcke platzen weg und schnappen schief als Axt zurück, Knall, **0,5 s Stolpern** (kein Roll-Abbruch), Druck 0.
+  - Erste 2 Fehlzündungen: Waffen-Tipp ergänzt eine Zeile „B beim Aufblitzen = sauber schalten".
+- **Finisher „Kernschmelze"** (B halten 0,3 s bei Wucht 100, beide Modi): Überladen + Explosion BW 210, 3 m Radius, Superrüstung, endet in der Axt mit 50 % Druck. Wucht: Treffer +3, Sauber +10.
+- **Glitch „Zustandsfehler"** (8 s): Waffe in beiden Formen gleichzeitig – jeder Schlag trifft als Axt **und** Schwert (zweiter Treffer 60 % Schaden), Druck sinkt nicht, jeder Wechsel automatisch „Sauber!". Optik: Blöcke schweben halb in beiden Anordnungen, RGB-Versatz.
+- **Optik je Stufe:** gleiches Gerüst (Stiel + 8 Teile), Teile = Brocken-Material: 1 Rost-Würfel · 2 Knochen · 3a Jaggo-Zähne · 3b Barrotz-Platten · 4 Brathalos-Schuppen · 5k Kroll-Kesselblech mit Nieten · 5g Gorgo-Schlacke mit Glutriss · 5v Voltaro-Spulen · 6 Funkenfürst-Gold. **Anker-Teil** fest am Stiel (morpht nie). Niedrige Stufe = Blöcke schief, Morph ruckelt; hohe Stufe = sauber, flüssig. Morph-Animation 0,2 s (Blöcke lösen sich in Pixel, setzen sich neu zusammen).
+- Stufenwerte (Kraft): 78 → 97 → 3a 114 (Krit 15 %) / 3b 112 (Schock 14) → 132 (Feuer 22) → 5k 146 (Rost 18, `partDmgMul` 1,25) / 5g 148 (Feuer 20, Krit 15 %) / 5v 152 (Schock 22) → 6: 174 (Schock 32).
+- **Umsetzung (✅ gebaut, Okt 2026):** Waffe `src/game/weapons/glitchaxt.js`, Optik `src/game/gear/glitchaxtLook.js` (Stiel + Anker-Teil als ein Mesh, 8 Block-Meshes (`GA_N`) mit geteilter Geometrie je Look, nur die Fugen-Rahmen leuchten magenta (Flächen behalten die Brocken-Palette); Axt = zusammenhängender Keil-Kopf, Schwert = Klinge mit Rautenspitze; Stufen-Skew: Rost 0,14 rad → Funkenfürst 0; Reset bei KO/Respawn über `def.onReset`), Sounds `gaTick/gaPling/gaKnall/gaMorph/gaHusten` in `audio/sfx.js`, Tests `tests/unit/glitchaxt.test.js`. Treffer-Hook: `def.onHit` aus `Player.afterHit` (Hit-Feld `druck`). Messung `tools/weapon-dps.mjs` (`ONLY=ga`), Stufe 1, Jaggo, ruhender Brocken, bester Abstand/Teil: **Axt 38,9 · Schwert (Druck festgenagelt) 57,3 · Zyklus mit sauberem Schalten 49,0 · Zyklus mit Entladung 52,8** (Plattmacher-Mash 53). **Glitch-Anteil** (`tools/glitch-share.mjs ga`, 4 Seeds): 40,7–45,4 %, Ø 42,8 %.
+  - **Abweichungen:** (1) Axt-Kette langsamer als Katana (Fenster 0,48 / 0,50 / 0,74 s statt ~0,25 s), sonst wären BW 32/30/40 bei Katana-Tempo ~65 DPS statt 38; Wilde Schwünge 0,4 s je Schwung. Schwert-Kette Fenster 0,37 / 0,41 / 0,41 s. (2) Entladung: 0,4 s Einziehen, Pulse im Abstand 0,11 s (n = ⌈Druck/100 · 6⌉, 2–6), Dauer 1,2–1,7 s. (3) **Zustandsfehler: zweiter Treffer 40 % statt 60 %** und `glitchGainMul` 0,75 (Glitch-Energie je Schaden ×0,75, neuer optionaler Waffen-Hook in `glitch.js`), sonst lag der Glitch-Anteil bei ~53 %, weil Druck 0 im Glitch das Schwert dauerhaft hält; am Glitch-Ende bekommt ein Schwert mit Druck 0 mindestens 20 %. (4) Blitz: B kurz **vor** dem Blitz zählt noch (Eingabepuffer 0,08 s), Kipp-Timer laufen nur, solange `update()` läuft (Rolle/Hitstop pausieren). Blitz öffnet nicht in Schaltschlägen, Entladung, Kernschmelze, Sauber-Schlag, Fehlzündung und im Glitch. (5) Sauber-Schlag nimmt BW 50 ohne den üblichen Sauber-Bonus (`sauberMul` 1). (6) Fehlzündung: „kein Roll-Abbruch“ = man kann erst nach den 0,5 s rollen (`rollCancelAt` = Dauer); Lern-Zeile „B beim Aufblitzen!“ als kleine Schwebeschrift bei den ersten 2 Fehlzündungen (`settings.gaFehl`), im Waffen-Tipp ab der ersten Fehlzündung. (7) Koop: Modus, Druck (5-%-Stufen) und Blitz laufen im Pose-Level (Bits 32/64), Fremd-Avatare behalten den letzten Wert zwischen Moves.
+
+### 17.3 Integration (beide)
+- IDs `kk` / `ga` in `WEAPON_TYPES`, `WEAPON_ORDER`, `weapons/index.js`, `WEAPON_UPGRADES` (Kosten analog Katana), Save-Defaults (`meta/save.js`, alte Saves bekommen Stufe-1-Waffe), Gear-Code (`data/gearlook.js`), Rückenhalterung (`gear/backMount.js`), Onboarding-Tipp, Kompendium/Schmiede (läuft über `WEAPON_ORDER`).
+- Tests: Moves/Kette/Finisher, Sample-Zonen-Zuordnung, Buff-Stufen, Kipp-Regel (Fenster 0,4 s, Sauber/Fehlzündung), Glitch-Hooks, Save-Migration, Gear-Code Roundtrip.
+
 ---
 
 ## 13. Nicht im MVP
-Host-Migration, Online-Accounts, Chat (nur 6 Schnell-Emotes: „Hilfe!", „Hier!", „Falle!", „Danke", „Los!", „Oops"), weitere Waffen, Musik.
+Host-Migration, Online-Accounts, Chat (nur 6 Schnell-Emotes: „Hilfe!", „Hier!", „Falle!", „Danke", „Los!", „Oops"), Musik.

@@ -93,6 +93,22 @@ body.scan #stage::after {
 .wstat b { width: 2.4vmin; height: 1.6vmin; background: #2a2a6a; border: 1px solid #000; }
 .wstat b.on { background: #5ad8ff; }
 .wstat.sauber b.on, .wstat.sauber span { background: #ffe14d; color: #ffe14d; }
+/* [KK] Krachkiste: Sample-Leiste (3 Slots ▲■●) in der Waffen-Statuszeile + Buff-Symbole an der HP-Leiste / Party-Liste */
+.wstat.kk { height: auto; min-height: 3.2vmin; }
+.wstat .kk-bar { display: inline-flex; gap: .5vmin; padding: .2vmin .6vmin; background: rgba(8,8,24,.6); border: 1px solid #000; outline: 1px solid rgba(244,240,208,.35); }
+.wstat .kk-s { font-style: normal; font-size: max(11px, 2.8vmin); line-height: 1; width: 2.9vmin; text-align: center; color: #555560; text-shadow: 1px 1px 0 #000; }
+.wstat .kk-s.r { color: #ff4a3a; } .wstat .kk-s.b { color: #3a8cff; } .wstat .kk-s.g { color: #44e05a; }
+.wstat .kk-bar.remix { outline: 1px solid #ffe14d; }
+.wstat .kk-bar.remix + .kk-t { color: #ffe14d; animation: blink .5s steps(1) infinite; }
+.wstat .kk-t { font-style: normal; font-weight: bold; color: #f4f0d0; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
+.wstat.kk-sauber .kk-t { color: #ffe14d; }
+.hud-buffs { display: flex; gap: .8vmin; min-height: 0; }
+.hud-buffs:empty { display: none; }
+.bf { position: relative; font-style: normal; font-size: max(9px, 2vmin); font-weight: bold; line-height: 1.1; padding: 0 .4vmin .5vmin; background: rgba(8,8,24,.65); border: 1px solid #000; text-shadow: 1px 1px 0 #000; }
+.bf::after { content: ''; position: absolute; left: 0; bottom: 0; height: .35vmin; width: var(--k, 100%); background: currentColor; }
+.bf sup { font-size: .65em; margin-left: .2vmin; color: #f4f0d0; }
+.bf.r { color: #ff4a3a; } .bf.b { color: #3a8cff; } .bf.g { color: #44e05a; }
+.hud-party .bf { font-size: max(8px, 1.7vmin); margin-left: .6vmin; }
 .hud-party { position: absolute; left: calc(var(--sal) + 2vmin); top: calc(var(--sat) + 14vmin); font-size: max(9px, 2.4vmin); display: grid; gap: .4vmin; }
 .hud-tr { position: absolute; right: calc(var(--sar) + 2vmin); top: calc(var(--sat) + 1.6vmin); display: grid; justify-items: end; gap: .6vmin; }
 .hud-timer { font-size: max(9px, 2.6vmin); }

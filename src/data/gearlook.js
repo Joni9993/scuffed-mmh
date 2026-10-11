@@ -6,8 +6,8 @@ import { WEAPON_TYPES } from './weapons.js';
 export const GEAR_SETS = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro'];
 /** Visual escalation: 0 = rags ... 4 = Brathalos, 5 = Kroll/Gorgo, 6 = Voltaro (alle >= 4: Aura/Glühen). */
 export const SET_TIER = { lumpen: 0, fellkluft: 1, knochenkram: 1, jaggo: 2, barrotz: 3, brathalos: 4, kroll: 5, gorgo: 5, voltaro: 6 };
-const WCHAR = { gs: 'g', db: 'd', bow: 'b', kt: 'k' };
-const WTYPE = { g: 'gs', d: 'db', b: 'bow', k: 'kt' };
+const WCHAR = { gs: 'g', db: 'd', bow: 'b', kt: 'k', kk: 'h', ga: 'x' };
+const WTYPE = { g: 'gs', d: 'db', b: 'bow', k: 'kt', h: 'kk', x: 'ga' };
 /** Waffen-Ast je Stufe: 3 = a|b (Jaggo/Barrotz), 5 = k|g|v (Kroll/Gorgo/Voltaro), 6 = v, sonst null. */
 export function gearBranch(tier, branch) {
   if (tier === 3) return branch === 'b' ? 'b' : 'a';

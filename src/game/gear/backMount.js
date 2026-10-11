@@ -7,6 +7,10 @@ const SOCKETS = {
   gs: { x: -0.16, y: 1.12, z: -0.34, rz: 0.4 },
   // katana: same carry, a bit flatter
   kt: { x: -0.16, y: 1.08, z: -0.34, rz: 0.48 },
+  // glitchaxt [GA]: Axt-Form quer ueber den Ruecken, Block-Kopf an der Schulter
+  ga: { x: -0.16, y: 1.06, z: -0.34, rz: 0.45 },
+  // krachkiste: Stiel ueber der Schulter, der Lautsprecher haengt hinten am Ruecken (Membran nach aussen)
+  kk: { x: -0.14, y: 1.12, z: -0.36, rz: 0.55, s: 0.8 },
   // dual blades: two blades crossed on the back (hilts up at the shoulders)
   db: { x: -0.2, y: 0.92, z: -0.33, rz: 0.62, off: { x: 0.2, y: 0.92, z: -0.37, rz: -0.62 } },
   // bow: limbs span the whole back, slight diagonal, grip near the middle
@@ -23,6 +27,7 @@ export function mountOnBack(rig, mesh, weaponId) {
     const g = new THREE.Group();
     g.position.set(s.x, s.y, s.z);
     g.rotation.set(0, s.ry ?? 0, s.rz, 'YXZ');
+    if (s.s) g.scale.setScalar(s.s); // [KK] Krachkiste: kleiner auf dem Ruecken
     g.add(m);
     back.add(g);
   };
