@@ -2,6 +2,7 @@
 import { getQuest, RANK_RP } from '../data/quests.js';
 import { rollReward, rollBreak } from '../data/drops.js';
 import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
+import { BESTIARY } from '../data/compendium.js';
 import { applyChestResult } from './huntChest.js';
 
 export const MAX_JR = 7; // 2 Jaggo, 3 Barrotz, 4 Brathalos, 5 Revierstreit, 6 Kroll/Gorgo, 7 Voltaro
@@ -81,6 +82,15 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
   const rpBefore = save.rp ?? 0, openBefore = openKeys(save);
   if (rewards.result === 'win') save.rp = Math.min(1e9, rpBefore + Math.max(0, Math.floor(rewards.rp ?? 0)));
   save.stats.hunts++;
+  // Kompendium: jeder Kampf gegen einen Brocken zählt (auch verloren)
+  save.fights ??= {};
+  const book = [];
+  if (quest.type === 'hunt' && !quest.hidden) for (const id of new Set([quest.monster, ...(quest.monsters ?? []).map((x) => x.id)].filter(Boolean))) {
+    const before = save.fights[id] ?? 0, after = Math.min(99999, before + 1);
+    save.fights[id] = after;
+    const b = BESTIARY.find((x) => x.id === id);
+    if (b) for (const e of b.entries) if (e.at > before && e.at <= after) book.push({ monster: b.name, name: e.name });
+  }
   let jrUp = null, firstClear = false;
   if (rewards.result === 'win') {
     save.stats.wins++;
@@ -97,7 +107,7 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
   st.carves += Math.max(0, Math.floor(Number(info.carves) || 0));
   st.glitch += Math.max(0, Math.floor(Number(info.glitch) || 0));
   save.meal = null; // one meal per hunt
-  return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear, rp: (save.rp ?? 0) - rpBefore, keyOpen: openKeys(save).filter((k) => !openBefore.includes(k)) };
+  return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear, rp: (save.rp ?? 0) - rpBefore, keyOpen: openKeys(save).filter((k) => !openBefore.includes(k)), book };
 }
 
 export const questById = getQuest;

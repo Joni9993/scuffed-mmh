@@ -28,6 +28,8 @@ export function defaultSave() {
     stats: { hunts: 0, wins: 0, fails: 0, kos: 0, carves: 0, crafted: 0, glitch: 0, playtime: 0 },
     kills: {}, // monsterId -> n
     best: {}, // questId -> fastest win (seconds)
+    fights: {}, // monsterId -> Kämpfe (Sieg oder Niederlage) – schaltet Kompendium-Einträge frei
+    bookSeen: {}, // monsterId -> gelesene Kompendium-Einträge (NEU-Markierung)
     created: Date.now(), updated: Date.now(),
   };
 }
@@ -109,6 +111,10 @@ export function sanitize(d) {
   if (isObj(d.stats)) for (const k of Object.keys(s.stats)) s.stats[k] = int(d.stats[k], 0, 1e9, 0);
   if (isObj(d.kills)) for (const [id, n] of Object.entries(d.kills)) { const c = int(n, 0, 99999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.kills[id] = c; }
   if (isObj(d.best)) for (const [id, n] of Object.entries(d.best)) { const c = Number(n) >= 1 ? int(n, 1, 99999, 0) : 0; if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.best[id] = c; }
+  // Kompendium: alte Saves ohne fights starten mit ihren Siegen
+  const fsrc = isObj(d.fights) ? d.fights : s.kills;
+  for (const [id, n] of Object.entries(fsrc)) { const c = int(n, 0, 99999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.fights[id] = c; }
+  if (isObj(d.bookSeen)) for (const [id, n] of Object.entries(d.bookSeen)) { const c = int(n, 0, 999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.bookSeen[id] = c; }
   s.version = CURRENT_VERSION;
   return s;
 }

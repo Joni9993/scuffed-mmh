@@ -17,6 +17,7 @@ import { deathlog, prettyAttack } from '../meta/deathlog.js';
 import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { GearPreview, previewSlot } from './gearPreview.js';
+import { BESTIARY, CONDITIONS, KIND_LABEL, unlockedEntries, nextUnlock } from '../data/compendium.js';
 import { makeGear } from '../data/gearlook.js';
 
 // ============================================================ Kochtopf
@@ -132,7 +133,32 @@ const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart
 const hhmm = (s) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min` : `${Math.floor(s / 60)} min`);
 
 export function createSpiegel(ctx) {
-  let tab = 'look', pv = null;
+  let tab = 'look', pv = null, bookSel = 'zustaende';
+
+  // ---- Brocken-Kompendium: Feldnotizen, wachsen mit jedem Kampf (save.fights)
+  const fightsOf = (id) => ctx.save.fights?.[id] ?? 0;
+  const newCount = (b) => Math.max(0, unlockedEntries(b, fightsOf(b.id)).length - (ctx.save.bookSeen?.[b.id] ?? 0));
+  const bookNew = () => BESTIARY.reduce((n, b) => n + newCount(b), 0);
+  function bookView() {
+    const chip = (k, label, dot) => `<button class="tab${k === bookSel ? ' on' : ''}" data-a="book" data-k="${k}">${label}${dot ? ' <b style="color:#ffd84a">●</b>' : ''}</button>`;
+    const chips = `<div class="tabs" style="flex-wrap:wrap">${chip('zustaende', 'Zustände')}${BESTIARY.map((b) => chip(b.id, fightsOf(b.id) ? esc(b.name.split(' ')[0]) : '???', newCount(b) > 0)).join('')}</div>`;
+    let body;
+    if (bookSel === 'zustaende') {
+      const grp = (who, title) => `<div class="sub">${title}</div>${CONDITIONS.filter((c) => c.who === who).map((c) => `<div class="row srow"><span class="nm"><b>${esc(c.name)}</b><br><small>${esc(c.text)}</small></span></div>`).join('')}`;
+      body = `<div class="note">„Was dich umbringt, sollte man kennen. Was den Brocken umbringt, erst recht.“ – Notizbuch, Seite 1</div>${grp('du', 'Was dich erwischt')}${grp('brocken', 'Was du dem Brocken antust')}`;
+    } else {
+      const b = BESTIARY.find((x) => x.id === bookSel), f = fightsOf(b.id), list = unlockedEntries(b, f), seen = ctx.save.bookSeen?.[b.id] ?? 0, nx = nextUnlock(b, f);
+      if (!f) body = `<div class="note">Noch keine Begegnung. Die Seite ist leer, bis auf einen Kaffeefleck.</div>`;
+      else {
+        body = `<div class="fi-h"><b>${esc(b.name)}</b> <small>${esc(b.title)} · ${esc(b.where)} · ${f} ${f === 1 ? 'Kampf' : 'Kämpfe'} · ${ctx.save.kills?.[b.id] ?? 0} erlegt</small></div>
+          <div class="note">${esc(b.intro)}</div>
+          ${list.map((e, i) => `<div class="row srow"><span class="nm"><b>${esc(e.name)}</b> <small>${KIND_LABEL[e.kind]}${i >= seen ? ' · <b style="color:#ffd84a">NEU</b>' : ''}</small><br><small>${esc(e.text)}</small></span></div>`).join('')}
+          ${nx ? `<div class="note">${b.entries.length - list.length} Seiten noch leer. Nächste Notiz nach ${nx === 1 ? 'dem nächsten Kampf' : `${nx} weiteren Kämpfen`}.</div>` : '<div class="note">Seite voll. Mehr gibt es über diesen Brocken nicht zu wissen – außer, wie man ihn schneller erlegt.</div>'}`;
+      }
+    }
+    return `<div class="fg-tabs">${tabsHtml()}</div>${chips}${body}`;
+  }
+  const markSeen = (id) => { const b = BESTIARY.find((x) => x.id === id); if (!b) return; const n = unlockedEntries(b, fightsOf(id)).length; if ((ctx.save.bookSeen?.[id] ?? 0) < n) { ctx.save.bookSeen = { ...(ctx.save.bookSeen ?? {}), [id]: n }; return true; } return false; };
 
   function look() {
     const s = ctx.save;
@@ -163,10 +189,10 @@ export function createSpiegel(ctx) {
       <div class="sub">Brocken &amp; Bestzeiten</div>${rows}${deathHtml()}`;
   }
 
-  const tabsHtml = () => `<div class="tabs">${[['look', 'Aussehen'], ['stats', 'Erfolge']].map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
+  const tabsHtml = () => `<div class="tabs">${[['look', 'Aussehen'], ['stats', 'Erfolge'], ['book', `Kompendium${bookNew() ? ' ●' : ''}`]].map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
 
   return {
-    render: () => (tab === 'look' ? look() : statsView()),
+    render: () => (tab === 'look' ? look() : tab === 'book' ? bookView() : statsView()),
     after(body) {
       body.classList.toggle('fit', tab === 'look');
       const slot = body.querySelector('[data-gpv]');
@@ -176,7 +202,7 @@ export function createSpiegel(ctx) {
       pv.set(makeGear(buildLoadout(ctx.save)));
       pv.attach(slot);
     },
-    dispose() { pv?.dispose(); pv = null; },
+    dispose() { pv?.dispose(); pv = null; if (tab === 'book' && markSeen(bookSel)) ctx.commit(); },
     input(e) {
       if (e.target.id !== 'st-name') return false;
       ctx.save.nameSet = true;
@@ -185,7 +211,8 @@ export function createSpiegel(ctx) {
       return false; // do not re-render while typing
     },
     click(a, d) {
-      if (a === 'color') { ctx.save.color = d.k; ctx.commit(); } else if (a === 'tab') tab = d.k;
+      if (a === 'color') { ctx.save.color = d.k; ctx.commit(); } else if (a === 'tab') { if (tab === 'book' && d.k !== 'book' && markSeen(bookSel)) ctx.commit(); tab = d.k; }
+      else if (a === 'book') { const prev = bookSel; bookSel = d.k; if (prev !== d.k && markSeen(prev)) ctx.commit(); } // NEU verschwindet, sobald man die Seite verlässt
       else if (a === 'dlexport') { try { navigator.clipboard?.writeText(deathlog.exportText((id) => monsters[id]?.name ?? id)); ctx.toast('Tod-Log kopiert.'); } catch { ctx.toast('Kopieren ging nicht.', true); } }
     },
   };

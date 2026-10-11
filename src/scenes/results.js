@@ -46,6 +46,7 @@ export const resultsScene = {
         ${Object.keys(rewards?.used ?? {}).length ? list('Verbraucht', rewards.used) : ''}
         ${sum?.rp ? `<div class="rs-big">+${sum.rp} RP</div>` : ''}
         ${sum?.keyOpen?.length ? `<div class="rs-jr">Rang-Auftrag freigeschaltet: ${sum.keyOpen.map((id) => esc(questById(id).name)).join(', ')}!</div>` : ''}
+        ${sum?.book?.length ? `<div class="rs-jr">Kompendium (Spiegel): ${sum.book.map((b) => `${esc(b.monster)} – ${esc(b.name)}`).join(', ')}</div>` : ''}
         ${sum?.jrUp ? `<div class="rs-jr">Jägerrang ${sum.jrUp}! (vorher ${jrBefore}) Neue Aufträge am Brett.</div>` : ''}
         ${!Object.keys(rewards?.items ?? {}).length && !rewards?.schrott ? '<div class="note">Mit leeren Händen. Mindestens sauber.</div>' : ''}
       </div><div class="rs-foot"><button class="btn red" data-a="hub">Weiter</button> <!-- [T] --></div></div>`;

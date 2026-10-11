@@ -99,3 +99,9 @@ Umsetzung: Lead plant/misst/merged, je ein Sonnet-Agent pro Brocken + einer für
 - **HUD:** HP-/Puste-Balken werden mit Max-Wert länger (Basis 100 = Standardbreite, max. ×1,6 bzw. ×1,9), der Essens-Anteil ist am Balkenende goldgerahmt, darunter Zeile „◆ Schotter-Eintopf · Grillsteak ×2".
 - **Nachtrag:** Grillsteak = **+40 Max-HP** (sofort aufgefüllt) + 25 Max-Puste. **Essen stapelt nicht:** genau ein Essens-Buff (Koch-Mahlzeit *oder* Grillsteak) bis zum Umkippen; ein weiteres Grillsteak wird mit Hinweis „Schon gegessen" abgelehnt und nicht verbraucht (`hasFoodBuff` in `game/items.js`). Nach dem Umkippen darf man wieder ein Grillsteak essen.
 - Test `tests/unit/food.test.js`.
+
+## 8. Brocken-Kompendium (11.10.)
+- Spiegel → neuer Reiter **Kompendium**: „Zustände" (was den Pirscher trifft / was man dem Brocken antut, immer lesbar) + je Brocken eine Seite mit Feldnotizen des Glitch Hunters (Intro, Angriffe, Verhalten, Schwachstellen).
+- Einträge wachsen mit **Kämpfen** (`save.fights[id]`, Sieg *oder* Niederlage, Revierstreit zählt für beide Brocken): 1. Kampf = Intro + 2 Einträge, danach je Kampf 1–2 neue, voll nach 4–6 Kämpfen. Unbekannte Brocken heißen „???".
+- „NEU"-Markierung (`save.bookSeen`), Punkt am Reiter und am Brocken; Ergebnis-Bildschirm meldet neue Einträge. Alte Spielstände starten mit `fights = kills`.
+- Daten/Texte: `src/data/compendium.js` (Mechaniken aus dem Code abgeglichen – bei Balance-Änderungen mitpflegen). Test `tests/unit/compendium.test.js`.
