@@ -2,11 +2,11 @@
 // Every action returns { ok:true, ... } or { ok:false, reason, missing? } and leaves the save untouched on failure.
 import { ITEMS, BOX_MAX } from '../data/items.js';
 import { RECIPES } from '../data/recipes.js';
-import { upgradeOptions } from '../data/weapons.js';
+import { upgradeOptions, weaponStats } from '../data/weapons.js';
 import { ARMOR_PIECES } from '../data/armor.js';
 import { FOODS } from '../data/foods.js';
-import { missing, pay, boxAdd, boxCount, clampBar } from './inventory.js';
-import { BAR_SLOTS } from './save.js';
+import { missing, pay, boxAdd, boxCount, clampBar, addSchrott } from './inventory.js';
+import { BAR_SLOTS, ARMORY_MAX } from './save.js';
 
 export function canCraftItem(save, recipeId) {
   const r = RECIPES[recipeId];
@@ -53,6 +53,64 @@ export function upgradeWeapon(save, type, branch = null) {
   save.weapons[type] = { tier: opt.tier, branch: opt.tier === 4 ? w.branch : opt.branch }; // 5: k|g|v, 6: v
   save.stats.crafted = (save.stats.crafted ?? 0) + 1;
   return { ok: true, tier: opt.tier, branch: save.weapons[type].branch, name: opt.name };
+}
+
+// ---- Waffenlager: mehrere Waffen je Typ. save.weapons[type] = aktive (wird geschmiedet/getragen), save.armory = weitere im Lager.
+export const NEW_WEAPON_COST = { schrott: 150 };
+const sameW = (a, b) => a.type === b.type && a.tier === b.tier && (a.branch ?? null) === (b.branch ?? null);
+/** Alle Waffen: aktive je Typ zuerst, dann das Lager. [{type, tier, branch, active, idx(Lager-Index|-1), name}] */
+export function ownedWeaponList(save, type = null) {
+  const out = [];
+  for (const [t, w] of Object.entries(save.weapons)) if (!type || t === type) out.push({ type: t, tier: w.tier, branch: w.branch, active: true, idx: -1 });
+  (save.armory ?? []).forEach((w, i) => { if (!type || w.type === type) out.push({ ...w, active: false, idx: i }); });
+  for (const w of out) w.name = weaponStats(w.type, w.tier, w.branch).name;
+  return out;
+}
+
+/** Neue Stufe-1-Waffe bauen: die bisherige aktive Waffe des Typs wandert ins Lager, die neue ist aktiv (und wird gleich ausgerüstet). */
+export function buildNewWeapon(save, type) {
+  const w = save.weapons[type];
+  if (!w) return { ok: false, reason: 'unknown' };
+  save.armory ??= [];
+  if (save.armory.length >= ARMORY_MAX) return { ok: false, reason: 'armory_full' };
+  const m = missing(save, NEW_WEAPON_COST);
+  if (m.length) return { ok: false, reason: 'mats', missing: m };
+  pay(save, NEW_WEAPON_COST);
+  save.armory.push({ type, tier: w.tier, branch: w.branch ?? null });
+  save.weapons[type] = { tier: 1, branch: null };
+  save.loadout.weapon = type;
+  save.stats.crafted = (save.stats.crafted ?? 0) + 1;
+  return { ok: true, name: weaponStats(type, 1).name };
+}
+
+/** Lager-Waffe idx zur aktiven Waffe ihres Typs machen (Tausch) und ausrüsten. */
+export function swapWeapon(save, idx) {
+  const w = save.armory?.[idx];
+  if (!w) return { ok: false, reason: 'unknown' };
+  const cur = save.weapons[w.type];
+  save.armory[idx] = { type: w.type, tier: cur.tier, branch: cur.branch ?? null };
+  save.weapons[w.type] = { tier: w.tier, branch: w.branch ?? null };
+  save.loadout.weapon = w.type;
+  return { ok: true, name: weaponStats(w.type, w.tier, w.branch).name };
+}
+
+/** Waffe {type,tier,branch} tragen: aktive -> nur ausrüsten, Lager -> tauschen. */
+export function equipWeaponState(save, ws) {
+  const cur = save.weapons[ws.type];
+  if (!cur) return { ok: false, reason: 'unknown' };
+  if (sameW({ type: ws.type, ...cur }, ws)) { save.loadout.weapon = ws.type; return { ok: true }; }
+  const idx = (save.armory ?? []).findIndex((w) => sameW(w, ws));
+  return idx < 0 ? { ok: false, reason: 'unknown' } : swapWeapon(save, idx);
+}
+
+/** Lager-Waffe verschrotten (+ ein bisschen Schrott zurück). Aktive Waffen kann man nicht verschrotten. */
+export const scrapValue = (w) => 20 * w.tier;
+export function scrapWeapon(save, idx) {
+  const w = save.armory?.[idx];
+  if (!w) return { ok: false, reason: 'unknown' };
+  save.armory.splice(idx, 1);
+  addSchrott(save, scrapValue(w));
+  return { ok: true, schrott: scrapValue(w), name: weaponStats(w.type, w.tier, w.branch).name };
 }
 
 export function craftArmor(save, pieceId) {

@@ -6,6 +6,8 @@
 //   box += delta (adds first), then the normal `used` deduction, so a crafted+taken+used item nets out to 0.
 import { ITEMS, BOX_MAX, isCarryable } from '../data/items.js';
 import { RECIPES } from '../data/recipes.js';
+import { equipWeaponState } from './crafting.js';
+export const weaponKey = (w) => `${w.type}|${w.tier}|${w.branch ?? ''}`;
 import { SLOTS, ARMOR_PIECES } from '../data/armor.js';
 
 export class HuntChest {
@@ -70,12 +72,20 @@ export class HuntChest {
   ownedArmor(slot) { return Object.keys(this.save.armorOwned).filter((id) => ARMOR_PIECES[id]?.slot === slot); }
   weaponState(type) { return this.save.weapons[type] ?? null; }
 
-  setWeapon(type) {
-    const w = this.save.weapons[type];
+  /** alle Waffen (aktive + Lager) als [{type, tier, branch, key}] */
+  allWeapons() {
+    const list = Object.entries(this.save.weapons).map(([type, w]) => ({ type, tier: w.tier, branch: w.branch ?? null }));
+    for (const w of this.save.armory ?? []) list.push({ type: w.type, tier: w.tier, branch: w.branch ?? null });
+    return list.map((w) => ({ ...w, key: weaponKey(w) }));
+  }
+
+  /** type ('gs') = aktive Waffe des Typs, oder key ('gs|3|a') = bestimmte Waffe (auch aus dem Lager) */
+  setWeapon(typeOrKey) {
+    const w = String(typeOrKey).includes('|') ? this.allWeapons().find((x) => x.key === typeOrKey) : (this.save.weapons[typeOrKey] ? { type: typeOrKey, ...this.save.weapons[typeOrKey] } : null);
     if (!w) return { ok: false, reason: 'unknown' };
-    if (type === this.weapon.type) return { ok: true, same: true };
+    if (weaponKey(w) === weaponKey(this.weapon)) return { ok: true, same: true };
     if (this.hooks.inCombat?.()) return { ok: false, reason: 'combat' };
-    this.weapon = { type, tier: w.tier, branch: w.branch };
+    this.weapon = { type: w.type, tier: w.tier, branch: w.branch ?? null };
     this.gearChanged = true;
     this.hooks.apply?.(this.loadout());
     return { ok: true };
@@ -96,7 +106,7 @@ export class HuntChest {
   loadout() { return { ...this.base, weapon: { ...this.weapon }, armor: { ...this.armor } }; }
   /** payload for rewards.chest (applied once by applyHuntResult) */
   result() {
-    return { delta: { ...this.delta }, loadout: this.gearChanged ? { weapon: this.weapon.type, armor: { ...this.armor } } : null };
+    return { delta: { ...this.delta }, loadout: this.gearChanged ? { weapon: this.weapon.type, weaponState: { ...this.weapon }, armor: { ...this.armor } } : null };
   }
 }
 
@@ -112,7 +122,7 @@ export function applyChestResult(save, chest) {
   }
   const lo = chest.loadout;
   if (lo) {
-    if (save.weapons[lo.weapon]) save.loadout.weapon = lo.weapon;
+    if (lo.weaponState && equipWeaponState(save, lo.weaponState).ok) { /* Lager-Waffe getauscht */ } else if (save.weapons[lo.weapon]) save.loadout.weapon = lo.weapon;
     for (const slot of SLOTS) {
       const id = lo.armor?.[slot];
       if (id && save.armorOwned[id] && ARMOR_PIECES[id]?.slot === slot) save.loadout.armor[slot] = id;

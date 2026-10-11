@@ -220,3 +220,5 @@ small { opacity: .7; font-size: .88em; }
 .mt-info { margin: 4px 0 8px; padding: 6px 8px; min-height: 2.6em; background: rgba(16, 16, 64, .7); border-left: 3px solid #ffd84a; font-size: max(11px, 2.1vmin); line-height: 1.3; }
 .row.quest { gap: 8px; }
 .card.post .btn { margin: 4px 6px 0 0; min-height: 44px; }
+
+.mkx { margin: 2px 0; line-height: 1.25; } .mkx small { opacity: .9; } /* Macken-Erklärung */

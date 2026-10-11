@@ -17,7 +17,7 @@ import { deathlog, prettyAttack } from '../meta/deathlog.js';
 import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { GearPreview, previewSlot } from './gearPreview.js';
-import { BESTIARY, CONDITIONS, KIND_LABEL, unlockedEntries, nextUnlock } from '../data/compendium.js';
+import { BESTIARY, CONDITIONS, KIND_LABEL, ELEM_NOTES, unlockedEntries, nextUnlock, weaknessOf } from '../data/compendium.js';
 import { makeGear } from '../data/gearlook.js';
 
 // ============================================================ Kochtopf
@@ -151,12 +151,24 @@ export function createSpiegel(ctx) {
       if (!f) body = `<div class="note">Noch keine Begegnung. Die Seite ist leer, bis auf einen Kaffeefleck.</div>`;
       else {
         body = `<div class="fi-h"><b>${esc(b.name)}</b> <small>${esc(b.title)} · ${esc(b.where)} · ${f} ${f === 1 ? 'Kampf' : 'Kämpfe'} · ${ctx.save.kills?.[b.id] ?? 0} erlegt</small></div>
-          <div class="note">${esc(b.intro)}</div>
+          <div class="note">${esc(b.intro)}</div>${weakHtml(b)}
           ${list.map((e, i) => `<div class="row srow"><span class="nm"><b>${esc(e.name)}</b> <small>${KIND_LABEL[e.kind]}${i >= seen ? ' · <b style="color:#ffd84a">NEU</b>' : ''}</small><br><small>${esc(e.text)}</small></span></div>`).join('')}
           ${nx ? `<div class="note">${b.entries.length - list.length} Seiten noch leer. Nächste Notiz nach ${nx === 1 ? 'dem nächsten Kampf' : `${nx} weiteren Kämpfen`}.</div>` : '<div class="note">Seite voll. Mehr gibt es über diesen Brocken nicht zu wissen – außer, wie man ihn schneller erlegt.</div>'}`;
       }
     }
     return `<div class="fg-tabs">${tabsHtml()}</div>${chips}${body}`;
+  }
+  // Schwachstellen-Kasten (aus den Trefferzonen berechnet)
+  function weakHtml(b) {
+    const w = weaknessOf(monsters[b.id]), st = (n) => (n ? '★'.repeat(n) + '☆'.repeat(3 - n) : '✗');
+    const el = w.elems.map((e) => `<span class="chip${e.stars >= 2 ? ' ok' : ''}">${e.name} ${st(e.stars)}</span>`).join(' ');
+    const best = w.elems.filter((e) => e.stars > 0).sort((a, c) => c.value - a.value)[0];
+    const line = (k, v) => (v.length ? `<br><small><b>${k}:</b> ${esc(v.join(', '))}</small>` : '');
+    return `<div class="row srow"><span class="nm"><b>Schwachstellen</b> <small>Elemente</small> ${el}
+      ${best ? `<br><small>Am meisten zieht <b>${best.name}</b> – ${best.where.length >= 4 ? 'wirkt fast überall' : 'vor allem an: ' + esc(best.where.join(', '))}.</small>` : '<br><small>Elemente prallen ab – hier zählt rohe Kraft.</small>'}
+      ${ELEM_NOTES[b.id] ? `<br><small>${esc(ELEM_NOTES[b.id])}</small>` : ''}
+      ${line('Weiche Stellen', w.soft)}${line('Zäh (wenig Schaden)', w.hard)}${line('Brechbar', w.breakable)}${line('Stumpf betäubt an', w.stun)}
+      <br><small>Gift und Rost wirken bei jedem Brocken (Status-Aufbau).</small></span></div>`;
   }
   const markSeen = (id) => { const b = BESTIARY.find((x) => x.id === id); if (!b) return; const n = unlockedEntries(b, fightsOf(id)).length; if ((ctx.save.bookSeen?.[id] ?? 0) < n) { ctx.save.bookSeen = { ...(ctx.save.bookSeen ?? {}), [id]: n }; return true; } return false; };
 
