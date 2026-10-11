@@ -119,6 +119,8 @@ export class ItemSystem {
       case 'grill': { // [L] Grillsteak: heal + permanent (this hunt) max-Puste
         this.heals.push({ left: e.hp, rate: e.hp / e.over });
         p.v.maxStamina += e.maxStamina;
+        p.grillStamina = (p.grillStamina ?? 0) + e.maxStamina; p.grillCount = (p.grillCount ?? 0) + 1;
+        p.foodStamina = (p.foodStamina ?? 0) + e.maxStamina;
         p.v.stamina = Math.min(p.v.maxStamina, p.v.stamina + e.maxStamina);
         hunt.fx.number(this.#top(), `+${e.hp} / Puste +${e.maxStamina}`, 'heal');
         break;

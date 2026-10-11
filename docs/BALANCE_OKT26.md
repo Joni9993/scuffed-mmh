@@ -92,3 +92,10 @@ Umsetzung: Lead plant/misst/merged, je ein Sonnet-Agent pro Brocken + einer für
 - **Neue FX-Bausteine** (`src/render/fx.js`): `bolt(a, b)` (gezackter, flackernder Blitz mit Seitenästen, additiv, Kern + Schein), `strike(p)` (Einschlag vom Himmel + Schockring), `jet(key, from, to)` (Kegelstrahl mit scrollender Textur), `ring(p, r0, r1)` (sich ausbreitender Bodenring). Monster rufen sie optional (`ctx.fx.bolt?.(…)`), Tests/`nofx` unberührt.
 - **Kroll-Dampfstrahl:** sichtbarer Dampfkegel genau über der Hitbox (1,5 → 11 m), Vorwarnung als kurzer Dampfstoß aus dem Maul + Pfeifen.
 - **Voltaro:** Blitzfeld schleudert Bögen vom Kamm zu jedem Ladungspunkt; jeder Einschlag (Blitzfeld, Donnerschlag, Gewitter, Nachzünder) = Blitz vom Himmel + Schockring; Kettenblitz = Blitz vom Kamm aufs Ziel und von Pirscher zu Pirscher; Plasmasprung = Schockring 6 m + radiale Bodenblitze; Aufladen/Sturmruf mit Himmelsblitzen; Funkenspur mit kleinen gelben Bodenblitzen.
+
+## 7. Essen sichtbar + Umkippen (11.10.)
+- **Regel:** Koch-Mahlzeit und Grillsteak wirken, bis man umkippt. Beim Umkippen sind alle Essens-Buffs weg (Max-HP/-Puste, Angriff, Resistenz, Item-Tempo), Toast „Essen verdaut – Buffs weg"; die Camp-Truhe bringt sie nicht zurück, ein neues Grillsteak wirkt wieder (`huntmeta.loseFood`).
+- **Bug behoben:** Grillsteak-Puste ging beim Ausrüsten an der Camp-Truhe verloren (`applyLoadout` rechnete Max-Puste neu ohne Grillsteak) → jetzt `player.grillStamina` mitgezählt.
+- **HUD:** HP-/Puste-Balken werden mit Max-Wert länger (Basis 100 = Standardbreite, max. ×1,6 bzw. ×1,9), der Essens-Anteil ist am Balkenende goldgerahmt, darunter Zeile „◆ Schotter-Eintopf · Grillsteak ×2".
+- Hinweis: „+40 HP" beim Grillsteak ist Heilung (kein Max-HP), sichtbar nur, wenn man nicht voll ist.
+- Test `tests/unit/food.test.js`.
