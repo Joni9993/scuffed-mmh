@@ -3,12 +3,12 @@ import { MSG, ERR } from './protocol.js';
 import { resolveColorIdx, gearColorIdx } from './colors.js';
 import { PLAYER_COLORS } from '../meta/save.js';
 
-export const MEMBER_COLORS = ['#5ad8ff', '#ff9a3a', '#7dff7d', '#ff6bd6'];
+export const MEMBER_COLORS = ['#5ad8ff', '#ff9a3a', '#7dff7d', '#ff6bd6', '#c08aff', '#ffd84a'];
 ERR.roomClosed = 'Der Raum-Host ist weg. Du jagst jetzt in deinem eigenen Rostnest.';
 
 /**
  * Raum-Sitzung (session-level, überdauert Stadt -> Jagd -> Ergebnis -> Stadt).
- *   role: 'solo' (eigener Raum ohne Netz) | 'host' (Raumcode offen, bis zu 3 Gäste) | 'guest'
+ *   role: 'solo' (eigener Raum ohne Netz) | 'host' (Raumcode offen, bis zu 5 Gäste) | 'guest'
  *   members: [{ id, name, color, weapon, tier, you }]       (id 'p0' = Raum-Host)
  *   events (on): 'members', 'peer-leave' {id,name}, 'closed' {reason} (Raum-Host weg -> wieder solo), 'role',
  *                dazu jeder Nachrichtentyp (p, tp, qb, …) als (payload, fromId)
@@ -94,7 +94,7 @@ export class Session {
   #syncMembers(roster, notify) {
     const old = this.members;
     const idx = resolveColorIdx(roster.map((r) => gearColorIdx(r.gear))); // Standardfarbe -> je Slot eindeutige Farbe
-    this.members = roster.map((r, i) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, colorIdx: idx[i], color: PLAYER_COLORS[idx[i]] ?? MEMBER_COLORS[i % 4], you: r.id === this.myId }));
+    this.members = roster.map((r, i) => ({ id: r.id, name: r.name, weapon: r.weapon, tier: r.tier, gear: r.gear, colorIdx: idx[i], color: PLAYER_COLORS[idx[i]] ?? MEMBER_COLORS[i % MEMBER_COLORS.length], you: r.id === this.myId }));
     if (!notify) return;
     if (this.role === 'guest') for (const m of old) if (!this.members.some((x) => x.id === m.id)) this.emit('peer-leave', { id: m.id, name: m.name });
     this.emit('members', this.members);

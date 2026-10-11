@@ -4,8 +4,8 @@
 export const TOWN_HALF_X = 27;
 export const TOWN_HALF_Z = 26.2; // north edge is the gate (decor continues outside, but nobody can walk there)
 export const SPAWN = { x: 0, z: -11, yaw: 0 };
-/** Spawn points for up to 4 members (side by side, facing the fire). */
-export const SPAWNS = [{ x: 0, z: -11, yaw: 0 }, { x: -2.2, z: -11.6, yaw: 0 }, { x: 2.2, z: -11.6, yaw: 0 }, { x: 0, z: -13, yaw: 0 }];
+/** Spawn points for up to 6 members (side by side, facing the fire). */
+export const SPAWNS = [{ x: 0, z: -11, yaw: 0 }, { x: -2.2, z: -11.6, yaw: 0 }, { x: 2.2, z: -11.6, yaw: 0 }, { x: 0, z: -13, yaw: 0 }, { x: -2.2, z: -13.6, yaw: 0 }, { x: 2.2, z: -13.6, yaw: 0 }];
 
 /**
  * Stations. (x,z) = where the hunter stands to use it, r = interaction radius. `panel` = station panel id (ui/stations.js);

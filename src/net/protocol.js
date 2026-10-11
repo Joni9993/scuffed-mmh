@@ -11,7 +11,7 @@ export const RELAY = new Set([MSG.P, MSG.FX, MSG.GATHER, MSG.TP]);
 /** Nachrichten, bei denen Duplikate keinen Schaden anrichten dürfen (haben eine Nachrichten-ID `i`). */
 export const IDEMPOTENT = new Set([MSG.HIT, MSG.GATHER, MSG.EV, MSG.FX, MSG.END]);
 
-export const MAX_PLAYERS = 4;
+export const MAX_PLAYERS = 6;
 export const PEER_PREFIX = 'scuffedhunter-';
 
 // ---------- Raumcodes

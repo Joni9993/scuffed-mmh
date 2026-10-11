@@ -1,6 +1,6 @@
 # Scuffed Hunter – Game Design Document
 
-Arbeitstitel: **Scuffed Hunter** → neuer Name **Glitch Hunter** (Okt 2026, siehe §16). Koop-Monsterjagd für 1–4 Spieler im Browser (iPhone 16 / Pixel 10 als Zielgeräte, Querformat).
+Arbeitstitel: **Scuffed Hunter** → neuer Name **Glitch Hunter** (Okt 2026, siehe §16). Koop-Monsterjagd für 1–6 Spieler im Browser (iPhone 16 / Pixel 10 als Zielgeräte, Querformat).
 Inspiriert vom Genre „Monsterjagd", aber mit **eigener Welt, eigenen Begriffen und eigenen Mechaniken**. Nichts 1:1 übernehmen.
 
 **Grundsatz:** Abstriche nur beim Aussehen (PS1-Look: Low-Poly, 32-px-Texturen, Vertex-Wackeln, Nebel). Gameplay ist präzise, fair, skillbasiert. Jeder Treffer, den der Spieler kassiert, muss vorher lesbar angekündigt worden sein.
@@ -390,7 +390,7 @@ Verkauf: jedes Material zu 40 % seines Basiswerts (Brocken-Material hat Basiswer
 
 ### 14.3 Gemeinsame Stadt (Koop wie im Genre üblich)
 - Beim Start wählt man **„Eigenes Rostnest"** (man ist Host eines Stadt-Raums, Code wird angezeigt) oder **„Rostnest beitreten"** (Code). Solo = eigenes Rostnest ohne Gäste.
-- Alle im Raum (max. 4) sehen sich in der Stadt laufen (Name über dem Kopf, Emotes).
+- Alle im Raum (max. 6) sehen sich in der Stadt laufen (Name über dem Kopf, Emotes).
 - **Auftrag posten:** Ein Spieler postet am Auftragsbrett einen Auftrag (nur solche, die er selbst freigeschaltet hat). Am Brett sehen alle die geposteten Aufträge und können **beitreten**. Der Poster ist Jagd-Host (Brocken-Autorität), wenn mehrere posten, ist jeder Auftrag getrennt.
 - Teilnehmer gehen zum Abflugtor (oder drücken „Bereit" im Brett-Panel). Wenn alle Teilnehmer bereit sind, startet die Jagd für sie; wer nicht teilnimmt, bleibt in der Stadt.
 - Nach der Jagd kehren alle Teilnehmer in dasselbe Rostnest zurück (Raum bleibt bestehen).
@@ -516,8 +516,9 @@ Items: **Rostbombe** (Wurf, Rost-Aufbau 60; `rostkaefer` + `schlacke`), **Rostsp
 - Redesign-Ideen je Brocken: `docs/NEXT.md` §3. Jede neue Mechanik mit Fairness-Test (`tests/unit/p3fairness.test.js`) + Determinismus-Test.
 
 ### 16.4 Koop-Skalierung (gebaut)
-- Brocken-HP und Teil-HP × **1 / 1,7 / 2,3 / 2,8** bei 1/2/3/4 Pirschern (`src/game/monsters/coopScale.js`). Beitritt/Verlassen mitten in der Jagd behält den HP-Anteil.
-- Rechnerische Dauer (gleiche DPS): ~5,5 / 4,7 / 4,2 / 3,9 min. Später optional: Aggressivität ab 3 Pirschern (kürzere Erholung, mehr Ketten).
+- Brocken-HP und Teil-HP × **1 / 1,53 / 2,07 / 2,52 / 2,88 / 3,24** bei 1/2/3/4/5/6 Pirschern (`src/game/monsters/coopScale.js`). Beitritt/Verlassen mitten in der Jagd behält den HP-Anteil.
+- 11.10.2026 (Owner): Raum und Jagd auf **6 Pirscher** erweitert (`MAX_PLAYERS = 6`, je 6 Spawnpunkte in Stadt/Schotterklamm/Rostwerke/Testarena). Mehrspieler-HP pauschal **−10 %** (vorher 1,7 / 2,3 / 2,8), Jagden zu zweit+ dauerten zu lang. Solo unverändert.
+- Rechnerische Dauer (gleiche DPS): ~5,5 / 4,2 / 3,8 / 3,5 / 3,2 / 3,0 min. Später optional: Aggressivität ab 3 Pirschern (kürzere Erholung, mehr Ketten).
 
 ### 16.5 Mutatoren (standardisiert – gebaut, Phase 2)
 - **Reine Daten, nie Code pro Brocken.** Jeder Mutator wirkt automatisch auf alle Brocken (auch Rostwerke).

@@ -307,6 +307,7 @@ export function buildLayout(seed = 1) {
   const spawnPoints = [
     { x: camp.x + 11, z: camp.z + 8, yaw: 0.35 }, { x: camp.x + 14, z: camp.z + 12, yaw: 0.35 },
     { x: camp.x + 9, z: camp.z + 13, yaw: 0.35 }, { x: camp.x + 15, z: camp.z + 6, yaw: 0.35 },
+    { x: camp.x + 12, z: camp.z + 16, yaw: 0.35 }, { x: camp.x + 18, z: camp.z + 10, yaw: 0.35 },
   ].map((p) => ({ ...snap(p, 1.5), yaw: p.yaw }));
   const R = (arr) => arr.map((p) => snap(p, 3.5));
   const routes = {

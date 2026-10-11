@@ -43,8 +43,8 @@ describe('rostwerke terrain', () => {
 });
 
 describe('rostwerke contract fields', () => {
-  it('spawnPoints (4), campPoint, monsterSpawns, nestFor/routeFor per Brocken', () => {
-    expect(w.spawnPoints.length).toBe(4);
+  it('spawnPoints (6), campPoint, monsterSpawns, nestFor/routeFor per Brocken', () => {
+    expect(w.spawnPoints.length).toBe(6);
     expect(w.campPoint).toHaveProperty('x');
     for (const k of ['kroll', 'gorgo', 'voltaro', 'default']) expect(w.monsterSpawns[k]).toHaveProperty('x');
     expect(w.zoneAt(w.monsterSpawns.kroll.x, w.monsterSpawns.kroll.z)).toBe(2);

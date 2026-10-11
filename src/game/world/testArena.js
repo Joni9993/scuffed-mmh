@@ -101,7 +101,7 @@ export function createTestArena() {
       }
       return pos;
     },
-    spawnPoints: [{ x: -14, z: -4, yaw: Math.PI / 2 }, { x: -14, z: 2, yaw: Math.PI / 2 }, { x: -16, z: -1, yaw: Math.PI / 2 }, { x: -16, z: 5, yaw: Math.PI / 2 }],
+    spawnPoints: [{ x: -14, z: -4, yaw: Math.PI / 2 }, { x: -14, z: 2, yaw: Math.PI / 2 }, { x: -16, z: -1, yaw: Math.PI / 2 }, { x: -16, z: 5, yaw: Math.PI / 2 }, { x: -18, z: -4, yaw: Math.PI / 2 }, { x: -18, z: 2, yaw: Math.PI / 2 }],
     campPoint: { x: -38, z: 0 },
     nestPoint: { x: 38, z: -32 },
     monsterSpawns: { default: { x: 8, z: 4 } },

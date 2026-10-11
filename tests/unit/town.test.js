@@ -109,7 +109,7 @@ describe('town world', () => {
   it('implements the world interface with few meshes', () => {
     const w = createTown();
     expect(typeof w.heightAt(0, 0)).toBe('number');
-    expect(w.spawnPoints.length).toBe(4);
+    expect(w.spawnPoints.length).toBe(6);
     let meshes = 0;
     w.mesh.traverse((o) => { if (o.isMesh || o.isSprite) meshes++; });
     expect(meshes).toBeLessThan(40);

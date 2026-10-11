@@ -41,7 +41,7 @@ export function createHud(root) {
       <div class="hud-glitch"><i class="fill"></i><span><b>GLITCH</b><b class="gt"></b></span></div>
       <div class="wstat"></div>
       <div class="hud-status"></div><!-- [M] -->
-      <div class="hud-party"></div><!-- im Fluss unter allen Status-Zeilen: wächst mit, nie überlappend (bis 4 Pirscher) -->
+      <div class="hud-party"></div><!-- im Fluss unter allen Status-Zeilen: wächst mit, nie überlappend (bis 6 Pirscher) -->
     </div>
     <div class="hud-tr">
       <div class="hud-timer">20:00</div>

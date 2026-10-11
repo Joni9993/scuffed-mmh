@@ -147,6 +147,10 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 8. Multi-Brocken-Jagden: ok, frühestens nach Phase 2, als Hebel für besonders schwere Aufträge.
 9. Jagddauer bleibt wie jetzt (~5–6 min solo).
 
+### 7d. 6 Pirscher (11.10.2026)
+- **Raum + Jagd bis 6 Pirscher** (`MAX_PLAYERS = 6`, 6 Spawnpunkte je Welt/Stadt, 6 Mitgliedsfarben). Koop-HP neu ×1 / 1,53 / 2,07 / 2,52 / 2,88 / 3,24 (Mehrspieler −10 %).
+- Offen: Host-Upload wächst mit (Stern über Host, grob ~60 KB/s bei 6), Betäubungs-/KO-Limit skalieren nicht mit, HUD-Party-Liste mit 5 Einträgen am Handy prüfen, e2e nur mit 2 Peers getestet.
+
 ### 7c. Runde 2 (10.10.2026)
 - **Koop-HP-Skalierung gebaut:** ×1 / 1,7 / 2,3 / 2,8 bei 1–4 Pirschern (`src/game/monsters/coopScale.js`), Teil-HP mit, HP-Anteil bleibt bei Beitritt/Verlassen.
 - **Glitch pro Waffe:** Plattmacher **Frame-Skip** und Zwillingsklingen **Echo-Input** angenommen. Spannbogen (No-Clip) + Katana (Save-State) abgelehnt → neue Vorschläge: Bogen **Debug-Modus** / **Paketverlust-Salve**, Katana **Lag-Teleport** / **Desync-Schnitte**.

@@ -4,13 +4,16 @@ import { coopHpMul, applyCoopScale } from '../../src/game/monsters/coopScale.js'
 const mk = () => ({ maxHp: 9000, hp: 9000, alive: true, parts: [{ breakHp: 800, hp: 800, broken: false }, { breakHp: 600, hp: 0, broken: true }, { hp: Infinity }] });
 
 describe('coopScale', () => {
-  it('Faktoren 1/1,7/2,3/2,8, geklemmt', () => {
-    expect([0, 1, 2, 3, 4, 7].map(coopHpMul)).toEqual([1, 1, 1.7, 2.3, 2.8, 2.8]);
+  it('Faktoren 1/1,53/2,07/2,52/2,88/3,24, geklemmt', () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 99].map(coopHpMul)).toEqual([1, 1, 1.53, 2.07, 2.52, 2.88, 3.24, 3.24, 3.24]);
+  });
+  it('5 und 6 Spieler, >6 geklemmt', () => {
+    expect(coopHpMul(5)).toBe(2.88); expect(coopHpMul(6)).toBe(3.24); expect(coopHpMul(12)).toBe(3.24);
   });
   it('skaliert HP + Teile, gebrochene Teile bleiben', () => {
     const m = mk(); applyCoopScale(m, 4);
-    expect(m.maxHp).toBe(25200); expect(m.hp).toBe(25200);
-    expect(m.parts[0].hp).toBeCloseTo(2240); expect(m.parts[1].hp).toBe(0); expect(m.parts[2].hp).toBe(Infinity);
+    expect(m.maxHp).toBe(22680); expect(m.hp).toBe(22680);
+    expect(m.parts[0].hp).toBeCloseTo(2016); expect(m.parts[1].hp).toBe(0); expect(m.parts[2].hp).toBe(Infinity);
   });
   it('Beitritt/Verlassen hält HP-Anteil, Rückkehr auf 1 = Ursprung', () => {
     const m = mk(); m.hp = 4500;

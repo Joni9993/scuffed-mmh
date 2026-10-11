@@ -18,14 +18,14 @@ describe('quest board state (room host is the truth)', () => {
     b.apply('p0', { a: 'back' });
     expect(b.apply('p0', { a: 'post', questId: 'x' }).changed).toBe(true);
   });
-  it('a member is in one post only; max 4', () => {
+  it('a member is in one post only; max 6', () => {
     const b = new QuestBoardState();
     b.apply('p0', { a: 'post', questId: 'jaggo' });
     expect(b.apply('p0', { a: 'post', questId: 'again' }).changed).toBe(false);
     const id = b.posts[0].postId;
-    for (const p of ['p1', 'p2', 'p3', 'p4']) b.apply(p, { a: 'join', postId: id });
-    expect(b.posts[0].members.length).toBe(4);
-    b.apply('p5', { a: 'post', questId: 'o' });
+    for (const p of ['p1', 'p2', 'p3', 'p4', 'p5']) b.apply(p, { a: 'join', postId: id });
+    expect(b.posts[0].members.length).toBe(6);
+    b.apply('p6', { a: 'post', questId: 'o' });
     expect(b.apply('p1', { a: 'join', postId: b.posts[1].postId }).changed).toBe(false);
   });
   it('a new joiner is not ready; poster leaving deletes the post; leaving members free their slot', () => {

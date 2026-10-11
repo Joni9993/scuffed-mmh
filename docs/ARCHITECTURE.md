@@ -199,7 +199,7 @@ world = {
   id, name, bounds:{minX,maxX,minZ,maxZ},
   heightAt(x, z) → y,
   collide(pos, radius) → pos      // schiebt pos (Vector3/{x,z}) aus Hindernissen/Begrenzung, mutiert in place
-  spawnPoints:[{x,z,yaw}],         // Spieler 1..4
+  spawnPoints:[{x,z,yaw}],         // Spieler 1..6
   campPoint:{x,z},                 // Respawn nach Umgekippt
   nestPoint:{x,z},                 // Fluchtziel/Schlafplatz des Brockens (optional; Fallback = Startpunkt)
   monsterSpawns:{ jaggo:{x,z}, default:{x,z} },
