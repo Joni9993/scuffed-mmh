@@ -149,7 +149,8 @@ Rechercheur-Top-Kombis: **1) C + B + I „Hunt-Link-Glitch-Run"** (empfohlen, ba
 
 ### 7d. 6 Pirscher (11.10.2026)
 - **Raum + Jagd bis 6 Pirscher** (`MAX_PLAYERS = 6`, 6 Spawnpunkte je Welt/Stadt, 6 Mitgliedsfarben). Koop-HP neu ×1 / 1,53 / 2,07 / 2,52 / 2,88 / 3,24 (Mehrspieler −10 %).
-- Offen: Host-Upload wächst mit (Stern über Host, grob ~60 KB/s bei 6), Betäubungs-/KO-Limit skalieren nicht mit, HUD-Party-Liste mit 5 Einträgen am Handy prüfen, e2e nur mit 2 Peers getestet.
+- Offen: Host-Upload wächst mit (Stern über Host, grob ~60 KB/s bei 6), Betäubungs-/KO-Limit skalieren nicht mit, HUD-Party-Liste mit 5 Einträgen am Handy prüfen.
+- Verifiziert: `tools/net6-e2e.mjs` (Host + 5 Gäste, echter PeerJS-Raum): 6/6 in Lobby, 7. Gast „Raum voll“, alle 6 in der Jagd, Brocken ×3,24 (Brathalos 38880 HP) auf allen Clients gleich, Spawns ≥ 4,2 m auseinander, 10 s ohne Fehler.
 
 ### 7c. Runde 2 (10.10.2026)
 - **Koop-HP-Skalierung gebaut:** ×1 / 1,7 / 2,3 / 2,8 bei 1–4 Pirschern (`src/game/monsters/coopScale.js`), Teil-HP mit, HP-Anteil bleibt bei Beitritt/Verlassen.
