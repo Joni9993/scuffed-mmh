@@ -109,7 +109,11 @@ body.scan #stage::after {
 .bf sup { font-size: .65em; margin-left: .2vmin; color: #f4f0d0; }
 .bf.r { color: #ff4a3a; } .bf.b { color: #3a8cff; } .bf.g { color: #44e05a; }
 .hud-party .bf { font-size: max(8px, 1.7vmin); margin-left: .6vmin; }
-.hud-party { position: absolute; left: calc(var(--sal) + 2vmin); top: calc(var(--sat) + 14vmin); font-size: max(9px, 2.4vmin); display: grid; gap: .4vmin; }
+.hud-party { margin-top: .6vmin; font-size: max(9px, 2.2vmin); display: grid; gap: .4vmin; }
+.hud-party:empty { display: none; }
+.hud-party > div { display: flex; align-items: center; gap: .6vmin; white-space: nowrap; min-width: 0; }
+.hud-party .pn { overflow: hidden; text-overflow: ellipsis; max-width: 16vmin; }
+.hud-party .party-bar { flex: none; }
 .hud-tr { position: absolute; right: calc(var(--sar) + 2vmin); top: calc(var(--sat) + 1.6vmin); display: grid; justify-items: end; gap: .6vmin; }
 .hud-timer { font-size: max(9px, 2.6vmin); }
 .hud-ko { font-size: max(8px, 2vmin); opacity: .85; }
