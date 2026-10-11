@@ -27,9 +27,9 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
   // absolute (base + bonus), so the camp chest can re-apply a changed set without stacking
   player._baseMaxStamina ??= v.maxStamina; player._baseMaxHp ??= v.maxHp;
   v.maxStamina = player._baseMaxStamina + sk.maxStamina + food.maxStamina + (player.grillStamina ?? 0); // Grillsteak bleibt beim Truhen-Wechsel erhalten
-  v.maxHp = player._baseMaxHp + food.maxHp;
+  v.maxHp = player._baseMaxHp + food.maxHp + (player.grillHp ?? 0);
   player.mealId = lo.food ?? null; // HUD: Essens-Buff sichtbar machen
-  player.foodHp = food.maxHp; player.foodStamina = food.maxStamina + (player.grillStamina ?? 0);
+  player.foodHp = food.maxHp + (player.grillHp ?? 0); player.foodStamina = food.maxStamina + (player.grillStamina ?? 0);
   if (reapply) { v.stamina = Math.min(v.stamina, v.maxStamina); v.hp = Math.min(v.hp, v.maxHp); } // no free heal at the chest
   else { v.stamina = v.maxStamina; v.hp = v.maxHp; }
   player._sk = sk; // read by the takeHit wrapper below (stays current when the set changes)

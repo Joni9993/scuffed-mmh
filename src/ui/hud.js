@@ -92,7 +92,7 @@ export function createHud(root) {
       set('stb', Math.round(((p.foodStamina ?? 0) / v.maxStamina) * 1000) / 10, (x) => { refs.stBonus.style.width = x + '%'; refs.stBonus.style.display = x > 0 ? '' : 'none'; });
       const meal = p.mealId ? (FOODS[p.mealId]?.name ?? '') : '', gc = p.grillCount ?? 0;
       set('food', `${meal}|${gc}`, () => {
-        const parts = [meal && `${meal}`, gc && `Grillsteak${gc > 1 ? ' ×' + gc : ''}`].filter(Boolean);
+        const parts = [meal && `${meal}`, gc && 'Grillsteak'].filter(Boolean);
         refs.food.style.display = parts.length ? '' : 'none';
         refs.food.textContent = parts.length ? '◆ ' + parts.join(' · ') : '';
       });

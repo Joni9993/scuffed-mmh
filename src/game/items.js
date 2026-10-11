@@ -13,6 +13,9 @@ export function itemTiming(def, speedBonus = 0) {
 }
 export const canRollCancel = (use) => !!use && use.t >= use.cancelAt;
 
+/** Hat der Pirscher schon einen Essens-Buff (Koch-Mahlzeit oder Grillsteak)? */
+export const hasFoodBuff = (p) => !!p.mealId || (p.grillCount ?? 0) > 0;
+
 export class ItemSystem {
   /** hunt: ctx ({fx, bus, spawnEffect, monsters, toast?}); player: local Player; inv: HuntInventory */
   constructor(hunt, player, inv) {
@@ -52,6 +55,8 @@ export class ItemSystem {
     const t = itemTiming(def, this.speedBonus);
     // bow tips: nothing happens unless a bow is in hand
     if (def.effect?.type === 'tip' && this.player.weaponId !== 'bow') { this.hunt.toast?.('Spitzen gehen nur mit dem Bogen'); return false; }
+    // Essen stapelt nicht: ein Essens-Buff (Koch oder Grillsteak) bis zum Umkippen
+    if (def.effect?.type === 'grill' && hasFoodBuff(this.player)) { this.hunt.toast?.('Schon gegessen – neues Essen erst nach dem Umkippen'); return false; }
     this.using = { id, def, t: 0, applied: false, ...t };
     this.player.itemUse = this.using; // read by Player (rooted)
     this.buffer = 0;
@@ -103,6 +108,7 @@ export class ItemSystem {
       return;
     }
     if (hunt.mods?.player?.healItems === false && (e.type === 'heal' || e.type === 'grill' || e.type === 'cool')) { hunt.fx.number(this.#top(), 'Kein Undo', 'heal'); return; } // Mutator Kein Undo
+    if (e.type === 'grill' && hasFoodBuff(p)) { hunt.toast?.('Schon gegessen – neues Essen erst nach dem Umkippen'); return; } // nie stapeln (wird nicht verbraucht)
     if (!this.inv.consume(id, 1)) return;
     switch (e.type) {
       case 'heal':
@@ -116,13 +122,12 @@ export class ItemSystem {
         this.buffs.push({ kind: 'stamina', t: e.secs });
         hunt.fx.number(this.#top(), 'Puste x0.5', 'heal');
         break;
-      case 'grill': { // [L] Grillsteak: heal + permanent (this hunt) max-Puste
-        this.heals.push({ left: e.hp, rate: e.hp / e.over });
-        p.v.maxStamina += e.maxStamina;
-        p.grillStamina = (p.grillStamina ?? 0) + e.maxStamina; p.grillCount = (p.grillCount ?? 0) + 1;
-        p.foodStamina = (p.foodStamina ?? 0) + e.maxStamina;
-        p.v.stamina = Math.min(p.v.maxStamina, p.v.stamina + e.maxStamina);
-        hunt.fx.number(this.#top(), `+${e.hp} / Puste +${e.maxStamina}`, 'heal');
+      case 'grill': { // Grillsteak = Essens-Buff bis zum Umkippen: +Max-HP (neue HP werden gleich aufgefüllt) und +Max-Puste
+        p.grillHp = e.maxHp; p.grillStamina = e.maxStamina; p.grillCount = 1;
+        p.v.maxHp += e.maxHp; p.v.hp = Math.min(p.v.maxHp, p.v.hp + e.maxHp);
+        p.v.maxStamina += e.maxStamina; p.v.stamina = Math.min(p.v.maxStamina, p.v.stamina + e.maxStamina);
+        p.foodHp = e.maxHp; p.foodStamina = e.maxStamina;
+        hunt.fx.number(this.#top(), `Max-HP +${e.maxHp} / Puste +${e.maxStamina}`, 'heal');
         break;
       }
       case 'cool': // Kuehlbrause: heilen + Rost/Brennen weg
