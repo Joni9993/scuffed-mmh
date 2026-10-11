@@ -22,6 +22,8 @@ const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Mat
  * Call update(hunt) once per rendered frame; DOM is only touched when values change.
  */
 /** Minimap-Symbol eines entdeckten Grossmonsters: burrow (Gorgo eingegraben, auch auf Gaesten per Snapshot) oder dot. */
+const escName = (n) => String(n ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`); // Mitspieler-Namen kommen übers Netz
+
 export const minimapIcon = (m) => (m?.burrowed ? 'burrow' : 'dot');
 
 export function createHud(root) {
@@ -39,8 +41,8 @@ export function createHud(root) {
       <div class="hud-glitch"><i class="fill"></i><span><b>GLITCH</b><b class="gt"></b></span></div>
       <div class="wstat"></div>
       <div class="hud-status"></div><!-- [M] -->
+      <div class="hud-party"></div><!-- im Fluss unter allen Status-Zeilen: wächst mit, nie überlappend (bis 4 Pirscher) -->
     </div>
-    <div class="hud-party"></div>
     <div class="hud-tr">
       <div class="hud-timer">20:00</div>
       <div class="hud-ko">Umgekippt 0/3</div>
@@ -158,7 +160,7 @@ export function createHud(root) {
       }
       const others = hunt.players.filter((o) => o !== p);
       set('party', others.map((o) => `${o.name}${Math.round(o.v.hp)}${buffSig(o)}`).join(','), () => { // [N] name + mini HP bar (+ [KK] Buff-Symbole)
-        refs.party.innerHTML = others.map((o) => `<div>${o.name} <span class="party-bar"><b style="width:${Math.round((o.v.hp / o.v.maxHp) * 100)}%"></b></span>${buffIcons(o)}</div>`).join('');
+        refs.party.innerHTML = others.map((o) => `<div><span class="pn">${escName(o.name)}</span><span class="party-bar"><b style="width:${Math.round((o.v.hp / o.v.maxHp) * 100)}%"></b></span>${buffIcons(o)}</div>`).join('');
       });
       bannerT -= dt; if (bannerT <= 0) refs.banner.classList.remove('show');
       centerT -= dt; if (centerT <= 0) refs.center.classList.remove('show');
