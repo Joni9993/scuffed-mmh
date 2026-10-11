@@ -169,12 +169,13 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
     },
 
     /** kind: 'hit' (white) | 'weak' (yellow) | 'crit' | 'hurt' (red, player) | 'heal' */
-    number(p, text, kind = 'hit') {
-      if (!settings.dmgNumbers) return;
+    number(p, text, kind = 'hit', remote = false) {
+      const mode = settings.dmgNumbers;
+      if (mode === 'off' || mode === false || (remote && mode !== 'all')) return; // 'own': nur eigene; remote = Treffer von Mitspielern
       const n = nums[numHead]; numHead = (numHead + 1) % MAX_NUMBERS;
       n.age = 0; n.x = p.x; n.y = p.y; n.z = p.z; n.vx = (Math.random() - 0.5) * 0.8;
       n.el.textContent = text;
-      n.el.className = 'dmg ' + kind;
+      n.el.className = 'dmg ' + kind + (remote ? ' remote' : '');
       n.el.style.display = 'block';
     },
 

@@ -10,7 +10,7 @@ import { questLock, isKeyQuest, rankProgress, questById } from '../meta/progress
 import { buildLoadout } from '../meta/loadout.js';
 import { installHtml, bindInstall, onInstallChange } from './install.js';
 import { PLAYER_COLORS, cleanName, importCode, exportCode, SAVE_KEY } from '../meta/save.js';
-import { settings, saveSettings, nextRes } from '../core/settings.js';
+import { settings, saveSettings, nextRes, normDmgMode, nextDmgMode } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
 import { music } from '../audio/music.js';
 import { deathlog, prettyAttack } from '../meta/deathlog.js';
@@ -241,7 +241,7 @@ export function createOptionen(ctx) {
       const on = (b) => (b ? 'an' : 'aus');
       return `<div class="row"><span class="nm">Auflösung</span><button class="btn small" data-a="res">${settings.autoRes ? 'Auto' : settings.res + ' px'}</button></div>
         <div class="row"><span class="nm">Scanlines</span><button class="btn small" data-a="scan">${on(settings.scanlines)}</button></div>
-        <div class="row"><span class="nm">Schadenszahlen</span><button class="btn small" data-a="dmg">${on(settings.dmgNumbers)}</button></div>
+        <div class="row"><span class="nm">Schadenszahlen</span><button class="btn small" data-a="dmg">${{ all: 'Alle', own: 'Eigene', off: 'Aus' }[normDmgMode(settings.dmgNumbers)]}</button></div>
         <div class="row"><span class="nm">Steuerungs-Tipps in der Jagd</span><button class="btn small" data-a="tips">${on(!settings.tipsSeen)}</button></div>
         <div class="sub">Layout (Touch)</div>
         <div class="row"><span class="nm">Tastengröße</span><span class="seg">${['S', 'M', 'L'].map((k) => `<button class="btn small ${settings.btnSize === k ? 'on' : ''}" data-a="bsz" data-v="${k}">${k}</button>`).join('')}</span></div>
@@ -282,7 +282,7 @@ export function createOptionen(ctx) {
       else if (a === 'stk') { settings.stickMode = settings.stickMode === 'fixed' ? 'follow' : 'fixed'; saveSettings(); }
       else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
       else if (a === 'hap') { settings.haptics = !settings.haptics; saveSettings(); if (settings.haptics) navigator.vibrate?.(15); }
-      else if (a === 'dmg') { settings.dmgNumbers = !settings.dmgNumbers; saveSettings(); }
+      else if (a === 'dmg') { settings.dmgNumbers = nextDmgMode(settings.dmgNumbers); saveSettings(); }
       else if (a === 'export') { code = exportCode(ctx.save); ctx.toast('Code erzeugt. Gut aufbewahren.'); }
       else if (a === 'copy') { try { navigator.clipboard?.writeText(code || exportCode(ctx.save)); ctx.toast('Kopiert.'); } catch { ctx.toast('Kopieren ging nicht – markiere den Code.', true); } }
       else if (a === 'import') {

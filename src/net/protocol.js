@@ -184,6 +184,11 @@ export function encodeTown(s, T) {
 }
 export const decodeTown = (o) => ({ T: o.T / 1000, x: o.x, y: o.y, z: o.z, rot: o.r, anim: o.a ?? null, speed: o.v ?? 0, emote: o.e ?? 0, emoteN: o.en ?? 0, color: o.c ?? 0, weapon: o.w ?? 'gs', gear: typeof o.g === 'string' ? o.g.slice(0, 8) : null });
 
+/** Schadenszahl-Event (MSG.EV, Host -> Jagd): Treffer eines Spielers, damit alle die Zahl sehen. */
+const DN_KINDS = ['hit', 'weak', 'crit', 'gbig'];
+export const encodeDn = (monsterId, partId, dmg, kind, attacker) => ({ k: 'dn', m: monsterId, p: partId, d: Math.round(dmg), c: Math.max(0, DN_KINDS.indexOf(kind)), a: attacker });
+export const decodeDn = (d) => (d && d.k === 'dn' && Number.isFinite(d.d) ? { monsterId: d.m, partId: d.p, dmg: Math.max(0, Math.min(99999, d.d)), kind: DN_KINDS[d.c] ?? 'hit', attacker: d.a } : null);
+
 /** Glitch-Modus-Event (MSG.EV): Mitspieler sehen den Pirscher flackern. */
 export const encodeGlitch = (on) => ({ k: 'glitch', on: on ? 1 : 0 });
 export const decodeGlitch = (d) => (d && d.k === 'glitch' ? { on: !!d.on } : null);

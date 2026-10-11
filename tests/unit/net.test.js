@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MSG, encodeP, decodeP, encodeM, decodeM, encodeAtk, decodeAtk, encodeHit, decodeHit, Dedupe, applyHitOnce, validHit,
   generateRoomCode, normalizeCode, isValidCode, peerIdFor, CODE_CHARS, MAX_HIT_DMG,
+  encodeDn, decodeDn,
 } from '../../src/net/protocol.js';
 import { SnapBuffer } from '../../src/net/interp.js';
 import { peerOptions, iceServers } from '../../src/net/net.js';
@@ -218,5 +219,20 @@ describe('Brocken-Snapshot: snapExtra wird übertragen (Phase 3)', () => {
     const s = { id: 'g', def: 'gorgo', x: 1, y: 0, z: 2, rot: 0, state: 'combat', hpPct: 0.5, parts: [], extra: { burrowed: true } };
     expect(_decM(JSON.parse(JSON.stringify(_encM(s)))).extra).toEqual({ burrowed: true });
     expect(_decM(_encM({ ...s, extra: undefined })).extra).toBeUndefined();
+  });
+});
+
+describe('damage number event', () => {
+  it('roundtrips', () => {
+    const d = decodeDn(encodeDn(3, 'head', 41.6, 'crit', 'peerA'));
+    expect(d).toEqual({ monsterId: 3, partId: 'head', dmg: 42, kind: 'crit', attacker: 'peerA' });
+    expect(decodeDn(encodeDn(1, 'x', 5, 'gbig', 'a')).kind).toBe('gbig');
+    expect(decodeDn(encodeDn(1, 'x', 5, 'bogus', 'a')).kind).toBe('hit');
+  });
+  it('rejects junk', () => {
+    expect(decodeDn(null)).toBeNull();
+    expect(decodeDn({ k: 'pb' })).toBeNull();
+    expect(decodeDn({ k: 'dn', d: 'x' })).toBeNull();
+    expect(decodeDn({ k: 'dn', d: 1e9 }).dmg).toBe(99999);
   });
 });

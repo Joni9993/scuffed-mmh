@@ -52,6 +52,7 @@ body.scan #stage::after {
   position: absolute; left: 0; top: 0; font-family: var(--font); font-size: max(8px, 2.7vmin); color: #fff;
   text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; will-change: transform; white-space: nowrap;
 }
+.dmg.remote { opacity: .7; transform-origin: center; }
 .dmg.weak { color: #ffe14d; font-size: max(9px, 3.1vmin); }
 .dmg.crit { color: #ff9a3a; font-size: max(9px, 3.1vmin); }
 .dmg.hurt { color: #ff6b6b; }

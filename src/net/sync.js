@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MSG, encodeP, decodeP, encodeM, decodeM, encodeAtk, decodeAtk, encodeHit, decodeHit, applyHitOnce, Dedupe, ERR, encodeGlitch, decodeGlitch } from './protocol.js';
+import { MSG, encodeP, decodeP, encodeM, decodeM, encodeAtk, decodeAtk, encodeHit, decodeHit, applyHitOnce, Dedupe, ERR, encodeGlitch, decodeGlitch, encodeDn, decodeDn } from './protocol.js';
 import { SnapBuffer } from './interp.js';
 import { Player } from '../game/player.js';
 import { weapons } from '../game/weapons/index.js';
@@ -122,6 +122,10 @@ export class HuntNet {
         const { monsterId, ...params } = e;
         n.sendAll(MSG.ATK, encodeAtk(monsterId, params, nowS()));
       }));
+      off.push(hunt.bus.on('hit', (e) => { // eigener Treffer des Hosts -> Gaeste
+        if (!e?.player?.local || !e.monster || !(e.dmg > 0)) return;
+        n.sendAll(MSG.EV, encodeDn(e.monster.id, e.part, e.dmg, e.player.glitching ? 'gbig' : e.weak ? 'weak' : e.crit ? 'crit' : 'hit', e.player.id));
+      }));
       off.push(hunt.bus.on('partBreak', (e) => n.sendAll(MSG.EV, { k: 'pb', m: e.monster.id, p: e.part })));
       off.push(hunt.bus.on('monsterStun', (e) => n.sendAll(MSG.EV, { k: 'st', m: e.monster.id })));
       off.push(hunt.bus.on('monsterDead', (e) => n.sendAll(MSG.EV, { k: 'dead', m: e.monster.id })));
@@ -154,7 +158,9 @@ export class HuntNet {
       this.stats.hitsApplied++;
       this.stats.dmgApplied += before - m.hp;
       const hp = m.hurtParts().find((q) => q.part.id === h.res.partId);
-      if (hp) hunt.fx.number({ x: hp.pos.x, y: hp.pos.y + 0.6, z: hp.pos.z }, h.res.dmg, h.res.weak ? 'weak' : h.res.crit ? 'crit' : 'hit');
+      const kind = h.res.weak ? 'weak' : h.res.crit ? 'crit' : 'hit';
+      if (hp) hunt.fx.number({ x: hp.pos.x, y: hp.pos.y + 0.6, z: hp.pos.z }, h.res.dmg, kind, true);
+      if (hp) this.net.sendAll(MSG.EV, encodeDn(m.id, h.res.partId, h.res.dmg, kind, from)); // Mitspieler sehen die Zahl (nicht der Angreifer selbst)
       if (hp) hunt.fx.spark(hp.pos, 6, '#ffffff', 4);
       return ev;
     });
@@ -176,6 +182,16 @@ export class HuntNet {
       case 'glitch': {
         const peer = this.peers.get(from), gl = decodeGlitch(d);
         if (peer && gl) { peer.player.glitch.active = gl.on; peer.player.glitch.t = gl.on ? 9 : 0; }
+        break;
+      }
+      case 'dn': {
+        if (!this.isGuest || from !== this.net.hostId) break;
+        const dn = decodeDn(d);
+        if (!dn || dn.attacker === this.net.myId) break;
+        const m = this.#mon(dn.monsterId);
+        const hp = m?.hurtParts().find((q) => q.part.id === dn.partId);
+        const at = hp ? hp.pos : m?.pos;
+        if (at) hunt.fx.number({ x: at.x, y: at.y + (hp ? 0.6 : 2), z: at.z }, dn.dmg, dn.kind, true);
         break;
       }
       case 'bye': if (from === this.net.hostId && this.isGuest) this.#hostGone(); else this.#removeRemote(from); break; // participant left the hunt (still in the room)
