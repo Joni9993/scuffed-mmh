@@ -2,10 +2,10 @@
 //   SH_URL=... node tools/glitch-share.mjs [weapon=gs] [quest=jaggo]   Ziel GDD §16.2: 40–50 %
 import { open } from './pw-lib.mjs';
 const weapon = process.argv[2] || 'gs', quest = process.argv[3] || 'jaggo';
-const { browser, page, errors } = await open(`scene=hunt&quest=${quest}&weapon=${weapon}&seed=4&god=1&aggro=1&nofx=1`);
+const { browser, page, errors } = await open(`scene=hunt&quest=${quest}&weapon=${weapon}&seed=${process.env.SEED || 4}&god=1&aggro=1&nofx=1`);
 const r = await page.evaluate((weapon) => {
   const SH = window.__SH, h = SH.hunt, p = h.player, m = h.mainMonster, inp = SH.input;
-  let t = 0, act = 0, kills = false;
+  let t = 0, act = 0, kills = false, toggle = 0;
   const melee = weapon !== 'bow', dist = melee ? 2.4 : 11;
   for (let i = 0; i < 60 * 900 && m.alive; i++) {
     t += 1 / 60;
@@ -15,7 +15,10 @@ const r = await page.evaluate((weapon) => {
       p.lock = { monster: m, idx: 0 };
     }
     const A = weapon === 'gs' ? (i % 90) < 60 : weapon === 'bow' ? (i % 40) < 25 : (i % 6) < 3;
-    inp.set('attack', A, 'bot');
+    let B = false; // [GA] Glitchaxt: Axt bis Druck >= 90, B-Tipp ins Schwert, im Blitz B-Tipp (Sauber!)
+    if (weapon === 'ga') { const d = p.weapon.data; if (toggle > 0) { toggle--; B = true; } else if (d.mode === 'axt' && (d.druck ?? 0) >= 90) toggle = 3; else if ((d.blitzT ?? 0) > 0) toggle = 3; }
+    inp.set('attack', A && !B, 'bot');
+    inp.set('special', B, 'bot');
     const ready = p.glitch.energy >= 100 && !p.glitching;
     inp.set('glitch', ready, 'bot');
     if (ready) act++;

@@ -192,6 +192,13 @@ const SOUNDS = {
   carve: () => { noise({ dur: 0.18, vol: 0.2, f0: 2600, f1: 900, type: 'bandpass', q: 1.5 }); tone({ f0: 180, f1: 90, dur: 0.1, vol: 0.2, delay: 0.05 }); },
   sizzle: () => noise({ dur: 0.35, vol: 0.2, f0: 6000, f1: 2500, type: 'highpass' }),
 
+  // ---- [GA] Glitchaxt: Ticken (schneller werdend, f = Tonhoehe), Pling (Blitz), Fehlzuender-Knall, Morph, Huster
+  gaTick: (o) => { const f = o?.f ?? 1; tone({ f0: 1900 * f, f1: 1500 * f, dur: 0.035, type: 'square', vol: 0.12 }); noise({ dur: 0.02, vol: 0.06, f0: 6000, f1: 3000, type: 'highpass' }); },
+  gaPling: () => { tone({ f0: 1568, dur: 0.28, type: 'triangle', vol: 0.26 }); tone({ f0: 2349, dur: 0.22, type: 'sine', vol: 0.16, delay: 0.04 }); tone({ f0: 3136, dur: 0.16, type: 'sine', vol: 0.1, delay: 0.08 }); },
+  gaKnall: (o) => { noise({ dur: o?.big ? 0.45 : 0.28, vol: o?.big ? 0.5 : 0.4, f0: 3200, f1: 120 }); tone({ f0: 150, f1: 38, dur: o?.big ? 0.5 : 0.3, type: 'sawtooth', vol: 0.4, lp: 600 }); tone({ f0: 70, f1: 30, dur: 0.35, vol: 0.45, delay: 0.02 }); tone({ f0: 900, f1: 120, dur: 0.12, type: 'square', vol: 0.12 }); },
+  gaMorph: () => { for (let i = 0; i < 6; i++) tone({ f0: 300 + i * 170 + Math.random() * 90, dur: 0.03, type: 'square', vol: 0.07, delay: i * 0.028 }); noise({ dur: 0.18, vol: 0.1, f0: 5000, f1: 1200, type: 'bandpass', q: 1.5 }); },
+  gaHusten: () => { tone({ f0: 1400, f1: 900, dur: 0.03, type: 'square', vol: 0.12 }); tone({ f0: 210, f1: 95, dur: 0.16, type: 'sawtooth', vol: 0.16, lp: 700, delay: 0.04 }); noise({ dur: 0.12, vol: 0.14, f0: 1800, f1: 500, type: 'bandpass', q: 1.2, delay: 0.04 }); },
+
   // ---- footsteps per ground type
   step_grass: (o) => { const v = o?.run ? 0.07 : 0.05; noise({ dur: 0.07, vol: v, f0: 2200 * pitch(0.2), f1: 800, type: 'bandpass', q: 0.8 }); tone({ f0: 90 * pitch(), f1: 60, dur: 0.05, vol: v * 0.8 }); },
   step_rock: (o) => { const v = o?.run ? 0.09 : 0.065; noise({ dur: 0.05, vol: v, f0: 4200 * pitch(0.2), f1: 1800, type: 'highpass' }); tone({ f0: 130 * pitch(), f1: 70, dur: 0.06, vol: v }); },

@@ -32,7 +32,7 @@ export const glitchDmgMul = (p) => (p.glitch?.active ? GLITCH.DMG_MUL : 1);
 export function addGlitchEnergy(p, amount, source = 'x') {
   const s = g(p);
   if (s.active || amount <= 0) return 0;
-  const mul = p.ctx?.mods?.player?.glitchGainMul ?? 1;
+  const mul = (p.ctx?.mods?.player?.glitchGainMul ?? 1) * (p.def?.glitchGainMul ?? 1); // [GA] Waffen-Faktor (Glitchaxt laedt langsamer)
   const before = s.energy;
   s.energy = Math.min(GLITCH.MAX, s.energy + amount * mul);
   if (before < GLITCH.MAX && s.energy >= GLITCH.MAX) busOf(p)?.emit('glitchReady', { player: p, source });

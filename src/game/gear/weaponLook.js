@@ -447,3 +447,6 @@ export function buildBowLook(tier = 1, branch = null) {
   if (top >= 4) for (const o of [-1, 1]) fx.push({ kind: 'poison', rate: 3, at: [0, o * (BOW_H + 0.1), -0.05] });
   return finish(P, { fx, glowBase: top >= 3 ? 0.9 : 0.4, hand: 'L' });
 }
+
+// [GA] Brocken-Paletten fuer weitere Waffen-Looks (Glitchaxt: gear/glitchaxtLook.js)
+export const BROCKEN_PAL = { RUST, STEEL, BONE, JP, BZ, BR, KR, GG, VT, TOOTH };

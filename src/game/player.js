@@ -610,6 +610,7 @@ export class Player {
     let wucht = res.wucht;
     if (ah.glitch && !this.weapon.flags.glitchUsed) { wucht += 25; this.weapon.flags.glitchUsed = true; }
     this.weapon.addWucht(wucht);
+    this.def.onHit?.(this.weapon, res, ah); // [GA] Waffen-Hook je Treffer (Glitchaxt: Druck)
   }
 
   // [N] network avatar (local:false): state/pose come from snapshots, no input or physics.

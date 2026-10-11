@@ -13,7 +13,7 @@ await page.waitForFunction(() => window.__SH?.app?.scene?.show, null, { timeout:
 await page.evaluate(async () => {
   const { mountOnBack } = await import('/src/game/gear/backMount.js');
   const { REST } = await import('/src/game/anim.js');
-  const types = ['gs', 'kt', 'db', 'bow'];
+  const types = ['gs', 'kt', 'ga', 'db', 'bow']; // [GA]
   const sc = window.__SH.app.scene;
   sc.show(types.map((t) => ({ gear: { weapon: { type: t, tier: 1 } }, yaw: 0, pose: { ...REST }, noWeapon: true })), { spacing: 2.2, cam: [0, 1.5, -6], look: [0, 1.0, 0] });
   sc.camera.position.set(0, 1.5, -6); sc.camera.lookAt(0, 1.0, 0);

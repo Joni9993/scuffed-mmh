@@ -14,7 +14,10 @@ export const WEAPON_TIPS = {
   db: 'Zwillingsklingen: schnelle Kombos, B = Wirbel. Rollen zum Ausweichen.',
   bow: 'Spannbogen: A halten = spannen, loslassen schießt. Schwachstellen per Lock anvisieren.',
   kt: 'Katana: Konter mit B im richtigen Moment, A-Ketten füllen die Klingenleiste.',
+  ga: 'Glitchaxt: Treffer in der Axt bauen Druck auf, B = Schwert (ab 25 %). Im Schwert sinkt der Druck – bei 0 blitzt es weiß.',
 };
+/** [GA] Zusatzzeile nach Fehlzündungen (Zähler settings.gaFehl): kleiner Lerntext, kein Banner */
+export const GA_EXTRA = 'B beim Aufblitzen = sauber schalten.';
 export const shouldShowTips = (s = settings) => !s.tipsSeen && (s.tipsShown ?? 0) < TIPS_MAX;
 
 export function showOnboarding(root, weaponId, { s = settings, save = saveSettings, autoMs = 22000 } = {}) {
@@ -25,7 +28,7 @@ export function showOnboarding(root, weaponId, { s = settings, save = saveSettin
   el.className = 'ob ui-hit';
   el.innerHTML = `<b>Steuerung</b>
     <ul>${CONTROLS.map(([k, v]) => `<li><i>${k}</i> ${v}</li>`).join('')}</ul>
-    <p>${WEAPON_TIPS[weaponId] ?? ''}</p>
+    <p>${WEAPON_TIPS[weaponId] ?? ''}</p>${weaponId === 'ga' && (s.gaFehl | 0) >= 1 ? `<p><small>${GA_EXTRA}</small></p>` : ''}
     <div><button class="btn small go" data-a="ok">Los</button> <button class="btn small" data-a="never">Nicht mehr zeigen</button></div>`;
   root.appendChild(el);
   const close = () => { clearTimeout(tm); el.remove(); };

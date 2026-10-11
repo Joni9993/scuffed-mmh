@@ -7,6 +7,8 @@ const SOCKETS = {
   gs: { x: -0.16, y: 1.12, z: -0.34, rz: 0.4 },
   // katana: same carry, a bit flatter
   kt: { x: -0.16, y: 1.08, z: -0.34, rz: 0.48 },
+  // glitchaxt [GA]: Axt-Form quer ueber den Ruecken, Block-Kopf an der Schulter
+  ga: { x: -0.16, y: 1.06, z: -0.34, rz: 0.45 },
   // dual blades: two blades crossed on the back (hilts up at the shoulders)
   db: { x: -0.2, y: 0.92, z: -0.33, rz: 0.62, off: { x: 0.2, y: 0.92, z: -0.37, rz: -0.62 } },
   // bow: limbs span the whole back, slight diagonal, grip near the middle
