@@ -116,6 +116,32 @@ export const CONDITIONS = [
   { id: 'm_tired', name: 'Erschöpft & Hinkend', who: 'brocken', text: 'Nach langen Ketten ist er erschöpft und halb so schnell. Unter 30 % Leben hinkt er und will zurück in sein Nest – nicht entkommen lassen.' },
 ];
 
+/** Zusatz zu den Element-Schwächen (Sonderregeln, die nicht in der Teile-Tabelle stehen). */
+export const ELEM_NOTES = {
+  barrotz: 'Mit Schlammpanzer prallt Feuer komplett ab – Schock sprengt den Panzer.',
+  voltaro: 'Feuer wirkt nur, solange er nicht aufgeladen ist (Spulen dunkel).',
+  gorgo: 'Eingegraben ist er unverwundbar – erst rausholen, dann draufhauen.',
+  kroll: 'In Panzerdeckung kommt von vorn kaum etwas an, egal welches Element.',
+};
+
+/**
+ * Schwachstellen aus den echten Trefferzonen (def.parts): Elemente (Feuer/Schock, Wert = % Element-Schaden auf dem besten Teil),
+ * weiche Trefferzonen (factor) und brechbare Teile. Rost/Gift sind Status-Aufbau und wirken bei allen Brocken.
+ */
+export function weaknessOf(def) {
+  const parts = def?.parts ?? [];
+  const elems = ['fire', 'shock'].map((k) => {
+    let best = 0, where = [];
+    for (const p of parts) { const v = p.elem?.[k] ?? 0; if (v > best) { best = v; where = [p.label]; } else if (v === best && v > 0) where.push(p.label); }
+    return { id: k, name: k === 'fire' ? 'Feuer' : 'Schock', value: best, stars: best >= 25 ? 3 : best >= 15 ? 2 : best >= 5 ? 1 : 0, where };
+  });
+  const soft = [...parts].filter((p) => p.factor >= 0.9).sort((a, b) => b.factor - a.factor).map((p) => p.label);
+  const hard = parts.filter((p) => p.factor <= 0.5).map((p) => p.label);
+  const breakable = parts.filter((p) => p.breakHp).map((p) => p.label);
+  const stun = parts.filter((p) => p.stunPart).map((p) => p.label);
+  return { elems, soft, hard, breakable, stun };
+}
+
 /** Freigeschaltete Einträge eines Brockens bei `fights` Kämpfen. */
 export function unlockedEntries(b, fights) { return fights > 0 ? b.entries.filter((e) => e.at <= fights) : []; }
 /** Kämpfe bis zum nächsten Eintrag (null = alles bekannt). */

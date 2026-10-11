@@ -6,6 +6,8 @@ import { WEAPON_TYPES, WEAPON_ORDER, weaponStats } from '../data/weapons.js';
 import { SLOTS, SLOT_NAMES, SKILLS, getPiece } from '../data/armor.js';
 import { armorProtection, armorSkills, damageReduction } from '../meta/loadout.js';
 import { esc } from './hubKit.js';
+import { weaponKey } from '../meta/huntChest.js';
+import { weaponTag, pieceSkillsHtml } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 
 const tabs = (cur, list) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
@@ -46,15 +48,15 @@ export function createHuntTruhe(ctx) {
     const lo = ch.loadout(), combat = ch.hooks.inCombat?.();
     const prot = armorProtection(lo.armor), sk = armorSkills(lo.armor);
     const skillTxt = Object.entries(sk).map(([id, l]) => `${SKILLS[id].name} ${l}`).join(' · ') || 'keine Macken';
-    const weap = WEAPON_ORDER.filter((t) => ch.weaponState(t)).map((t) => {
-      const st = weaponStats(t, ch.weaponState(t).tier, ch.weaponState(t).branch);
-      return `<button class="tab${t === lo.weapon.type ? ' on' : ''}${combat && t !== lo.weapon.type ? ' dis' : ''}" data-a="wpn" data-k="${t}">${esc(st.name)}</button>`;
+    const curKey = weaponKey(lo.weapon);
+    const weap = ch.allWeapons().sort((a, b) => WEAPON_ORDER.indexOf(a.type) - WEAPON_ORDER.indexOf(b.type)).map((w) => {
+      const st = weaponStats(w.type, w.tier, w.branch), on = w.key === curKey;
+      return `<button class="tab${on ? ' on' : ''}${combat && !on ? ' dis' : ''}" data-a="wpn" data-k="${w.key}">${esc(st.name)}&nbsp;<small>${esc(weaponTag(st, w.tier))}</small></button>`;
     }).join('');
     const slots = SLOTS.map((sl) => {
       const cur = lo.armor[sl], owned = ch.ownedArmor(sl);
-      return `<div class="arow"><span class="aset">${SLOT_NAMES[sl]}</span>${slotSel === sl
-        ? owned.map((id) => `<button class="acell own${id === cur ? ' worn' : ''}" data-a="wear" data-k="${id}">${esc(getPiece(id).name)}</button>`).join('')
-        : `<button class="acell own worn" data-a="slot" data-k="${sl}">${esc(getPiece(cur).name)} ▾</button>`}</div>`;
+      if (slotSel === sl) return `<div class="sub">${SLOT_NAMES[sl]} wählen</div>${owned.map((id) => `<div class="row srow"><span class="nm"><b>${esc(getPiece(id).name)}</b> <small>Schutz ${getPiece(id).prot}</small>${pieceSkillsHtml(id, lo.armor)}</span><button class="btn small${id === cur ? ' on' : ' go'}" data-a="wear" data-k="${id}">${id === cur ? 'Getragen' : 'Anlegen'}</button></div>`).join('')}`;
+      return `<div class="arow"><span class="aset">${SLOT_NAMES[sl]}</span><button class="acell own worn" data-a="slot" data-k="${sl}">${esc(getPiece(cur).name)} ▾</button></div>`;
     }).join('');
     return `<div class="sub">Waffe ${combat ? '<small>(gesperrt: im Kampf)</small>' : ''}</div><div class="chips">${weap}</div>
       <div class="sub">Rüstung · Schutz ${prot} (${Math.round(damageReduction(prot) * 100)} %)</div>${slots}<div class="note">${esc(skillTxt)}</div>
@@ -72,7 +74,7 @@ export function createHuntTruhe(ctx) {
         case 'takemax': msg(ch.takeMax(d.k), `${itemName(d.k)} eingepackt.`); break;
         case 'back': msg(ch.putBack(d.k, 1), `${itemName(d.k)} zurückgelegt.`); break;
         case 'craft': { const r = ch.craft(d.k); msg(r, `${itemName(d.k)} ×${r.n} hergestellt.`); break; }
-        case 'wpn': { const r = ch.setWeapon(d.k); if (!r.same) msg(r, `${WEAPON_TYPES[d.k].name} in der Hand.`); break; }
+        case 'wpn': { const r = ch.setWeapon(d.k); if (!r.same) msg(r, `${WEAPON_TYPES[d.k.split('|')[0]].name} in der Hand.`); break; }
         case 'slot': slotSel = d.k; break;
         case 'wear': { const r = ch.setArmor(d.k); slotSel = null; if (!r.same) msg(r, 'Angelegt.'); break; }
         default: break;

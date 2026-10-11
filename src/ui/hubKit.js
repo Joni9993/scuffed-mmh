@@ -2,7 +2,8 @@
 import { ITEMS } from '../data/items.js';
 import { iconHtml } from './hubIcons.js';
 import { RECIPES, RECIPE_ORDER } from '../data/recipes.js';
-import { ARMOR_PIECES } from '../data/armor.js';
+import { ARMOR_PIECES, SKILLS, getPiece } from '../data/armor.js';
+import { armorSkills } from '../meta/loadout.js';
 import { WEAPON_ORDER, WEAPON_UPGRADES, weaponStats } from '../data/weapons.js';
 import { FOODS, FOOD_ORDER } from '../data/foods.js';
 
@@ -36,7 +37,7 @@ export function el(tag, cls = '', html = '') {
 
 export const REASONS = {
   mats: 'Dir fehlt Material.', schrott: 'Zu wenig Schrott.', full: 'Die Truhe ist voll (99).', owned: 'Hast du schon.', maxed: 'Mehr geht nicht.',
-  branch: 'Wähle einen Ast.', has_meal: 'Du hast schon gegessen.', bar_full: 'Item-Leiste voll (8).', locked: 'Noch gesperrt.', not_owned: 'Gehört dir nicht.',
+  branch: 'Wähle einen Ast.', has_meal: 'Du hast schon gegessen.', armory_full: 'Waffenlager voll (20). Erst etwas verschrotten.', bar_full: 'Item-Leiste voll (8).', locked: 'Noch gesperrt.', not_owned: 'Gehört dir nicht.',
   none: 'Nichts da.', unknown: 'Unbekannt.',
 };
 export const reasonText = (r) => REASONS[r.reason] ?? 'Geht nicht.';
@@ -84,4 +85,22 @@ export function itemInfoBox(id, countTxt = '', extra = '') {
   const it = ITEMS[id];
   if (!it) return '<div class="note idet-box">Tippe einen Gegenstand an, um zu sehen, was er kann.</div>';
   return `<div class="idet idet-box">${iconHtml(id)}<div><b>${esc(it.name)}</b> <small>${esc(countTxt)}</small><div class="idet-w">${esc(it.info)}</div>${extra}</div></div>`;
+}
+
+// ---- Waffen-Kurzinfo (Schmiede / Truhe / Camp-Truhe): „Stufe 3 · Feuer 25"
+const ELEM_DE = { fire: 'Feuer', shock: 'Schock', rust: 'Rost', rost: 'Rost', poison: 'Gift' };
+export const elemShort = (st) => Object.entries(st.elems ?? {}).filter(([, v]) => v > 0).map(([k, v]) => `${ELEM_DE[k] ?? k} ${v}`).join(', ');
+export const weaponTag = (st, tier) => `St.${tier}${elemShort(st) ? ' · ' + elemShort(st) : ''}`;
+
+// ---- Macken eines Rüstungsteils erklären (Schmiede rechts, Truhe/Camp-Truhe beim Anlegen)
+/** HTML-Zeilen: je Macke des Teils Name, Stufe nach dem Anlegen (/max) und Wirkung. armorNow = aktuell getragene Teile {slot:id}. */
+export function pieceSkillsHtml(pieceId, armorNow) {
+  const p = getPiece(pieceId);
+  const ids = Object.keys(p?.skills ?? {});
+  if (!ids.length) return '<div class="mkx"><small>Keine Macken – nur Schutz.</small></div>';
+  const after = armorSkills({ ...armorNow, [p.slot]: pieceId });
+  return ids.map((id) => {
+    const S = SKILLS[id], l = after[id] ?? 0;
+    return `<div class="mkx"><b>${esc(S.name)}</b> <small>Stufe ${l}/${S.max} mit diesem Teil · +${p.skills[id]} pro Teil des Sets</small><br><small>${esc(S.desc(Math.max(1, l)))}</small></div>`;
+  }).join('');
 }

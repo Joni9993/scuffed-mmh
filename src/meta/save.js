@@ -22,6 +22,7 @@ export function defaultSave() {
     box: {},
     weapons: { gs: { tier: 1, branch: null }, db: { tier: 1, branch: null }, bow: { tier: 1, branch: null }, kt: { tier: 1, branch: null } }, // [KT] sanitize() starts from defaults -> old saves get a starter Rostkatana
     armorOwned,
+    armory: [], // weitere Waffen im Lager [{type, tier, branch}] (aktive Waffe je Typ steht in weapons)
     loadout: { weapon: 'gs', armor: { ...DEFAULT_ARMOR }, items: [] },
     meal: null,
     clears: {},
@@ -63,6 +64,15 @@ const int = (v, lo, hi, def) => {
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 /** Make arbitrary data a valid current-version save (drops unknown ids, clamps numbers). */
+export const ARMORY_MAX = 20;
+const cleanBranch = (tier, b) => (tier === 3 ? (b === 'b' ? 'b' : 'a') : tier === 4 ? (b === 'a' || b === 'b' ? b : null) : tier === 5 ? (b === 'g' || b === 'v' ? b : 'k') : tier === 6 ? 'v' : null);
+/** Lager-Waffe prüfen: {type, tier, branch} | null */
+function cleanWeapon(w) {
+  if (!isObj(w) || !WEAPON_TYPES[w.type]) return null;
+  const tier = int(w.tier, 1, WEAPON_TYPES[w.type].tiers.length, 1);
+  return { type: w.type, tier, branch: cleanBranch(tier, w.branch) };
+}
+
 export function sanitize(d) {
   const base = defaultSave();
   if (!isObj(d)) return base;
@@ -85,8 +95,9 @@ export function sanitize(d) {
     const w = d.weapons?.[type];
     if (!isObj(w)) continue;
     const tier = int(w.tier, 1, WEAPON_TYPES[type].tiers.length, 1);
-    s.weapons[type] = { tier, branch: tier === 3 ? (w.branch === 'b' ? 'b' : 'a') : tier === 4 ? (w.branch === 'a' || w.branch === 'b' ? w.branch : null) : tier === 5 ? (w.branch === 'g' || w.branch === 'v' ? w.branch : 'k') : tier === 6 ? 'v' : null };
+    s.weapons[type] = { tier, branch: cleanBranch(tier, w.branch) };
   }
+  if (Array.isArray(d.armory)) for (const w of d.armory.slice(0, ARMORY_MAX)) { const c = cleanWeapon(w); if (c) s.armory.push(c); }
   if (isObj(d.armorOwned)) for (const id of Object.keys(d.armorOwned)) if (ARMOR_PIECES[id] && d.armorOwned[id]) s.armorOwned[id] = true;
   const lo = d.loadout;
   if (isObj(lo)) {

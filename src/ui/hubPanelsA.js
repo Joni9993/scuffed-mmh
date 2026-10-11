@@ -4,12 +4,12 @@ import { ARMOR_SETS, SET_ORDER, SLOTS, SLOT_NAMES, SKILLS, pieceId, getPiece } f
 import { ITEMS, ITEM_IDS } from '../data/items.js';
 import { RECIPES, RECIPE_ORDER } from '../data/recipes.js';
 import { missing } from '../meta/inventory.js';
-import { upgradeWeapon, weaponUpgradeOptions, craftArmor, equipArmor, equipWeapon, craftItem, setBarItem, barMoveFront } from '../meta/crafting.js';
+import { upgradeWeapon, weaponUpgradeOptions, craftArmor, equipArmor, equipWeapon, craftItem, setBarItem, barMoveFront, ownedWeaponList, buildNewWeapon, swapWeapon, scrapWeapon, scrapValue, NEW_WEAPON_COST, equipWeaponState } from '../meta/crafting.js';
 import { armorProtection, armorSkills, damageReduction, skillEffects, buildLoadout } from '../meta/loadout.js';
 import { GearPreview, previewSlot } from './gearPreview.js'; // [G]
 import { makeGear } from '../data/gearlook.js'; // [G]
 import { SHOP_STOCK, buy, sell, sellPrice } from '../meta/shop.js';
-import { esc, costChips, delta, reasonText, itemDetail } from './hubKit.js';
+import { esc, costChips, delta, reasonText, itemDetail, weaponTag, pieceSkillsHtml } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 
 const tabs = (cur, list) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
@@ -61,7 +61,14 @@ export function createSchmiede(ctx) {
     else if (nst === 'done') act = '<div class="note">Schon überholt.</div>';
     else act = '<div class="note">Erst die Stufe davor schmieden.</div>';
     const info = `<div class="fi-h"><b>${esc(nxt.name)}</b> <small>Stufe ${nxt.tier}${nst === 'cur' ? ' · aktuell' : ''}</small></div>${statRow(cur, nxt)}${act}`;
-    return { left: chips + `<div class="tree">${tree}</div>`, info };
+    // Waffenlager dieses Typs: weitere Exemplare (z. B. anderes Element), Tauschen = diese wird aktiv (Baum + Tragen), Neue Stufe 1 bauen
+    const store = ownedWeaponList(s, wsel).filter((x) => !x.active);
+    const lager = `<div class="sub">Deine ${esc(WEAPON_TYPES[wsel].name)}-Waffen <small>· ★ = aktiv (Baum oben)</small></div>
+      <div class="row srow"><span class="nm"><b>★ ${esc(cur.name)}</b><br><small>${esc(weaponTag(cur, w.tier))}</small></span></div>
+      ${store.map((x) => { const st = weaponStats(x.type, x.tier, x.branch); return `<div class="row srow"><span class="nm"><b>${esc(st.name)}</b><br><small>${esc(weaponTag(st, x.tier))}</small></span><button class="sm" data-a="wswap" data-i="${x.idx}">Nehmen</button><button class="sm" data-a="wscrap" data-i="${x.idx}" title="Verschrotten">Schrott +${scrapValue(x)}</button></div>`; }).join('')}
+      <div class="note">Anderes Element/Ast? Neue Stufe-1-Waffe bauen und eigenen Ast schmieden – die aktive kommt ins Lager.</div>
+      <div class="row"><span class="costs">${costChips(NEW_WEAPON_COST, s, true)}</span><button class="btn small go" data-a="wnew">Neu bauen</button></div>`;
+    return { left: chips + `<div class="tree">${tree}</div>` + lager, info };
   }
 
   function armorView() {
@@ -80,7 +87,7 @@ export function createSchmiede(ctx) {
       : `<div class="costs">${costChips(p.cost, s)}</div><button class="btn small${missing(s, p.cost).length ? ' dis' : ' go'}" data-a="craftp">Schmieden</button>`;
     const info = `<div class="fi-h"><b>${esc(p.name)}</b> <small>${esc(p.setName)} · ${own ? 'im Besitz' : 'neu'}</small></div>
       <div class="stats"><span>Schutz ${before} → ${after} ${delta(before, after)}</span><span>${Math.round(damageReduction(after) * 100)} % weniger Schaden</span></div>
-      <div class="stats mk">${skTxt}</div>${act}`;
+      <div class="stats mk">${skTxt}</div>${pieceSkillsHtml(psel, lo.armor)}${act}`;
     return { left: grid, info };
   }
 
@@ -114,6 +121,9 @@ export function createSchmiede(ctx) {
       else if (a === 'wnode') wnode = d.k;
       else if (a === 'psel') psel = d.k;
       else if (a === 'equipw') { equipWeapon(s, wsel); ctx.commit(); ctx.toast(`${WEAPON_TYPES[wsel].name} ausgerüstet.`); }
+      else if (a === 'wnew') { const r = buildNewWeapon(s, wsel); wnode = null; if (r.ok) { ctx.commit(); ctx.toast(`${r.name} gebaut und ausgerüstet. Die alte liegt im Lager.`); } else ctx.toast(reasonText(r), true); }
+      else if (a === 'wswap') { const r = swapWeapon(s, Number(d.i)); wnode = null; if (r.ok) { ctx.commit(); ctx.toast(`${r.name} ausgerüstet.`); } else ctx.toast(reasonText(r), true); }
+      else if (a === 'wscrap') { const r = scrapWeapon(s, Number(d.i)); if (r.ok) { ctx.commit(); ctx.toast(`${r.name} verschrottet (+${r.schrott} Schrott).`); } else ctx.toast(reasonText(r), true); }
       else if (a === 'upg') {
         const r = upgradeWeapon(s, wsel, d.b || null);
         wnode = null;
@@ -137,12 +147,17 @@ export function createTruhe(ctx) {
     const w = s.weapons[lo.weapon];
     const prot = armorProtection(lo.armor), sk = armorSkills(lo.armor), fx = skillEffects(sk);
     const skillTxt = Object.entries(sk).map(([id, l]) => `${SKILLS[id].name} ${l} (${SKILLS[id].desc(l)})`).join(' · ') || 'keine Macken';
-    const weap = WEAPON_ORDER.map((t) => `<button class="tab${t === lo.weapon ? ' on' : ''}" data-a="equipw" data-k="${t}">${esc(weaponStats(t, s.weapons[t].tier, s.weapons[t].branch).name)}</button>`).join('');
+    // alle Waffen (aktive je Typ + Lager), getragene markiert; Tippen = tragen
+    const all = ownedWeaponList(s);
+    const weap = WEAPON_ORDER.map((t) => all.filter((x) => x.type === t).map((x) => {
+      const st = weaponStats(x.type, x.tier, x.branch), on = x.active && t === lo.weapon;
+      return `<button class="tab${on ? ' on' : ''}" data-a="${x.active ? 'equipw' : 'wswap'}" data-k="${t}" data-i="${x.idx}">${esc(st.name)}&nbsp;<small>${esc(weaponTag(st, x.tier))}</small></button>`;
+    }).join('')).join('');
     const slots = SLOTS.map((sl) => {
       const cur = lo.armor[sl];
       const owned = Object.keys(s.armorOwned).filter((id) => getPiece(id)?.slot === sl);
-      return `<div class="arow"><span class="aset">${SLOT_NAMES[sl]}</span>${slotSel === sl ? owned.map((id) => `<button class="acell own${id === cur ? ' worn' : ''}" data-a="wear" data-k="${id}">${esc(getPiece(id).name)}</button>`).join('')
-        : `<button class="acell own worn" data-a="slot" data-k="${sl}">${esc(getPiece(cur).name)} ▾</button>`}</div>`;
+      if (slotSel === sl) return `<div class="sub">${SLOT_NAMES[sl]} wählen</div>${owned.map((id) => `<div class="row srow"><span class="nm"><b>${esc(getPiece(id).name)}</b> <small>Schutz ${getPiece(id).prot}</small>${pieceSkillsHtml(id, lo.armor)}</span><button class="btn small${id === cur ? ' on' : ' go'}" data-a="wear" data-k="${id}">${id === cur ? 'Getragen' : 'Anlegen'}</button></div>`).join('')}`;
+      return `<div class="arow"><span class="aset">${SLOT_NAMES[sl]}</span><button class="acell own worn" data-a="slot" data-k="${sl}">${esc(getPiece(cur).name)} ▾</button></div>`;
     }).join('');
     const cons = ITEM_IDS.filter((id) => ITEMS[id].kind !== 'material' && (s.box[id] ?? 0) > 0);
     const barN = (id) => lo.items.find((e) => e.id === id)?.n ?? 0;
@@ -189,6 +204,7 @@ export function createTruhe(ctx) {
         case 'noop': return false;
         case 'popx': pop = null; break;
         case 'equipw': equipWeapon(s, d.k); ctx.commit(); break;
+        case 'wswap': swapWeapon(s, Number(d.i)); ctx.commit(); break;
         case 'slot': slotSel = d.k; break;
         case 'wear': equipArmor(s, d.k); slotSel = null; ctx.commit(); break;
         case 'info': if (tab === 'stock') info = d.k; else pop = d.k; break;
