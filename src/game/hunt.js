@@ -260,6 +260,7 @@ export class Hunt {
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     if (st.partDmgMul) res.partDmgMul = st.partDmgMul; // Kroll-Ast: Teil-HP-Schaden
+    if (ah.hit.partDmgMul) res.partDmgMul = (res.partDmgMul ?? 1) * ah.hit.partDmgMul; // [LB] Schrottmine x1,5
     if (ah.status) { res.poisonBuild = ah.status.poison ?? 0; res.stunBuild = ah.status.stun ?? 0; } // Bogen-Spitzen (auch fuer Gaeste -> Host)
     res.attackerId = player.id;
     this.glitchSys.hitting = player; // damit 'partBreak' (feuert synchron in applyDamage) dem Schlag zugeordnet wird
@@ -309,7 +310,8 @@ export class Hunt {
     this.app.ui.appendChild(ov);
     this.overlay = ov;
   }
-  #leave() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
+  #leave() { this.meta?.commitLeave?.(); this.#goBack(); }
+  #goBack() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
     for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name, this.training && name === 'hub' ? { fromTraining: true } : undefined); } catch { /* scene missing */ } }
   }
   #trainHit(dmg) { trainHit(this.train, this.time, dmg); }

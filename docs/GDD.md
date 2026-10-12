@@ -634,5 +634,15 @@ Waffe aus 8 losen **Datenblöcken**, von Glitch-Energie zusammengehalten. Axt = 
 
 ---
 
+## 18. Waffe 7: Ratterbüchse (`lb`, leichte Armbrust)
+- **Bedienung:** A tippen = Einzelschuss (0,25 s, volle Laufgeschwindigkeit). A halten = *Rattern*: 3 Schuss/s, Tempo x0,6, Schaden x1,15 je Bolzen. B tippen = Nachladen (1,0 s); zweites B im Fenster 0,45-0,6 s = „Sauber geladen!“ (sofort fertig, +15 % Schaden für das nächste Magazin, gelber Blitz); B daneben = *Klemmer* (1,4 s). Leeres Magazin + A = Auto-Nachladen. Rolle = kurzer Hüpfer (3 m→2,4 m, gleiche i-Frames), danach A = *Hüpfschuss* (1 Gratis-Bolzen). B halten (0,3 s) = *Schrottmine* (max. 2, +1 je 20 s; Kontakt: stumpf 40, MV 40, Teil-Schaden x1,5). Finisher (Wucht 100 + B halten, vor Mine): *Rückstoß-Kracher* - Klebebolzen, nach 1,5 s Explosion MV 200 + stumpf 60; Schütze 3 m zurückgestoßen.
+- **Munition** (unendlich, Magazin je Sorte): Normal 10 / MV 21 / Sweet 6-14 m; Streuschrot 4 / 5 Schrot à MV 10 / 30° / Sweet 2-6 m; Durchschlag 3 / MV 28 je Teil, 3 Teile / Sweet 10-20 m. Außerhalb Sweet Spot x0,7. Wechsel: drei virtuelle Leisten-Items (`ammo_normal/streu/durch`, `kind:'lbammo'`, unendlich, nur mit `lb` in der Leiste, nie in Box/Truhe/Save/Shop), Auswahl wie Spitzen. Spitzen: exakt die Bogen-Items (brenn/gift/bumm/rost), 1 je Bolzen, Wirkung wie beim Bogen (`tipMul` je Sorte).
+- **Wucht:** +2 je Treffer (Schrot +1). **Glitch „Buffer Overflow“:** kein Nachladen, Rattern ohne Tempo-Malus, Spitzen werden nicht verbraucht, Feuerrate x1,5, Schaden gesamt x1,9 (Glitch-Basis 1,3 x 1,46); HUD-Magazin flackert `NaN/∞`.
+- **Stufen** (Kraft): 70 / 88 / 104 (b: 108, Schock 12) / 126 / 144-148 (k/g/v) / 170. Namen: Rostbüchse, Knochenratter, Jaggo-Ratter / Barrotz-Prellratter, Brathalos-Glutratter, Kessel-/Schlacke-/Spulenratter, Funkenfürst-Ratter. Schmiede-Kosten wie Bogen.
+- **Gemessen (`tools/weapon-dps.mjs`, Jaggo, 30 s, Stufe 1, 10 m, ohne Sauber-Timing):** Tipp-Kette 45,1 DPS, Rattern 41,1 DPS (Bogen 27-37 im selben Lauf). Glitch: Tipp 104, Rattern 129 (Dauer-Glitch). Tuning nur über MV (Magazin 10, Feuerrate fix).
+- **Integration:** wie 17.3 (`WEAPON_TYPES/ORDER/UPGRADES`, `weapons/index.js`, Save-Default, Gear-Code `l`, Rückenhalterung, Onboarding, Spitzen-Items auch mit `lb`). Optik: Platzhalter-Mesh (Schaft + Bogenarme). Test: `tests/unit/armbrust.test.js`.
+
+---
+
 ## 13. Nicht im MVP
 Host-Migration, Online-Accounts, Chat (nur 6 Schnell-Emotes: „Hilfe!", „Hier!", „Falle!", „Danke", „Los!", „Oops"), Musik.

@@ -5,6 +5,7 @@ import { bow } from './bow.js'; // [W]
 import { katana } from './katana.js'; // [KT]
 import { glitchaxt } from './glitchaxt.js'; // [GA]
 import { krachkiste } from './krachkiste.js'; // [KK]
+import { armbrust } from './armbrust.js'; // [LB]
 
 export const weapons = {
   gs: greatsword,
@@ -13,6 +14,7 @@ export const weapons = {
   kt: katana, // [KT]
   ga: glitchaxt, // [GA]
   kk: krachkiste, // [KK]
+  lb: armbrust, // [LB]
 };
 
 export function getWeapon(id) {

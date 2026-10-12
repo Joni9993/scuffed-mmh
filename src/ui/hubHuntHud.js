@@ -51,7 +51,7 @@ export function createHuntHud(root) {
       set('strip', key, () => {
         document.body.classList.toggle('has-bar', bar.length > 1);
         if (bar.length <= 1) setOpen(false);
-        strip.innerHTML = bar.map((b, i) => `<button class="hh-slot${i === inv.sel ? ' sel' : ''}${b.n <= 0 ? ' empty' : ''}" data-i="${i}"><img src="${iconUrl(b.id)}" alt=""><b>${b.n}</b></button>`).join('');
+        strip.innerHTML = bar.map((b, i) => `<button class="hh-slot${i === inv.sel ? ' sel' : ''}${b.n <= 0 ? ' empty' : ''}" data-i="${i}"><img src="${iconUrl(b.id)}" alt=""><b>${b.n === Infinity ? '∞' : b.n}</b></button>`).join('');
       });
       const cur = inv.selectedId;
       set('btn', cur + ':' + inv.selectedCount, () => {

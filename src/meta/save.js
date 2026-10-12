@@ -21,7 +21,7 @@ export function defaultSave() {
     jr: 1, rp: 0, schrott: 0,
     box: {},
     weapons: { gs: { tier: 1, branch: null }, db: { tier: 1, branch: null }, bow: { tier: 1, branch: null }, kt: { tier: 1, branch: null },
-      kk: { tier: 1, branch: null }, ga: { tier: 1, branch: null } }, // [KT] sanitize() starts from defaults -> old saves get a starter Rostkatana / [KK] Blechkiste / [GA] Rost-Glitchaxt
+      kk: { tier: 1, branch: null }, ga: { tier: 1, branch: null }, lb: { tier: 1, branch: null } }, // [LB] Rostbüchse // [KT] sanitize() starts from defaults -> old saves get a starter Rostkatana / [KK] Blechkiste / [GA] Rost-Glitchaxt
     armorOwned,
     armory: [], // weitere Waffen im Lager [{type, tier, branch}] (aktive Waffe je Typ steht in weapons)
     loadout: { weapon: 'gs', armor: { ...DEFAULT_ARMOR }, items: [] },

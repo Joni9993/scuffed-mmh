@@ -15,6 +15,9 @@ const strategies = [
   { name: 'ga_schwert', weapon: 'ga', prog: 'ga_schwert', dists: [1.8, 2.4, 3.0], melee: true },
   { name: 'ga_zyklus', weapon: 'ga', prog: 'ga_zyklus', dists: [1.8, 2.4, 3.0], melee: true },
   { name: 'ga_entlad', weapon: 'ga', prog: 'ga_entlad', dists: [1.8, 2.4, 3.0], melee: true },
+  // [LB] Ratterbüchse: Tipp-Kette (4/s) und Rattern (A halten, 3/s x1,15); Auto-Nachladen bei leerem Magazin (kein Sauber-Timing)
+  { name: 'lb_tap', weapon: 'lb', prog: 'lb_tap', dists: [10], melee: false },
+  { name: 'lb_rattern', weapon: 'lb', prog: 'lb_rattern', dists: [10], melee: false },
   { name: 'bow_quick', weapon: 'bow', prog: 'bow_quick', dists: [11], melee: false },
   { name: 'bow_charge3', weapon: 'bow', prog: 'bow_charge3', dists: [11], melee: false },
   { name: 'bow_charge2', weapon: 'bow', prog: 'bow_charge2', dists: [11], melee: false },
@@ -80,6 +83,8 @@ async function run(s, dist, lockIdx) {
           else if (pt >= 0.1) { phase = 0; pt = 0; }
           break;
         }
+        case 'lb_tap': A = (i % 15) < 5; break;
+        case 'lb_rattern': A = true; break;
         case 'bow_quick': A = (i % 21) < 3; break;
         case 'bow_charge3': case 'bow_charge2': {
           const hold = s.prog === 'bow_charge3' ? 0.95 : 0.5;
