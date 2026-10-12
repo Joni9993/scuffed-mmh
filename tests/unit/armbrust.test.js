@@ -3,6 +3,8 @@ import { WeaponState } from '../../src/game/weapons/weapon.js';
 import { weapons } from '../../src/game/weapons/index.js';
 import { armbrust, AMMO, LB, st, fireBolt } from '../../src/game/weapons/armbrust.js';
 import { WEAPON_TYPES, WEAPON_ORDER, weaponStats } from '../../src/data/weapons.js';
+import { HuntInventory } from '../../src/game/inventory.js';
+import { ITEM_IDS, ITEMS } from '../../src/data/items.js';
 import { defaultSave } from '../../src/meta/save.js';
 import { encodeGear, decodeGear } from '../../src/data/gearlook.js';
 
@@ -135,5 +137,22 @@ describe('Ratterbüchse', () => {
     expect(armbrust.status(t.w)).toMatchObject({ level: AMMO.normal.mag, max: AMMO.normal.mag });
     const g = setup({ glitching: true });
     expect(armbrust.status(g.w).text).toMatch(/\/∞/);
+  });
+  it('Munitionssorten: virtuelle Leisten-Items nur mit lb, unendlich, nicht in ITEM_IDS', () => {
+    const inv = new HuntInventory({ free: { flickbrause: 2 }, weapon: 'lb' });
+    for (const id of ['ammo_normal', 'ammo_streu', 'ammo_durch']) {
+      expect(inv.bar).toContain(id);
+      expect(inv.count(id)).toBe(Infinity);
+      expect(inv.consume(id, 5)).toBe(true);
+      expect(ITEM_IDS).not.toContain(id);
+      expect(ITEMS[id].virtual).toBe(true);
+    }
+    expect(inv.used()).toEqual({});
+    expect(inv.bring('ammo_streu', 3)).toBe(0);
+    inv.setWeapon('bow');
+    expect(inv.bar.some((id) => id.startsWith('ammo_'))).toBe(false);
+    expect(new HuntInventory({ weapon: 'bow' }).bar).toEqual([]);
+    inv.setWeapon('lb');
+    expect(inv.bar.filter((id) => id.startsWith('ammo_'))).toHaveLength(3);
   });
 });

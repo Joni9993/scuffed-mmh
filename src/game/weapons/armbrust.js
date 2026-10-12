@@ -7,7 +7,7 @@ import { computeAim, solveVelocity, TIPS, tipEffect, takeTip } from './bow.js';
 // Ratterbüchse (`lb`, leichte Armbrust, GDD 18): A tippen = Einzelschuss, A halten = Rattern (3/s, langsamer),
 // B tippen = Nachladen mit Timing-Fenster (Sauber geladen!), B halten = Schrottmine, Finisher Rückstoß-Kracher.
 // Munition: Normal / Streuschrot / Durchschlag (unendlich, je Magazin), Spitzen wie beim Bogen (gleiche Items).
-// Munitionswechsel: Lock-Nächster/Vorheriger (lockNext/lockPrev) solange NICHT eingerastet (sonst wechseln die den Körperteil).
+// Munitionswechsel: virtuelle Leisten-Items ammo_normal/streu/durch (items.js 'lbammo'), nur mit `lb` in der Leiste.
 
 export const LB = {
   speed: 46, gravity: 4, radius: 0.1, farMul: 0.7,
@@ -18,9 +18,9 @@ export const LB = {
   glitch: { rate: 1.5, mul: 1.9 / 1.3 }, // Glitch-Grundfaktor 1,3 steckt schon in player.glitchDmgMul -> Ziel x1,9 gesamt
 };
 export const AMMO = {
-  normal: { name: 'Normal', mag: 10, mv: 9, n: 1, fan: 0, pierce: 1, sweet: [6, 14], tipMul: 2, wucht: 2 },
-  streu: { name: 'Streuschrot', mag: 4, mv: 4, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
-  durch: { name: 'Durchschlag', mag: 3, mv: 12, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
+  normal: { name: 'Normal', mag: 10, mv: 21, n: 1, fan: 0, pierce: 1, sweet: [6, 14], tipMul: 2, wucht: 2 },
+  streu: { name: 'Streuschrot', mag: 4, mv: 10, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
+  durch: { name: 'Durchschlag', mag: 3, mv: 28, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
 };
 export const AMMO_ORDER = ['normal', 'streu', 'durch'];
 export const sweetMul = (ammo, d) => { const s = AMMO[ammo].sweet; return d >= s[0] && d <= s[1] ? 1 : LB.farMul; };
@@ -283,13 +283,6 @@ export const armbrust = {
     reloadTick(w, dt);
     mineTick(w, dt);
     stickyTick(w, dt);
-    const inp = p?.ctx?.input?.b;
-    if (inp && (inp.lockNext?.pressed || inp.lockPrev?.pressed) && !p.lockPoint?.() && !w.moveId?.startsWith('lb_rattern')) {
-      const dir = inp.lockPrev?.pressed ? -1 : 1;
-      d.ammo = AMMO_ORDER[(AMMO_ORDER.indexOf(d.ammo) + dir + AMMO_ORDER.length) % AMMO_ORDER.length];
-      d.rel = null;
-      say(w, AMMO[d.ammo].name, 'heal');
-    }
     const id = w.moveId;
     if (d.wantReload && (id === null || id === 'lb_shot' || id === 'lb_rattern' || id === 'lb_rattern_g' || id === 'lb_hop')) {
       d.wantReload = false;
@@ -300,6 +293,7 @@ export const armbrust = {
       d.fireT -= dt;
       if (d.fireT <= 0) { if (fireBolt(w, { rattern: true })) d.fireT += 1 / (LB.rattern.rate * (glitching(w) ? LB.glitch.rate : 1)); else d.fireT = 0; }
     } else d.fireT = 0;
+    if (id === null && w.pend.A?.fired && !w.events.some((e) => e.type === 'holdA')) w.events.push({ type: 'holdA', age: 0, btn: 'A', heldT: w.pend.A.t }); // A gehalten ueber Nachladen/Mine hinweg: Rattern geht weiter
     if (p?.ctx && w.move?.aimed) {
       const aim = computeAim(p);
       p.rot = stepAngle(p.rot, aim.yaw, 18 * dt);

@@ -101,6 +101,11 @@ export class ItemSystem {
   #apply(u) {
     const { id, def } = u;
     const e = def.effect, p = this.player, hunt = this.hunt;
+    if (e.type === 'lbammo') { // [LB] Munitionssorte der Ratterbüchse (virtuell, wird nicht verbraucht)
+      const w = p.weapon;
+      if (p.weaponId === 'lb') { w.data.ammo = e.ammo; w.data.rel = null; hunt.fx.number(this.#top(), def.name, 'heal'); }
+      return;
+    }
     if (e.type === 'tip') {
       p.ammoTip = p.ammoTip === id ? null : id;
       hunt.fx.number(this.#top(), p.ammoTip ? def.name : 'Normale Pfeile', 'heal');

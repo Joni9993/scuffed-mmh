@@ -24,7 +24,7 @@ export class HuntMeta {
     this.hunt = hunt;
     this.loadout = loadout;
     const p = hunt.player;
-    this.inv = hunt.inventory = new HuntInventory({ brought: loadout.items, free: FREE_SUPPLIES });
+    this.inv = hunt.inventory = new HuntInventory({ brought: loadout.items, free: FREE_SUPPLIES, weapon: p.weaponId });
     this.applied = applyLoadout(p, loadout);
     this.items = new ItemSystem(hunt, p, this.inv);
     this.items.speedBonus = this.applied.food.itemSpeed;
@@ -96,6 +96,7 @@ export class HuntMeta {
     const h = this.hunt, p = h.player, w = lo.weapon;
     if (p.weaponId !== w.type || p.weaponTier !== w.tier || p.weaponBranch !== w.branch) p.setWeapon(w.type, w.tier, w.branch);
     this.loadout = h.loadout = lo;
+    this.inv.setWeapon(w.type); // [LB]
     this.applied = applyLoadout(p, lo, { reapply: true });
     this.items.speedBonus = this.applied.food.itemSpeed;
     const gear = makeGear(lo);

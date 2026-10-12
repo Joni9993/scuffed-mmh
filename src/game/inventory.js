@@ -2,13 +2,13 @@
 // Three pools: `free` (chest supplies, vanish after the hunt), `loot` (gathered/carved, goes to the box), `brought`
 // (taken from the box; leftovers simply stay there, spent ones are deducted afterwards).
 // Consume order: free -> loot -> brought.
-import { ITEMS, BOX_MAX } from '../data/items.js';
+import { ITEMS, BOX_MAX, LB_AMMO_IDS } from '../data/items.js';
 
 export const BAR_MAX = 8;
 const carryable = (id) => ITEMS[id]?.kind === 'consumable' || ITEMS[id]?.kind === 'ammo';
 
 export class HuntInventory {
-  constructor({ brought = [], free = {} } = {}) {
+  constructor({ brought = [], free = {}, weapon = null } = {}) {
     this.free = {}; this.loot = {}; this.brought = {}; this.brought0 = {};
     this.bar = []; this.sel = 0;
     this.carved = {}; // carve log (subset of loot)
@@ -19,7 +19,20 @@ export class HuntInventory {
     }
     // free supplies go to the front so Flickbrause is always the first thing selected
     for (const [id, n] of Object.entries(free)) { this.free[id] = n; this.#toBar(id, true); }
+    this.setWeapon(weapon);
   }
+
+  /** [LB] Virtuelle Munitionssorten (unendlich, nie gespeichert): nur solange die Ratterbüchse in der Hand ist. */
+  setWeapon(type) {
+    const want = type === 'lb';
+    const has = this.bar.includes(LB_AMMO_IDS[0]);
+    if (want === has) return;
+    const cur = this.selectedId;
+    if (want) this.bar.unshift(...LB_AMMO_IDS);
+    else this.bar = this.bar.filter((id) => !LB_AMMO_IDS.includes(id));
+    this.sel = Math.max(0, this.bar.indexOf(cur));
+  }
+
 
   #toBar(id, front = false) {
     if (!carryable(id) || this.bar.includes(id)) return;
@@ -27,7 +40,7 @@ export class HuntInventory {
     if (this.bar.length > BAR_MAX) this.bar.length = BAR_MAX;
   }
 
-  count(id) { return (this.free[id] ?? 0) + (this.loot[id] ?? 0) + (this.brought[id] ?? 0); }
+  count(id) { if (ITEMS[id]?.virtual) return Infinity; return (this.free[id] ?? 0) + (this.loot[id] ?? 0) + (this.brought[id] ?? 0); }
 
   /** Add to the loot pool. Returns how many fit (consumables respect the carry limit). */
   add(id, n = 1, { carve = false } = {}) {
@@ -44,6 +57,7 @@ export class HuntInventory {
   }
 
   consume(id, n = 1) {
+    if (ITEMS[id]?.virtual) return true;
     if (n < 0 || this.count(id) < n) return false;
     let left = n;
     for (const pool of [this.free, this.loot, this.brought]) {

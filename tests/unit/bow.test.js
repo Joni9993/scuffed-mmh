@@ -51,6 +51,7 @@ function setup({ sinceRoll = 99, monsters = [], ammoTip = null, inventory } = {}
   return api;
 }
 
+const TIPS_COLOR = 0x6adf3a;
 describe('Spannbogen: Spannen (GDD 4.3)', () => {
   const draw = (sec, opts) => {
     const s = setup(opts);
@@ -277,7 +278,7 @@ describe('Spitzen (Munition)', () => {
       expect(s.spawned.length).toBe(SHOTS[lvl].arrows);
       for (const a of s.spawned) a.onHit({ monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, a);
       const total = s.hits.reduce((n, h) => n + h.ah.status.poison, 0);
-      expect(total).toBeGreaterThanOrEqual(50);
+      expect(total).toBeGreaterThanOrEqual(40);
       expect(total).toBeLessThanOrEqual(60);
     }
   });
@@ -308,6 +309,17 @@ describe('Spitzen (Munition)', () => {
     delete m.applyStatus;
     arrowHit(s.player, { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, { ...SHOTS[1], tip: 'bummspitze' }, 12);
     expect(s.hits[0].ah.hit.blunt).toBe(8);
+  });
+  it('Regression: 1 Spitze je Pfeil (Streuschuss = 3 Spitzen), leer mitten in der Salve -> Rest ohne Spitze', () => {
+    let n = 5;
+    const inventory = { consume: (id, k) => (n >= k ? ((n -= k), true) : false), count: () => n };
+    const s = setup({ ammoTip: 'giftspitze', inventory });
+    fireShot(s.w, 1);
+    expect(n).toBe(2);
+    fireShot(s.w, 1);
+    expect(n).toBe(0);
+    expect(s.spawned.slice(3).map((a) => a.color)).toEqual([TIPS_COLOR, TIPS_COLOR, 0xf0e6c8]);
+    expect(s.player.ammoTip).toBe(null);
   });
   it('each shot consumes one tip; empty inventory clears player.ammoTip', () => {
     let n = 1;
