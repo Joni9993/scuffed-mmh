@@ -8,6 +8,7 @@ import { radialTexture } from '../../render/textures.js';
 import { ProjectileSet } from './mprojectiles.js';
 import { getNav } from './nav.js';
 import { predationTick, eatTick, endEating } from './predation.js'; // [L]
+import { StatusFx } from './statusfx.js';
 
 // wing/spread/jaw: only used by models that have them (Brathalos); harmless for the others
 export const MREST = { bodyY: 0, bodyPitch: 0, bodyRoll: 0, neck: 0, head: 0, headYaw: 0, tailYaw: 0, tailPitch: 0, legL: 0, legR: 0, wing: 0, spread: 0, jaw: 0 };
@@ -19,6 +20,20 @@ const POISON_THRESHOLD = 100, POISON_TIME = 15, POISON_PCT = 0.03, TRAP_TIME = 6
 export const LIMP_HP = 0.3;
 export const RUST_THRESHOLD = 100, RUST_TIME = 15, RUST_FACTOR = 0.15, RUST_PART_MUL = 1.5, SCALD_TIME = 10, SCALD_FACTOR = 0.1;
 const GL_CYAN = [0.0, 0.7, 0.85], GL_MAGENTA = [0.9, 0.0, 0.7];
+// Status-Farbsprache: Rotglut rot, betaeubt gelb flackernd, Falle blau, geblendet weisser Strobo, erschoepft fahl im Atemtakt,
+// Gift lila, Rost orange-braun, verbrueht pink, Gestank gruen
+const TINT_SLOT = 0.7;
+const TINT = {
+  rage: { rgb: [0.34, 0.02, 0], pulse: (t) => 0.75 + 0.25 * Math.sin(t * 9) },
+  stun: { rgb: [0.34, 0.28, 0.02], pulse: (t) => (Math.floor(t * 6) % 2 ? 1 : 0.45) },
+  trap: { rgb: [0.06, 0.12, 0.34], pulse: (t) => 0.7 + 0.3 * Math.sin(t * 14) },
+  blind: { rgb: [0.4, 0.4, 0.4], pulse: (t) => (Math.floor(t * 12) % 3 ? 0.25 : 1) },
+  tired: { rgb: [0.14, 0.15, 0.18], pulse: (t, m) => 0.5 + 0.5 * (m._breath ?? 0) },
+  poison: { rgb: [0.2, 0, 0.28], pulse: (t) => 0.7 + 0.3 * Math.sin(t * 4) },
+  rust: { rgb: [0.3, 0.11, 0], pulse: () => 1 },
+  scald: { rgb: [0.34, 0.08, 0.18], pulse: (t) => 0.75 + 0.25 * Math.sin(t * 20) },
+  stink: { rgb: [0.1, 0.24, 0], pulse: (t) => 0.7 + 0.3 * Math.sin(t * 6) },
+};
 const GL_CYCLE = 3.6, GL_PULSE = 0.45; // Glitch-Stellen: Puls-Takt / -Dauer (s)
 const GHOST_MAT = new THREE.MeshBasicMaterial({ color: 0x7fe8ff, transparent: true, opacity: 0.35, depthWrite: false, wireframe: true });
 const MINOR_CULL_R2 = 65 * 65; // [B] perf: small monsters farther than this from every local hunter are neither posed nor drawn (nor hittable)
@@ -1250,27 +1265,63 @@ export class Monster {
     } else if (this.state === 'fressen') { // [L] head down, tearing at the carcass
       Object.assign(target, { neck: 0.55, head: 30 + Math.sin(this.time * 6) * 9, bodyPitch: 10, bodyY: -0.15, tailYaw: Math.sin(this.time * 2) * 10 });
       if (Math.random() < dt * 2.5) { this.nodes.head?.getWorldPosition(_v2); this.ctx.fx.spark(_v2, 1, '#b04040', 1); }
-    } else if (this.stunT > 0) {
-      Object.assign(target, { head: 40, neck: 0.2, bodyPitch: 6, headYaw: Math.sin(this.time * 6) * 20 });
+    } else if (this.stunT > 0) { // BETAEUBT: Knie geben nach, Koerper eiert im Kreis, Kopf rollt, Maul haengt offen (+ Sterne-Kranz)
+      const w = this.time * 2.4;
+      Object.assign(target, {
+        bodyY: -0.4, bodyRoll: Math.sin(w) * 14, bodyPitch: 8 + Math.cos(w) * 6, neck: 0.4, head: 40 + Math.sin(w + 1) * 14, headYaw: Math.cos(w) * 35,
+        jaw: 25, tailPitch: -16, tailYaw: Math.sin(w * 0.5) * 12, legL: 28 + Math.sin(w) * 8, legR: -22 - Math.sin(w) * 8,
+      });
     } else if (this.stagT > 0) {
       Object.assign(target, { bodyPitch: -14, head: -20, bodyY: -0.2, tailYaw: Math.sin(this.time * 30) * 6 });
-    } else if (this.trapped) {
-      Object.assign(target, { bodyPitch: 4, head: 8, legL: Math.sin(this.time * 14) * 25, legR: -Math.sin(this.time * 14) * 25, tailYaw: Math.sin(this.time * 9) * 18 });
-    } else if (this.blind) {
-      Object.assign(target, { head: Math.sin(this.time * 5) * 16, headYaw: Math.sin(this.time * 3.3) * 30, neck: 0.1 });
+    } else if (this.trapped) { // FALLE: klebt fest, zerrt mit dem ganzen Koerper, reisst den Kopf hin und her, Beine strampeln
+      const w = this.time;
+      Object.assign(target, {
+        bodyPitch: 6 + Math.sin(w * 7) * 4, bodyY: -0.2, bodyRoll: Math.sin(w * 11) * 8, head: 10 + Math.sin(w * 7) * 18, headYaw: Math.sin(w * 5.3) * 38, neck: -0.1,
+        jaw: 12 + Math.max(0, Math.sin(w * 7)) * 20, legL: Math.sin(w * 16) * 32, legR: -Math.sin(w * 16) * 32, tailYaw: Math.sin(w * 9) * 26, tailPitch: -8,
+      });
+    } else if (this.blind) { // GEBLENDET: weicht zurueck, Kopf peitscht suchend, schnappt ins Leere
+      const w = this.time;
+      Object.assign(target, {
+        bodyPitch: -8, bodyRoll: Math.sin(w * 2.6) * 9, bodyY: Math.sin(w * 5.2) * 0.04, neck: -0.2, head: -12 + Math.sin(w * 5) * 22, headYaw: Math.sin(w * 3.3) * 50,
+        jaw: Math.max(0, Math.sin(w * 4)) * 30, legL: Math.sin(w * 3) * 22, legR: -Math.sin(w * 3) * 22, tailYaw: Math.sin(w * 2) * 16,
+      });
+      if (Math.random() < dt * 8) { this.nodes.head?.getWorldPosition(_v2); this.ctx.fx.spark(_v2, 1, '#ffffff', 1.4); }
+    } else if (this.tired) { // ERSCHOEPFT: haengt durch, Kopf fast am Boden, Flanken pumpen, Maul offen, Schwanz schleift (+ Atemwolken)
+      const br = Math.sin(this.time * 6.5);
+      this._breath = br;
+      Object.assign(target, {
+        bodyY: -0.5 + br * 0.08, bodyPitch: 12 + br * 3, neck: 0.55, head: 40 + br * 7, headYaw: Math.sin(this.time * 0.9) * 8,
+        jaw: 20 + br * 10, tailPitch: -22, tailYaw: Math.sin(this.time * 0.7) * 4, legL: 18, legR: -14,
+      });
     } else {
       this.gait += spd * dt * (0.8 / Math.max(0.8, this.def.scale * 0.6));
       const s = clamp(spd / (this.def.run || 6), 0, 1.2);
-      const sw = Math.sin(this.gait * 4) * 45 * s;
+      const rusty = this.st.rustT > 0;
+      const g4 = rusty ? Math.round(this.gait * 4 * 1.6) / 1.6 : this.gait * 4; // ROST: Gelenke klemmen -> abgehackter Gang
+      const sw = Math.sin(g4) * 45 * s;
       target.legL = sw; target.legR = -sw;
-      target.bodyY = -Math.abs(Math.cos(this.gait * 4)) * 0.08 * s + Math.sin(this.time * 2) * 0.02;
-      target.tailYaw = Math.sin(this.gait * 4) * 8 * s + Math.sin(this.time * 1.3) * 3;
+      target.bodyY = -Math.abs(Math.cos(g4)) * 0.08 * s + Math.sin(this.time * 2) * 0.02;
+      target.tailYaw = Math.sin(g4) * 8 * s + Math.sin(this.time * 1.3) * 3;
       target.head = Math.sin(this.time * 1.7) * 3;
       if (this.limping) {
         // hobbling: one side weak, body sags, head hangs low, drool
         target.bodyPitch = 6; target.head += 14; target.neck += 0.1;
-        target.legL = sw * 0.35 - 10; target.bodyRoll = Math.sin(this.gait * 4) * 5 * s; target.bodyY -= 0.12;
+        target.legL = sw * 0.35 - 10; target.bodyRoll = Math.sin(g4) * 5 * s; target.bodyY -= 0.12;
         if (Math.random() < dt * 2) { this.nodes.head?.getWorldPosition(_v2); this.ctx.fx.spark({ x: _v2.x, y: _v2.y - 0.3, z: _v2.z }, 1, '#9a4040', 0.6); }
+      }
+      if (rusty) { // ROST: steifer Nacken, ab und zu ein ruckartiges Klemmen
+        target.neck -= 0.1; target.tailYaw *= 0.4;
+        if ((this.time % 1.7) < 0.12) { target.headYaw += 18; target.bodyRoll += 6; }
+      }
+      if (this.st.scaldT > 0) { // VERBRUEHT: Haut zuckt, Koerper schuettelt sich (+ Dampf)
+        target.bodyRoll += Math.sin(this.time * 37) * 3; target.bodyY += Math.sin(this.time * 29) * 0.03; target.tailYaw += Math.sin(this.time * 23) * 10;
+      }
+      if (this.poisoned) { // GIFT: wuergt alle ~2 s, Kopf sackt, Maul auf (+ Blasen)
+        const ph = this.time % 2.2;
+        if (ph < 0.6) { const k = Math.sin((ph / 0.6) * Math.PI); target.neck += 0.35 * k; target.head += 28 * k; target.jaw += 30 * k; target.bodyPitch += 6 * k; }
+      }
+      if (this.st.stink > 0) { // GESTANK: schuettelt angeekelt den Kopf, Nase weg vom Geruch
+        target.headYaw += Math.sin(this.time * 22) * 28; target.head -= 12; target.neck -= 0.15;
       }
     }
     this.def.poseHook?.(this, target);
@@ -1279,9 +1330,10 @@ export class Monster {
     this.rigApply(p);
     this._stamp++; // hurtbox caches are stale now
 
-    // flash: telegraph red/white blink, hit flash white, rage glow, poison/trap tint
+    // flash: telegraph red/white blink, hit flash white, dann Status-Farbe (mehrere aktiv -> reihum, je ~0,7 s)
     const blink = Math.floor(this.time * 10) % 2 === 0;
-    const poison = this.poisoned, trap = this.trapped, rust = this.st.rustT > 0, gs = this.def.glitchSpots;
+    const gs = this.def.glitchSpots;
+    const tint = this._statusTint();
     for (const part of this.parts) {
       if (part.gone) continue;
       const spot = !!gs && gs.includes(part.id);
@@ -1289,10 +1341,7 @@ export class Monster {
       if (tele && tele.includes(part.id)) { if (this.mm?.hideColorCues) { /* nur Ton */ } else if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
       else if (this.hitFlash > 0) { r = g = b = 0.45; }
       else if (spot && !part.broken && (this.time + (this.id?.length ?? 0) * 0.37) % GL_CYCLE < GL_PULSE) { const c = Math.floor(this.time * 20) % 2 ? GL_CYAN : GL_MAGENTA, k = 0.55 + 0.45 * Math.sin(this.time * 18); r = c[0] * k; g = c[1] * k; b = c[2] * k; } // Owner-Feedback Okt 2026: nur kurzer Puls alle ~3,6 s statt Dauerflackern
-      else if (this.rage) { r = 0.22; }
-      else if (trap) { r = 0.2; g = 0.2; }
-      else if (poison) { g = 0.16; }
-      else if (rust) { r = 0.3; g = 0.11; }
+      else if (tint) { r = tint[0]; g = tint[1]; b = tint[2]; }
       if (spot && !part.broken && part.breakHp) { // gelegentlicher Positions-Jitter der Teil-Materialien
         const js = Math.floor(this.time * 12), jit = js % 7 === 0 ? 0.07 : clamp(1 - part.hp / part.breakHp, 0, 1) * (part.jitter ?? 0.05);
         for (const m of part.mats) if (m.userData?.ps1?.uJit) m.userData.ps1.uJit.value = jit;
@@ -1300,6 +1349,40 @@ export class Monster {
       for (const m of part.mats) m.emissive?.setRGB(r, g, b);
     }
     this.sync();
+    this._statusFx(dt);
+  }
+
+  /** Status-Farbsprache (emissive): jeder Zustand eigener Farbton + eigener Rhythmus. Mehrere aktiv -> reihum. */
+  _statusTint() {
+    const t = this.time, L = this._tints ?? (this._tints = []);
+    L.length = 0;
+    if (this.rage) L.push(TINT.rage);
+    if (this.stunT > 0) L.push(TINT.stun);
+    if (this.trapped) L.push(TINT.trap);
+    if (this.blind) L.push(TINT.blind);
+    if (this.tired) L.push(TINT.tired);
+    if (this.poisoned) L.push(TINT.poison);
+    if (this.st.rustT > 0) L.push(TINT.rust);
+    if (this.st.scaldT > 0) L.push(TINT.scald);
+    if (this.st.stink > 0) L.push(TINT.stink);
+    if (!L.length) return null;
+    const c = L[Math.floor(t / TINT_SLOT) % L.length];
+    const k = c.pulse(t, this);
+    const out = this._tintOut ?? (this._tintOut = [0, 0, 0]);
+    out[0] = c.rgb[0] * k; out[1] = c.rgb[1] * k; out[2] = c.rgb[2] * k;
+    return out;
+  }
+
+  /** Koerper-Requisiten (Sterne, Atem, Dampf, Blasen ...), nur grosse Brocken. */
+  _statusFx(dt) {
+    if (this.minor) return;
+    if (!this.alive) { this._sfx?.hideAll(); return; }
+    const on = { stun: this.stunT > 0, tired: this.tired && !this.attack, breath: this._breath ?? 0, scald: this.st.scaldT > 0, poison: this.poisoned, stink: this.st.stink > 0, rust: this.st.rustT > 0 };
+    if (!this._sfx) {
+      if (!(on.stun || on.tired || on.scald || on.poison || on.stink || on.rust)) return;
+      this._sfx = new StatusFx(this);
+    }
+    this._sfx.update(dt, on);
   }
 
   sync() {

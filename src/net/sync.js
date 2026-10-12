@@ -298,6 +298,7 @@ export class HuntNet {
       m.stunT = c.stun ? 1 : 0;
       m.stagT = c.stag ? 1 : 0;
       m.st.rustT = c.rust ? 15 : 0; m.st.scaldT = c.scald ? 10 : 0; // Rost/Verbruht: Host-Zustand (Teile-Faktoren fuer lokale Treffer)
+      m.st.blind = c.blind ? 1 : 0; m.st.trap = c.trap ? 1 : 0; m.st.poisonT = c.poison ? 1 : 0; m.st.stink = c.stink ? 1 : 0; // Koerpersprache (Pose/Farbe/FX) auch beim Gast
       if (c.extra) { // Sonderzustand vom Host: def.applySnapExtra oder flache Felder übernehmen (keine Objekte überschreiben)
         if (m.def.applySnapExtra) m.def.applySnapExtra(m, c.extra);
         else for (const k in c.extra) if (typeof m[k] !== 'object' && typeof c.extra[k] !== 'object') m[k] = c.extra[k];
@@ -471,7 +472,7 @@ export class HuntNet {
   #monSnap(m) {
     return {
       id: m.id, def: m.def.id, x: m.pos.x, y: m.pos.y, z: m.pos.z, rot: m.rot, state: m.state, hpPct: m.hp / m.maxHp,
-      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, rust: m.st.rustT > 0, scald: m.st.scaldT > 0, phase: m.phase,
+      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, rust: m.st.rustT > 0, scald: m.st.scaldT > 0, blind: m.blind, trap: m.trapped, poison: m.poisoned, stink: m.st.stink > 0, phase: m.phase,
       atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.def.neutral ? [] : m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
       extra: m.def.snapExtra?.(m), // Brocken-Sonderzustand (Gorgo eingegraben, Voltaro Ladung …)
     };
