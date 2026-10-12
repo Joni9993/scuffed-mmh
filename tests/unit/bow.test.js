@@ -444,3 +444,29 @@ describe('Spitzen-Status im Treffer-Pfad (Solo/Host + Koop-Gast)', async () => {
     expect(back.rostBuild).toBe(15);
   });
 });
+
+describe('Treffer-Farbeffekte', async () => {
+  const { statusHitFx, STATUS_FX } = await import('../../src/game/statusFx.js');
+  const { encodeMonster, decodeMonster } = await import('../../src/net/protocol.js');
+  it('hits on a poisoned / rusted / stunned monster spark in the status colours', () => {
+    const sparks = [];
+    const fx = { spark: (p, n, c) => sparks.push(c) };
+    statusHitFx(fx, { st: { poisonT: 3, rustT: 2 }, stunT: 1 }, { x: 0, y: 1, z: 0 });
+    expect(sparks).toEqual([STATUS_FX.poison.color, STATUS_FX.rost.color, STATUS_FX.stun.color]);
+    sparks.length = 0;
+    statusHitFx(fx, { st: { poisonT: 0, rustT: 0 }, stunT: 0 }, { x: 0, y: 1, z: 0 });
+    expect(sparks).toEqual([]);
+  });
+  it('arrow hits with a tip burst in the tip colour', () => {
+    const s = setup();
+    const sparks = [];
+    s.ctx.fx.spark = (p, n, c) => sparks.push(c);
+    const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
+    arrowHit(s.player, { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, { ...SHOTS[2], tip: 'giftspitze' }, 12);
+    expect(sparks).toContain('#b060ff');
+  });
+  it('poison state reaches coop guests (snapshot flag)', () => {
+    const o = encodeMonster({ id: 'm1', def: 'jaggo', x: 0, y: 0, z: 0, rot: 0, state: 'combat', hpPct: 1, poison: true, parts: [] });
+    expect(decodeMonster(o).poison).toBe(true);
+  });
+});

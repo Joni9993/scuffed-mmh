@@ -27,10 +27,10 @@ export const SHOTS = {
   3: { name: 'Durchschuss', arrows: 1, fan: 0, mv: 16, pierce: 3, wucht: 2, tipMul: 2.5 },
 };
 export const TIPS = {
-  brennspitze: { name: 'Brennspitze', color: 0xff7a1a, elems: { fire: 12 } },
-  giftspitze: { name: 'Giftspitze', color: 0x6adf3a, poison: 20 },
-  bummspitze: { name: 'Bummspitze', color: 0xff3a6a, stun: 8, boom: true },
-  rostspitze: { name: 'Rostspitze', color: 0xc8661e, rost: 15 },
+  brennspitze: { name: 'Brennspitze', color: 0xff7a1a, fx: '#ff7a1a', elems: { fire: 12 } },
+  giftspitze: { name: 'Giftspitze', color: 0x6adf3a, fx: '#b060ff', poison: 20 },
+  bummspitze: { name: 'Bummspitze', color: 0xff3a6a, fx: '#ffe14d', stun: 8, boom: true },
+  rostspitze: { name: 'Rostspitze', color: 0xc8661e, fx: '#d8742a', rost: 15 },
 };
 const LEVEL_COLOR = { 1: 0xf0e6c8, 2: 0x9fd8ff, 3: 0xffe14d };
 
@@ -142,6 +142,7 @@ export function arrowHit(p, info, spec, dist) {
   if (fx.status?.stun && typeof m.applyStatus !== 'function') hit.blunt = fx.status.stun; // fallback: stun via blunt buildup
   const ah = { hit, group: 'arrow', instance: 0, sauber: false, glitch: false, elems: fx.elems, status: fx.status };
   ctx.playerHit(p, m, dbg ? weakHp(m, info.hp) : info.hp, ah);
+  if (tip) ctx.fx?.spark(info.pos, spec.noBoom ? 3 : 8, tip.fx, 3.5); // Spitzen-Farbe am Trefferpunkt
   if (tip?.boom && !spec.noBoom) explode(ctx, info.pos);
 }
 function explode(ctx, pos) {

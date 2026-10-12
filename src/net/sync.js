@@ -9,6 +9,7 @@ import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
 import { PLAYER_COLORS } from '../meta/save.js';
 import { labelSprite } from '../render/labels.js';
 import { applyHitStatus } from '../game/combat.js';
+import { statusHitFx } from '../game/statusFx.js';
 import { monsters as MONDEFS } from '../game/monsters/index.js';
 import { encodeKkBar, decodeKkBar } from '../game/buffs.js'; // [KK]
 import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
@@ -162,7 +163,7 @@ export class HuntNet {
       const kind = h.res.weak ? 'weak' : h.res.crit ? 'crit' : 'hit';
       if (hp) hunt.fx.number({ x: hp.pos.x, y: hp.pos.y + 0.6, z: hp.pos.z }, h.res.dmg, kind, true);
       if (hp) this.net.sendAll(MSG.EV, encodeDn(m.id, h.res.partId, h.res.dmg, kind, from)); // Mitspieler sehen die Zahl (nicht der Angreifer selbst)
-      if (hp) hunt.fx.spark(hp.pos, 6, '#ffffff', 4);
+      if (hp) { hunt.fx.spark(hp.pos, 6, '#ffffff', 4); statusHitFx(hunt.fx, m, hp.pos); }
       return ev;
     });
     if (r === null) this.stats.hitsDup++;
@@ -193,6 +194,7 @@ export class HuntNet {
         const hp = m?.hurtParts().find((q) => q.part.id === dn.partId);
         const at = hp ? hp.pos : m?.pos;
         if (at) hunt.fx.number({ x: at.x, y: at.y + (hp ? 0.6 : 2), z: at.z }, dn.dmg, dn.kind, true);
+        if (hp) statusHitFx(hunt.fx, m, hp.pos);
         break;
       }
       case 'bye': if (from === this.net.hostId && this.isGuest) this.#hostGone(); else this.#removeRemote(from); break; // participant left the hunt (still in the room)
@@ -298,7 +300,7 @@ export class HuntNet {
       m.discovered = c.discovered;
       m.stunT = c.stun ? 1 : 0;
       m.stagT = c.stag ? 1 : 0;
-      m.st.rustT = c.rust ? 15 : 0; m.st.scaldT = c.scald ? 10 : 0; // Rost/Verbruht: Host-Zustand (Teile-Faktoren fuer lokale Treffer)
+      m.st.rustT = c.rust ? 15 : 0; m.st.scaldT = c.scald ? 10 : 0; m.st.poisonT = c.poison ? 15 : 0; // Rost/Verbruht: Host-Zustand (Teile-Faktoren fuer lokale Treffer); Gift nur Anzeige (Tick beim Host)
       if (c.extra) { // Sonderzustand vom Host: def.applySnapExtra oder flache Felder übernehmen (keine Objekte überschreiben)
         if (m.def.applySnapExtra) m.def.applySnapExtra(m, c.extra);
         else for (const k in c.extra) if (typeof m[k] !== 'object' && typeof c.extra[k] !== 'object') m[k] = c.extra[k];
@@ -472,7 +474,7 @@ export class HuntNet {
   #monSnap(m) {
     return {
       id: m.id, def: m.def.id, x: m.pos.x, y: m.pos.y, z: m.pos.z, rot: m.rot, state: m.state, hpPct: m.hp / m.maxHp,
-      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, rust: m.st.rustT > 0, scald: m.st.scaldT > 0, phase: m.phase,
+      rage: m.rage, discovered: m.discovered, stun: m.stunT > 0, stag: m.stagT > 0, tired: m.tired, rust: m.st.rustT > 0, poison: m.st.poisonT > 0, scald: m.st.scaldT > 0, phase: m.phase,
       atk: m.attack ? atkKey(m.attack.inst.params.t0) : 0, parts: m.def.neutral ? [] : m.parts.map((p) => ({ hp: p.hp, broken: p.broken })),
       extra: m.def.snapExtra?.(m), // Brocken-Sonderzustand (Gorgo eingegraben, Voltaro Ladung …)
     };
