@@ -58,12 +58,12 @@ describe('Ratterbüchse', () => {
     expect(t.d.mag.normal).toBe(AMMO.normal.mag);
     expect(t.d.sauberMag).toBe(false);
   });
-  it('Sauber geladen: B im Fenster 0,45-0,6 s beendet sofort, +15 % fuer das naechste Magazin', () => {
+  it('Sauber geladen: neuer A-Druck im Fenster 0,45-0,6 s beendet sofort, +15 % fuer das naechste Magazin', () => {
     const t = setup();
     t.d.mag.normal = 0;
     t.tap('A');
     while (!(t.d.rel && t.d.rel.t >= 0.5)) t.step();
-    t.tap('B', 0.02);
+    t.tap('A', 0.02);
     expect(t.d.mag.normal).toBe(AMMO.normal.mag);
     expect(t.d.sauberMag).toBe(true);
     expect(t.says).toContain('Sauber geladen!');
@@ -71,11 +71,11 @@ describe('Ratterbüchse', () => {
     const rec = fireBolt(t.w);
     expect(rec.dmgMul).toBeCloseTo(LB.reload.sauberMul);
   });
-  it('B ausserhalb des Fensters = Klemmer (1,4 s), danach geladen', () => {
+  it('neuer A-Druck ausserhalb des Fensters = Klemmer (1,4 s), danach geladen', () => {
     const t = setup();
     t.d.mag.normal = 0;
     t.tap('A'); t.step(0.25);
-    t.tap('B', 0.02);
+    t.tap('A', 0.02);
     expect(t.w.moveId).toBe('lb_klemmer');
     expect(t.d.mag.normal).toBe(0);
     t.step(1.5);
@@ -175,6 +175,25 @@ describe('Ratterbüchse', () => {
     expect(t.spawned.at(-1).style).toBe('pellet');
     t.d.ammo = 'durch'; fireBolt(t.w);
     expect(t.spawned.at(-1).style).toBe('long');
+  });
+  it('Gehaltenes A durch das Nachladen: kein Timing-Druck, normales Nachladen, danach Feuer', () => {
+    const t = setup();
+    t.d.mag.normal = 0;
+    t.press('A');
+    t.step(1.3);
+    expect(t.d.sauberMag).toBe(false);
+    expect(t.d.mag.normal).toBeGreaterThan(0);
+    t.step(1);
+    expect(t.d.shots).toBeGreaterThan(2);
+  });
+  it('B waehrend des Nachladens hat keine Timing-Rolle', () => {
+    const t = setup();
+    t.d.mag.normal = 0;
+    t.tap('A');
+    while (!(t.d.rel && t.d.rel.t >= 0.5)) t.step();
+    t.tap('B', 0.02);
+    expect(t.d.sauberMag).toBe(false);
+    expect(t.w.moveId).toBe('lb_reload');
   });
   it('Rolle = Ausfallschritt-Konfig', () => {
     expect(armbrust.rollOverride().step).toBe(true);

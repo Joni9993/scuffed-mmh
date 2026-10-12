@@ -375,14 +375,14 @@ export class HuntNet {
     if (!hunt.projectiles || !a) return;
     hunt.projectiles.spawn({
       pos: { x: a.x, y: a.y, z: a.z }, vel: { x: a.vx, y: a.vy, z: a.vz }, gravity: a.g ?? 7, radius: 0.1, life: a.l ?? 2.6,
-      team: 'player', owner: peer?.player ?? null, pierce: a.pi ?? 1, color: a.c, mirror: true, onHit: () => {},
+      team: 'player', owner: peer?.player ?? null, pierce: a.pi ?? 1, color: a.c, style: a.s ?? null, mirror: true, onHit: () => {},
     });
     this.stats.arrowsMirrored = (this.stats.arrowsMirrored ?? 0) + 1;
   }
   /** Tell the others about an arrow I fired (compact). */
   #sendArrow(o) {
     const r = (n) => Math.round(n * 100) / 100;
-    this.net.sendAll(MSG.FX, { k: 'arrow', p: { x: r(o.pos.x), y: r(o.pos.y), z: r(o.pos.z), vx: r(o.vel.x), vy: r(o.vel.y), vz: r(o.vel.z), g: o.gravity ?? 0, c: o.color, l: o.life, pi: o.pierce } });
+    this.net.sendAll(MSG.FX, { k: 'arrow', p: { x: r(o.pos.x), y: r(o.pos.y), z: r(o.pos.z), vx: r(o.vel.x), vy: r(o.vel.y), vz: r(o.vel.z), g: o.gravity ?? 0, c: o.color, l: o.life, pi: o.pierce, ...(o.style ? { s: o.style } : {}) } });
   }
   #hookFx() {
     const hunt = this.hunt;

@@ -64,6 +64,15 @@ function muzzleWorld(p) {
   if (!Number.isFinite(_mz.x) || Math.hypot(_mz.x - p.pos.x, _mz.z - p.pos.z) < 0.2) return null;
   return { x: _mz.x, y: _mz.y, z: _mz.z };
 }
+const _gr = new THREE.Vector3();
+/** Laufrichtung (Welt, normiert) = Mündung - Waffen-Ursprung; null wenn nicht ermittelbar */
+function barrelDir(p, mz) {
+  const m = p.weaponMesh;
+  if (!m?.getWorldPosition) return null;
+  m.getWorldPosition(_gr);
+  const x = mz.x - _gr.x, y = mz.y - _gr.y, z = mz.z - _gr.z, l = Math.hypot(x, y, z);
+  return l > 0.1 ? { x: x / l, y: y / l, z: z / l } : null;
+}
 export function fireBolt(w, { free = false, rattern = false } = {}) {
   const d = st(w), p = w.hooks.player, A = AMMO[d.ammo], gl = glitching(w);
   if (!free && !gl) {
@@ -78,7 +87,9 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
     const aim = computeAim(p);
     p.rot = aim.yaw;
     const mzl = muzzleWorld(p);
-    if (mzl) aim.origin = mzl;
+    let bar = null;
+    if (mzl) { aim.origin = mzl; bar = barrelDir(p, mzl); }
+    if (bar && !aim.target) aim.target = { x: mzl.x + bar.x * 14, y: mzl.y + bar.y * 14, z: mzl.z + bar.z * 14 }; // ohne Ziel: entlang des Laufs
     const tipId = free || gl ? null : takeTip(p);
     rec.tip = tipId;
     const spec = { ammo: d.ammo, mv: A.mv, wucht: A.wucht, tip: tipId, tipMul: A.tipMul, dmgMul };
@@ -105,12 +116,12 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
 
 // ---------- Nachladen
 let hintCount = 0; // Sitzung: die ersten 3 Nachlader zeigen den Zusatzhinweis
-function hintOnce(w) { if (hintCount++ < 3) say(w, 'B im gelben Feld = Sauber geladen', 'heal', 2.9); }
+function hintOnce(w) { if (hintCount++ < 3) say(w, 'A im gelben Feld = Sauber geladen', 'heal', 2.9); }
 const cdOf = (w) => 1 / (LB.rattern.rate * (glitching(w) ? LB.glitch.rate : 1));
 export function startReload(w) {
   const d = st(w);
   if (glitching(w) || d.mag[d.ammo] >= AMMO[d.ammo].mag) return false;
-  d.rel = { kind: 'reload', t: 0 };
+  d.rel = { kind: 'reload', t: 0, seen: w.pend.A };
   d.pend = false;
   hintOnce(w);
   w.startMove('lb_reload');
@@ -134,10 +145,14 @@ function reloadTick(w, dt) {
   const t0 = r.t;
   r.t += dt;
   if (r.kind !== 'reload') return;
-  if (t0 < LB.reload.win[0] && r.t >= LB.reload.win[0]) say(w, 'B!', 'weak', 1.7); // Zeiger erreicht das gelbe Feld
-  const i = w.events.findIndex((e) => e.type === 'B');
-  if (i < 0) return;
-  w.events.splice(i, 1);
+  if (t0 < LB.reload.win[0] && r.t >= LB.reload.win[0]) say(w, 'A!', 'weak', 1.7); // Zeiger erreicht das gelbe Feld
+  // Timing-Druck = NEUER A-Druck waehrend des Nachladens (schon vorher gehaltenes A zaehlt nicht)
+  const cur = w.pend.A;
+  if (!cur || cur === r.seen) return;
+  r.seen = cur;
+  cur.fired = true; // der Druck gehoert dem Nachladen: kein Schuss/Rattern daraus (Rattern setzt nach dem Nachladen ueber das gehaltene A fort)
+  const i = w.events.findIndex((e) => e.type === 'A');
+  if (i >= 0) w.events.splice(i, 1);
   if (r.t < LB.reload.minPress) return; // Doppeltipp direkt nach dem Start: ignorieren
   if (r.t >= LB.reload.win[0] && r.t <= LB.reload.win[1] + dt) { // Sauber geladen!
     finishReload(w, true);
@@ -148,7 +163,7 @@ function reloadTick(w, dt) {
     emit(w, 'heavy');
     w.hooks.player?.ctx?.fx?.shake?.(0.08, 0.1);
   } else { // Klemmer
-    d.rel = { kind: 'klemmer', t: 0 };
+    d.rel = { kind: 'klemmer', t: 0, seen: w.pend.A };
     w.startMove('lb_klemmer');
     say(w, 'Klemmer!', 'hit');
     w.hooks.player?.ctx?.fx?.flash?.('rgba(255,50,40,.3)', 0.25);
@@ -194,6 +209,8 @@ function fireFinisher(w) {
   if (!p?.ctx?.projectiles) return;
   const d = st(w), aim = computeAim(p);
   p.rot = aim.yaw;
+  const mzl = muzzleWorld(p);
+  if (mzl) { aim.origin = mzl; const bar = barrelDir(p, mzl); if (bar && !aim.target) aim.target = { x: mzl.x + bar.x * 14, y: mzl.y + bar.y * 14, z: mzl.z + bar.z * 14 }; }
   const tgt = aim.target ?? { x: aim.origin.x + Math.sin(aim.yaw) * 12, y: aim.origin.y, z: aim.origin.z + Math.cos(aim.yaw) * 12 };
   p.ctx.projectiles.spawn({
     pos: { ...aim.origin }, vel: solveVelocity(aim.origin, tgt, 50, LB.gravity), gravity: LB.gravity, radius: 0.14, life: 1.5, team: 'player', owner: p, pierce: 1, color: 0xff5a3a,
@@ -290,7 +307,7 @@ export const armbrust = {
   },
   onUpdate(w, dt) {
     const d = st(w), p = w.hooks.player;
-    if (w.moveId === 'lb_reload' && !d.rel) d.rel = { kind: 'reload', t: 0 };
+    if (w.moveId === 'lb_reload' && !d.rel) d.rel = { kind: 'reload', t: 0, seen: w.pend.A };
     reloadTick(w, dt);
     mineTick(w, dt);
     stickyTick(w, dt);
@@ -338,7 +355,7 @@ export const armbrust = {
     if (d.rel) {
       const dur = d.rel.kind === 'reload' ? LB.reload.dur : LB.reload.klemmer;
       const jam = d.rel.kind === 'klemmer', hot = reloadWindowOpen(w);
-      return { text: jam ? 'Klemmer!' : 'Laden', level: 0, max: A.mag, reload: { t: d.rel.t, dur, win: jam ? [0, 0] : LB.reload.win, hot, jam, hint: hot ? 'B!' : (!jam && hintCount <= 3 ? 'B im gelben Feld = Sauber geladen' : '') } };
+      return { text: jam ? 'Klemmer!' : 'Laden', level: 0, max: A.mag, reload: { t: d.rel.t, dur, win: jam ? [0, 0] : LB.reload.win, hot, jam, hint: hot ? 'A!' : (!jam && hintCount <= 3 ? 'A im gelben Feld = Sauber geladen' : '') } };
     }
     const fin = w.wucht >= 100 ? ' · ⚡' : ''; // Kracher bereit (B halten)
     return { text: `${A.short} ${d.mag[d.ammo]}/${A.mag}${tipTxt}${mines}${fin}`, level: d.mag[d.ammo], max: A.mag };
