@@ -1,7 +1,6 @@
-import * as THREE from 'three';
 import { compileTrack, REST } from '../anim.js';
 import { stepAngle } from '../../core/math.js';
-import { lambert } from '../../render/ps1.js';
+import { buildArmbrustLook, updateArmbrustLook } from '../gear/armbrustLook.js';
 import { computeAim, solveVelocity, TIPS, tipEffect, takeTip } from './bow.js';
 
 // Ratterbüchse (`lb`, leichte Armbrust, GDD 18): A tippen = Einzelschuss, A halten = Rattern (3/s, langsamer),
@@ -74,7 +73,7 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
       const vel = A.n > 1 ? rotateY(base, (i / (A.n - 1) - 0.5) * A.fan * D2R) : base;
       p.ctx.projectiles.spawn({
         pos: { ...aim.origin }, vel, gravity: LB.gravity, radius: LB.radius, life: 2, team: 'player', owner: p, pierce: A.pierce,
-        color: tipId ? TIPS[tipId].color : 0xd8c090,
+        color: gl ? (d.shots % 2 ? 0xff2bd6 : 0x18e6ff) : tipId ? TIPS[tipId].color : 0xd8c090,
         glow: (pr) => { const dd = Math.hypot(pr.pos.x - o.x, pr.pos.z - o.z); return sweetMul(spec.ammo, dd) === 1 ? 'sweet' : 'weak'; },
         onHit: (info) => lbHit(p, info, spec, Math.hypot(info.pos.x - o.x, info.pos.z - o.z)),
         data: { level: 1 },
@@ -225,31 +224,15 @@ export const moves = {
 const rattern = (w) => (glitching(w) ? 'lb_rattern_g' : 'lb_rattern');
 const idleA = (w) => (rolledRecently(w) ? 'lb_hop' : 'lb_shot');
 
-const BASE = { ...REST, arx: 25, sw: 90, arz: 10, alx: -8, tx: 4 };
-const AIM = { arx: 92, sw: -92, arz: 4, alx: 74, alz: -36, ty: -28, tx: 6, lrx: 10, rrx: -14, hy: -18, py: -0.05 };
+const BASE = { ...REST, arx: 50, arz: 8, sw: 0, alx: 40, tx: 5, ty: -6, th: 1 };
+const AIM = { arx: 82, arz: 4, sw: 0, tx: 3, ty: -10, hx: -4, hy: 6, py: -0.05 };
 const A = (f) => compileTrack(f, BASE);
 const anims = {
-  lb_shot: A([[0, AIM], [0.05, { ...AIM, alx: 80, tx: 2 }], [0.25, AIM]]),
-  lb_rattern: A([[0, {}], [0.1, AIM], [0.2, { ...AIM, alx: 78 }], [0.3, AIM]]),
-  lb_reload: A([[0, {}], [0.2, { ...AIM, alx: 30, arx: 60, ty: 0 }], [0.5, { ...AIM, alx: 20, arx: 70, ty: 0 }], [1.0, {}], [1.4, {}]]),
-  lb_mine: A([[0, {}], [0.15, { tx: 30, hx: 20, arx: 50, alx: 50 }], [0.3, { tx: 30, hx: 20, arx: 50, alx: 50 }], [0.45, {}]]),
+  lb_shot: A([[0, AIM], [0.05, { ...AIM, arx: 84, tx: -1 }], [0.25, AIM]]),
+  lb_rattern: A([[0, {}], [0.1, AIM], [0.2, { ...AIM, arx: 83, tx: 0 }], [0.3, AIM]]),
+  lb_reload: A([[0, AIM], [0.2, { arx: 40, sw: 28, ty: -20, tx: 14, hx: 12 }], [0.7, { arx: 40, sw: 28, ty: -20, tx: 14, hx: 12 }], [1.0, AIM], [1.4, AIM]]),
+  lb_mine: A([[0, {}], [0.15, { tx: 30, hx: 20, arx: 40, sw: 0 }], [0.3, { tx: 30, hx: 20, arx: 40, sw: 0 }], [0.45, {}]]),
 };
-
-// ---------- Optik (Platzhalter: Schaft + Bogenarme)
-const TIER_COL = [0x7a5a3a, 0x9a8a6a, 0xb08a3a, 0xc8602a, 0x6a7a8a, 0x8a9aa8];
-function buildMesh({ tier = 1, branch = null } = {}) {
-  const g = new THREE.Group();
-  const col = TIER_COL[Math.min(5, Math.max(0, tier - 1))];
-  const wood = lambert({ color: col }), dark = lambert({ color: 0x3a3a40 });
-  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.rotation.set(rx, ry, rz); g.add(me); return me; };
-  add(new THREE.BoxGeometry(0.1, 0.12, 0.8), wood, 0, 0, 0.1);            // Schaft
-  add(new THREE.BoxGeometry(0.06, 0.07, 0.5), dark, 0, 0.09, 0.28);       // Lauf / Schiene
-  add(new THREE.BoxGeometry(0.5, 0.05, 0.05), dark, 0.25 * 0 + 0.22, 0.02, 0.52, 0, -0.35, 0);
-  add(new THREE.BoxGeometry(0.5, 0.05, 0.05), dark, -0.22, 0.02, 0.52, 0, 0.35, 0);
-  add(new THREE.BoxGeometry(0.1, 0.18, 0.1), dark, 0, -0.13, -0.05);      // Magazin
-  g.userData.lb = { tier, branch };
-  return g;
-}
 
 /** Waffen-Glitch "Buffer Overflow": kein Nachladen, Rattern ohne Tempo-Malus, Spitzen nicht verbraucht, Feuerrate x1,5. */
 const glitch = {
@@ -263,7 +246,8 @@ export const armbrust = {
   id: 'lb',
   name: 'Ratterbüchse',
   glitch,
-  hand: 'L',
+  // Zweihand-Armbrust: rechte Hand am Griff, linke unter dem Vorderschaft (userData.twoHand), Schaft an der Schulter
+  rest: { arx: 50, arz: 8, sw: 0, tx: 5, ty: -6, th: 1 },
   holdThreshold: { A: 0.15, B: 0.3 },
   idle: { A: idleA, holdA: rattern, B: 'lb_mine', holdB: null },
   moves,
@@ -308,8 +292,22 @@ export const armbrust = {
       p.rot = stepAngle(p.rot, aim.yaw, 18 * dt);
     }
   },
-  buildMesh,
-  updateMesh() {},
+  buildMesh: ({ tier = 1, branch = null } = {}) => buildArmbrustLook(tier, branch),
+  updateMesh(w, mesh, dt, player) {
+    if (!mesh?.userData.lb) return;
+    const gl = !!player?.glitching;
+    const L = mesh.userData.lb;
+    let shot = false, text;
+    if (player?.remote) { // Koop-Avatar: Schuss aus dem Pose-Namen schaetzen
+      const wp = player.remote.wp;
+      if (wp && (wp.name === 'lb_shot' || wp.name === 'lb_rattern')) { L.rt = (L.rt ?? 0) - dt; if (wp.t < (L.rlast ?? 99) || L.rt <= 0) { shot = true; L.rt = 0.33; } L.rlast = wp.t; } else L.rlast = 99;
+    } else {
+      const d = w.data;
+      if (d.shots !== undefined) { shot = L.shots !== undefined && d.shots > L.shots; L.shots = d.shots; }
+    }
+    if (gl) text = Math.floor((typeof performance !== 'undefined' ? performance.now() : 0) / 90) % 2 ? 'NaN/∞' : '∞/∞';
+    updateArmbrustLook(mesh, { glitch: gl, shot, text }, dt);
+  },
   /** HUD: Magazin-Pips + Munitionsname + Nachlade-Balken (Fenster = "Sauber!" im Chip) */
   status(w) {
     const d = st(w), A = AMMO[d.ammo];

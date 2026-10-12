@@ -641,7 +641,7 @@ Waffe aus 8 losen **Datenblöcken**, von Glitch-Energie zusammengehalten. Axt = 
 - **Wucht:** +2 je Treffer (Schrot +1). **Glitch „Buffer Overflow“:** kein Nachladen, Rattern ohne Tempo-Malus, Spitzen werden nicht verbraucht, Feuerrate x1,5, Schaden gesamt x1,9 (Glitch-Basis 1,3 x 1,46); HUD-Magazin flackert `NaN/∞`.
 - **Stufen** (Kraft): 70 / 88 / 104 (b: 108, Schock 12) / 126 / 144-148 (k/g/v) / 170. Namen: Rostbüchse, Knochenratter, Jaggo-Ratter / Barrotz-Prellratter, Brathalos-Glutratter, Kessel-/Schlacke-/Spulenratter, Funkenfürst-Ratter. Schmiede-Kosten wie Bogen.
 - **Gemessen (`tools/weapon-dps.mjs`, Jaggo, 30 s, Stufe 1, 10 m, ohne Sauber-Timing):** Tipp-Kette 45,1 DPS, Rattern 41,1 DPS (Bogen 27-37 im selben Lauf). Glitch: Tipp 104, Rattern 129 (Dauer-Glitch). Tuning nur über MV (Magazin 10, Feuerrate fix).
-- **Integration:** wie 17.3 (`WEAPON_TYPES/ORDER/UPGRADES`, `weapons/index.js`, Save-Default, Gear-Code `l`, Rückenhalterung, Onboarding, Spitzen-Items auch mit `lb`). Optik: Platzhalter-Mesh (Schaft + Bogenarme). Test: `tests/unit/armbrust.test.js`.
+- **Integration:** wie 17.3 (`WEAPON_TYPES/ORDER/UPGRADES`, `weapons/index.js`, Save-Default, Gear-Code `l`, Rückenhalterung, Onboarding, Spitzen-Items auch mit `lb`). Optik: `gear/armbrustLook.js` (9 Looks aus Brocken-Teilen, Zweihand-Griff, Rückenhalterung, Glitch-Optik Buffer Overflow: RGB-Geisterkontur, Datenfugen, `NaN/∞`-Pixelziffern, Mündungs-/Hülsen-Pixelwürfel, RGB-Bolzen). Kontaktbogen: `docs/shots/lb_looks.png` (`tools/weapon-looks.mjs <dir> lb`). Test: `tests/unit/armbrust.test.js`.
 
 ---
 

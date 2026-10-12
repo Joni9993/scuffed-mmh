@@ -14,7 +14,7 @@ const kkSuffix = KK.matrix ? '-matrix' : (KK.view === 'front' ? '-front' : '') +
 const ALL = { 1: [1, null], 2: [2, null], '3a': [3, 'a'], '3b': [3, 'b'], 4: [4, null], '5k': [5, 'k'], '5g': [5, 'g'], '5v': [5, 'v'], 6: [6, 'v'] };
 const ONLY = process.env.KK_ONLY ? process.env.KK_ONLY.split(',') : Object.keys(ALL);
 const STEPS = ONLY.map((k) => ALL[k]);
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 2000, height: 640 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 await page.goto(`${BASE}?scene=gearlab`);
@@ -47,6 +47,24 @@ async function gaShots() {
     await page.screenshot({ path: `${dir}/look-ga-${name}.png` });
   }
 }
+// [LB] Ratterbuechse: look-lb.png (alle Stufen, nur Waffe, schraeg), look-lb-held.png (Traeger, Zielpose), look-lb-rest.png (Ruhehaltung), look-lb-glitch.png
+async function lbShots() {
+  const steps = STEPS;
+  const run = async (name, items, opts, n = 6) => {
+    await page.evaluate(([items, opts]) => { window.__SH.app.renderer.setResolution(1700); window.__SH.app.scene.show(items, opts); window.__SH.pause(true); }, [items, opts]);
+    if (n) { await page.evaluate((n) => window.__SH.step(n), n); await page.waitForTimeout(500); await page.screenshot({ path: `${dir}/look-lb${name}.png` }); }
+  };
+  const w = (tier, branch) => ({ gear: { weapon: { type: 'lb', tier, branch } } });
+  const yaw = Number(process.env.YAW ?? 0.9);
+  await run('', steps.map(([t, b]) => ({ ...w(t, b), weaponOnly: true, yaw })), { spacing: 1.6, cam: [0, 3.1, 7.4], look: [0, 3.1, 0], fov: 38 });
+  await run('-held', steps.map(([t, b]) => ({ ...w(t, b), anim: ['lb_shot', 0.1], yaw: Number(process.env.HYAW ?? 0.9) })), { spacing: 1.7, cam: [0, 1.9, 8.2], look: [0, 1.4, 0], fov: 38 });
+  await run('-rest', steps.slice(0, 4).map(([t, b]) => ({ ...w(t, b), yaw: Number(process.env.HYAW ?? 0.9) })), { spacing: 1.7, cam: [0, 1.7, 5.4], look: [0, 1.3, 0], fov: 38 });
+  await run('-glitch', steps.slice(0, 3).map(([t, b]) => ({ ...w(t, b), weaponOnly: true, yaw, player: { glitching: true }, w: { data: { shots: 0 } } })), { spacing: 1.6, cam: [0, 3.1, 5.4], look: [0, 3.1, 0], fov: 38 }, 0);
+  await page.evaluate(() => { const sc = window.__SH.app.scene; for (let i = 0; i < 8; i++) { sc.rigs.forEach((r) => { if (i === 6) r.it.w.data.shots++; }); window.__SH.step(1); } sc.rigs.forEach((r) => { r.it.w.data.shots++; }); window.__SH.step(2); });
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: `${dir}/look-lb-glitch.png` });
+}
+if (types.includes('lb')) { await lbShots(); types.splice(types.indexOf('lb'), 1); }
 if (types.includes('ga')) { await gaShots(); types.splice(types.indexOf('ga'), 1); }
 for (const t of types) {
   await page.evaluate(([t, steps, KK]) => {

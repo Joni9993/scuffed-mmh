@@ -74,7 +74,7 @@ export const gearlabScene = {
     for (const r of this.rigs) {
       r.rig.apply(r.pose);
       r.rig.tick(dt);
-      r.def.updateMesh?.({ data: {}, busy: false, charging: false, moveId: null, t: 0, chargeT: 0, move: null, ...(r.it.w ?? {}) }, r.rig.weaponMesh, dt);
+      r.def.updateMesh?.({ data: {}, busy: false, charging: false, moveId: null, t: 0, chargeT: 0, move: null, ...(r.it.w ?? {}) }, r.rig.weaponMesh, dt, r.it.player);
       if (r.it.spin) r.rig.root.rotation.y += dt * r.it.spin;
     }
   },

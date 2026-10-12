@@ -644,7 +644,7 @@ export class Player {
       case 'roll': {
         if (this.rollCfg?.step) { // [LB] Ausfallschritt: aufrecht, kein Purzeln, kurzer Schritt in Eingaberichtung
           const k = this.rollT / this.rollCfg.duration, s = Math.sin(Math.min(1, k) * Math.PI);
-          Object.assign(t, { py: -0.1 * s, tx: 14 * s, lrx: 55 * s, rrx: -35 * s, arx: 70, alx: 55, arz: 8, alz: 8, sw: 100 });
+          Object.assign(t, { py: -0.1 * s, tx: 14 * s, lrx: 55 * s, rrx: -35 * s, arx: 70, alx: 55, arz: 8, alz: 8, sw: this.def.hand === 'L' ? 100 : 0 });
           break;
         }
         const k = this.rollT / (this.rollCfg?.duration ?? ROLL.duration);

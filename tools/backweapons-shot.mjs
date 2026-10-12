@@ -5,7 +5,7 @@ const require = createRequire('/opt/node-tools/');
 const { chromium } = require('playwright');
 const BASE = process.env.SH_URL || 'http://127.0.0.1:5173/';
 const out = process.argv[2] || 'backweapons.png';
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 844, height: 390 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 await page.goto(`${BASE}?scene=gearlab`);
@@ -13,7 +13,7 @@ await page.waitForFunction(() => window.__SH?.app?.scene?.show, null, { timeout:
 await page.evaluate(async () => {
   const { mountOnBack } = await import('/src/game/gear/backMount.js');
   const { REST } = await import('/src/game/anim.js');
-  const types = ['gs', 'kt', 'kk', 'ga', 'db', 'bow']; // [KK][GA]
+  const types = ['gs', 'ga', 'bow', 'lb']; // [KK][GA][LB]
   const sc = window.__SH.app.scene;
   sc.show(types.map((t) => ({ gear: { weapon: { type: t, tier: 1 } }, yaw: 0, pose: { ...REST }, noWeapon: true })), { spacing: 2.2, cam: [0, 1.5, -6], look: [0, 1.0, 0] });
   sc.camera.position.set(0, 1.5, -6); sc.camera.lookAt(0, 1.0, 0);
