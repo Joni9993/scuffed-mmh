@@ -113,12 +113,23 @@ export function scrapWeapon(save, idx) {
   return { ok: true, schrott: scrapValue(w), name: weaponStats(w.type, w.tier, w.branch).name };
 }
 
-export function craftArmor(save, pieceId) {
+/** Rüstungsteil jetzt schmiedbar (noch nicht im Besitz, alle Materialien da)? Prüfung + fehlende Mats. */
+export function canCraftArmor(save, pieceId) {
   const p = ARMOR_PIECES[pieceId];
   if (!p) return { ok: false, reason: 'unknown' };
   if (save.armorOwned[pieceId] || !p.cost) return { ok: false, reason: 'owned' };
   const m = missing(save, p.cost);
   if (m.length) return { ok: false, reason: 'mats', missing: m };
+  return { ok: true };
+}
+
+/** Nächste Waffenstufe dieses Typs jetzt bezahlbar? (mind. eine Option mit ok) */
+export const canUpgradeWeapon = (save, type) => weaponUpgradeOptions(save, type).some((o) => o.ok);
+
+export function craftArmor(save, pieceId) {
+  const p = ARMOR_PIECES[pieceId];
+  const can = canCraftArmor(save, pieceId);
+  if (!can.ok) return can;
   pay(save, p.cost);
   save.armorOwned[pieceId] = true;
   save.stats.crafted = (save.stats.crafted ?? 0) + 1;

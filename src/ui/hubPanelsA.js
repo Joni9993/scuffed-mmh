@@ -4,7 +4,7 @@ import { ARMOR_SETS, SET_ORDER, SLOTS, SLOT_NAMES, SKILLS, pieceId, getPiece } f
 import { ITEMS, ITEM_IDS } from '../data/items.js';
 import { RECIPES, RECIPE_ORDER } from '../data/recipes.js';
 import { missing } from '../meta/inventory.js';
-import { upgradeWeapon, weaponUpgradeOptions, craftArmor, equipArmor, equipWeapon, craftItem, setBarItem, barMoveFront, ownedWeaponList, buildNewWeapon, swapWeapon, scrapWeapon, scrapValue, NEW_WEAPON_COST, equipWeaponState } from '../meta/crafting.js';
+import { upgradeWeapon, weaponUpgradeOptions, craftArmor, equipArmor, equipWeapon, craftItem, setBarItem, barMoveFront, ownedWeaponList, buildNewWeapon, swapWeapon, scrapWeapon, scrapValue, canCraftArmor, canUpgradeWeapon, NEW_WEAPON_COST, equipWeaponState } from '../meta/crafting.js';
 import { armorProtection, armorSkills, damageReduction, skillEffects, buildLoadout } from '../meta/loadout.js';
 import { GearPreview, previewSlot } from './gearPreview.js'; // [G]
 import { makeGear } from '../data/gearlook.js'; // [G]
@@ -12,7 +12,7 @@ import { SHOP_STOCK, buy, sell, sellPrice } from '../meta/shop.js';
 import { esc, costChips, delta, reasonText, itemDetail, weaponTag, pieceSkillsHtml } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 
-const tabs = (cur, list) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
+const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}${glow[k] ? ' glow' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
 
 // ============================================================ Schmiede
 // Layout (fits 568x320 without scrolling to the button): left = tabs + selectable tree/grid (scrolls on its own),
@@ -25,7 +25,7 @@ const nodeKey = (n) => `${n.tier}${n.branch ?? ''}`;
 
 export function createSchmiede(ctx) {
   let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null, wnode = null; // wnode = tree node key being looked at
-  let pv = null;
+  let pv = null, keepScroll = 0, host = null; // keepScroll: Scrollposition der linken Liste über Re-Render
 
   const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k === 'rust' ? 'Rost' : k} ${v}`).join(', ') || '–';
   const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${nxt.bluntMul ? '<span>Stumpf +30%</span>' : ''}${nxt.partDmgMul ? '<span>Teilbruch +25%</span>' : ''}${nxt.poisonMul ? '<span>Gift-Aufbau +</span>' : ''}</div>`;
@@ -45,18 +45,18 @@ export function createSchmiede(ctx) {
     const opts = weaponUpgradeOptions(s, wsel);
     if (!wnode || !TREE.some((n) => nodeKey(n) === wnode)) wnode = opts.length ? nodeKey(opts[0]) : curNode(w);
     const cur = weaponStats(wsel, w.tier, w.branch);
-    const chips = `<div class="chips">${WEAPON_ORDER.map((t) => `<button class="tab${t === wsel ? ' on' : ''}" data-a="wsel" data-k="${t}">${WEAPON_TYPES[t].name}<small> ${s.weapons[t].tier}</small></button>`).join('')}</div>`;
+    const chips = `<div class="chips">${WEAPON_ORDER.map((t) => `<button class="tab${t === wsel ? ' on' : ''}${canUpgradeWeapon(s, t) ? ' glow' : ''}" data-a="wsel" data-k="${t}">${WEAPON_TYPES[t].name}<small> ${s.weapons[t].tier}</small></button>`).join('')}</div>`;
     const tree = TREE.map((n) => {
       const st = nodeState(n, w, opts), name = weaponStats(wsel, n.tier, n.branch).name;
       const mark = st === 'cur' ? '★' : st === 'done' ? '✓' : st === 'next' ? '▶' : '·';
-      return `<button class="rowbtn tn t${n.tier}${n.branch ? ' br' : ''} ${st}${wnode === nodeKey(n) ? ' sel' : ''}" data-a="wnode" data-k="${nodeKey(n)}"><span class="mk">${mark}</span><span class="nm">${esc(name)}</span><small>St.${n.tier}${n.branch ? BR_LABEL[n.branch] : ''}</small></button>`;
+      return `<button class="rowbtn tn t${n.tier}${n.branch ? ' br' : ''} ${st}${st === 'next' && opts.find((o) => o.tier === n.tier && o.branch === n.branch)?.ok ? ' glow' : ''}${wnode === nodeKey(n) ? ' sel' : ''}" data-a="wnode" data-k="${nodeKey(n)}"><span class="mk">${mark}</span><span class="nm">${esc(name)}</span><small>St.${n.tier}${n.branch ? BR_LABEL[n.branch] : ''}</small></button>`;
     }).join('');
     // right
     const node = TREE.find((n) => nodeKey(n) === wnode);
     const nst = nodeState(node, w, opts), nxt = weaponStats(wsel, node.tier, node.branch);
     const opt = opts.find((o) => o.tier === node.tier && o.branch === node.branch);
     let act;
-    if (nst === 'next') act = `<div class="costs">${costChips(opt.cost, s)}</div><button class="btn small ${opt.ok ? 'go' : 'dis'}" data-a="upg" data-b="${node.branch ?? ''}">Schmieden</button>`;
+    if (nst === 'next') act = `<div class="costs">${costChips(opt.cost, s)}</div><button class="btn small ${opt.ok ? 'go glow' : 'dis'}" data-a="upg" data-b="${node.branch ?? ''}">Schmieden</button>`;
     else if (nst === 'cur') act = s.loadout.weapon === wsel ? '<button class="btn small on" data-a="noop">Ausgerüstet</button>' : '<button class="btn small go" data-a="equipw">Ausrüsten</button>';
     else if (nst === 'done') act = '<div class="note">Schon überholt.</div>';
     else act = '<div class="note">Erst die Stufe davor schmieden.</div>';
@@ -76,7 +76,7 @@ export function createSchmiede(ctx) {
     psel ??= lo.armor.body;
     const grid = SET_ORDER.map((set) => `<div class="arow"><span class="aset">${ARMOR_SETS[set].name}<small> ${ARMOR_SETS[set].prot}</small></span>${SLOTS.map((sl) => {
       const id = pieceId(set, sl), own = s.armorOwned[id], worn = lo.armor[sl] === id;
-      return `<button class="acell${own ? ' own' : ''}${worn ? ' worn' : ''}${psel === id ? ' sel' : ''}" data-a="psel" data-k="${id}">${SLOT_NAMES[sl]}${worn ? ' *' : own ? ' +' : ''}</button>`;
+      return `<button class="acell${own ? ' own' : ''}${worn ? ' worn' : ''}${!own && canCraftArmor(s, id).ok ? ' glow' : ''}${psel === id ? ' sel' : ''}" data-a="psel" data-k="${id}">${SLOT_NAMES[sl]}${worn ? ' *' : own ? ' +' : ''}</button>`;
     }).join('')}</div>`).join('');
     const p = getPiece(psel), own = s.armorOwned[psel], worn = lo.armor[p.slot] === psel;
     const before = armorProtection(lo.armor), after = armorProtection({ ...lo.armor, [p.slot]: psel });
@@ -84,7 +84,7 @@ export function createSchmiede(ctx) {
     const ids = [...new Set([...Object.keys(sk0), ...Object.keys(sk1)])];
     const skTxt = ids.length ? ids.map((id) => `<span class="${(sk0[id] ?? 0) === (sk1[id] ?? 0) ? '' : (sk1[id] ?? 0) > (sk0[id] ?? 0) ? 'sk up' : 'sk dn'}">${SKILLS[id].name} ${sk0[id] ?? 0}→${sk1[id] ?? 0}</span>`).join('') : '<span>keine Macken</span>';
     const act = own ? `<button class="btn small${worn ? ' on' : ' go'}" data-a="${worn ? 'noop' : 'wear'}">${worn ? 'Getragen' : 'Anlegen'}</button>`
-      : `<div class="costs">${costChips(p.cost, s)}</div><button class="btn small${missing(s, p.cost).length ? ' dis' : ' go'}" data-a="craftp">Schmieden</button>`;
+      : `<div class="costs">${costChips(p.cost, s)}</div><button class="btn small${canCraftArmor(s, psel).ok ? ' go glow' : ' dis'}" data-a="craftp">Schmieden</button>`;
     const info = `<div class="fi-h"><b>${esc(p.name)}</b> <small>${esc(p.setName)} · ${own ? 'im Besitz' : 'neu'}</small></div>
       <div class="stats"><span>Schutz ${before} → ${after} ${delta(before, after)}</span><span>${Math.round(damageReduction(after) * 100)} % weniger Schaden</span></div>
       <div class="stats mk">${skTxt}</div>${pieceSkillsHtml(psel, lo.armor)}${act}`;
@@ -104,10 +104,12 @@ export function createSchmiede(ctx) {
   return {
     render() {
       const v = tab === 'weapons' ? weaponsView() : armorView();
-      return `<div class="fg"><div class="fg-l"><div class="fg-tabs">${tabs(tab, [['weapons', 'Waffen'], ['armor', 'Rüstung']])}</div><div class="fg-scroll">${v.left}</div></div>
+      return `<div class="fg"><div class="fg-l"><div class="fg-tabs">${tabs(tab, [['weapons', 'Waffen'], ['armor', 'Rüstung']], { weapons: WEAPON_ORDER.some((t) => canUpgradeWeapon(ctx.save, t)), armor: SET_ORDER.some((set) => SLOTS.some((sl) => canCraftArmor(ctx.save, pieceId(set, sl)).ok)) })}</div><div class="fg-scroll">${v.left}</div></div>
         <div class="fg-p">${previewSlot(true)}</div><div class="fg-r"><div class="fg-info">${v.info}</div></div></div>`;
     },
     after(body) {
+      host = body;
+      const sc = body.querySelector('.fg-scroll'); if (sc) sc.scrollTop = keepScroll;
       body.classList.add('fit');
       const slot = body.querySelector('[data-gpv]'); if (!slot) return;
       pv ??= new GearPreview({ big: true }); pv.set(previewGear()); pv.attach(slot);
@@ -116,8 +118,9 @@ export function createSchmiede(ctx) {
     click(a, d) {
       const s = ctx.save;
       if (a === 'noop') return false;
-      if (a === 'tab') { tab = d.k; wnode = null; }
-      else if (a === 'wsel') { wsel = d.k; wnode = null; }
+      keepScroll = host?.querySelector('.fg-scroll')?.scrollTop ?? 0; // Re-Render ersetzt die Liste -> Position merken
+      if (a === 'tab') { tab = d.k; wnode = null; keepScroll = 0; }
+      else if (a === 'wsel') { wsel = d.k; wnode = null; keepScroll = 0; }
       else if (a === 'wnode') wnode = d.k;
       else if (a === 'psel') psel = d.k;
       else if (a === 'equipw') { equipWeapon(s, wsel); ctx.commit(); ctx.toast(`${WEAPON_TYPES[wsel].name} ausgerüstet.`); }
