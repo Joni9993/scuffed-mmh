@@ -54,15 +54,15 @@ describe('Ratterbüchse', () => {
   it('Reload: 1,0 s ohne Treffer-Timing, Magazin voll danach', () => {
     const t = setup();
     t.d.mag.normal = 0;
-    t.tap('B'); t.step(1.2);
+    t.tap('A'); t.step(1.4);
     expect(t.d.mag.normal).toBe(AMMO.normal.mag);
     expect(t.d.sauberMag).toBe(false);
   });
   it('Sauber geladen: B im Fenster 0,45-0,6 s beendet sofort, +15 % fuer das naechste Magazin', () => {
     const t = setup();
     t.d.mag.normal = 0;
-    t.tap('B');
-    t.step(0.45);
+    t.tap('A');
+    while (!(t.d.rel && t.d.rel.t >= 0.5)) t.step();
     t.tap('B', 0.02);
     expect(t.d.mag.normal).toBe(AMMO.normal.mag);
     expect(t.d.sauberMag).toBe(true);
@@ -74,7 +74,7 @@ describe('Ratterbüchse', () => {
   it('B ausserhalb des Fensters = Klemmer (1,4 s), danach geladen', () => {
     const t = setup();
     t.d.mag.normal = 0;
-    t.tap('B'); t.step(0.25);
+    t.tap('A'); t.step(0.25);
     t.tap('B', 0.02);
     expect(t.w.moveId).toBe('lb_klemmer');
     expect(t.d.mag.normal).toBe(0);
@@ -111,7 +111,7 @@ describe('Ratterbüchse', () => {
     expect(t.d.mag.normal).toBe(AMMO.normal.mag);
     expect(t.d.wantReload).toBe(false);
     t.d.mag.normal = 0;
-    t.tap('B'); t.step(0.1);
+    t.tap('A'); t.step(0.1);
     expect(t.w.moveId).not.toBe('lb_reload');
     t.press('A'); t.step(0.5);
     expect(t.w.moveId).toBe('lb_rattern_g');
@@ -119,7 +119,7 @@ describe('Ratterbüchse', () => {
   });
   it('Mine: B halten setzt, max. 2 Ladungen, +1 nach 20 s', () => {
     const t = setup();
-    for (let i = 0; i < 3; i++) { t.press('B'); t.step(0.9); t.release('B'); t.step(0.3); }
+    for (let i = 0; i < 3; i++) { t.tap('B'); t.step(0.6); }
     expect(t.d.mines.length).toBe(2);
     expect(t.d.charges).toBe(0);
     t.step(20.5);
@@ -131,6 +131,31 @@ describe('Ratterbüchse', () => {
     t.press('B'); t.step(0.5);
     expect(t.w.moveId === 'lb_finisher' || t.w.lastMoveId === 'lb_finisher').toBe(true);
     expect(t.d.mines.length).toBe(0);
+  });
+  it('Cooldown: Tipp-Spam feuert max. 3/s, hoechstens 1 Schuss gepuffert', () => {
+    const t = setup();
+    for (let i = 0; i < 30; i++) { t.tap('A', 0.02); t.step(0.05); } // ~2,5 s Spam
+    expect(t.d.shots).toBeLessThanOrEqual(9);
+    expect(t.d.shots).toBeGreaterThanOrEqual(6);
+  });
+  it('Auto-Nachladen bei leerem Magazin, auch mit gehaltenem A; Rattern setzt danach fort; Reload-Status fuer HUD', () => {
+    const t = setup();
+    t.press('A'); t.step(5);
+    expect(t.d.shots).toBeGreaterThan(AMMO.normal.mag);
+    t.d.mag.normal = 0; t.d.wantReload = true; t.step(0.1);
+    const st = armbrust.status(t.w);
+    expect(st.reload?.win).toEqual(LB.reload.win);
+  });
+  it('B ohne Reload: Tipp = Mine; B halten ohne Wucht 100 = nichts', () => {
+    const t = setup();
+    t.press('B'); t.step(0.5); t.release('B'); t.step(0.6);
+    expect(t.d.mines.length).toBe(0);
+    t.tap('B'); t.step(0.6);
+    expect(t.d.mines.length).toBe(1);
+  });
+  it('Rolle = Ausfallschritt-Konfig', () => {
+    expect(armbrust.rollOverride().step).toBe(true);
+    expect(armbrust.walkLegs).toBe(true);
   });
   it('HUD-Status: Magazin-Pips, Glitch-Flicker NaN/inf', () => {
     const t = setup();

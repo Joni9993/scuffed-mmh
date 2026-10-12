@@ -33,13 +33,13 @@ export function createHud(root) {
     <div class="hud-tl">
       <div class="hud-name"></div>
       <div class="bar hp"><i class="bruise"></i><i class="fill"></i><i class="bonus"></i></div>
-      <div class="hud-buffs"></div><!-- [KK] Krachkiste-Buffs -->
       <div class="bar st"><i class="fill"></i><i class="bonus"></i></div>
-      <div class="hud-food" style="display:none"></div><!-- Essens-Buff (Koch / Grillsteak) -->
+      <div class="hud-food"></div><!-- Essens-Buff (Koch / Grillsteak) -->
       <div class="bar wu"><i class="fill"></i></div>
       <div class="bar gl"><i class="fill"></i></div><!-- Glitch-Energie -->
       <div class="hud-glitch"><i class="fill"></i><span><b>GLITCH</b><b class="gt"></b></span></div>
       <div class="wstat"></div>
+      <div class="hud-buffs"></div><!-- [KK] Krachkiste-Buffs -->
       <div class="hud-status"></div><!-- [M] -->
       <div class="hud-party"></div><!-- im Fluss unter allen Status-Zeilen: wächst mit, nie überlappend (bis 6 Pirscher) -->
     </div>
@@ -50,6 +50,7 @@ export function createHud(root) {
       <div class="hud-train" style="display:none;font:700 1.9vmin/1.35 monospace;color:#ffe9a0;text-shadow:0 0 3px #000,0 0 3px #000;text-align:right;white-space:nowrap"></div>
       <canvas class="mini ui-hit" width="64" height="64"></canvas>
     </div>
+    <div class="hud-reload"><i class="win"></i><i class="cur"></i><b></b></div>
     <div class="lockmark"></div>
     <div class="hud-banner"></div>
     <div class="hud-zone"></div>
@@ -58,7 +59,7 @@ export function createHud(root) {
   const q = (s) => el.querySelector(s);
   const refs = {
     name: q('.hud-name'), bruise: q('.bruise'), hp: q('.hp .fill'), hpBar: q('.bar.hp'), hpBonus: q('.bar.hp .bonus'), stBonus: q('.bar.st .bonus'), food: q('.hud-food'), st: q('.st'), stFill: q('.st .fill'), wu: q('.wu'), wuFill: q('.wu .fill'), gl: q('.bar.gl'), glFill: q('.bar.gl .fill'), glMode: q('.hud-glitch'), glModeFill: q('.hud-glitch .fill'), glTime: q('.hud-glitch .gt'),
-    wstat: q('.wstat'), buffs: q('.hud-buffs'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mut: q('.hud-mut'), mini: q('.mini'),
+    rel: q('.hud-reload'), wstat: q('.wstat'), buffs: q('.hud-buffs'), status: q('.hud-status'), party: q('.hud-party'), timer: q('.hud-timer'), ko: q('.hud-ko'), train: q('.hud-train'), mut: q('.hud-mut'), mini: q('.mini'),
     banner: q('.hud-banner'), lock: q('.lockmark'), center: q('.hud-center'), zone: q('.hud-zone'),
   };
   const g = refs.mini.getContext('2d');
@@ -109,7 +110,7 @@ export function createHud(root) {
       const meal = p.mealId ? (FOODS[p.mealId]?.name ?? '') : '', gc = p.grillCount ?? 0;
       set('food', `${meal}|${gc}`, () => {
         const parts = [meal && `${meal}`, gc && 'Grillsteak'].filter(Boolean);
-        refs.food.style.display = parts.length ? '' : 'none';
+        refs.food.style.visibility = parts.length ? 'visible' : 'hidden';
         refs.food.textContent = parts.length ? '◆ ' + parts.join(' · ') : '';
       });
       const st = Math.round((v.stamina / v.maxStamina) * 100);
@@ -122,7 +123,7 @@ export function createHud(root) {
       if (gs) { // Glitch-Energie (Leiste) + Modus-Balken mit Restzeit
         const ge = Math.round(gs.energy);
         set('gl', ge, (x) => { refs.glFill.style.width = x + '%'; refs.gl.classList.toggle('full', x >= 100 && !gs.active); });
-        set('glon', gs.active, (x) => { refs.glMode.classList.toggle('on', x); refs.gl.style.display = x ? 'none' : ''; });
+        set('glon', gs.active, (x) => { refs.glMode.classList.toggle('on', x); refs.gl.style.visibility = x ? 'hidden' : 'visible'; });
         if (gs.active) {
           set('glt', Math.ceil(gs.t * 10), (x) => { refs.glTime.textContent = (x / 10).toFixed(1) + 's'; refs.glModeFill.style.width = Math.max(0, (gs.t / 8) * 100).toFixed(0) + '%'; });
         }
@@ -130,6 +131,16 @@ export function createHud(root) {
       set('buffs', buffSig(p), () => { refs.buffs.innerHTML = buffIcons(p); }); // [KK]
       const stat = p.def.status?.(p.weapon);
       const sk = stat ? `${stat.text}|${stat.level}|${stat.max}|${stat.sauber}|${stat.slots?.join('') ?? ''}` : '';
+      // [LB] Nachlade-Balken (Mitte unten, klein): gelbes Fenster + Zeiger
+      const rl = stat?.reload;
+      set('rel', rl ? 1 : 0, (x) => refs.rel.classList.toggle('show', !!x));
+      if (rl) {
+        const r = refs.rel;
+        r.firstChild.style.left = (rl.win[0] / rl.dur) * 100 + '%'; r.firstChild.style.width = ((rl.win[1] - rl.win[0]) / rl.dur) * 100 + '%';
+        r.children[1].style.left = Math.min(100, (rl.t / rl.dur) * 100) + '%';
+        r.classList.toggle('hot', !!rl.hot); r.classList.toggle('jam', !!rl.jam);
+        r.lastChild.textContent = rl.hint ?? (rl.hot ? 'B!' : '');
+      }
       set('stat', sk, () => {
         refs.wstat.classList.toggle('kk', !!stat?.slots); // [KK]
         if (!stat) { refs.wstat.innerHTML = ''; refs.wstat.classList.remove('sauber'); return; }

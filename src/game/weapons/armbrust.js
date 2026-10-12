@@ -18,9 +18,9 @@ export const LB = {
   glitch: { rate: 1.5, mul: 1.9 / 1.3 }, // Glitch-Grundfaktor 1,3 steckt schon in player.glitchDmgMul -> Ziel x1,9 gesamt
 };
 export const AMMO = {
-  normal: { name: 'Normal', mag: 10, mv: 21, n: 1, fan: 0, pierce: 1, sweet: [6, 14], tipMul: 2, wucht: 2 },
-  streu: { name: 'Streuschrot', mag: 4, mv: 10, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
-  durch: { name: 'Durchschlag', mag: 3, mv: 28, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
+  normal: { name: 'Normal', short: 'Normal', mag: 10, mv: 21, n: 1, fan: 0, pierce: 1, sweet: [6, 14], tipMul: 2, wucht: 2 },
+  streu: { name: 'Streuschrot', short: 'Streu', mag: 4, mv: 10, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
+  durch: { name: 'Durchschlag', short: 'Durchschl.', mag: 3, mv: 28, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
 };
 export const AMMO_ORDER = ['normal', 'streu', 'durch'];
 export const sweetMul = (ammo, d) => { const s = AMMO[ammo].sweet; return d >= s[0] && d <= s[1] ? 1 : LB.farMul; };
@@ -32,7 +32,7 @@ export function st(w) {
   const d = w.data;
   if (d.ammo === undefined) {
     d.ammo = 'normal'; d.mag = { normal: AMMO.normal.mag, streu: AMMO.streu.mag, durch: AMMO.durch.mag };
-    d.rel = null; d.sauberMag = false; d.wantReload = false; d.fireT = 0;
+    d.rel = null; d.sauberMag = false; d.wantReload = false; d.cd = 0; d.pend = false;
     d.charges = LB.mine.max; d.mineT = 0; d.mines = []; d.stickies = []; d.log = []; d.shots = 0;
   }
   return d;
@@ -58,6 +58,7 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
     if (d.mag[d.ammo] <= 0) { d.wantReload = true; return null; }
     d.mag[d.ammo]--;
   }
+  if (!free) d.cd = cdOf(w); // gemeinsamer Cooldown fuer Tippen und Halten
   const dmgMul = (rattern ? LB.rattern.mul : 1) * (d.sauberMag ? LB.reload.sauberMul : 1) * (gl ? LB.glitch.mul : 1);
   const rec = { ammo: d.ammo, mag: d.mag[d.ammo], tip: null, free, rattern, dmgMul };
   if (p?.ctx?.projectiles) {
@@ -87,10 +88,15 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
 }
 
 // ---------- Nachladen
+let hintCount = 0; // Sitzung: die ersten 3 Nachlader zeigen den Zusatzhinweis
+function hintOnce(w) { if (hintCount++ < 3) say(w, 'B im gelben Feld = Sauber geladen', 'heal', 2.9); }
+const cdOf = (w) => 1 / (LB.rattern.rate * (glitching(w) ? LB.glitch.rate : 1));
 export function startReload(w) {
   const d = st(w);
   if (glitching(w) || d.mag[d.ammo] >= AMMO[d.ammo].mag) return false;
   d.rel = { kind: 'reload', t: 0 };
+  d.pend = false;
+  hintOnce(w);
   w.startMove('lb_reload');
   return true;
 }
@@ -109,8 +115,10 @@ function reloadTick(w, dt) {
     d.rel = null;
     return;
   }
+  const t0 = r.t;
   r.t += dt;
   if (r.kind !== 'reload') return;
+  if (t0 < LB.reload.win[0] && r.t >= LB.reload.win[0]) say(w, 'B!', 'weak', 1.7); // Zeiger erreicht das gelbe Feld
   const i = w.events.findIndex((e) => e.type === 'B');
   if (i < 0) return;
   w.events.splice(i, 1);
@@ -121,11 +129,13 @@ function reloadTick(w, dt) {
     w.startMove('lb_done');
     say(w, 'Sauber geladen!', 'weak');
     w.hooks.player?.ctx?.fx?.flash?.('rgba(255,225,70,.3)', 0.2);
-    emit(w, 'swing');
+    emit(w, 'heavy');
+    w.hooks.player?.ctx?.fx?.shake?.(0.08, 0.1);
   } else { // Klemmer
     d.rel = { kind: 'klemmer', t: 0 };
     w.startMove('lb_klemmer');
     say(w, 'Klemmer!', 'hit');
+    w.hooks.player?.ctx?.fx?.flash?.('rgba(255,50,40,.3)', 0.25);
   }
 }
 
@@ -197,7 +207,7 @@ const aimed = { aimed: true, turnSpeed: 0 };
 export const moves = {
   lb_shot: {
     id: 'lb_shot', anim: 'lb_shot', duration: LB.shotDur, fire: [{ t: 0.03, call: 'shoot' }],
-    combo: { window: [0.12, 0.25], next: { A: 'lb_shot', holdA: (w) => rattern(w), B: (w) => reloadMove(w) } },
+    combo: { window: [0.12, 0.25], next: { A: 'lb_shot', holdA: (w) => rattern(w), B: 'lb_mine' } },
     rollCancelAt: 0.12, moveSpeed: 1, ...aimed,
   },
   lb_hop: { id: 'lb_hop', anim: 'lb_shot', duration: LB.shotDur, fire: [{ t: 0.03, call: 'hop' }], rollCancelAt: 0.12, moveSpeed: 1, ...aimed },
@@ -213,7 +223,6 @@ export const moves = {
   },
 };
 const rattern = (w) => (glitching(w) ? 'lb_rattern_g' : 'lb_rattern');
-const reloadMove = (w) => { const d = st(w); return glitching(w) || d.mag[d.ammo] >= AMMO[d.ammo].mag ? null : 'lb_reload'; };
 const idleA = (w) => (rolledRecently(w) ? 'lb_hop' : 'lb_shot');
 
 const BASE = { ...REST, arx: 25, sw: 90, arz: 10, alx: -8, tx: 4 };
@@ -256,16 +265,17 @@ export const armbrust = {
   glitch,
   hand: 'L',
   holdThreshold: { A: 0.15, B: 0.3 },
-  idle: { A: idleA, holdA: rattern, B: (w) => reloadMove(w), holdB: 'lb_mine' },
+  idle: { A: idleA, holdA: rattern, B: 'lb_mine', holdB: null },
   moves,
   anims,
-  rollOverride: () => ({ duration: 0.3, dist: 2.4 }), // kurzer Seitwärtshüpfer, gleiche i-Frames wie die Rolle
+  rollOverride: () => ({ duration: 0.3, dist: 2.4, step: true }), // Ausfallschritt (aufrecht, kein Purzeln), gleiche i-Frames wie die Rolle
+  walkLegs: true, // Beine laufen weiter, waehrend der Oberkoerper zielt (player.js #animate)
   overrideEvent: (w, type) => {
     if (type === 'holdB' && w.wucht >= 100) return 'lb_finisher';
     return undefined;
   },
   on: {
-    shoot: (w) => fireBolt(w),
+    shoot: (w) => { const d = st(w); if (d.cd > 0) d.pend = true; else fireBolt(w); }, // Tippen waehrend Cooldown: max. 1 Schuss gepuffert
     hop: (w) => fireBolt(w, { free: true }),
     mine: (w) => placeMine(w),
     kracher: (w) => fireFinisher(w),
@@ -273,7 +283,7 @@ export const armbrust = {
   onReset(w) {
     const d = st(w);
     for (const m of d.mines) w.hooks.player?.ctx?.fx?.clearMarker?.(m.id);
-    d.rel = null; d.mines = []; d.stickies = []; d.wantReload = false; d.sauberMag = false; d.fireT = 0;
+    d.rel = null; d.mines = []; d.stickies = []; d.wantReload = false; d.sauberMag = false; d.cd = 0; d.pend = false;
     d.charges = LB.mine.max; d.mineT = 0;
     for (const k of AMMO_ORDER) d.mag[k] = AMMO[k].mag;
   },
@@ -289,10 +299,9 @@ export const armbrust = {
       if (!glitching(w) && d.mag[d.ammo] <= 0) startReload(w);
       return;
     }
-    if (id === 'lb_rattern' || id === 'lb_rattern_g') {
-      d.fireT -= dt;
-      if (d.fireT <= 0) { if (fireBolt(w, { rattern: true })) d.fireT += 1 / (LB.rattern.rate * (glitching(w) ? LB.glitch.rate : 1)); else d.fireT = 0; }
-    } else d.fireT = 0;
+    d.cd = Math.max(0, (d.cd ?? 0) - dt);
+    if (d.pend && d.cd <= 0 && !d.rel) { d.pend = false; fireBolt(w); }
+    if ((id === 'lb_rattern' || id === 'lb_rattern_g') && d.cd <= 0) fireBolt(w, { rattern: true });
     if (id === null && w.pend.A?.fired && !w.events.some((e) => e.type === 'holdA')) w.events.push({ type: 'holdA', age: 0, btn: 'A', heldT: w.pend.A.t }); // A gehalten ueber Nachladen/Mine hinweg: Rattern geht weiter
     if (p?.ctx && w.move?.aimed) {
       const aim = computeAim(p);
@@ -305,19 +314,18 @@ export const armbrust = {
   status(w) {
     const d = st(w), A = AMMO[d.ammo];
     const tip = w.hooks.player?.ammoTip;
-    const tipTxt = tip && TIPS[tip] ? ` · ${TIPS[tip].name}` : '';
+    const tipTxt = tip && TIPS[tip] ? ` · ${TIPS[tip].name.replace('spitze', '')}` : '';
     const mines = d.charges > 0 ? ` · Mine ${d.charges}` : '';
     if (glitching(w)) {
       const flick = Math.floor((typeof performance !== 'undefined' ? performance.now() : 0) / 90) % 2;
-      return { text: `${A.name} ${flick ? 'NaN/∞' : '∞/∞'}${mines}`, level: A.mag, max: A.mag };
+      return { text: `${A.short} ${flick ? 'NaN/∞' : '∞/∞'}${mines}`, level: A.mag, max: A.mag };
     }
     if (d.rel) {
       const dur = d.rel.kind === 'reload' ? LB.reload.dur : LB.reload.klemmer;
-      const n = Math.min(10, Math.floor((d.rel.t / dur) * 10));
-      const bar = '▰'.repeat(n) + '▱'.repeat(10 - n);
-      return { text: d.rel.kind === 'klemmer' ? `Klemmer ${bar}` : `Laden ${bar}`, level: 0, max: A.mag, sauber: reloadWindowOpen(w) };
+      const jam = d.rel.kind === 'klemmer', hot = reloadWindowOpen(w);
+      return { text: jam ? 'Klemmer!' : 'Laden', level: 0, max: A.mag, reload: { t: d.rel.t, dur, win: jam ? [0, 0] : LB.reload.win, hot, jam, hint: hot ? 'B!' : (!jam && hintCount <= 3 ? 'B im gelben Feld = Sauber geladen' : '') } };
     }
-    const fin = w.wucht >= 100 ? ' · Kracher: B halten' : '';
-    return { text: `${A.name} ${d.mag[d.ammo]}/${A.mag}${tipTxt}${mines}${fin}`, level: d.mag[d.ammo], max: A.mag };
+    const fin = w.wucht >= 100 ? ' · ⚡' : ''; // Kracher bereit (B halten)
+    return { text: `${A.short} ${d.mag[d.ammo]}/${A.mag}${tipTxt}${mines}${fin}`, level: d.mag[d.ammo], max: A.mag };
   },
 };

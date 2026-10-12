@@ -67,7 +67,8 @@ body.scan #stage::after {
 
 /* HUD – compact (GDD 10) */
 #hud { position: absolute; inset: 0; pointer-events: none; font-size: max(9px, 2.4vmin); text-shadow: 1px 1px 0 #000; }
-.hud-tl { position: absolute; left: calc(var(--sal) + 2vmin); top: calc(var(--sat) + 1.6vmin); width: 44vmin; display: grid; gap: .6vmin; }
+.hud-tl > * { flex: none; }
+.hud-tl { position: absolute; left: calc(var(--sal) + 2vmin); top: calc(var(--sat) + 1.6vmin); width: 44vmin; display: flex; flex-direction: column; gap: .6vmin; }
 .hud-name { font-size: max(8px, 2vmin); opacity: .85; }
 .bar { position: relative; background: #1a0a0a; border: 1px solid #000; outline: 1px solid rgba(244,240,208,.55); }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
@@ -76,26 +77,27 @@ body.scan #stage::after {
 .bar.hp .fill { background: repeating-linear-gradient(90deg, #4cff4c 0 3px, #1f9a1f 3px 4px); }
 .bar.st { height: 1.5vmin; width: 85%; }
 .bar .bonus { left: auto; right: 0; background: rgba(255, 200, 60, .28); box-shadow: inset 0 0 0 2px #ffc83c; display: none; } /* Essens-Anteil (Koch/Grillsteak) */
-.hud-food { font: 700 max(8px, 1.7vmin)/1.2 monospace; color: #ffc83c; text-shadow: 0 0 3px #000, 0 0 3px #000; white-space: nowrap; }
+.hud-food { height: 2vmin; visibility: hidden; overflow: hidden; font: 700 max(8px, 1.7vmin)/1.2 monospace; color: #ffc83c; text-shadow: 0 0 3px #000, 0 0 3px #000; white-space: nowrap; }
 .bar.st .fill { background: repeating-linear-gradient(90deg, #ffd84a 0 3px, #9a7a10 3px 4px); }
 .bar.st.out .fill { background: #8a6a20; }
 .bar.wu { height: .9vmin; width: 70%; }
 .bar.wu .fill { background: #5ad8ff; }
 .bar.wu.full .fill { background: #fff; animation: blink .5s steps(1) infinite; }
 /* [M] player status pills */
-.hud-status { display: flex; gap: .6vmin; min-height: 0; }
+.hud-status { display: flex; gap: .6vmin; height: 2.6vmin; overflow: hidden; }
 .hud-status span { font-size: max(7px, 1.7vmin); padding: 0 .8vmin; border: 1px solid #000; color: #101010; font-weight: bold; line-height: 1.5; }
 .hud-status .st-mud { background: #a07a48; }
 .hud-status .st-burn { background: #ff8a2a; }
 .hud-status .st-poison { background: #9be15a; }
 .hud-status .st-rost { background: #c8661e; }
 .hud-status .st-konter { background: #5ad8ff; }
-.wstat { display: flex; gap: .6vmin; align-items: center; height: 2vmin; font-size: max(8px, 2vmin); }
+.wstat { display: flex; gap: .6vmin; align-items: center; height: 2.6vmin; overflow: hidden; white-space: nowrap; font-size: max(8px, 1.9vmin); }
+.wstat span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .wstat b { width: 2.4vmin; height: 1.6vmin; background: #2a2a6a; border: 1px solid #000; }
 .wstat b.on { background: #5ad8ff; }
 .wstat.sauber b.on, .wstat.sauber span { background: #ffe14d; color: #ffe14d; }
 /* [KK] Krachkiste: Sample-Leiste (3 Slots ▲■●) in der Waffen-Statuszeile + Buff-Symbole an der HP-Leiste / Party-Liste */
-.wstat.kk { height: auto; min-height: 3.2vmin; }
+.wstat.kk { height: 3.4vmin; }
 .wstat .kk-bar { display: inline-flex; gap: .5vmin; padding: .2vmin .6vmin; background: rgba(8,8,24,.6); border: 1px solid #000; outline: 1px solid rgba(244,240,208,.35); }
 .wstat .kk-s { font-style: normal; font-size: max(11px, 2.8vmin); line-height: 1; width: 2.9vmin; text-align: center; color: #555560; text-shadow: 1px 1px 0 #000; }
 .wstat .kk-s.r { color: #ff4a3a; } .wstat .kk-s.b { color: #3a8cff; } .wstat .kk-s.g { color: #44e05a; }
@@ -103,8 +105,7 @@ body.scan #stage::after {
 .wstat .kk-bar.remix + .kk-t { color: #ffe14d; animation: blink .5s steps(1) infinite; }
 .wstat .kk-t { font-style: normal; font-weight: bold; color: #f4f0d0; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
 .wstat.kk-sauber .kk-t { color: #ffe14d; }
-.hud-buffs { display: flex; gap: .8vmin; min-height: 0; }
-.hud-buffs:empty { display: none; }
+.hud-buffs { display: flex; gap: .8vmin; height: 2.4vmin; overflow: hidden; }
 .bf { position: relative; font-style: normal; font-size: max(9px, 2vmin); font-weight: bold; line-height: 1.1; padding: 0 .4vmin .5vmin; background: rgba(8,8,24,.65); border: 1px solid #000; text-shadow: 1px 1px 0 #000; }
 .bf::after { content: ''; position: absolute; left: 0; bottom: 0; height: .35vmin; width: var(--k, 100%); background: currentColor; }
 .bf sup { font-size: .65em; margin-left: .2vmin; color: #f4f0d0; }
@@ -224,8 +225,18 @@ body.strip-open .btn-bar .tv { border-color: #ffd84a; background: rgba(90,58,192
 .bar.gl { height: .9vmin; width: 70%; }
 .bar.gl .fill { background: #8a5cff; }
 .bar.gl.full .fill { background: #5ad8ff; animation: blink .4s steps(1) infinite; }
-.hud-glitch { display: none; position: relative; width: 70%; height: 2.6vmin; margin-top: .4vmin; border: 1px solid #000; outline: 1px solid #5ad8ff; background: rgba(10,10,30,.8); overflow: hidden; }
-.hud-glitch.on { display: block; animation: glframe .2s steps(2) infinite; }
+.hud-glitch { visibility: hidden; display: block; flex: none; position: relative; width: 70%; height: 2.6vmin; margin-top: .4vmin; border: 1px solid #000; outline: 1px solid #5ad8ff; background: rgba(10,10,30,.8); overflow: hidden; }
+.hud-glitch.on { visibility: visible; animation: glframe .2s steps(2) infinite; }
 .hud-glitch .fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff2bd6, #5ad8ff); }
 .hud-glitch span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 1vmin; font-size: max(7px, 1.7vmin); color: #fff; text-shadow: 1px 0 #ff2bd6, -1px 0 #00ffe5, 0 1px 0 #000; }
 body.glitch-mode .hud-name { text-shadow: 2px 0 #ff2bd6, -2px 0 #00ffe5; }
+
+/* [LB] Nachlade-Balken: klein, Mitte unten ueber dem Itemslot */
+.hud-reload { position: absolute; left: 50%; bottom: 24%; transform: translateX(-50%); width: 22vmin; height: 1.6vmin; background: #1a0a0a; border: 1px solid #000; outline: 1px solid rgba(244,240,208,.6); display: none; }
+.hud-reload.show { display: block; }
+.hud-reload i { position: absolute; top: 0; bottom: 0; display: block; }
+.hud-reload .win { background: #ffe14d; opacity: .9; }
+.hud-reload .cur { width: 2px; background: #fff; box-shadow: 0 0 3px #fff; margin-left: -1px; }
+.hud-reload b { position: absolute; left: 0; right: 0; top: -3vmin; text-align: center; font-size: max(10px, 2.6vmin); color: #ffe14d; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
+.hud-reload.hot { outline-color: #ffe14d; }
+.hud-reload.jam { outline-color: #ff4a3a; } .hud-reload.jam .win { background: #ff4a3a; }

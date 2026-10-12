@@ -642,6 +642,11 @@ export class Player {
     let airY = 0;
     switch (this.state) {
       case 'roll': {
+        if (this.rollCfg?.step) { // [LB] Ausfallschritt: aufrecht, kein Purzeln, kurzer Schritt in Eingaberichtung
+          const k = this.rollT / this.rollCfg.duration, s = Math.sin(Math.min(1, k) * Math.PI);
+          Object.assign(t, { py: -0.1 * s, tx: 14 * s, lrx: 55 * s, rrx: -35 * s, arx: 70, alx: 55, arz: 8, alz: 8, sw: 100 });
+          break;
+        }
         const k = this.rollT / (this.rollCfg?.duration ?? ROLL.duration);
         Object.assign(t, { prx: 360 * Math.min(1, k * 1.05), py: -0.45, tx: 35, lrx: 85, rrx: 85, arx: 70, alx: 70, sw: 120, hx: 20 });
         break;
@@ -662,6 +667,12 @@ export class Player {
             t.tx += (Math.random() - 0.5) * j; t.hy = (Math.random() - 0.5) * j; t.py += (Math.random() - 0.5) * 0.01 * wp.level;
           }
           airY = this.remote ? this.remote.air : w.airOffset();
+          if (this.def.walkLegs && speed > 0.4) { // [LB] Beine laufen, Oberkoerper haelt die Zielpose
+            this.gait += this.speed * dt * 1.35;
+            const sw = Math.sin(this.gait) * 42 * clamp(speed / RUN, 0, 1.2);
+            t.lrx = sw; t.rrx = -sw;
+            t.py = (t.py ?? 0) - Math.abs(Math.cos(this.gait)) * 0.03;
+          }
         } else {
           // locomotion
           const s = clamp(speed / RUN, 0, 1.4);
