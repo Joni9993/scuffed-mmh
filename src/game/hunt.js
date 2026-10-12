@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createBus } from '../core/events.js';
+import { statusHitFx } from './statusFx.js';
 import { createRng, hashSeed } from '../core/rng.js';
 import { Revier, scaleBoss } from './revier.js';
 import { recordBestTime } from '../meta/fieldstudy.js'; // meldet auch die Wochen-Feldstudie im Quest-Register an
@@ -259,12 +260,14 @@ export class Hunt {
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     if (st.partDmgMul) res.partDmgMul = st.partDmgMul; // Kroll-Ast: Teil-HP-Schaden
+    if (ah.status) { res.poisonBuild = ah.status.poison ?? 0; res.stunBuild = ah.status.stun ?? 0; } // Bogen-Spitzen (auch fuer Gaeste -> Host)
     res.attackerId = player.id;
     this.glitchSys.hitting = player; // damit 'partBreak' (feuert synchron in applyDamage) dem Schlag zugeordnet wird
     applyMonsterHit(monster, res, this);
     this.glitchSys.hitting = null;
     const at = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z };
     this.fx.spark(at, res.weak ? 14 : 9, res.weak ? '#ffe14d' : '#ffffff', 5);
+    statusHitFx(this.fx, monster, at); // Gift / Rost / Betaeubung aktiv -> farbige Funken
     this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, player.glitching ? 'gbig' : res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
     if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, ah.hit.sauberText ?? 'Sauber!', 'weak'); } // [KT]

@@ -70,10 +70,10 @@ export const ITEMS = {
   grillsteak: { id: 'grillsteak', name: 'Grillsteak', desc: 'Essen: +40 Max-HP und +25 Max-Puste bis zum Umkippen. Nicht mit anderem Essen kombinierbar. Zischt noch.', kind: 'consumable', max: 3, time: 1.2, applyAt: 0.55, icon: { shape: 'meat', color: '#c8683a' }, value: 25, effect: { type: 'grill', maxHp: 40, maxStamina: 25 } }, // [L]
 
   // ---- bow tips (crafted in packs of 10)
-  brennspitze: { id: 'brennspitze', name: 'Brennspitze', desc: 'Bogen-Munition mit Feuer (+12). Wechsel dauert 0,4 s.', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ff7a30' }, value: 2, effect: { type: 'tip' } },
-  giftspitze: { id: 'giftspitze', name: 'Giftspitze', desc: 'Bogen-Munition, baut Gift auf (20).', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#a050e0' }, value: 2, effect: { type: 'tip' } },
-  bummspitze: { id: 'bummspitze', name: 'Bummspitze', desc: 'Bogen-Munition, kleine Explosion mit Betäubung (8).', kind: 'ammo', max: 10, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ffe14d' }, value: 3, effect: { type: 'tip' } },
-  rostspitze: { id: 'rostspitze', name: 'Rostspitze', desc: 'Bogen-Munition, baut Rost auf (15).', kind: 'ammo', max: 20, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#c8661e' }, value: 3, effect: { type: 'tip' } },
+  brennspitze: { id: 'brennspitze', name: 'Brennspitze', desc: 'Bogen-Munition mit Feuer (+12). Wechsel dauert 0,4 s.', kind: 'ammo', max: 60, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ff7a30' }, value: 2, effect: { type: 'tip' } },
+  giftspitze: { id: 'giftspitze', name: 'Giftspitze', desc: 'Bogen-Munition, baut Gift auf (20).', kind: 'ammo', max: 60, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#a050e0' }, value: 2, effect: { type: 'tip' } },
+  bummspitze: { id: 'bummspitze', name: 'Bummspitze', desc: 'Bogen-Munition, kleine Explosion mit Betäubung (8).', kind: 'ammo', max: 60, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#ffe14d' }, value: 3, effect: { type: 'tip' } },
+  rostspitze: { id: 'rostspitze', name: 'Rostspitze', desc: 'Bogen-Munition, baut Rost auf (15).', kind: 'ammo', max: 60, time: 0.4, applyAt: 0.5, icon: { shape: 'arrow', color: '#c8661e' }, value: 3, effect: { type: 'tip' } },
   // ---- Rostwerke items
   rostbombe: { id: 'rostbombe', name: 'Rostbombe', desc: 'Wurf (6 m). Der Brocken fängt an zu rosten.', kind: 'consumable', max: 3, time: 0.5, applyAt: 0.6, icon: { shape: 'bomb', color: '#c8661e' }, value: 22, effect: { type: 'throw', fx: 'rostbomb', range: 6 } },
   erdungsstab: { id: 'erdungsstab', name: 'Erdungsstab', desc: 'Platzieren. 20 s Schutzzone (4 m) gegen Blitze.', kind: 'consumable', max: 2, time: 1.0, applyAt: 0.7, icon: { shape: 'trap', color: '#d08a50' }, value: 25, effect: { type: 'place', fx: 'ground' } },

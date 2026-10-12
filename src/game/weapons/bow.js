@@ -17,18 +17,20 @@ export const BOW = {
   dodgeWindow: 0.5,           // Ausweichspannen: Sekunden nach der Rolle
   quickMul: 1.08,              // Schnellschuss (Tipp): volle BW der Stufe, dafuer langsamer Takt (0.45 s)
   chargedMul: [1.7, 2.6, 3.6], // gespannter Schuss je Stufe (Spannen kostet Zeit und Puste)
-  rain: { mark: 1.2, arrows: 20, radius: 3.5, mv: 9, height: 16, speed: 34 },
+  // Pfeilregen: 36 Pfeile in ~0,56 s (fertig vor rollCancelAt), zur Mitte gebuendelt. tipMul: Spitzen-Anteil je Regenpfeil (1 Spitze fuer den ganzen Regen)
+  rain: { mark: 1.2, arrows: 36, spacing: 0.016, radius: 2.3, mv: 10.5, height: 16, speed: 34, tipMul: 0.15 },
 };
+// tipMul: Spitzen-Wirkung (Feuer/Gift/Rost/Betaeubung) je Pfeil -> pro verbrauchter Spitze wirkt jede Schussart etwa gleich stark
 export const SHOTS = {
-  1: { name: 'Streuschuss', arrows: 3, fan: 25, mv: 6, pierce: 1, wucht: 3 },
-  2: { name: 'Doppelschuss', arrows: 2, fan: 0, mv: 10, pierce: 1, wucht: 3 },
-  3: { name: 'Durchschuss', arrows: 1, fan: 0, mv: 16, pierce: 3, wucht: 2 },
+  1: { name: 'Streuschuss', arrows: 3, fan: 25, mv: 6, pierce: 1, wucht: 3, tipMul: 1 },
+  2: { name: 'Doppelschuss', arrows: 2, fan: 0, mv: 10, pierce: 1, wucht: 3, tipMul: 1.5 },
+  3: { name: 'Durchschuss', arrows: 1, fan: 0, mv: 16, pierce: 3, wucht: 2, tipMul: 2.5 },
 };
 export const TIPS = {
-  brennspitze: { name: 'Brennspitze', color: 0xff7a1a, elems: { fire: 12 } },
-  giftspitze: { name: 'Giftspitze', color: 0x6adf3a, poison: 20 },
-  bummspitze: { name: 'Bummspitze', color: 0xff3a6a, stun: 8, boom: true },
-  rostspitze: { name: 'Rostspitze', color: 0xc8661e, rost: 15 },
+  brennspitze: { name: 'Brennspitze', color: 0xff7a1a, fx: '#ff7a1a', elems: { fire: 12 } },
+  giftspitze: { name: 'Giftspitze', color: 0x6adf3a, fx: '#b060ff', poison: 20 },
+  bummspitze: { name: 'Bummspitze', color: 0xff3a6a, fx: '#ffe14d', stun: 8, boom: true },
+  rostspitze: { name: 'Rostspitze', color: 0xc8661e, fx: '#d8742a', rost: 15 },
 };
 const LEVEL_COLOR = { 1: 0xf0e6c8, 2: 0x9fd8ff, 3: 0xffe14d };
 
@@ -114,6 +116,20 @@ function weakHp(m, hp) {
   return { ...hp, part: { ...hp.part, factor: f } };
 }
 
+/**
+ * Spitzen-Wirkung eines Pfeils: { elems, status } fuer ctx.playerHit. Laeuft ueber den Treffer-Pfad (res.poisonBuild /
+ * stunBuild / rostBuild), damit jede Schussart und auch Koop-Gaeste (Host wendet an) den Status setzen.
+ * k = tipMul der Schussart; Gift x poisonMul der Waffe.
+ */
+export function tipEffect(tip, k = 1, poisonMul = 1) {
+  if (!tip) return { elems: undefined, status: undefined };
+  const elems = {};
+  for (const [e, v] of Object.entries(tip.elems ?? {})) elems[e] = v * k;
+  if (tip.rost) elems.rost = tip.rost * k;
+  const status = tip.poison || tip.stun ? { poison: (tip.poison ?? 0) * k * poisonMul, stun: (tip.stun ?? 0) * k } : undefined;
+  return { elems: Object.keys(elems).length ? elems : undefined, status };
+}
+
 /** Resolve one arrow hit through the regular player hit path. */
 export function arrowHit(p, info, spec, dist) {
   const ctx = p.ctx;
@@ -122,13 +138,12 @@ export function arrowHit(p, info, spec, dist) {
   const dbg = !!p.glitching; // Debug-Modus (GDD 16.2): Schwachstelle + kritisch (x1,5) + Sweet Spot immer
   const mv = spec.mv * (spec.dmgMul ?? 1) * (spec.fixedMv || dbg ? 1 : sweetMul(dist)) * (dbg ? DEBUG_CRIT : 1);
   const hit = { mv, wucht: spec.wucht, hitstop: 'none', shake: 0, blunt: 0 };
-  if (tip?.stun && typeof m.applyStatus !== 'function') hit.blunt = tip.stun; // fallback: stun via blunt buildup
-  const ah = { hit, group: 'arrow', instance: 0, sauber: false, glitch: false, elems: tip?.elems };
+  const fx = tipEffect(tip, spec.tipMul ?? 1, p.stats?.poisonMul ?? 1);
+  if (fx.status?.stun && typeof m.applyStatus !== 'function') hit.blunt = fx.status.stun; // fallback: stun via blunt buildup
+  const ah = { hit, group: 'arrow', instance: 0, sauber: false, glitch: false, elems: fx.elems, status: fx.status };
   ctx.playerHit(p, m, dbg ? weakHp(m, info.hp) : info.hp, ah);
-  if (tip?.poison) m.applyStatus?.('poison', { buildup: tip.poison });
-  if (tip?.rost) m.applyStatus?.('rost', { amount: tip.rost });
-  if (tip?.stun && typeof m.applyStatus === 'function') m.applyStatus('stun', { buildup: tip.stun });
-  if (tip?.boom) explode(ctx, info.pos);
+  if (tip) ctx.fx?.spark(info.pos, spec.noBoom ? 3 : 8, tip.fx, 3.5); // Spitzen-Farbe am Trefferpunkt
+  if (tip?.boom && !spec.noBoom) explode(ctx, info.pos);
 }
 function explode(ctx, pos) {
   ctx.fx?.spark(pos, 18, '#ff8a3a', 7);
@@ -146,7 +161,7 @@ function spawnArrow(p, { pos, vel, spec, pierce, level, fixedDist }) {
     color: tip?.color ?? LEVEL_COLOR[level] ?? 0xf0e6c8,
     glow: spec.noGlow ? undefined : (pr) => { const d = Math.hypot(pr.pos.x - o.x, pr.pos.z - o.z); return sweetCue(d) === 'sweet' ? 'sweet' : 'weak'; },
     onHit: (info, pr) => arrowHit(p, info, spec, fixedDist ?? Math.hypot(info.pos.x - o.x, info.pos.z - o.z)),
-    onEnd: (pr, reason) => { if (tip?.boom && reason !== 'monster') explode(ctx, pr.pos); },
+    onEnd: (pr, reason) => { if (tip?.boom && !spec.noBoom && reason !== 'monster') explode(ctx, pr.pos); },
     data: { level },
   });
 }
@@ -185,7 +200,17 @@ export function fireShot(w, level, { quick = false } = {}) {
 // ---------- Pfeilregen
 function rainTarget(p) {
   const aim = computeAim(p);
-  if (aim.target) return { x: aim.target.x, z: aim.target.z };
+  if (aim.target) {
+    // auf den Rumpf des anvisierten Brocken ziehen (Lock-Punkte liegen oft am Rand: Kopf, Schwanz)
+    let best = null, bd = 6;
+    for (const m of p.ctx.monsters ?? []) {
+      if (!m.alive || m.def?.neutral || !m.pos) continue;
+      const d = Math.hypot(m.pos.x - aim.target.x, m.pos.z - aim.target.z);
+      if (d < bd) { bd = d; best = m; }
+    }
+    const k = best ? 0.5 : 0;
+    return { x: aim.target.x + ((best?.pos.x ?? 0) - aim.target.x) * k, z: aim.target.z + ((best?.pos.z ?? 0) - aim.target.z) * k };
+  }
   const f = fwd(aim.yaw);
   return { x: p.pos.x + f.x * 12, z: p.pos.z + f.z * 12 };
 }
@@ -194,6 +219,7 @@ function rainMark(w) {
   if (!p?.ctx?.projectiles) { w.data.rain = { x: 0, z: 0 }; return; }
   const tgt = rainTarget(p);
   w.data.rain = tgt;
+  w.data.rainTip = takeTip(p); // eine Spitze fuer den ganzen Regen (jeder Regenpfeil traegt einen Anteil)
   p.ctx.fx?.marker('rain_' + p.id, { x: tgt.x, y: p.ctx.world.heightAt(tgt.x, tgt.z), z: tgt.z }, BOW.rain.radius, '#ffe14d', false);
 }
 function rainDrop(w) {
@@ -201,10 +227,10 @@ function rainDrop(w) {
   w.data.rainDropped = (w.data.rainDropped ?? 0) + 1;
   if (!p?.ctx?.projectiles) return;
   const ctx = p.ctx, t = w.data.rain;
-  const a = ctx.rng() * Math.PI * 2, r = Math.sqrt(ctx.rng()) * R.radius;
+  const a = ctx.rng() * Math.PI * 2, r = ctx.rng() ** 0.75 * R.radius; // leicht zur Mitte gebuendelt
   const x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r;
   const y = ctx.world.heightAt(x, z) + R.height;
-  const spec = { mv: R.mv, wucht: 0, pierce: 1, fixedMv: true, noGlow: true, gravity: 0, tip: null };
+  const spec = { mv: R.mv, wucht: 0, pierce: 1, fixedMv: true, noGlow: true, gravity: 0, tip: w.data.rainTip ?? null, tipMul: R.tipMul, noBoom: true };
   spawnArrow(p, { pos: { x, y, z }, vel: { x: 0, y: -R.speed, z: 0 }, spec, pierce: 1, level: 3, fixedDist: 12 });
 }
 
@@ -246,7 +272,7 @@ export const moves = {
     id: 'b_finisher', anim: 'b_finisher', duration: 2.35, consumeWucht: true,
     fire: [
       { t: 0.02, call: 'rainMark' },
-      ...Array.from({ length: BOW.rain.arrows }, (_, i) => ({ t: BOW.rain.mark + 0.1 + i * 0.035, call: 'rainDrop' })),
+      ...Array.from({ length: BOW.rain.arrows }, (_, i) => ({ t: BOW.rain.mark + 0.1 + i * BOW.rain.spacing, call: 'rainDrop' })),
     ],
     superArmor: 'flinch', rollCancelAt: 1.9, moveSpeed: 0.15, turnSpeed: 0, rain: true,
   },

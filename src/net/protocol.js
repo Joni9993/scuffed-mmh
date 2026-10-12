@@ -62,7 +62,7 @@ export function decodeP(o) {
 
 // ---------- Brocken-Snapshot  (10 Hz)
 export const MONSTER_STATES = ['wander', 'notice', 'combat', 'enrage', 'flee', 'sleep', 'dead'];
-export const MF = { RAGE: 1, DISCOVERED: 2, STUN: 4, STAG: 8, TIRED: 16, RUST: 32, SCALD: 64, BLIND: 128, TRAP: 256, POISON: 512, STINK: 1024 };
+export const MF = { RAGE: 1, DISCOVERED: 2, STUN: 4, STAG: 8, TIRED: 16, RUST: 32, SCALD: 64, POISON: 128, BLIND: 256, TRAP: 512, STINK: 1024 };
 /** in: { id, def, x,y,z, rot, state, hpPct, rage, discovered, stun, stag, atk (Schlüssel|0), parts:[{hp, broken}] } */
 export function encodeMonster(s) {
   let f = 0;
@@ -73,9 +73,9 @@ export function encodeMonster(s) {
   if (s.tired) f |= MF.TIRED;
   if (s.rust) f |= MF.RUST;
   if (s.scald) f |= MF.SCALD;
+  if (s.poison) f |= MF.POISON;
   if (s.blind) f |= MF.BLIND;
   if (s.trap) f |= MF.TRAP;
-  if (s.poison) f |= MF.POISON;
   if (s.stink) f |= MF.STINK;
   const si = MONSTER_STATES.indexOf(s.state);
   const out = {
@@ -89,7 +89,7 @@ export function encodeMonster(s) {
 export function decodeMonster(o) {
   return {
     id: o.i, def: o.d, x: o.x, y: o.y, z: o.z, rot: o.r, state: typeof o.s === 'number' ? MONSTER_STATES[o.s] : o.s, hpPct: o.h,
-    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), rust: !!(o.f & MF.RUST), scald: !!(o.f & MF.SCALD), blind: !!(o.f & MF.BLIND), trap: !!(o.f & MF.TRAP), poison: !!(o.f & MF.POISON), stink: !!(o.f & MF.STINK), phase: o.ph ?? 0, atk: o.a || 0, extra: o.xt,
+    rage: !!(o.f & MF.RAGE), discovered: !!(o.f & MF.DISCOVERED), stun: !!(o.f & MF.STUN), stag: !!(o.f & MF.STAG), tired: !!(o.f & MF.TIRED), rust: !!(o.f & MF.RUST), scald: !!(o.f & MF.SCALD), poison: !!(o.f & MF.POISON), blind: !!(o.f & MF.BLIND), trap: !!(o.f & MF.TRAP), stink: !!(o.f & MF.STINK), phase: o.ph ?? 0, atk: o.a || 0, extra: o.xt,
     parts: o.p.map((hp) => ({ hp: hp < 0 ? 0 : hp, broken: hp < 0 })),
   };
 }
@@ -132,11 +132,13 @@ export function encodeHit(monsterId, res, attackerId, id = ++_hid) {
   if (res.crit) o.c = 1;
   if (res.weak) o.w = 1;
   if (res.rostBuild) o.r = Math.min(100, Math.round(res.rostBuild));
+  if (res.poisonBuild) o.g = Math.min(100, r1(res.poisonBuild)); // Giftspitze
+  if (res.stunBuild) o.s = Math.min(100, r1(res.stunBuild)); // Bummspitze
   if (res.partDmgMul && res.partDmgMul !== 1) o.q = r1(res.partDmgMul); // Kroll-Ast: Teil-HP-Schaden
   return o;
 }
 export function decodeHit(o) {
-  return { id: o.i, monsterId: o.m, res: { partId: o.p, dmg: o.d, elemDmg: o.e ?? 0, blunt: o.b ?? 0, crit: !!o.c, weak: !!o.w, ...(o.r ? { rostBuild: o.r } : {}), ...(o.q ? { partDmgMul: o.q } : {}), attackerId: o.a } };
+  return { id: o.i, monsterId: o.m, res: { partId: o.p, dmg: o.d, elemDmg: o.e ?? 0, blunt: o.b ?? 0, crit: !!o.c, weak: !!o.w, ...(o.r ? { rostBuild: o.r } : {}), ...(o.g ? { poisonBuild: o.g } : {}), ...(o.s ? { stunBuild: o.s } : {}), ...(o.q ? { partDmgMul: o.q } : {}), attackerId: o.a } };
 }
 export const MAX_HIT_DMG = 5000;
 export const validHit = (h) => Number.isFinite(h.res.dmg) && h.res.dmg > 0 && h.res.dmg <= MAX_HIT_DMG && typeof h.monsterId === 'string';

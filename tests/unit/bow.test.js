@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WeaponState } from '../../src/game/weapons/weapon.js';
-import { bow, BOW, SHOTS, sweetMul, sweetCue, baseLevel, arrowHit, computeAim, solveVelocity } from '../../src/game/weapons/bow.js';
+import { bow, BOW, SHOTS, sweetMul, sweetCue, baseLevel, arrowHit, fireShot, computeAim, solveVelocity } from '../../src/game/weapons/bow.js';
 import { Projectiles } from '../../src/game/projectiles.js';
 import { createVitals, spendStamina, tickStamina } from '../../src/game/vitals.js';
 
@@ -254,22 +254,59 @@ describe('Zielen', () => {
 });
 
 describe('Spitzen (Munition)', () => {
-  it('Brennspitze adds fire element 12, Giftspitze poison buildup 20, Bummspitze stun 8 (applyStatus)', () => {
+  it('Brennspitze adds fire 12, Giftspitze poison 20, Bummspitze stun 8, Rostspitze rost 15 per Streuschuss arrow (via playerHit)', () => {
     const s = setup();
     const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
     const info = { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } };
-    arrowHit(s.player, info, { ...SHOTS[3], tip: 'brennspitze' }, 12);
+    arrowHit(s.player, info, { ...SHOTS[1], tip: 'brennspitze' }, 12);
     expect(s.hits[0].ah.elems).toEqual({ fire: 12 });
-    arrowHit(s.player, info, { ...SHOTS[3], tip: 'giftspitze' }, 12);
-    expect(m.applyCalls).toEqual([['poison', { buildup: 20 }]]);
-    arrowHit(s.player, info, { ...SHOTS[3], tip: 'bummspitze' }, 12);
-    expect(m.applyCalls[1]).toEqual(['stun', { buildup: 8 }]);
+    arrowHit(s.player, info, { ...SHOTS[1], tip: 'giftspitze' }, 12);
+    expect(s.hits[1].ah.status).toEqual({ poison: 20, stun: 0 });
+    arrowHit(s.player, info, { ...SHOTS[1], tip: 'bummspitze' }, 12);
+    expect(s.hits[2].ah.status).toEqual({ poison: 0, stun: 8 });
+    arrowHit(s.player, info, { ...SHOTS[1], tip: 'rostspitze' }, 12);
+    expect(s.hits[3].ah.elems).toEqual({ rost: 15 });
+    expect(m.applyCalls).toEqual([]); // status goes through the hit result (host applies, coop-safe)
+  });
+  it('every shot type carries the tip; fewer arrows -> stronger tip per arrow (same per tip)', () => {
+    for (const lvl of [1, 2, 3]) {
+      const s = setup({ ammoTip: 'giftspitze' });
+      const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
+      const rec = fireShot(s.w, lvl);
+      expect(rec.tip).toBe('giftspitze');
+      expect(s.spawned.length).toBe(SHOTS[lvl].arrows);
+      for (const a of s.spawned) a.onHit({ monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, a);
+      const total = s.hits.reduce((n, h) => n + h.ah.status.poison, 0);
+      expect(total).toBeGreaterThanOrEqual(50);
+      expect(total).toBeLessThanOrEqual(60);
+    }
+  });
+  it('weapon poisonMul boosts poison from tips', () => {
+    const s = setup();
+    s.player.stats = { poisonMul: 1.5 };
+    const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
+    arrowHit(s.player, { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, { ...SHOTS[1], tip: 'giftspitze' }, 12);
+    expect(s.hits[0].ah.status.poison).toBe(30);
+  });
+  it('Pfeilregen uses the selected tip (one tip for the whole rain)', () => {
+    let n = 5;
+    const inventory = { consume: (id, k) => (n >= k ? ((n -= k), true) : false), count: () => n };
+    const f = setup({ ammoTip: 'brennspitze', inventory });
+    f.w.wucht = 100; f.w.sinceWuchtHit = 0;
+    f.tap('B', 0.02);
+    f.step(2.4);
+    expect(n).toBe(4);
+    expect(f.spawned.length).toBe(BOW.rain.arrows);
+    expect(f.spawned.every((a) => a.color === 0xff7a1a)).toBe(true);
+    const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
+    f.spawned[0].onHit({ monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, f.spawned[0]);
+    expect(f.hits[0].ah.elems.fire).toBeCloseTo(12 * BOW.rain.tipMul);
   });
   it('without applyStatus (monster not ready) the stun falls back to blunt buildup', () => {
     const s = setup();
     const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
     delete m.applyStatus;
-    arrowHit(s.player, { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, { ...SHOTS[3], tip: 'bummspitze' }, 12);
+    arrowHit(s.player, { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, { ...SHOTS[1], tip: 'bummspitze' }, 12);
     expect(s.hits[0].ah.hit.blunt).toBe(8);
   });
   it('each shot consumes one tip; empty inventory clears player.ammoTip', () => {
@@ -299,7 +336,7 @@ describe('Bogenhieb und Pfeilregen', () => {
     expect(s.w.moveId).toBe('b_hieb');
     expect(s.w.move.hits[0].mv).toBe(14);
   });
-  it('Pfeilregen only at Wucht 100: 1.2 s mark, then 20 arrows of BW 9', () => {
+  it('Pfeilregen only at Wucht 100: 1.2 s mark, then 36 arrows of BW 10.5, all before the roll cancel', () => {
     const s = setup();
     s.w.wucht = 99; s.w.sinceWuchtHit = 0;
     s.tap('B');
@@ -312,9 +349,10 @@ describe('Bogenhieb und Pfeilregen', () => {
     f.step(1.1);
     expect(f.spawned.length).toBe(0);
     f.step(1.3);
-    expect(f.spawned.length).toBe(20);
+    expect(f.spawned.length).toBe(36);
     expect(BOW.rain.mark).toBe(1.2);
-    expect(BOW.rain.mv).toBe(9);
+    expect(BOW.rain.mv).toBe(10.5);
+    expect(BOW.rain.mark + 0.1 + (BOW.rain.arrows - 1) * BOW.rain.spacing).toBeLessThan(bow.moves.b_finisher.rollCancelAt);
     expect(f.spawned.every((a) => a.vel.y < 0)).toBe(true);
   });
 });
@@ -383,5 +421,52 @@ describe('Projectiles', () => {
     pr.spawn({ team: 'monster', pos: { x: 0, y: 1, z: 0 }, vel: { x: 0, y: 0, z: 20 }, onHit: (i) => got.push(i.kind) });
     for (let i = 0; i < 30; i++) pr.update(DT);
     expect(got).toEqual(['player']);
+  });
+});
+
+describe('Spitzen-Status im Treffer-Pfad (Solo/Host + Koop-Gast)', async () => {
+  const { resolvePlayerHit, applyMonsterHit } = await import('../../src/game/combat.js');
+  const { encodeHit, decodeHit } = await import('../../src/net/protocol.js');
+  const part = { id: 'head', factor: 1, elem: {} };
+  it('host/solo applies poison, stun and rost (tip rost + weapon rust add up)', () => {
+    const m = fakeMonster('m1', []);
+    m.applyDamage = () => null;
+    const res = resolvePlayerHit({ power: 72, elems: { rust: 10, rost: 15 } }, { mv: 6 }, part, () => 0.9);
+    res.poisonBuild = 20; res.stunBuild = 8;
+    applyMonsterHit(m, res, {});
+    expect(m.applyCalls).toEqual([['rost', { amount: 25 }], ['poison', { buildup: 20 }], ['stun', { buildup: 8 }]]);
+  });
+  it('guest hit carries poison/stun to the host', () => {
+    const res = { partId: 'head', dmg: 10, poisonBuild: 30, stunBuild: 12.5, rostBuild: 15 };
+    const back = decodeHit(encodeHit('m1', res, 'p2')).res;
+    expect(back.poisonBuild).toBe(30);
+    expect(back.stunBuild).toBe(12.5);
+    expect(back.rostBuild).toBe(15);
+  });
+});
+
+describe('Treffer-Farbeffekte', async () => {
+  const { statusHitFx, STATUS_FX } = await import('../../src/game/statusFx.js');
+  const { encodeMonster, decodeMonster } = await import('../../src/net/protocol.js');
+  it('hits on a poisoned / rusted / stunned monster spark in the status colours', () => {
+    const sparks = [];
+    const fx = { spark: (p, n, c) => sparks.push(c) };
+    statusHitFx(fx, { st: { poisonT: 3, rustT: 2 }, stunT: 1 }, { x: 0, y: 1, z: 0 });
+    expect(sparks).toEqual([STATUS_FX.poison.color, STATUS_FX.rost.color, STATUS_FX.stun.color]);
+    sparks.length = 0;
+    statusHitFx(fx, { st: { poisonT: 0, rustT: 0 }, stunT: 0 }, { x: 0, y: 1, z: 0 });
+    expect(sparks).toEqual([]);
+  });
+  it('arrow hits with a tip burst in the tip colour', () => {
+    const s = setup();
+    const sparks = [];
+    s.ctx.fx.spark = (p, n, c) => sparks.push(c);
+    const m = fakeMonster('m1', [{ id: 'head', x: 0, y: 1, z: 12, r: 1 }]);
+    arrowHit(s.player, { monster: m, hp: m.hurtParts()[0], pos: { x: 0, y: 1, z: 12 } }, { ...SHOTS[2], tip: 'giftspitze' }, 12);
+    expect(sparks).toContain('#b060ff');
+  });
+  it('poison state reaches coop guests (snapshot flag)', () => {
+    const o = encodeMonster({ id: 'm1', def: 'jaggo', x: 0, y: 0, z: 0, rot: 0, state: 'combat', hpPct: 1, poison: true, parts: [] });
+    expect(decodeMonster(o).poison).toBe(true);
   });
 });
