@@ -467,8 +467,8 @@ export class Hunt {
       this.hud.lock(v.z < 1 ? { x: v.x * 0.5 + 0.5, y: -v.y * 0.5 + 0.5 } : null);
     } else this.hud.lock(null);
     if (lbGlitchActive()) { // [LB] Overlay-Fadenkreuz exakt auf Lock-Punkt, sonst auf den Zielpunkt vor dem Pirscher
-      const p = this.player, y = this.cameraYaw;
-      const a = lp ?? { x: p.pos.x + Math.sin(y) * 22, y: p.pos.y + 1.6, z: p.pos.z + Math.cos(y) * 22 };
+      const p = this.player, y = p.rot;
+      const a = lp ?? { x: p.pos.x + Math.sin(y) * 22, y: p.pos.y + 1.4, z: p.pos.z + Math.cos(y) * 22 }; // Blickrichtung des Pirschers
       const v = _lockV.set(a.x, a.y, a.z).project(this.camera);
       if (v.z < 1) setLbReticle(v.x * 0.5 + 0.5, -v.y * 0.5 + 0.5);
     }

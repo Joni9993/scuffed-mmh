@@ -55,8 +55,7 @@ function bumpBase(w) {
 const fwd = (yaw) => ({ x: Math.sin(yaw), z: Math.cos(yaw) });
 
 /**
- * Aim for player p. Lock-on: the locked part. Otherwise camera forward with slight auto-aim to the nearest monster
- * part within 10 degrees. Returns { yaw, target:{x,y,z}|null, origin:{x,y,z}, dist }.
+ * Aim for player p. Lock-on: the locked part. Otherwise straight ahead along the character's facing (level, no auto-aim). Returns { yaw, target:{x,y,z}|null, origin:{x,y,z}, dist }.
  */
 export function computeAim(p) {
   const ctx = p.ctx;
@@ -65,20 +64,7 @@ export function computeAim(p) {
   if (lp) {
     yaw = yawOf(lp.x - p.pos.x, lp.z - p.pos.z);
     target = { x: lp.x, y: lp.y, z: lp.z };
-  } else {
-    yaw = ctx.cameraYaw ?? p.rot;
-    let bestD = 1e9;
-    for (const m of ctx.monsters ?? []) {
-      if (!m.alive || m.def?.neutral) continue; // auto-aim ignores neutral fauna
-      for (const hp of m.hurtParts()) {
-        const dx = hp.pos.x - p.pos.x, dz = hp.pos.z - p.pos.z, d = Math.hypot(dx, dz);
-        if (d < 1) continue;
-        const ang = Math.abs(angleDiff(yaw, yawOf(dx, dz))) - Math.atan2(hp.sphere.r, d);
-        if (ang <= BOW.autoAimCone * D2R && d < bestD) { bestD = d; target = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z }; }
-      }
-    }
-    if (target) yaw = yawOf(target.x - p.pos.x, target.z - p.pos.z);
-  }
+  } else yaw = p.rot; // ohne Lock: geradeaus in Blickrichtung des Pirschers, waagerecht, keine Zielhilfe
   const f = fwd(yaw), r = { x: Math.cos(yaw), z: -Math.sin(yaw) }; // [G] bow arm = left side
   const origin = { x: p.pos.x + f.x * 0.8 + r.x * 0.3, y: p.pos.y + 1.4, z: p.pos.z + f.z * 0.8 + r.z * 0.3 };
   const dist = target ? Math.hypot(target.x - p.pos.x, target.z - p.pos.z) : null;

@@ -195,6 +195,16 @@ describe('Ratterbüchse', () => {
     expect(t.d.sauberMag).toBe(false);
     expect(t.w.moveId).toBe('lb_reload');
   });
+  it('Ohne Lock: Bolzen fliegt waagerecht in Blickrichtung des Pirschers, keine Zielhilfe', () => {
+    const t = setup();
+    t.player.rot = Math.PI / 2;
+    t.player.ctx.cameraYaw = 0;
+    t.player.ctx.monsters = [{ alive: true, hurtParts: () => [{ pos: { x: 1, y: 1.4, z: 10 }, sphere: { r: 0.5 }, part: { factor: 1 } }] }];
+    fireBolt(t.w);
+    const v = t.spawned[0].vel;
+    expect(v.x).toBeGreaterThan(Math.abs(v.z) * 20);
+    expect(v.y).toBeLessThan(2); // Schwerkraft-Ausgleich, aber kein Anvisieren
+  });
   it('Rolle = Ausfallschritt-Konfig', () => {
     expect(armbrust.rollOverride().step).toBe(true);
     expect(armbrust.walkLegs).toBe(true);

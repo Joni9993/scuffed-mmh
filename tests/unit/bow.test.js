@@ -230,18 +230,19 @@ describe('Schusstypen', () => {
 });
 
 describe('Zielen', () => {
-  it('without lock: camera forward, auto-aim to the nearest part within 10 degrees', () => {
-    const near = fakeMonster('a', [{ id: 'body', x: 1, y: 2, z: 10, r: 0.5 }]); // ~5.7 deg off
-    const far = fakeMonster('b', [{ id: 'body', x: 0, y: 2, z: 20, r: 0.5 }]);
-    const s = setup({ monsters: [near, far] });
+  it('without lock: no auto-aim, straight along the character facing (level)', () => {
+    const near = fakeMonster('a', [{ id: 'body', x: 1, y: 2, z: 10, r: 0.5 }]);
+    const s = setup({ monsters: [near] });
+    s.player.rot = Math.PI / 2; // blickt nach +x, Kamera egal
+    s.ctx.cameraYaw = 0;
     const aim = computeAim(s.player);
-    expect(aim.target.z).toBe(10);
-    expect(aim.dist).toBeCloseTo(Math.hypot(1, 10));
-  });
-  it('a part further than 10 degrees away is ignored', () => {
-    const m = fakeMonster('a', [{ id: 'body', x: 5, y: 2, z: 10, r: 0.5 }]);
-    const s = setup({ monsters: [m] });
-    expect(computeAim(s.player).target).toBe(null);
+    expect(aim.target).toBe(null);
+    expect(aim.yaw).toBeCloseTo(Math.PI / 2);
+    fireShot(s.w, 1); // Streuschuss: Faecher um die Blickrichtung
+    const vs = s.spawned.map((a) => a.vel);
+    expect(vs.length).toBe(3);
+    expect(vs[1].x).toBeGreaterThan(Math.abs(vs[1].z) * 20); // Mittelpfeil entlang +x
+    expect(vs[0].z * vs[2].z).toBeLessThan(0); // Faecher beidseitig
   });
   it('with lock-on the locked part is the target', () => {
     const m = fakeMonster('a', [{ id: 'body', x: 0, y: 2, z: 10, r: 0.5 }]);

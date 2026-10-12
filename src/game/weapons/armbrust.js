@@ -19,9 +19,9 @@ export const LB = {
   glitch: { rate: 1.5, mul: 1.9 / 1.3 }, // Glitch-Grundfaktor 1,3 steckt schon in player.glitchDmgMul -> Ziel x1,9 gesamt
 };
 export const AMMO = {
-  normal: { name: 'Normal', short: 'Normal', mag: 10, mv: 21, n: 1, fan: 0, pierce: 1, sweet: [6, 14], tipMul: 2, wucht: 2 },
-  streu: { name: 'Streuschrot', short: 'Streu', mag: 4, mv: 10, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
-  durch: { name: 'Durchschlag', short: 'Durchschl.', mag: 3, mv: 28, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
+  normal: { name: 'Normal', short: 'Normal', mag: 10, mv: 19, n: 1, fan: 0, pierce: 1, sweet: [6, 14], tipMul: 2, wucht: 2 },
+  streu: { name: 'Streuschrot', short: 'Streu', mag: 4, mv: 9, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
+  durch: { name: 'Durchschlag', short: 'Durchschl.', mag: 3, mv: 25, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
 };
 const AMMO_COL = { normal: 0xfff0a0, streu: 0xff9a3a, durch: 0x5ad8ff };
 export const AMMO_ORDER = ['normal', 'streu', 'durch'];
@@ -87,9 +87,7 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
     const aim = computeAim(p);
     p.rot = aim.yaw;
     const mzl = muzzleWorld(p);
-    let bar = null;
-    if (mzl) { aim.origin = mzl; bar = barrelDir(p, mzl); }
-    if (bar && !aim.target) aim.target = { x: mzl.x + bar.x * 14, y: mzl.y + bar.y * 14, z: mzl.z + bar.z * 14 }; // ohne Ziel: entlang des Laufs
+    if (mzl) aim.origin = mzl;
     const tipId = free || gl ? null : takeTip(p);
     rec.tip = tipId;
     const spec = { ammo: d.ammo, mv: A.mv, wucht: A.wucht, tip: tipId, tipMul: A.tipMul, dmgMul };
@@ -210,7 +208,7 @@ function fireFinisher(w) {
   const d = st(w), aim = computeAim(p);
   p.rot = aim.yaw;
   const mzl = muzzleWorld(p);
-  if (mzl) { aim.origin = mzl; const bar = barrelDir(p, mzl); if (bar && !aim.target) aim.target = { x: mzl.x + bar.x * 14, y: mzl.y + bar.y * 14, z: mzl.z + bar.z * 14 }; }
+  if (mzl) aim.origin = mzl;
   const tgt = aim.target ?? { x: aim.origin.x + Math.sin(aim.yaw) * 12, y: aim.origin.y, z: aim.origin.z + Math.cos(aim.yaw) * 12 };
   p.ctx.projectiles.spawn({
     pos: { ...aim.origin }, vel: solveVelocity(aim.origin, tgt, 50, LB.gravity), gravity: LB.gravity, radius: 0.14, life: 1.5, team: 'player', owner: p, pierce: 1, color: 0xff5a3a,
