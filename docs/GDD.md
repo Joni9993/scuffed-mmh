@@ -123,7 +123,7 @@ Fernkampf, Spannungsstufen, Rhythmus aus Schießen und Ausweichen.
 - **Ausweichspannen:** Nach einer Rolle startet das Spannen direkt bei Stufe 2.
 - **B = Bogenhieb** (Nahkampf-Schlag, BW 14, stößt kleine Monster weg).
 - **Spitzen (Munition-Items):** Ausrüstbar im Item-Rad: Brennspitze (+Feuer), Giftspitze (Gift aufbauen), Bummspitze (Explosion, Betäubung). Je 10 Stück, Wechsel kostet 0,4 s.
-- **Finisher „Pfeilregen"** (B bei Wucht 100): 1,2 s Ziel markieren, dann 20 Pfeile à BW 9 auf Zielbereich.
+- **Finisher „Pfeilregen"** (B bei Wucht 100): 1,2 s Ziel markieren (zieht zum Rumpf des Brocken), dann 36 Pfeile à BW 10,5 in ~0,56 s auf r = 2,3 m (zur Mitte gebündelt). Nimmt die gewählte Spitze mit (1 Spitze, 15 % Wirkung je Regenpfeil). Gemessen (Stufe 1): Jaggo ~105, Barrotz/Brathalos ~150 Schaden (vorher ~20–40).
 - Wucht: Treffer +3 (Durchschuss +2 pro Teil).
 
 ### 4.4 Katana (Ronin-Klinge, Kürzel `kt`)

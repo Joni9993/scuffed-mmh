@@ -50,7 +50,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
     stunEligible: !!part.stunPart,
     wucht: hit.wucht || 0,
     partId: part.id, hitstop: HITSTOP[size], shake: SHAKE[size],
-    rostBuild: attacker.elems?.rost ?? attacker.elems?.rust ?? 0, // Waffendaten nutzen 'rust' // Element 'rost' = Rost-Aufbau pro Treffer (kein Elementschaden, GDD 15.3)
+    rostBuild: (attacker.elems?.rost ?? 0) + (attacker.elems?.rust ?? 0), // Waffendaten nutzen 'rust', Rostspitze 'rost' // Rost-Aufbau pro Treffer (kein Elementschaden, GDD 15.3)
   };
 }
 
@@ -58,8 +58,15 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
 export function applyMonsterHit(monster, result, ctx) {
   if (ctx?.net?.isGuest) { ctx.net.sendHit(monster, result); return null; }
   const ev = monster.applyDamage(result);
-  if (result.rostBuild > 0) monster.applyStatus?.('rost', { amount: result.rostBuild });
+  applyHitStatus(monster, result);
   return ev;
+}
+
+/** Status-Aufbau eines Treffers (Rost aus Element, Gift/Betaeubung aus Bogen-Spitzen). Host/Solo; Gast-Treffer auf dem Host via sync. */
+export function applyHitStatus(monster, result) {
+  if (result.rostBuild > 0) monster.applyStatus?.('rost', { amount: result.rostBuild });
+  if (result.poisonBuild > 0) monster.applyStatus?.('poison', { buildup: result.poisonBuild });
+  if (result.stunBuild > 0) monster.applyStatus?.('stun', { buildup: result.stunBuild });
 }
 
 /** Pick the best part (highest factor) among overlapping parts. */

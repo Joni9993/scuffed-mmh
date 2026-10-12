@@ -8,6 +8,7 @@ import { rollGather } from '../data/gather.js';
 import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
 import { PLAYER_COLORS } from '../meta/save.js';
 import { labelSprite } from '../render/labels.js';
+import { applyHitStatus } from '../game/combat.js';
 import { monsters as MONDEFS } from '../game/monsters/index.js';
 import { encodeKkBar, decodeKkBar } from '../game/buffs.js'; // [KK]
 import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
@@ -154,7 +155,7 @@ export class HuntNet {
       h.res.attackerId = from; // dem Absender vertrauen, nicht der Nutzlast
       const before = m.hp;
       const ev = m.applyDamage(h.res);
-      if (h.res.rostBuild > 0) m.applyStatus?.('rost', { amount: h.res.rostBuild });
+      applyHitStatus(m, h.res); // Rost / Gift / Betaeubung des Gastes
       this.stats.hitsApplied++;
       this.stats.dmgApplied += before - m.hp;
       const hp = m.hurtParts().find((q) => q.part.id === h.res.partId);
