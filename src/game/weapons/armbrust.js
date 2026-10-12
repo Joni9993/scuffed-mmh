@@ -1,6 +1,8 @@
 import { compileTrack, REST } from '../anim.js';
 import { stepAngle } from '../../core/math.js';
+import { startLbGlitch, stopLbGlitch } from '../../ui/lbGlitchOverlay.js';
 import { buildArmbrustLook, updateArmbrustLook } from '../gear/armbrustLook.js';
+import * as THREE from 'three';
 import { computeAim, solveVelocity, TIPS, tipEffect, takeTip } from './bow.js';
 
 // Ratterbüchse (`lb`, leichte Armbrust, GDD 18): A tippen = Einzelschuss, A halten = Rattern (3/s, langsamer),
@@ -21,6 +23,7 @@ export const AMMO = {
   streu: { name: 'Streuschrot', short: 'Streu', mag: 4, mv: 10, n: 5, fan: 30, pierce: 1, sweet: [2, 6], tipMul: 0.5, wucht: 1, speed: 34 },
   durch: { name: 'Durchschlag', short: 'Durchschl.', mag: 3, mv: 28, n: 1, fan: 0, pierce: 3, sweet: [10, 20], tipMul: 1, wucht: 2 },
 };
+const AMMO_COL = { normal: 0xfff0a0, streu: 0xff9a3a, durch: 0x5ad8ff };
 export const AMMO_ORDER = ['normal', 'streu', 'durch'];
 export const sweetMul = (ammo, d) => { const s = AMMO[ammo].sweet; return d >= s[0] && d <= s[1] ? 1 : LB.farMul; };
 
@@ -31,7 +34,7 @@ export function st(w) {
   const d = w.data;
   if (d.ammo === undefined) {
     d.ammo = 'normal'; d.mag = { normal: AMMO.normal.mag, streu: AMMO.streu.mag, durch: AMMO.durch.mag };
-    d.rel = null; d.sauberMag = false; d.wantReload = false; d.cd = 0; d.pend = false;
+    d.rel = null; d.sauberMag = false; d.wantReload = false; d.cd = 0; d.pend = false; d.hopMul = 0;
     d.charges = LB.mine.max; d.mineT = 0; d.mines = []; d.stickies = []; d.log = []; d.shots = 0;
   }
   return d;
@@ -51,6 +54,16 @@ function lbHit(p, info, spec, dist) {
   if (tip) ctx.fx?.spark(info.pos, 4, tip.fx, 3.5);
 }
 /** Ein Schuss (ein "Bolzen"): verbraucht 1 Magazin-Patrone + 1 Spitze (nicht im Glitch / beim freien Hüpfschuss). */
+const _mz = new THREE.Vector3();
+/** Muendungsposition (Welt) aus dem Waffen-Mesh; null -> Fallback aim.origin */
+function muzzleWorld(p) {
+  const mz = p.weaponMesh?.userData?.muzzle;
+  if (!mz) return null;
+  mz.updateWorldMatrix(true, false);
+  mz.getWorldPosition(_mz);
+  if (!Number.isFinite(_mz.x) || Math.hypot(_mz.x - p.pos.x, _mz.z - p.pos.z) < 0.2) return null;
+  return { x: _mz.x, y: _mz.y, z: _mz.z };
+}
 export function fireBolt(w, { free = false, rattern = false } = {}) {
   const d = st(w), p = w.hooks.player, A = AMMO[d.ammo], gl = glitching(w);
   if (!free && !gl) {
@@ -58,11 +71,14 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
     d.mag[d.ammo]--;
   }
   if (!free) d.cd = cdOf(w); // gemeinsamer Cooldown fuer Tippen und Halten
-  const dmgMul = (rattern ? LB.rattern.mul : 1) * (d.sauberMag ? LB.reload.sauberMul : 1) * (gl ? LB.glitch.mul : 1);
+  const hop = d.hopMul || 1; d.hopMul = 0;
+  const dmgMul = hop * (rattern ? LB.rattern.mul : 1) * (d.sauberMag ? LB.reload.sauberMul : 1) * (gl ? LB.glitch.mul : 1);
   const rec = { ammo: d.ammo, mag: d.mag[d.ammo], tip: null, free, rattern, dmgMul };
   if (p?.ctx?.projectiles) {
     const aim = computeAim(p);
     p.rot = aim.yaw;
+    const mzl = muzzleWorld(p);
+    if (mzl) aim.origin = mzl;
     const tipId = free || gl ? null : takeTip(p);
     rec.tip = tipId;
     const spec = { ammo: d.ammo, mv: A.mv, wucht: A.wucht, tip: tipId, tipMul: A.tipMul, dmgMul };
@@ -73,7 +89,8 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
       const vel = A.n > 1 ? rotateY(base, (i / (A.n - 1) - 0.5) * A.fan * D2R) : base;
       p.ctx.projectiles.spawn({
         pos: { ...aim.origin }, vel, gravity: LB.gravity, radius: LB.radius, life: 2, team: 'player', owner: p, pierce: A.pierce,
-        color: gl ? (d.shots % 2 ? 0xff2bd6 : 0x18e6ff) : tipId ? TIPS[tipId].color : 0xd8c090,
+        style: d.ammo === 'streu' ? 'pellet' : d.ammo === 'durch' ? 'long' : 'slug',
+        color: gl ? (d.shots % 2 ? 0xff2bd6 : 0x18e6ff) : tipId ? TIPS[tipId].color : AMMO_COL[d.ammo],
         glow: (pr) => { const dd = Math.hypot(pr.pos.x - o.x, pr.pos.z - o.z); return sweetMul(spec.ammo, dd) === 1 ? 'sweet' : 'weak'; },
         onHit: (info) => lbHit(p, info, spec, Math.hypot(info.pos.x - o.x, info.pos.z - o.z)),
         data: { level: 1 },
@@ -224,12 +241,12 @@ export const moves = {
 const rattern = (w) => (glitching(w) ? 'lb_rattern_g' : 'lb_rattern');
 const idleA = (w) => (rolledRecently(w) ? 'lb_hop' : 'lb_shot');
 
-const BASE = { ...REST, arx: 50, arz: 8, sw: 0, alx: 40, tx: 5, ty: -6, th: 1 };
-const AIM = { arx: 82, arz: 4, sw: 0, tx: 3, ty: -10, hx: -4, hy: 6, py: -0.05 };
+const BASE = { ...REST, arx: 62, arz: 8, sw: 0, alx: 40, tx: 5, ty: -6, th: 1 };
+const AIM = { arx: 100, arz: 4, sw: 0, tx: 3, ty: -10, hx: -4, hy: 6, py: -0.05 };
 const A = (f) => compileTrack(f, BASE);
 const anims = {
-  lb_shot: A([[0, AIM], [0.05, { ...AIM, arx: 84, tx: -1 }], [0.25, AIM]]),
-  lb_rattern: A([[0, {}], [0.1, AIM], [0.2, { ...AIM, arx: 83, tx: 0 }], [0.3, AIM]]),
+  lb_shot: A([[0, AIM], [0.05, { ...AIM, arx: 105, tx: -1 }], [0.25, AIM]]),
+  lb_rattern: A([[0, {}], [0.1, AIM], [0.2, { ...AIM, arx: 102, tx: 0 }], [0.3, AIM]]),
   lb_reload: A([[0, AIM], [0.2, { arx: 40, sw: 28, ty: -20, tx: 14, hx: 12 }], [0.7, { arx: 40, sw: 28, ty: -20, tx: 14, hx: 12 }], [1.0, AIM], [1.4, AIM]]),
   lb_mine: A([[0, {}], [0.15, { tx: 30, hx: 20, arx: 40, sw: 0 }], [0.3, { tx: 30, hx: 20, arx: 40, sw: 0 }], [0.45, {}]]),
 };
@@ -237,8 +254,8 @@ const anims = {
 /** Waffen-Glitch "Buffer Overflow": kein Nachladen, Rattern ohne Tempo-Malus, Spitzen nicht verbraucht, Feuerrate x1,5. */
 const glitch = {
   name: 'Buffer Overflow',
-  onStart(p) { const d = st(p.weapon); d.rel = null; d.mag[d.ammo] = AMMO[d.ammo].mag; },
-  onEnd(p) { const d = st(p.weapon); d.mag[d.ammo] = AMMO[d.ammo].mag; },
+  onStart(p) { const d = st(p.weapon); d.rel = null; d.mag[d.ammo] = AMMO[d.ammo].mag; if (p.local !== false) startLbGlitch(); },
+  onEnd(p) { const d = st(p.weapon); d.mag[d.ammo] = AMMO[d.ammo].mag; if (p.local !== false) stopLbGlitch(); },
   tick() {},
 };
 
@@ -247,7 +264,7 @@ export const armbrust = {
   name: 'Ratterbüchse',
   glitch,
   // Zweihand-Armbrust: rechte Hand am Griff, linke unter dem Vorderschaft (userData.twoHand), Schaft an der Schulter
-  rest: { arx: 50, arz: 8, sw: 0, tx: 5, ty: -6, th: 1 },
+  rest: { arx: 62, arz: 8, sw: 0, tx: 5, ty: -6, th: 1 },
   holdThreshold: { A: 0.15, B: 0.3 },
   idle: { A: idleA, holdA: rattern, B: 'lb_mine', holdB: null },
   moves,
@@ -260,7 +277,7 @@ export const armbrust = {
   },
   on: {
     shoot: (w) => { const d = st(w); if (d.cd > 0) d.pend = true; else fireBolt(w); }, // Tippen waehrend Cooldown: max. 1 Schuss gepuffert
-    hop: (w) => fireBolt(w, { free: true }),
+    hop: (w) => { const d = st(w); d.hopMul = 1.1; if (d.cd > 0) d.pend = true; else fireBolt(w); }, // Schuss aus dem Ausfallschritt: verbraucht Munition, +10 % Schaden
     mine: (w) => placeMine(w),
     kracher: (w) => fireFinisher(w),
   },

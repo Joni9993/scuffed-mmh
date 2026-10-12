@@ -30,6 +30,7 @@ const MAX_ALIVE = 120;
  *  onEnd(proj, reason, info)      reason 'pierce' | 'ground' | 'world' | 'timeout' | 'monster' | 'player'
  *  color (hex)                    arrow/trail colour; glow(proj) -> 'sweet'|'weak'|null swaps the arrow material
  *  stick (default true)           visual only: keep the arrow in the target/ground for a moment
+ *  style                          [LB] 'slug'|'pellet'|'long': leuchtendes Geschoss statt Pfeil (Farbe = color), bleibt nicht stecken
  *  data                           free scratch object for the spawner
  */
 export class Projectiles {
@@ -54,7 +55,7 @@ export class Projectiles {
       gravity: o.gravity ?? 0, drag: o.drag ?? 0, radius: o.radius ?? 0.12, life: o.life ?? 3,
       team: o.team ?? 'player', owner: o.owner ?? null, pierce: o.pierce ?? 1, pierced: 0,
       onHit: o.onHit, onEnd: o.onEnd, color: o.color ?? 0xf0e6c8, glow: o.glow, stick: o.stick !== false,
-      kind: o.kind ?? 'arrow', data: o.data ?? {}, age: 0, parts: new Set(), dead: false,
+      kind: o.kind ?? 'arrow', style: o.style ?? null, data: o.data ?? {}, age: 0, parts: new Set(), dead: false,
       origin: { ...o.pos }, hist: null, mesh: null, trail: null,
     };
     if (this.visual) this.#makeVisual(p);
@@ -64,7 +65,8 @@ export class Projectiles {
   }
 
   #makeVisual(p) {
-    const m = new THREE.Mesh(SHARED.arrowGeo, SHARED.mat.base);
+    const m = p.style ? new THREE.Mesh(SHARED.bullet[p.style] ?? SHARED.bullet.slug, bulletMat(p.color)) : new THREE.Mesh(SHARED.arrowGeo, SHARED.mat.base);
+    if (p.style) p.stick = false;
     m.scale.setScalar(p.kind === 'ball' ? 0.7 : 1);
     p.mesh = m;
     this.group.add(m);
@@ -92,7 +94,7 @@ export class Projectiles {
     const sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z) || 1;
     _d.set(p.vel.x / sp, p.vel.y / sp, p.vel.z / sp);
     m.quaternion.setFromUnitVectors(_z, _d);
-    if (p.glow) {
+    if (p.glow && !p.style) {
       const g = p.glow(p);
       m.material = g === 'sweet' ? SHARED.mat.sweet : g === 'weak' ? SHARED.mat.weak : SHARED.mat.base;
     }
@@ -220,6 +222,12 @@ const _z = new THREE.Vector3(0, 0, 1), _d = new THREE.Vector3();
 const hurtOf = (m) => m.hurtParts();
 const SHARED = {};
 const trailMats = new Map();
+const bulletMats = new Map();
+function bulletMat(color) { // leuchtend, unbeleuchtet: Geschosse der Ratterbuechse
+  let m = bulletMats.get(color);
+  if (!m) { m = new THREE.MeshBasicMaterial({ color, fog: false }); bulletMats.set(color, m); }
+  return m;
+}
 function trailMat(color) {
   let m = trailMats.get(color);
   if (!m) { m = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.7, fog: false }); trailMats.set(color, m); }
@@ -238,6 +246,11 @@ function buildShared() {
   const fl1 = col(new THREE.BoxGeometry(0.2, 0.012, 0.2).translate(0, 0, -0.38), '#e8483a');
   const fl2 = col(new THREE.BoxGeometry(0.012, 0.2, 0.2).translate(0, 0, -0.38), '#e8483a');
   SHARED.arrowGeo = mergeGeometries([shaft, head, fl1, fl2]);
+  SHARED.bullet = { // [LB] Geschosse entlang +z
+    slug: new THREE.CylinderGeometry(0.055, 0.055, 0.28, 6).rotateX(Math.PI / 2),
+    pellet: new THREE.SphereGeometry(0.05, 5, 4),
+    long: new THREE.CylinderGeometry(0.04, 0.025, 0.7, 5).rotateX(Math.PI / 2),
+  };
   SHARED.mat = {
     base: lambert({ vertexColors: true }),
     sweet: lambert({ vertexColors: true, emissive: new THREE.Color(1, 0.85, 0.2) }),

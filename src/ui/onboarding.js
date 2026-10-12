@@ -15,7 +15,7 @@ export const WEAPON_TIPS = {
   bow: 'Spannbogen: A halten = spannen, loslassen schießt. Schwachstellen per Lock anvisieren.',
   kt: 'Katana: Konter mit B im richtigen Moment, A-Ketten füllen die Klingenleiste.',
   ga: 'Glitchaxt: Treffer in der Axt bauen Druck auf, B = Schwert (ab 25 %). Im Schwert sinkt der Druck – bei 0 blitzt es weiß.',
-  lb: 'Ratterbüchse: A = Schuss, A halten = Rattern. B = Nachladen (zweites B bei 0,5 s = sauber), B halten = Schrottmine. Munition: Item-Leiste.',
+  lb: 'Ratterbüchse: A = Schuss, A halten = Rattern. Nachladen automatisch: B im gelben Feld = sauber. B = Schrottmine. Munition: Item-Leiste.',
   kk: 'Krachkiste: jeder Schlag nimmt ein Sample (Kopf ▲ · Körper ■ · Glieder ●). B spielt die Leiste ab und buffed alle im Umkreis.',
 };
 /** [GA] Zusatzzeile nach Fehlzündungen (Zähler settings.gaFehl): kleiner Lerntext, kein Banner */

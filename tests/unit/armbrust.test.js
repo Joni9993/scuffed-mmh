@@ -153,6 +153,29 @@ describe('Ratterbüchse', () => {
     t.tap('B'); t.step(0.6);
     expect(t.d.mines.length).toBe(1);
   });
+  it('Regression: Schuss, Ausfallschritt, Schuss verbraucht Munition (kein Gratis-Hüpfschuss)', () => {
+    const t = setup();
+    t.tap('A'); t.step(0.5);
+    const after1 = t.d.mag.normal;
+    expect(after1).toBe(AMMO.normal.mag - 1);
+    t.w.cancel(); t.player.sinceRoll = 0; // Rolle/Ausfallschritt
+    t.tap('A'); t.step(0.6);
+    expect(t.d.mag.normal).toBe(after1 - 1);
+    const rec = t.d.log.at(-1);
+    expect(rec.free).toBe(false);
+    expect(rec.dmgMul).toBeCloseTo(1.1);
+  });
+  it('Projektile: Geschoss-Stil je Munition, Muendung aus dem Waffen-Mesh', () => {
+    const t = setup();
+    t.player.weaponMesh = { userData: { muzzle: { updateWorldMatrix() {}, getWorldPosition(v) { v.set(3, 1.4, 4); return v; } } } };
+    fireBolt(t.w);
+    expect(t.spawned[0].style).toBe('slug');
+    expect(t.spawned[0].pos.x).toBe(3);
+    t.d.ammo = 'streu'; fireBolt(t.w);
+    expect(t.spawned.at(-1).style).toBe('pellet');
+    t.d.ammo = 'durch'; fireBolt(t.w);
+    expect(t.spawned.at(-1).style).toBe('long');
+  });
   it('Rolle = Ausfallschritt-Konfig', () => {
     expect(armbrust.rollOverride().step).toBe(true);
     expect(armbrust.walkLegs).toBe(true);

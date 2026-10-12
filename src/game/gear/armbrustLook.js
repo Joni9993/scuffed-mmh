@@ -222,10 +222,10 @@ const LOOKS = {
 // ---------- Glitch-Optik "Buffer Overflow" (nur im Glitch sichtbar, Zusatzobjekte werden einmal gebaut)
 const GL_COLS = [0xff2bd6, 0x18e6ff, 0xffffff, 0xffe14d];
 function digitsSprite() {
-  const c = document.createElement('canvas'); c.width = 128; c.height = 48;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 80;
   const tex = new THREE.CanvasTexture(c); tex.magFilter = tex.minFilter = THREE.NearestFilter;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
-  sp.scale.set(0.62, 0.23, 1); sp.position.set(0, -0.3, 0.55); sp.renderOrder = 9; sp.visible = false;
+  sp.scale.set(2.0, 0.62, 1); sp.position.set(0, -0.3, 0.95); sp.renderOrder = 9; sp.visible = false;
   sp.userData = { c, g: c.getContext('2d'), tex, last: '' };
   return sp;
 }
@@ -234,11 +234,12 @@ function paintDigits(sp, text) {
   if (u.last === text) return;
   u.last = text;
   const g = u.g;
-  g.clearRect(0, 0, 128, 48);
-  g.font = 'bold 30px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = '#ff2bd6'; g.fillText(text, 66, 26);
-  g.fillStyle = '#18e6ff'; g.fillText(text, 62, 22);
-  g.fillStyle = '#ffffff'; g.fillText(text, 64, 24);
+  g.clearRect(0, 0, 256, 80);
+  g.font = 'bold 58px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 8; g.strokeStyle = '#1a0a2a'; g.strokeText(text, 128, 42);
+  g.fillStyle = '#ff2bd6'; g.fillText(text, 134, 46);
+  g.fillStyle = '#18e6ff'; g.fillText(text, 122, 38);
+  g.fillStyle = '#ffffff'; g.fillText(text, 128, 42);
   u.tex.needsUpdate = true;
 }
 function ensureGlitch(mesh) {
@@ -254,26 +255,26 @@ function ensureGlitch(mesh) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), seamMat); s.position.set(x, y, z); seams.add(s);
   }
   mesh.add(seams);
-  const pix = new THREE.BoxGeometry(0.035, 0.035, 0.035);
+  const pix = new THREE.BoxGeometry(0.1, 0.1, 0.1);
   const parts = [];
-  for (let i = 0; i < 24; i++) { const m = new THREE.Mesh(pix, new THREE.MeshBasicMaterial({ color: GL_COLS[i % 4], fog: false })); m.visible = false; m.userData = { life: 0, v: new THREE.Vector3(), shell: i >= 14 }; mesh.add(m); parts.push(m); }
+  for (let i = 0; i < 44; i++) { const m = new THREE.Mesh(pix, new THREE.MeshBasicMaterial({ color: GL_COLS[i % 4], fog: false })); m.visible = false; m.renderOrder = 8; m.userData = { life: 0, v: new THREE.Vector3(), shell: i >= 30 }; mesh.add(m); parts.push(m); }
   const digits = digitsSprite(); mesh.add(digits);
   L.gl = { ghosts, seams, seamMat, parts, digits, pulse: 0, t: 0, n: 0, lastShots: -1, lastAt: 0 };
   return L.gl;
 }
 const MUZZLE = [0, LB_LEN.muzzle, 0.08];
 function emitPix(gl, shell) {
-  const base = shell ? 14 : 0, cnt = shell ? 10 : 14;
+  const base = shell ? 30 : 0, cnt = shell ? 14 : 30;
   for (let i = 0; i < cnt; i++) {
     const m = gl.parts[base + ((gl.n + i) % cnt)];
     const u = m.userData;
     if (u.life > 0) continue;
-    u.life = shell ? 0.5 : 0.28;
+    u.life = shell ? 0.9 : 0.6;
     if (shell) { m.position.set(0.05, -0.1, 0.22); u.v.set(0.5 + Math.random() * 0.5, Math.random() * 0.3 - 0.15, 0.8 + Math.random() * 0.5); m.material.color.setHex(0xffe14d); }
-    else { m.position.set(...MUZZLE); u.v.set((Math.random() - 0.5) * 0.9, -1.2 - Math.random() * 1.6, (Math.random() - 0.3) * 0.9); m.material.color.setHex(GL_COLS[(Math.random() * 3) | 0]); }
+    else { m.position.set(...MUZZLE); u.v.set((Math.random() - 0.5) * 1.8, -1.5 - Math.random() * 2.4, (Math.random() - 0.3) * 1.8); m.material.color.setHex(GL_COLS[(Math.random() * 3) | 0]); }
     m.visible = true; m.scale.setScalar(1);
-    if (!shell && i > 5) break;
-    if (shell && i > 0) break;
+    if (!shell && i > 11) break;
+    if (shell && i > 2) break;
   }
   gl.n++;
 }
@@ -288,6 +289,7 @@ export function updateArmbrustLook(mesh, s, dt) {
   gl.seams.visible = on; gl.digits.visible = on;
   gl.seamMat.color.setHex(Math.floor(gl.t * 12) % 2 ? 0x18e6ff : 0xff2bd6);
   if (on && s.shot) { gl.pulse = 1; emitPix(gl, false); emitPix(gl, true); }
+  if (on) { gl.amb = (gl.amb ?? 0) - dt; if (gl.amb <= 0) { gl.amb = 0.12; emitPix(gl, false); } } // Dauer-Glitzern am Lauf
   gl.pulse = Math.max(0, gl.pulse - dt * 6);
   const j = on ? 0.02 + gl.pulse * 0.05 : 0;
   gl.ghosts.forEach((g, i) => {
@@ -302,7 +304,7 @@ export function updateArmbrustLook(mesh, s, dt) {
     u.life -= dt;
     if (u.shell) u.v.z -= 4 * dt;
     m.position.addScaledVector(u.v, dt);
-    m.scale.setScalar(Math.max(0.2, u.life * 3));
+    m.scale.setScalar(Math.max(0.3, Math.min(1.4, u.life * 2.5)));
     if (u.life <= 0) m.visible = false;
   }
 }
@@ -316,6 +318,7 @@ export function buildArmbrustLook(tier = 1, branch = null) {
   const body = new THREE.Mesh(P.merge(), mat);
   const g = new THREE.Group();
   g.add(body);
-  g.userData = { glow: mat, gearGlow: mat.userData.glow, glowBase: top >= 3 ? 0.9 : 0.4, fx, twoHand: { lo: -0.62, hi: -0.4 }, lb: { tier: top, key: lbLookKey(top, branch) } };
+  const muzzle = new THREE.Object3D(); muzzle.position.set(...MUZZLE); g.add(muzzle);
+  g.userData = { muzzle, glow: mat, gearGlow: mat.userData.glow, glowBase: top >= 3 ? 0.9 : 0.4, fx, twoHand: { lo: -0.62, hi: -0.4 }, lb: { tier: top, key: lbLookKey(top, branch) } };
   return g;
 }
