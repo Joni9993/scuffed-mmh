@@ -9,6 +9,7 @@ import { createFx } from '../render/fx.js';
 import { createCameraRig } from '../render/camera.js';
 import { createDebugViz } from '../render/debugviz.js';
 import { createHud } from '../ui/hud.js';
+import { computeAim } from './weapons/bow.js';
 import { setLbReticle, lbGlitchActive } from '../ui/lbGlitchOverlay.js';
 import { Player } from './player.js';
 import { resolveMods } from '../data/mutators.js';
@@ -468,7 +469,8 @@ export class Hunt {
     } else this.hud.lock(null);
     if (lbGlitchActive()) { // [LB] Overlay-Fadenkreuz exakt auf Lock-Punkt, sonst auf den Zielpunkt vor dem Pirscher
       const p = this.player, y = p.rot;
-      const a = lp ?? { x: p.pos.x + Math.sin(y) * 22, y: p.pos.y + 1.4, z: p.pos.z + Math.cos(y) * 22 }; // Blickrichtung des Pirschers
+      const as = lp ? null : computeAim(p).target; // Zielhilfe-Ziel, sonst Punkt in Blickrichtung
+      const a = lp ?? as ?? { x: p.pos.x + Math.sin(y) * 22, y: p.pos.y + 1.4, z: p.pos.z + Math.cos(y) * 22 };
       const v = _lockV.set(a.x, a.y, a.z).project(this.camera);
       if (v.z < 1) setLbReticle(v.x * 0.5 + 0.5, -v.y * 0.5 + 0.5);
     }

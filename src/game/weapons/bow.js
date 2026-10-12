@@ -55,7 +55,8 @@ function bumpBase(w) {
 const fwd = (yaw) => ({ x: Math.sin(yaw), z: Math.cos(yaw) });
 
 /**
- * Aim for player p. Lock-on: the locked part. Otherwise straight ahead along the character's facing (level, no auto-aim). Returns { yaw, target:{x,y,z}|null, origin:{x,y,z}, dist }.
+ * Aim for player p. Lock-on: the locked part. Otherwise a 10-degree assist cone around the character's facing (nearest monster part,
+ * small/neutral fauna included); nothing in the cone -> straight ahead, level. Shared by bow and Ratterbuechse. Returns { yaw, target:{x,y,z}|null, origin:{x,y,z}, dist }.
  */
 export function computeAim(p) {
   const ctx = p.ctx;
@@ -64,7 +65,22 @@ export function computeAim(p) {
   if (lp) {
     yaw = yawOf(lp.x - p.pos.x, lp.z - p.pos.z);
     target = { x: lp.x, y: lp.y, z: lp.z };
-  } else yaw = p.rot; // ohne Lock: geradeaus in Blickrichtung des Pirschers, waagerecht, keine Zielhilfe
+  } else {
+    // ohne Lock: Zielhilfe-Kegel (10 Grad) um die Blickrichtung des Pirschers auf den naechsten Monsterteil, auch Kleinvieh/neutrale Fauna
+    // (die sich nicht locken laesst); nichts im Kegel -> waagerecht geradeaus
+    yaw = p.rot;
+    let bestD = 1e9;
+    for (const m of ctx.monsters ?? []) {
+      if (!m.alive) continue;
+      for (const hp of m.hurtParts()) {
+        const dx = hp.pos.x - p.pos.x, dz = hp.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+        if (d < 1) continue;
+        const ang = Math.abs(angleDiff(p.rot, yawOf(dx, dz))) - Math.atan2(hp.sphere.r, d);
+        if (ang <= BOW.autoAimCone * D2R && d < bestD) { bestD = d; target = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z }; }
+      }
+    }
+    if (target) yaw = yawOf(target.x - p.pos.x, target.z - p.pos.z);
+  }
   const f = fwd(yaw), r = { x: Math.cos(yaw), z: -Math.sin(yaw) }; // [G] bow arm = left side
   const origin = { x: p.pos.x + f.x * 0.8 + r.x * 0.3, y: p.pos.y + 1.4, z: p.pos.z + f.z * 0.8 + r.z * 0.3 };
   const dist = target ? Math.hypot(target.x - p.pos.x, target.z - p.pos.z) : null;

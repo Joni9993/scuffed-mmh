@@ -230,19 +230,31 @@ describe('Schusstypen', () => {
 });
 
 describe('Zielen', () => {
-  it('without lock: no auto-aim, straight along the character facing (level)', () => {
-    const near = fakeMonster('a', [{ id: 'body', x: 1, y: 2, z: 10, r: 0.5 }]);
-    const s = setup({ monsters: [near] });
-    s.player.rot = Math.PI / 2; // blickt nach +x, Kamera egal
-    s.ctx.cameraYaw = 0;
+  it('without lock: assist cone (10 deg) around the character facing, nearest part, camera ignored', () => {
+    const near = fakeMonster('a', [{ id: 'body', x: 1, y: 2, z: 10, r: 0.5 }]); // ~5.7 deg off
+    const far = fakeMonster('b', [{ id: 'body', x: 0, y: 2, z: 20, r: 0.5 }]);
+    const s = setup({ monsters: [near, far] });
+    s.ctx.cameraYaw = 2; // egal
     const aim = computeAim(s.player);
-    expect(aim.target).toBe(null);
-    expect(aim.yaw).toBeCloseTo(Math.PI / 2);
-    fireShot(s.w, 1); // Streuschuss: Faecher um die Blickrichtung
+    expect(aim.target.z).toBe(10);
+    expect(aim.dist).toBeCloseTo(Math.hypot(1, 10));
+  });
+  it('small / neutral fauna (not lockable) is assisted too', () => {
+    const critter = fakeMonster('c', [{ id: 'body', x: 0.5, y: 0.3, z: 6, r: 0.25 }]);
+    critter.def = { neutral: true };
+    const s = setup({ monsters: [critter] });
+    expect(computeAim(s.player).target).toMatchObject({ x: 0.5, z: 6 });
+  });
+  it('a part further than 10 degrees away is ignored: level shot along the facing, no camera aim', () => {
+    const m = fakeMonster('a', [{ id: 'body', x: 5, y: 2, z: 10, r: 0.5 }]);
+    const s = setup({ monsters: [m] });
+    s.player.rot = Math.PI / 2; s.ctx.cameraYaw = 0;
+    expect(computeAim(s.player).target).toBe(null);
+    fireShot(s.w, 1);
     const vs = s.spawned.map((a) => a.vel);
     expect(vs.length).toBe(3);
-    expect(vs[1].x).toBeGreaterThan(Math.abs(vs[1].z) * 20); // Mittelpfeil entlang +x
-    expect(vs[0].z * vs[2].z).toBeLessThan(0); // Faecher beidseitig
+    expect(vs[1].x).toBeGreaterThan(Math.abs(vs[1].z) * 20);
+    expect(vs[0].z * vs[2].z).toBeLessThan(0);
   });
   it('with lock-on the locked part is the target', () => {
     const m = fakeMonster('a', [{ id: 'body', x: 0, y: 2, z: 10, r: 0.5 }]);

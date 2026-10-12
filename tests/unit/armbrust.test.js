@@ -205,6 +205,16 @@ describe('Ratterbüchse', () => {
     expect(v.x).toBeGreaterThan(Math.abs(v.z) * 20);
     expect(v.y).toBeLessThan(2); // Schwerkraft-Ausgleich, aber kein Anvisieren
   });
+  it('Zielhilfe ohne Lock (gleicher Helfer wie Bogen): Kleinvieh im Kegel wird anvisiert', () => {
+    const t = setup();
+    const critter = { alive: true, def: { neutral: true }, hurtParts: () => [{ pos: { x: 0.4, y: 0.3, z: 6 }, sphere: { r: 0.25 }, part: { factor: 1 } }] };
+    t.player.ctx.monsters = [critter];
+    fireBolt(t.w);
+    const v = t.spawned[0].vel;
+    expect(v.z).toBeGreaterThan(Math.abs(v.x) * 5); // Richtung +z zum Tierchen (leicht +x)
+    expect(v.x).toBeGreaterThan(0);
+    t.player.ctx.monsters = [];
+  });
   it('Rolle = Ausfallschritt-Konfig', () => {
     expect(armbrust.rollOverride().step).toBe(true);
     expect(armbrust.walkLegs).toBe(true);
