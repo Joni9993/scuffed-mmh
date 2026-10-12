@@ -5,7 +5,7 @@ import { ItemSystem } from './items.js';
 import { applyLoadout } from './loadout.js';
 import { createHuntHud } from '../ui/hubHuntHud.js';
 import { defaultLoadout } from '../meta/loadout.js';
-import { buildRewards } from '../meta/progression.js';
+import { buildRewards, applyHuntLeave } from '../meta/progression.js';
 import { rollCarve, rollCarveAll, CARVES_PER_PLAYER, TAIL_CARVES } from '../data/drops.js';
 import { createRng, hashSeed } from '../core/rng.js';
 import { itemName } from '../data/items.js';
@@ -241,6 +241,15 @@ export class HuntMeta {
       quest: { ...h.quest, matMul: this.matMul() }, result, gathered: this.inv.gathered(), carved: this.inv.carved, breaks: this.breaks,
       used: h.opts.loadout?.debug ? {} : this.inv.used(), chest: this.chest.result(), rng: this.rng, rpMul: h.boardMods?.reward ?? 1,
     });
+  }
+
+  /** Jagd ohne Ergebnis-Bildschirm verlassen: Verbrauchtes abbuchen, Gesammeltes behalten (einmalig). */
+  commitLeave() {
+    const h = this.hunt;
+    if (this.phase === 'leaving' || h.training) return;
+    this.phase = 'leaving';
+    if (h.opts.loadout?.debug) return;
+    saveStore.update((s) => applyHuntLeave(s, { used: this.inv.used(), gathered: this.inv.gathered(), chest: this.chest.result() }));
   }
 
   proceed() {

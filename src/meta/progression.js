@@ -71,6 +71,16 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
 }
 
 /**
+ * Jagd vorzeitig verlassen (Pause "Verlassen", Host weg, ...): kein Ergebnis-Bildschirm, aber Verbrauchtes (Spitzen, Tränke) wird
+ * abgebucht, Truhen-Aenderungen und Gesammeltes bleiben erhalten. Sonst kaemen verschossene Spitzen in der Stadt zurueck.
+ */
+export function applyHuntLeave(save, { used = {}, gathered = {}, chest = null } = {}) {
+  applyChestResult(save, chest);
+  for (const [id, n] of Object.entries(used)) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
+  boxAddAll(save, gathered);
+}
+
+/**
  * Apply rewards + progression to the save. Idempotence is the caller's job (call once per hunt).
  * -> { schrott, added, sold, overflowSchrott, jrUp: newJr|null, firstClear }
  */

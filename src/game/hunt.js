@@ -310,7 +310,8 @@ export class Hunt {
     this.app.ui.appendChild(ov);
     this.overlay = ov;
   }
-  #leave() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
+  #leave() { this.meta?.commitLeave?.(); this.#goBack(); }
+  #goBack() { // [N] back to the town/room (hub when it exists, else the debug lobby for coop, else title)
     for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name, this.training && name === 'hub' ? { fromTraining: true } : undefined); } catch { /* scene missing */ } }
   }
   #trainHit(dmg) { trainHit(this.train, this.time, dmg); }

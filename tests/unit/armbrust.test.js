@@ -156,3 +156,17 @@ describe('Ratterbüchse', () => {
     expect(inv.bar.filter((id) => id.startsWith('ammo_'))).toHaveLength(3);
   });
 });
+
+describe('Jagd verlassen (Host im Koop allein): Spitzen bleiben abgebucht', () => {
+  it('applyHuntLeave bucht Verbrauchtes ab, behält Gesammeltes', async () => {
+    const { applyHuntLeave } = await import('../../src/meta/progression.js');
+    const s = defaultSave();
+    s.box.giftspitze = 20;
+    const inv = new HuntInventory({ brought: [{ id: 'giftspitze', n: 20 }], weapon: 'bow' });
+    for (let i = 0; i < 7; i++) inv.consume('giftspitze', 1);
+    inv.add('knisterkraut', 2);
+    applyHuntLeave(s, { used: inv.used(), gathered: inv.gathered(), chest: null });
+    expect(s.box.giftspitze).toBe(13);
+    expect(s.box.knisterkraut).toBe(2);
+  });
+});

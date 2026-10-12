@@ -5,7 +5,7 @@ import { angleDiff, stepAngle, yawOf } from '../../core/math.js';
 import { createDebugWorld } from './glitchfx2.js';
 
 // Spannbogen (GDD 4.3): Spannen (A halten) in 3 Stufen, Rhythmus-Schnellschuss (A tippen), Ausweichspannen,
-// Sweet Spot 8-16 m, Spitzen (Brenn/Gift/Bumm; 1 Spitze je Pfeil, Pfeilregen 1 je Regen), Bogenhieb (B), Finisher Pfeilregen (B bei Wucht 100).
+// Sweet Spot 8-16 m, Spitzen (Brenn/Gift/Bumm), Bogenhieb (B), Finisher Pfeilregen (B bei Wucht 100).
 
 export const BOW = {
   levelTimes: [0.45, 0.9],   // Stufe 2 / 3 (Sekunden seit Druck)
@@ -23,7 +23,7 @@ export const BOW = {
 // tipMul: Spitzen-Wirkung (Feuer/Gift/Rost/Betaeubung) je Pfeil -> pro verbrauchter Spitze wirkt jede Schussart etwa gleich stark
 export const SHOTS = {
   1: { name: 'Streuschuss', arrows: 3, fan: 25, mv: 6, pierce: 1, wucht: 3, tipMul: 1 },
-  2: { name: 'Doppelschuss', arrows: 2, fan: 0, mv: 10, pierce: 1, wucht: 3, tipMul: 1 },
+  2: { name: 'Doppelschuss', arrows: 2, fan: 0, mv: 10, pierce: 1, wucht: 3, tipMul: 1.5 },
   3: { name: 'Durchschuss', arrows: 1, fan: 0, mv: 16, pierce: 3, wucht: 2, tipMul: 2.5 },
 };
 export const TIPS = {
@@ -175,8 +175,9 @@ export function fireShot(w, level, { quick = false } = {}) {
   if (p?.ctx?.projectiles) {
     const aim = computeAim(p);
     p.rot = aim.yaw;
-    const dm = quick ? BOW.quickMul : BOW.chargedMul[level - 1];
-    rec.tips = [];
+    const tipId = takeTip(p);
+    rec.tip = tipId;
+    const spec = { ...spec0, tip: tipId, dmgMul: quick ? BOW.quickMul : BOW.chargedMul[level - 1] };
     const tgt = aim.target ?? { x: aim.origin.x + Math.sin(aim.yaw) * 14, y: aim.origin.y, z: aim.origin.z + Math.cos(aim.yaw) * 14 };
     const base = solveVelocity(aim.origin, tgt);
     const f = fwd(aim.yaw), side = { x: -f.z, z: f.x }; // left of the shooter
@@ -184,11 +185,8 @@ export function fireShot(w, level, { quick = false } = {}) {
       let vel = base, pos = { ...aim.origin };
       if (spec0.arrows === 3) vel = rotateY(base, (i - 1) * (spec0.fan / 2) * D2R);
       if (spec0.arrows === 2) { const o = (i - 0.5) * 0.3; pos.x += side.x * o; pos.z += side.z * o; }
-      const tipId = takeTip(p); // 1 Spitze je Pfeil (leer -> Rest der Salve ohne Spitze)
-      rec.tips.push(tipId);
-      spawnArrow(p, { pos, vel, spec: { ...spec0, tip: tipId, dmgMul: dm }, pierce: spec0.pierce, level });
+      spawnArrow(p, { pos, vel, spec, pierce: spec0.pierce, level });
     }
-    rec.tip = rec.tips[0] ?? null;
     p.ctx.bus?.emit('sfx', { name: 'swing', pos: p.pos });
   }
   bumpBase(w);
