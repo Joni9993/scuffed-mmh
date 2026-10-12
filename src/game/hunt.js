@@ -260,6 +260,7 @@ export class Hunt {
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     if (st.partDmgMul) res.partDmgMul = st.partDmgMul; // Kroll-Ast: Teil-HP-Schaden
+    if (ah.hit.partDmgMul) res.partDmgMul = (res.partDmgMul ?? 1) * ah.hit.partDmgMul; // [LB] Schrottmine x1,5
     if (ah.status) { res.poisonBuild = ah.status.poison ?? 0; res.stunBuild = ah.status.stun ?? 0; } // Bogen-Spitzen (auch fuer Gaeste -> Host)
     res.attackerId = player.id;
     this.glitchSys.hitting = player; // damit 'partBreak' (feuert synchron in applyDamage) dem Schlag zugeordnet wird

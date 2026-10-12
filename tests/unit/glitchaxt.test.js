@@ -82,7 +82,7 @@ describe('Glitchaxt: Registrierung und Daten', () => {
     for (const m of Object.values(glitchaxt.moves)) expect(glitchaxt.anims[m.anim], m.id).toBeTruthy();
   });
   it('Kraft je Stufe/Ast laut GDD 17.2', () => {
-    expect(WEAPON_ORDER).toEqual(['gs', 'db', 'bow', 'kt', 'kk', 'ga']);
+    expect(WEAPON_ORDER).toEqual(['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb']);
     expect(WEAPON_TYPES.ga.tiers.length).toBe(6);
     expect(weaponStats('ga', 1).power).toBe(78);
     expect(weaponStats('ga', 2).power).toBe(97);

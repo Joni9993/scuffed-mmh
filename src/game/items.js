@@ -54,7 +54,7 @@ export class ItemSystem {
     if (this.inv.count(id) <= 0) { this.hunt.toast?.(`${def.name}: leer`); return false; }
     const t = itemTiming(def, this.speedBonus);
     // bow tips: nothing happens unless a bow is in hand
-    if (def.effect?.type === 'tip' && this.player.weaponId !== 'bow') { this.hunt.toast?.('Spitzen gehen nur mit dem Bogen'); return false; }
+    if (def.effect?.type === 'tip' && this.player.weaponId !== 'bow' && this.player.weaponId !== 'lb') { this.hunt.toast?.('Spitzen gehen nur mit Bogen und Ratterbüchse'); return false; }
     // Essen stapelt nicht: ein Essens-Buff (Koch oder Grillsteak) bis zum Umkippen
     if (def.effect?.type === 'grill' && hasFoodBuff(this.player)) { this.hunt.toast?.('Schon gegessen – neues Essen erst nach dem Umkippen'); return false; }
     this.using = { id, def, t: 0, applied: false, ...t };

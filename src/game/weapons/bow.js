@@ -99,7 +99,7 @@ function rotateY(v, a) {
 }
 
 // ---------- tips
-function takeTip(p) {
+export function takeTip(p) {
   const tip = p.ammoTip;
   if (!tip || !TIPS[tip]) return null;
   const inv = p.ctx.inventory;
