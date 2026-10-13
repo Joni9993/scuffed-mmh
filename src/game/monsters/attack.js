@@ -35,7 +35,7 @@ export class AttackInstance {
     this.hitSet = new Set();
     this.firedEvents = new Set();
 
-    const tg = def.telegraph, mul = params.tgMul ?? 1, tempo = def.tempo ?? 1; // tempo: Grundtempo des Angriffs (z. B. Barrotz 1,2)
+    const tg = def.telegraph, mul = params.tgMul ?? 1, tempo = (def.tempo ?? 1) * (params.tempoMul ?? 1); // params.tempoMul: Tempo pro Brocken-Zustand (Krachfaust-Wut); tempo: Grundtempo des Angriffs (z. B. Barrotz 1,2)
     const tgBase = mul === 1 && tempo === 1 ? tg : Math.max(MIN_TELEGRAPH, tg * mul / tempo); // Timing-Variation (Brocken 2.0); Rage-Kürzung kommt danach
     this.tgWall = this.rage ? Math.max(MIN_TELEGRAPH, tgBase * RAGE_TELEGRAPH) : tgBase;
     this.speed = (this.rage ? RAGE_SPEED : 1) * tempo;

@@ -134,6 +134,7 @@ export class Hunt {
     this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
     this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) this.#onBossDead(); });
     this.bus.on('revierAlly', () => this.hud.center('Sie verbünden sich!', 2.2));
+    this.bus.on('revierRetreat', () => this.hud.center('Einer zieht sich zurück!', 2.2));
     this.bus.on('questComplete', ({ quest, time }) => { if (quest.fieldStudy && recordBestTime(quest.fieldStudy, time)) this.newBest = true; });
     this.bus.on('monsterState', ({ monster, state }) => {
       if (this.bosses.includes(monster) && state === 'notice') this.hud.banner(monster.def.name, 3);
@@ -211,21 +212,6 @@ export class Hunt {
       scaleBoss(m, sx.hpMul ?? 1);
     }
     if (this.quest.multi === 'revier') this.revier = new Revier(this, this.bosses);
-  }
-
-  /**
-   * Apex-Revier (Krachfaust): nach 90 s taucht am Pass 3-4 ein Mampfaffe-Eindringling auf (40 % HP, zaehlt nicht fuer den Sieg) und wandert in den Tempel,
-   * damit man den Revierkampf sieht. Nur Host/Solo (Gaeste bekommen ihn per Brocken-Snapshot).
-   */
-  #intruderTick() {
-    if (this._intruder !== undefined || this.time < 90 || this.result || !this.mainMonster?.alive || this.training) return;
-    const pass = { x: 65, z: 0 }, tc = this.world.temple?.c ?? { x: 65, z: -65 };
-    if (!this.world.temple) { this._intruder = null; return; }
-    const m = this.spawnMonster('mampfaffe', { x: pass.x, z: pass.z, yaw: Math.PI, state: 'wander', id: 'eindringling' });
-    scaleBoss(m, 0.4);
-    m.wanderTo = { x: tc.x + 8, z: tc.z + 6 }; m.wanderT = 0;
-    this._intruder = m;
-    this.hud.center('Ein Eindringling im Tempel!', 2.2, true);
   }
 
   /** [N] Brocken-HP nach Anzahl Pirscher (coopScale.js); bei Beitritt/Verlassen erneut aufrufen. */
@@ -449,7 +435,6 @@ export class Hunt {
     this.effects.update(dt); // [P]
     for (const p of this.players) { if (p.local) p.update(dt); else p.updateRemote(dt); } // [N]
     if (this.revier && authoritative) this.revier.update(dt);
-    if (this.revier?.apex && authoritative) this.#intruderTick();
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.reapDead(dt);
     this.projectiles.update(dt); // [W]

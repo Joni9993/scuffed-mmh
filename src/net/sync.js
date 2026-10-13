@@ -136,6 +136,7 @@ export class HuntNet {
       off.push(hunt.bus.on('monsterStun', (e) => n.sendAll(MSG.EV, { k: 'st', m: e.monster.id })));
       off.push(hunt.bus.on('monsterDead', (e) => n.sendAll(MSG.EV, { k: 'dead', m: e.monster.id })));
       off.push(hunt.bus.on('revierAlly', () => n.sendAll(MSG.EV, { k: 'ally' }))); // Revierstreit: Bündnis-Banner auch bei Gästen
+      off.push(hunt.bus.on('revierRetreat', () => n.sendAll(MSG.EV, { k: 'retreat' })));
     } else {
       off.push(n.on(MSG.M, (d) => this.#onM(d)));
       off.push(n.on(MSG.ATK, (d) => this.#onAtk(d)));
@@ -213,6 +214,7 @@ export class HuntNet {
       }
       case 'st': { const m = this.#mon(d.m); if (this.isGuest && m) { m.attack = null; hunt.fx.clearMarker?.(m.id); } break; }
       case 'ally': if (this.isGuest) this.hunt.bus.emit('revierAlly', {}); break;
+      case 'retreat': if (this.isGuest) this.hunt.bus.emit('revierRetreat', {}); break;
       case 'dead': { const m = this.#mon(d.m); if (this.isGuest && m && m.alive) this.#kill(m); break; }
     }
   }

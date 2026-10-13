@@ -1,10 +1,14 @@
-// Multi-Jagd „Revierstreit" (GDD 16.6, NEXT.md §4): zwei Brocken bekämpfen sich, bis die Pirscher zu viel Druck machen
-// oder 60 s vergangen sind - dann verbünden sie sich. Host-autoritativ: Brocken-gegen-Brocken-Treffer nur hier (Host/Solo).
+// Multi-Jagd „Revierstreit" (GDD 16.6, NEXT.md §4): die Brocken bekämpfen sich nur KURZ (ein paar Zusammenstöße, ~25 s Pirscher-Nähe) oder bis die Pirscher zu viel
+// Druck machen. Danach gibt es nie wieder Brocken-Schaden: entweder verbünden sie sich gegen die Pirscher, oder der Schwächste zieht sich in sein Nest zurück
+// (und kommt erst nach REVIER.RETREAT_T wieder). Host-autoritativ: Brocken-gegen-Brocken-Treffer nur hier (Host/Solo).
 import { overlap } from './hitbox.js';
 import { onTemple } from './world/smaragdkuesteLayout.js';
 
 export const REVIER = {
-  ALLY_T: 60, // s Revierkampf (läuft erst, wenn ein Pirscher in der Nähe ist), dann Bündnis
+  ALLY_T: 25, // s Revierkampf (läuft erst, wenn ein Pirscher in der Nähe ist), dann Bündnis oder Rückzug
+  MAX_HITS: 8, // ... oder nach so vielen Brocken-Treffern (ein paar Zusammenstöße), je nachdem was zuerst kommt
+  UNSEEN_T: 90, // s: auch ohne Pirscher in der Nähe endet der Streit irgendwann
+  RETREAT_T: 45, // s: so lange bleibt der zurückgezogene Brocken im Nest
   STRONG_PCT: 0.08, STRONG_WIN: 10, // Pirscher-Schaden > 8 % Max-HP eines Brockens in 10 s -> Bündnis
   NEAR: 45, // m: ab hier läuft die Uhr
   DMG_K: 12, // Monster-Angriffe sind auf Spieler-Leben (~20-40) getrimmt; gegen Brocken-HP (Tausende) hochskaliert
@@ -33,7 +37,8 @@ export class Revier {
     this.ctx = ctx;
     this.monsters = monsters;
     this.apex = apex;
-    this.phase = 'clash'; // clash | allied
+    this.phase = 'clash'; // clash | allied (auch nach Rückzug: danach nie wieder Brocken-Schaden)
+    this.retreated = null; // Brocken, der sich zurückgezogen hat (statt Bündnis-Show)
     this.clock = 0; // eigene Uhr (s), unabhängig von Brocken-Zeit
     this.t = 0; // Revierkampf-Zeit seit Pirscher-Nähe
     this.armed = false;
@@ -67,13 +72,14 @@ export class Revier {
     this.clock += dt;
     if (this.apex) return;
     if (this.phase !== 'clash') return;
+    if (this.hits >= REVIER.MAX_HITS) { this.#end('clashes'); return; }
     if (!this.armed) {
       const near = REVIER.NEAR * REVIER.NEAR;
       this.armed = this.ctx.players.some((p) => p.alive && this.monsters.some((m) => m.alive && (p.pos.x - m.pos.x) ** 2 + (p.pos.z - m.pos.z) ** 2 < near));
-      if (!this.armed) return;
+      if (!this.armed) { if (this.clock >= REVIER.UNSEEN_T) this.#end('unseen'); return; }
     }
     this.t += dt;
-    if (this.t >= REVIER.ALLY_T) this.ally('timer');
+    if (this.t >= REVIER.ALLY_T) this.#end('timer');
   }
 
   /** Pirscher-Schaden an einem Brocken (von Monster.applyDamage). */
@@ -83,7 +89,20 @@ export class Revier {
     const l = this.log.get(monster.id) ?? this.log.set(monster.id, []).get(monster.id);
     l.push({ t: this.clock, dmg });
     while (l.length && this.clock - l[0].t > REVIER.STRONG_WIN) l.shift();
-    if (l.reduce((s, e) => s + e.dmg, 0) > monster.maxHp * REVIER.STRONG_PCT) this.ally('strong');
+    if (l.reduce((s, e) => s + e.dmg, 0) > monster.maxHp * REVIER.STRONG_PCT) this.#end('strong');
+  }
+
+  /** Streit vorbei: entweder Bündnis gegen die Pirscher oder Rückzug des Schwächsten (deterministisch aus dem Brocken-RNG, nur Host/Solo). */
+  #end(reason) {
+    const alive = this.monsters.filter((m) => m.alive && !m.minor);
+    const retreat = alive.length >= 2 && alive[0].rng() < 0.5;
+    this.ally(reason);
+    if (!retreat) return;
+    const weak = alive.reduce((a, b) => (b.hp / b.maxHp < a.hp / a.maxHp ? b : a));
+    weak._startFlee();
+    weak.revierHold = REVIER.RETREAT_T;
+    this.retreated = weak;
+    this.ctx.bus?.emit('revierRetreat', { monster: weak, reason });
   }
 
   ally(reason) {

@@ -41,18 +41,18 @@ describe('Krachfaust: Definition', () => {
   it('Registry, Werte, Teile, Apex', () => {
     expect(monsters.krachfaust).toBe(krachfaust);
     expect(krachfaust.hp).toBe(20000);
-    expect(krachfaust.scale).toBe(2.7); expect(krachfaust.bodyRadius).toBe(2.3);
+    expect(krachfaust.scale).toBe(3); expect(krachfaust.bodyRadius).toBe(2.6);
     expect(krachfaust.walk).toBe(3.3); expect(krachfaust.run).toBe(8.2);
     expect(krachfaust.apex).toBe(true); expect(krachfaust.predator).toBe(true);
     expect(krachfaust.teachAttack).toBe('krachfaust_schleimfaust');
     const bp = (id) => krachfaust.parts.find((p) => p.id === id);
-    for (const id of ['head', 'prankeL', 'prankeR', 'body', 'legs']) expect(bp(id), id).toBeTruthy();
+    for (const id of ['head', 'prankeL', 'prankeR', 'body', 'legs', 'tail']) expect(bp(id), id).toBeTruthy();
     expect(bp('head')).toMatchObject({ breakHp: 1300, blunt: true, stunPart: true, elem: { fire: 12, shock: 20 } });
     expect(bp('prankeL')).toMatchObject({ breakHp: 900, factor: 0.8, elem: { fire: 10, shock: 30 } });
     expect(bp('prankeR').elem.shock).toBe(30);
     expect(bp('body').factor).toBe(0.6);
     for (const part of krachfaust.parts) expect(part.elem.shock, part.id).toBeGreaterThan(part.elem.fire); // Schock = Schwäche, Feuer perlt ab (sprengfest)
-    expect(Math.max(...Object.values(krachfaust.attacks).flatMap((a) => (a.hits ?? []).map((h) => h.dmg)))).toBeLessThanOrEqual(60);
+    expect(Math.max(...Object.values(krachfaust.attacks).flatMap((a) => (a.hits ?? []).map((h) => h.dmg)))).toBeLessThanOrEqual(85); // Apex: härter als die Spec (Owner-Feedback)
     expect(krachfaust.phases.map((p) => p.at)).toEqual([0.4, 0.12, 0.05]);
   });
   it('jeder Angriff: Cue ohne Hue-Shift in Neongrün (nie Cyan/Magenta), Telegraph >= 0.5, Treffer melden audit an (außer Urknall); Ketten/Phasen zeigen auf echte Angriffe', () => {
@@ -71,23 +71,44 @@ describe('Krachfaust: Definition', () => {
     for (const ph of krachfaust.phases) expect(krachfaust.attacks[ph.special]).toBeTruthy();
     expect(pickTone('krachfaust_trommel', krachfaust.attacks.krachfaust_trommel.cue, 3).color).toBe('#39ff14');
   });
+  it('Apex-Moveset: Hammerkette, Hornschlag, Schwanzwirbel, Sprung-Faustschlag; Telegraph lesbar (>= 0,5 s)', () => {
+    const A = krachfaust.attacks;
+    for (const id of ['hammer', 'hornschlag', 'schwanzwirbel', 'sprungfaust']) { expect(A['krachfaust_' + id], id).toBeTruthy(); expect(A['krachfaust_' + id].telegraph).toBeGreaterThanOrEqual(0.5); }
+    expect(A.krachfaust_hammer.hits.length).toBe(4); expect(A.krachfaust_hammer.hits[3].dmg).toBe(78);
+    expect(A.krachfaust_schwanzwirbel.hits.some((h) => h.at?.[2] < 0 || h.from?.[2] < 0)).toBe(true); // trifft nach hinten
+    expect(krachfaust.chains.krachfaust_hammer.some((o) => o.atk === 'krachfaust_schwanzwirbel')).toBe(true);
+  });
+  it('Wut: Angriffe schneller (Tempo-Faktor, kürzerer Telegraph, kürzere Erholung), nicht nur Laufen', () => {
+    const ctx = makeCtx(5);
+    const m = new Monster({ ...krachfaust, hp: 1e8 }, ctx, { id: 'krachfaust', x: 65, z: -65, state: 'combat', seed: 3 });
+    const calm = krachfaust.attackTempo(m), rec0 = krachfaust.recoverAfter(m);
+    m.phase = 1;
+    expect(krachfaust.attackTempo(m)).toBeGreaterThan(calm * 1.2);
+    expect(krachfaust.speedFactor(m)).toBeGreaterThan(1.2);
+    m.recover = 99; m._taught = true; m.target = null;
+    m.beginAttack('krachfaust_hammer', { tgMul: 1 });
+    expect(m.attack.inst.params.tempoMul).toBeGreaterThan(1.3);
+    expect(m.attack.inst.tgWall).toBeLessThan(krachfaust.attacks.krachfaust_hammer.telegraph);
+    expect(m.attack.inst.tgWall).toBeGreaterThanOrEqual(0.5);
+    expect(m.attack.inst.duration).toBeLessThan(krachfaust.attacks.krachfaust_hammer.duration / 1.3);
+    expect(rec0).toBeGreaterThan(0);
+  });
   it('Grundangriffe nach Spec: Zahlen, Schleim auf Treffer, Ring um die Landestelle', () => {
     const A = krachfaust.attacks;
-    expect(A.krachfaust_schleimfaust.hits[0]).toMatchObject({ dmg: 40, knock: 'down', slimeOnHit: true });
-    expect(A.krachfaust_trommel.hits.map((h) => [h.dmg, h.side])).toEqual([[30, 'L'], [30, 'R'], [30, 'L'], [30, 'R']]);
+    expect(A.krachfaust_schleimfaust.hits[0]).toMatchObject({ dmg: 58, knock: 'down', slimeOnHit: true });
+    expect(A.krachfaust_trommel.hits.map((h) => [h.dmg, h.side])).toEqual([[40, 'L'], [40, 'R'], [40, 'L'], [40, 'R']]);
     expect(A.krachfaust_trommel.hits.map((h) => h.t0)).toEqual([0.85, 1.2, 1.55, 1.9]);
     expect(A.krachfaust_trommel.hits[3].slimeOnHit).toBe(true); expect(A.krachfaust_trommel.hits[0].slimeOnHit).toBeUndefined();
-    expect(A.krachfaust_kopfstoss.hits[0]).toMatchObject({ dmg: 46, knock: 'down' });
-    expect(A.krachfaust_sprungstampfer.hits[0]).toMatchObject({ dmg: 52, radius: 5.5, knock: 'down' });
+    expect(A.krachfaust_kopfstoss.hits[0]).toMatchObject({ dmg: 66, knock: 'down' });
+    expect(A.krachfaust_sprungstampfer.hits[0]).toMatchObject({ dmg: 74, radius: 5.8, knock: 'down' });
     expect(A.krachfaust_runenwut.hits[0]).toMatchObject({ dmg: 0, radius: 9, knock: 'pin' });
     expect(A.krachfaust_salve.hits).toEqual([]);
   });
-  it('Modell: Mampfaffe-Rig mit Steinhaut, Schleimhülle um Fäuste und Kopf, Teile-Knoten für die Hurtboxen', () => {
+  it('Modell (Brachydios-Look): Obsidian-Panzer, massive gelbgrüne Fäuste/Horn (keine Leuchthülle), Schwanz, Teile-Knoten für die Hurtboxen', () => {
     const b = buildKrachfaust();
-    for (const id of ['head', 'prankeL', 'prankeR', 'body', 'legs']) expect(b.partMeshes[id].length, id).toBeGreaterThan(0);
-    expect(b.extra.fistHulls.L.material.color.getHexString()).toBe('1f9d0f');
-    for (const n of ['head', 'fistL', 'fistR', 'body', 'neck', 'legL', 'legR']) expect(b.nodes[n], n).toBeTruthy();
-    expect(b.extra.slimeMat.transparent).toBe(true);
+    for (const id of ['head', 'prankeL', 'prankeR', 'body', 'legs', 'tail']) expect(b.partMeshes[id].length, id).toBeGreaterThan(0);
+    expect(b.extra.slimeMats.length).toBe(3); expect(b.extra.slimeMats.every((m) => !m.transparent)).toBe(true);
+    for (const n of ['head', 'fistL', 'fistR', 'body', 'neck', 'legL', 'legR', 'tail1', 'tail3']) expect(b.nodes[n], n).toBeTruthy();
   });
 });
 

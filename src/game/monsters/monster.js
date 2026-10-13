@@ -455,6 +455,8 @@ export class Monster {
         }
         if (mul !== 1) extra = { ...extra, tgMul: Math.round(mul * 1000) / 1000 };
       }
+      const atm = ad.internal ? 1 : this.def.attackTempo?.(this); // def.attackTempo(m) > 1: Angriffe schneller (Telegraph kürzer, Ablauf flotter), z. B. Krachfaust-Wut
+      if (atm && atm !== 1) extra = { ...extra, tempoMul: Math.round(atm * 1000) / 1000 };
       const tgm = this.mm?.telegraphMul; // attack.js klemmt auf MIN_TELEGRAPH
       if (tgm && tgm !== 1) extra = { ...extra, tgMul: Math.round((extra.tgMul ?? 1) * tgm * 1000) / 1000 };
       if (extra.chainIdx === 0) { extra = { ...extra }; delete extra.chainIdx; }
@@ -1074,6 +1076,7 @@ export class Monster {
   _sleep(dt) {
     this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.01 * dt);
     this._brake(dt);
+    if (this.revierHold > 0) { this.revierHold -= dt; return; } // Revier-Rückzug: bleibt eine Weile im Nest
     if (this.hp >= this.maxHp * 0.6) { this.setState('combat'); this.recover = 1.5; this.fleeing = false; this.fleeUsed = false; this.rageUsed = false; }
   }
 

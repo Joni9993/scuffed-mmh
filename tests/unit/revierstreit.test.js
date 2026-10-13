@@ -29,7 +29,8 @@ describe('Revierstreit', () => {
 
   it('Revierkampf: Brocken zielen aufeinander und treffen sich, nie unter 60 %', () => {
     const { ctx, b, j, rv, step } = setup();
-    step(60 * 20);
+    for (let i = 0; i < 60 * 20 && rv.hits === 0; i++) step(1); // der Streit ist kurz: bis zum ersten Zusammenstoß
+    expect(rv.phase).toBe('clash');
     expect(b.target).toBe(j);
     expect(j.target).toBe(b);
     expect(rv.hits).toBeGreaterThan(0);
@@ -40,17 +41,51 @@ describe('Revierstreit', () => {
     expect(rv.phase).toBe('clash'); // Pirscher weit weg: Uhr läuft nicht
   });
 
-  it('Bündnis nach 60 s Pirscher-Nähe', () => {
+  it('Streit bleibt kurz: nach MAX_HITS Zusammenstößen ist Schluss, danach nie wieder Brocken-Schaden', () => {
+    const { ctx, b, j, rv, step } = setup(60);
+    step(60 * 60);
+    expect(rv.phase).toBe('allied');
+    expect(['clashes', 'unseen']).toContain(rv.reason);
+    expect(rv.hits).toBeGreaterThanOrEqual(1);
+    expect(rv.hits).toBeLessThanOrEqual(REVIER.MAX_HITS + 4); // laufende Mehrfachtreffer eines Angriffs
+    const n = rv.hits, hp = [b.hp, j.hp];
+    step(60 * 30);
+    expect(rv.hits).toBe(n);
+    expect(rv.rivalOf(b)).toBeNull(); expect(rv.rivalOf(j)).toBeNull();
+    expect(b.hp + j.hp).toBeGreaterThanOrEqual(hp[0] + hp[1] - 1); // ohne Pirscher-Schaden nur Erholung
+  });
+
+  it('Streit endet immer: Bündnis (beide gegen die Pirscher) oder Rückzug des Schwächeren ins Nest', () => {
+    const seen = new Set();
+    for (let seed = 1; seed <= 12 && seen.size < 2; seed++) {
+      const { ctx, b, j, p, rv, step } = setup(30, seed);
+      step(60 * 40);
+      expect(rv.phase).toBe('allied');
+      expect(ctx.events).toContain('revierAlly');
+      if (rv.retreated) {
+        seen.add('retreat');
+        expect(ctx.events).toContain('revierRetreat');
+        const other = rv.retreated === b ? j : b;
+        expect(['flee', 'sleep']).toContain(rv.retreated.state);
+        expect(rv.retreated.hp / rv.retreated.maxHp).toBeLessThanOrEqual(other.hp / other.maxHp + 0.2);
+      } else { seen.add('ally'); step(60 * 3); expect(b.target).toBe(p); expect(j.target).toBe(p); }
+    }
+    expect(seen.has('ally') || seen.has('retreat')).toBe(true);
+  });
+
+  it('Bündnis nach ALLY_T (25 s) Pirscher-Nähe', () => {
+    const keep = REVIER.MAX_HITS; REVIER.MAX_HITS = 999; // nur die Uhr prüfen
     const { ctx, b, j, p, rv, step } = setup(30);
-    step(60 * 59);
+    step(60 * 24);
     expect(rv.phase).toBe('clash');
     step(60 * 2);
+    REVIER.MAX_HITS = keep;
     expect(rv.phase).toBe('allied');
     expect(rv.reason).toBe('timer');
     expect(ctx.events).toContain('revierAlly');
     step(60 * 2);
-    expect(b.target).toBe(p); expect(j.target).toBe(p);
     expect(rv.rivalOf(b)).toBeNull();
+    if (!rv.retreated) { expect(b.target).toBe(p); expect(j.target).toBe(p); }
   });
 
   it('Bündnis bei starkem Pirscher-Treffer (> 8 % HP in 10 s)', () => {
@@ -65,8 +100,10 @@ describe('Revierstreit', () => {
   });
 
   it('kein Bündnis, wenn die 8 % über mehr als 10 s verteilt sind', () => {
+    const keep = REVIER.MAX_HITS; REVIER.MAX_HITS = 999;
     const { b, rv, step } = setup(30);
-    for (let i = 0; i < 4; i++) { b.applyDamage({ dmg: b.maxHp * 0.03, partId: b.parts[0].id, elemDmg: 0, attackerId: 'p1' }); step(60 * 6); }
+    for (let i = 0; i < 4; i++) { b.applyDamage({ dmg: b.maxHp * 0.03, partId: b.parts[0].id, elemDmg: 0, attackerId: 'p1' }); step(60 * 5); }
+    REVIER.MAX_HITS = keep;
     expect(rv.phase).toBe('clash');
   });
 
