@@ -278,10 +278,21 @@ export class Player {
   /** type: 'mud' | 'burn' | 'poison'; opts {t, rolls}. */
   addStatus(type, opts = {}) {
     if (this.state === 'ko') return false;
-    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 }, blend: { t: 2, rollsLeft: 0 } }[type];
+    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 }, blend: { t: 2, rollsLeft: 0 }, verwirrt: { t: 3, rollsLeft: 0 }, itemlock: { t: 1, rollsLeft: 0 } }[type];
     if (!base) return false;
     const had = !!this.status[type];
     if (type === 'blend') return this.#blind(opts, had);
+    if (type === 'verwirrt') { // Mampfaffe/Glitchpilz: Steuerung verkehrt (nur der lokale Pirscher sieht das Overlay); erneute Treffer frischen nur auf
+      this.status.verwirrt = { t: Math.max(opts.t ?? base.t, this.status.verwirrt?.t ?? 0), rollsLeft: 0 };
+      if (!had) { this.ctx.bus.emit('playerStatus', { player: this, type, on: true }); if (this.local) this.ctx.bus.emit('sfx', { name: 'confuse', pos: this.pos }); }
+      if (this.local) this.ctx.fx?.confuse?.(this.status.verwirrt.t);
+      return true;
+    }
+    if (type === 'itemlock') { // Mampfaffe/Giftkraut-Stinkwolke: Items gesperrt, solange man drinsteht (+ kurzer Nachhall)
+      this.status.itemlock = { t: Math.max(opts.t ?? base.t, this.status.itemlock?.t ?? 0), rollsLeft: 0 };
+      if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
+      return true;
+    }
     this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
     if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
     return true;
@@ -330,6 +341,7 @@ export class Player {
       if (type && k !== type) continue;
       delete this.status[k];
       if (k === 'blend') this.#endBlend();
+      if (k === 'verwirrt') this.ctx.fx?.clearConfuse?.();
       this.ctx.bus.emit('playerStatus', { player: this, type: k, on: false });
     }
   }
@@ -343,8 +355,10 @@ export class Player {
   #tickStatus(dt) {
     const st = this.status;
     this.v.rust = st.rost ? st.rost.t : 0;
-    if (!st.mud && !st.burn && !st.poison && !st.rost && !st.blend) return;
+    if (!st.mud && !st.burn && !st.poison && !st.rost && !st.blend && !st.verwirrt && !st.itemlock) return;
     const fx = this.ctx.fx;
+    if (st.verwirrt) { if ((st.verwirrt.t -= dt) <= 0) this.clearStatus('verwirrt'); else if (Math.random() < dt * 9) fx.spark({ x: this.pos.x + (Math.random() - 0.5) * 0.8, y: this.pos.y + 1.0 + Math.random() * 1.2, z: this.pos.z + (Math.random() - 0.5) * 0.8 }, 1, Math.random() < 0.5 ? '#39ff14' : '#d8ffd0', 1.2); }
+    if (st.itemlock && (st.itemlock.t -= dt) <= 0) this.clearStatus('itemlock');
     if (st.blend) {
       const b = st.blend;
       b.t -= dt;
@@ -432,7 +446,8 @@ export class Player {
     if (m < 0.15) return null;
     const yaw = this.ctx.cameraYaw ?? 0;
     const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -Math.cos(yaw), rz = Math.sin(yaw);
-    const x = fx * mv.y + rx * mv.x, z = fz * mv.y + rz * mv.x;
+    const inv = this.status.verwirrt ? -1 : 1; // Glitch-Verwirrung: Steuerung verkehrt (auch die Ausweichrolle)
+    const x = (fx * mv.y + rx * mv.x) * inv, z = (fz * mv.y + rz * mv.x) * inv;
     const l = Math.hypot(x, z) || 1;
     return { x: x / l, z: z / l, mag: Math.min(1, m) };
   }

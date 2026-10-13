@@ -3,6 +3,8 @@
 import { weaponStats } from '../data/weapons.js';
 import { armorProtection, armorSkills, skillEffects, foodEffects } from '../meta/loadout.js';
 
+const EISEN_T = { burn: 10, poison: 12, verwirrt: 3, itemlock: 1 }; // Standarddauern der Zustände, die Eisenmagen kürzt
+
 export function applyLoadout(player, lo, { reapply = false } = {}) {
   const w = lo.weapon;
   const stats = weaponStats(w.type, w.tier, w.branch);
@@ -56,6 +58,7 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
           const cut = player._sk.blendCut ?? 0;
           return addStatus(type, { ...opts, white: Math.max(0.1, 1 - cut), stun: 1 - cut < 0.15 ? 0 : 1 - cut });
         }
+        if (player._sk.eisenCut > 0 && EISEN_T[type]) opts = { ...opts, t: (opts.t ?? EISEN_T[type]) * (1 - player._sk.eisenCut) }; // Eisenmagen: Dauer -15 % je Stufe
         if ((type === 'rust' || type === 'rost') && opts.t && player._sk.rustDurMul < 1) opts = { ...opts, t: opts.t * player._sk.rustDurMul }; // Panzerhaut
         const k = (type === 'burn' ? 1 - r.fire : 1) * (type === 'burn' || type === 'poison' ? 1 - r.status : 1);
         return addStatus(type, opts.t ? { ...opts, t: opts.t * k } : opts);

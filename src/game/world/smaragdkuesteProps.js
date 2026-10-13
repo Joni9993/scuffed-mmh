@@ -200,6 +200,46 @@ export const SK_BUILDERS = {
     }
     return merge(parts);
   },
+  // Futter des Mampfaffen: laut und eindeutig, schon von weitem an der Farbe zu erkennen
+  feuerpilz(rng) {
+    const parts = [put(colored(new THREE.CylinderGeometry(0.62, 0.7, 0.04, 8), '#3a1a10'), 0, 0.02, 0)];
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * 6.28 + rng() * 0.5, h = 0.35 + rng() * 0.3, r = 0.28 + rng() * 0.12, x = Math.cos(a) * 0.38, z = Math.sin(a) * 0.38;
+      parts.push(put(colored(new THREE.CylinderGeometry(0.07, 0.1, h, 4), '#f0e0c0'), x, h / 2, z));
+      const c = colored(new THREE.SphereGeometry(r, 6, 3, 0, 6.283, 0, Math.PI / 2), '#ff3a1a');
+      recolor(c, (px, py) => tint('#ff3a1a', 0.85 + Math.max(0, py / r) * 0.5));
+      parts.push(put(c, x, h, z, 0, [1, 0.7, 1]));
+      for (let j = 0; j < 3; j++) { const b = rng() * 6.28; parts.push(put(colored(new THREE.OctahedronGeometry(0.06, 0), '#ffe14d'), x + Math.cos(b) * r * 0.55, h + r * 0.55, z + Math.sin(b) * r * 0.55)); } // gelbe Punkte
+    }
+    for (let i = 0; i < 3; i++) { const a = rng() * 6.28; parts.push(put(colored(new THREE.OctahedronGeometry(0.09, 0), '#ff9a2a'), Math.cos(a) * 0.45, 0.95 + rng() * 0.3, Math.sin(a) * 0.45)); } // Glutpunkte
+    return merge(parts);
+  },
+  giftkraut(rng) {
+    const parts = [];
+    const leaf = ['#a8c030', '#c0d840', '#8aa020'];
+    for (let i = 0; i < 9; i++) {
+      const h = 0.6 + rng() * 0.6, a = (i / 9) * 6.28 + rng();
+      const g = colored(new THREE.ConeGeometry(0.16, h, 3), leaf[i % 3]);
+      recolor(g, (x, y) => tint(leaf[i % 3], 0.6 + (y / h + 0.5) * 0.7));
+      put(g, 0, h / 2, 0); put(g, Math.cos(a) * 0.12, 0, Math.sin(a) * 0.12, a, 1, 0, 0.35 + rng() * 0.3);
+      parts.push(g);
+    }
+    parts.push(put(colored(new THREE.OctahedronGeometry(0.2, 0), '#9a30d0'), 0, 1.05, 0)); // violette Giftbluete
+    for (let i = 0; i < 4; i++) { const a = i * 1.57; parts.push(put(colored(new THREE.OctahedronGeometry(0.11, 0), '#c060ff'), Math.cos(a) * 0.26, 0.95, Math.sin(a) * 0.26)); }
+    return merge(parts);
+  },
+  glitchpilz(rng) {
+    const parts = [put(colored(new THREE.CylinderGeometry(0.62, 0.7, 0.04, 8), '#050a05'), 0, 0.02, 0)];
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * 6.28 + rng() * 0.4, h = 0.3 + rng() * 0.4, r = 0.22 + rng() * 0.12, x = Math.cos(a) * 0.4, z = Math.sin(a) * 0.4;
+      parts.push(put(colored(new THREE.CylinderGeometry(0.05, 0.08, h, 4), '#0b140b'), x, h / 2, z)); // schwarzer Stiel
+      const c = colored(new THREE.SphereGeometry(r, 5, 3, 0, 6.283, 0, Math.PI / 2), i % 2 ? '#39ff14' : '#7dff3a');
+      recolor(c, (px, py) => tint(i % 2 ? '#39ff14' : '#7dff3a', 0.85 + Math.max(0, py / r) * 0.6));
+      parts.push(put(c, x, h, z, 0, [1, 0.75, 1]));
+    }
+    parts.push(box(0.5, 0.05, 0.05, '#d8ffd0', 0, 1.0, 0, 0)); parts.push(box(0.05, 0.5, 0.05, '#d8ffd0', 0, 1.0, 0, 0)); // Pixel-Kreuz ueber dem Pilz
+    return merge(parts);
+  },
   tempelstein(rng) {
     const parts = [put(colored(new THREE.DodecahedronGeometry(0.5, 0), '#6a7a70'), 0, 0.34, 0, rng() * 6, [1.1, 0.8, 1])];
     parts.push(box(0.5, 0.06, 0.04, '#58ffd0', 0, 0.45, 0.46, 0)); parts.push(box(0.06, 0.4, 0.04, '#58ffd0', 0, 0.45, 0.47, 0));

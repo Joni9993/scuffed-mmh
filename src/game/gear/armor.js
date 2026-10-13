@@ -505,7 +505,44 @@ const blendax = {
   },
 };
 
-const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax };
+// ======================================================================= MAMPFAFFE (tier 7): braunes Fell, Ballonbacken, Pilz-/Kraut-Zierde in den vier Futterfarben (Glitchpilz neongrün)
+const MA = ['#8a6a48', '#5e4630', '#d8c090', '#e8a890', '#c8902c', '#ff4a1a', '#a8c030', '#39ff14', '#3c2c22'];
+const mampfaffe = {
+  head(c) {
+    const { head } = c.P, k = c.k;
+    head.box(0.6, 0.48, 0.6, MA[0], { y: 0.3 });
+    head.box(0.62, 0.1, 0.62, MA[1], { y: 0.56 });
+    for (const o of [-1, 1]) { head.box(0.24 * k + 0.12, 0.24 * k + 0.12, 0.26, MA[3], { x: o * 0.36, y: 0.22, z: 0.12 }); head.box(0.1, 0.1, 0.06, MA[2], { x: o * 0.36, y: 0.3, z: 0.27 }); } // Backentaschen
+    head.box(0.4, 0.2, 0.06, MA[8], { y: 0.3, z: 0.31 }); // dunkles Gesicht
+    head.box(0.16, 0.16, 0.16, MA[4], { x: -0.18, y: 0.66, z: 0.0 }); // Kokos-Helm-Knubbel
+    head.box(0.14, 0.12, 0.14, MA[5], { x: 0.14, y: 0.64, z: 0.05 }); // Feuerpilz-Hut
+    head.box(0.16, 0.06, 0.16, MA[7], { x: 0.0, y: 0.62, z: -0.14, glow: 1 }); // Glitchpilz-Pixel
+  },
+  body(c) {
+    const { torso } = c.P, k = c.k;
+    torso.box(0.86, 0.66, 0.5, MA[0], { y: 0.52 });
+    torso.box(0.5, 0.42, 0.06, MA[2], { y: 0.44, z: 0.27 }); // heller Wanst
+    for (let i = 0; i < 3; i++) torso.box(0.88, 0.05, 0.52, MA[1], { y: 0.3 + i * 0.2 });
+    torso.box(0.18, 0.14, 0.08, MA[4], { x: -0.3, y: 0.7, z: 0.27 }); torso.box(0.18, 0.14, 0.08, MA[6], { x: 0.3, y: 0.7, z: 0.27 }); // Futter-Taschen
+    torso.box(0.14, 0.1, 0.08, MA[7], { y: 0.78, z: 0.27, glow: 1 });
+    arms(c, (a, o) => {
+      a.box(0.4, 0.16, 0.44, MA[1], { x: o * 0.05, y: 0.12 });
+      a.box(0.44 * k, 0.12, 0.48 * k, MA[0], { x: o * 0.07, y: 0.2 });
+      for (let i = 0; i < 3; i++) { a.box(0.32, 0.08, 0.34, MA[1], { y: -0.4 - i * 0.1 }); a.box(0.12, 0.12, 0.12, MA[8], { x: (i - 1) * 0.1, y: -0.78, z: 0.14 }); } // Knöchel
+    });
+  },
+  legs(c) {
+    const k = c.k;
+    legs(c, (l, o) => {
+      for (let i = 0; i < 4; i++) l.box(0.38, 0.12, 0.4, i % 2 ? MA[1] : MA[0], { y: -0.26 - i * 0.13 });
+      l.box(0.42, 0.14, 0.52, MA[8], { y: -0.78, z: 0.06 });
+      l.box(0.16, 0.16, 0.16, o > 0 ? MA[4] : MA[5], { x: o * 0.2, y: -0.3, z: 0.22 }); // Kokos/Feuerpilz am Knie
+      l.box(0.1 * k, 0.1, 0.1, MA[6], { x: -o * 0.2, y: -0.5, z: 0.22 });
+    });
+  },
+};
+
+const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax, mampfaffe };
 export const ARMOR_BUILDERS = SETS;
 export const SLOT_JOINTS = { head: ['head'], body: ['torso', 'armR', 'armL'], legs: ['legL', 'legR'] };
 

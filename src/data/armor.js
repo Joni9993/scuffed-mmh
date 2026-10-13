@@ -16,6 +16,7 @@ export const SKILLS = {
   ueberladung: { id: 'ueberladung', name: 'Überladung', max: 3, desc: (l) => `Nach Glitch-Konter 8 s +${5 * l} % Angriff` },
   // Smaragdküste-Macken. Zahlen: meta/loadout.js skillEffects.blendCut, gelesen in game/loadout.js (Status blend).
   blendschutz: { id: 'blendschutz', name: 'Blendschutz', max: 3, desc: (l) => (l >= 3 ? 'Geblendet: Weiß nur 0,1 s, keine Betäubung' : `Geblendet: Weiß −${(0.3 * l).toFixed(1).replace('.', ',')} s, Betäubung −${(0.3 * l).toFixed(1).replace('.', ',')} s`) },
+  eisenmagen: { id: 'eisenmagen', name: 'Eisenmagen', max: 3, desc: (l) => `Gift, Brennen, Verwirrung, Item-Sperre: Dauer −${15 * l} %` },
   erdung: { id: 'erdung', name: 'Erdung', max: 3, desc: (l) => `Schock-Resistenz ${Math.round(100 * (1 - 0.8 ** l))} %` },
 };
 
@@ -74,8 +75,14 @@ export const ARMOR_SETS = {
     body: piece('Blendax-Schuppenpanzer', { schrott: 2300, blendax_schuppe: 5, blendax_klaue: 2, blendax_schirm: 1 }, { blendschutz: 1, flinkfuss: 1 }),
     legs: piece('Blendax-Sprungstiefel', { schrott: 2000, blendax_schuppe: 3, blendax_klaue: 3 }, { blendschutz: 1, flinkfuss: 1 }),
   }),
+  // Smaragdküste-Set (Prot 46, Spec 3.9): Eisenmagen gegen die Zustände des Mampfaffen
+  mampfaffe: set('mampfaffe', 'Mampfaffe', 46, ['eisenmagen', 'dickschaedel'], {
+    head: piece('Mampfaffe-Backenschutz', { schrott: 2100, mampfaffe_fell: 3, mampfaffe_backe: 1, giftkraut: 2 }, { eisenmagen: 1, dickschaedel: 1 }),
+    body: piece('Mampfaffe-Pelzmantel', { schrott: 2400, mampfaffe_fell: 5, mampfaffe_knoechel: 2, mampfaffe_backe: 1, feuerpilz: 2 }, { eisenmagen: 1, dickschaedel: 1 }),
+    legs: piece('Mampfaffe-Knöchelhosen', { schrott: 2100, mampfaffe_fell: 3, mampfaffe_knoechel: 3, kokosnuss: 3 }, { eisenmagen: 1, dickschaedel: 1 }),
+  }),
 };
-export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax'];
+export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};

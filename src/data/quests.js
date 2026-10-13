@@ -95,6 +95,15 @@ Object.assign(quests, {
     id: 'blendax', name: 'Flimmern im Dschungel', type: 'hunt', monster: 'blendax', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 3000, rp: 200, jr: 7, jrUp: 8,
     desc: 'Blendax im Dschungel. Sein Schirm flackert, dann blitzt er: nicht hinsehen! Schock auf den Schirm schließt ihn kurz.',
   },
+  mampfaffe: {
+    id: 'mampfaffe', name: 'Der Fressfeind', type: 'hunt', monster: 'mampfaffe', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 3200, rp: 220, jr: 8, jrUp: 9,
+    desc: 'Der Mampfaffe frisst sich durch Strand und Dschungel und wird von jedem Happen ein anderer Brocken. Sein Fell zeigt dir, was er zuletzt gegessen hat. Ernte das Futter vor ihm!',
+  },
+  mampfaffe_rotglut: {
+    id: 'mampfaffe_rotglut', name: 'Rotglut: Mampfaffe', type: 'hunt', monster: 'mampfaffe', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 5400, rp: 320, jr: 10,
+    variant: 'rotglut', mutators: ['rotglut'],
+    desc: 'Mampfaffe, dauerwütend, 40 % mehr Leben und immer satt: ein Futter-Buff ist immer an. Doppelte Materialien.',
+  },
   blendax_rotglut: {
     id: 'blendax_rotglut', name: 'Rotglut: Blendax', type: 'hunt', monster: 'blendax', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 5100, rp: 290, jr: 10,
     variant: 'rotglut', mutators: ['rotglut'],
@@ -105,7 +114,7 @@ Object.assign(quests, {
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
-QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'blendax_rotglut');
+QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'mampfaffe', 'blendax_rotglut', 'mampfaffe_rotglut'); // Reihenfolge nach Spec 0.2: Schlüssel-Aufträge, dann alle Rotglut (Krachfaust: 'krachfaust' hinter 'mampfaffe', 'krachfaust_rotglut' ans Ende der Rotglut-Gruppe)
 
 export function getQuest(id) {
   const q = quests[id];
@@ -127,6 +136,6 @@ QUEST_ORDER.push('revierstreit');
 export function setFieldStudyQuest(q) { quests.feldstudie = q; }
 
 /** Basis-RP je Brocken (Feldstudie-Berechnung). */
-export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200 };
+export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200, mampfaffe: 220 };
 /** RP-Schwelle je Zielrang (Schlüssel-Auftrag). progression.js baut daraus RANKS. */
 export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200, 8: 1700, 9: 2300, 10: 3000 };

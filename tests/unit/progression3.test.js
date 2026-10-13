@@ -73,7 +73,7 @@ describe('Ruestungs-Sets + Macken', () => {
   const armorOf = (set) => ({ head: `${set}_head`, body: `${set}_body`, legs: `${set}_legs` });
   it('Schutz und Macken laut GDD 15.8', () => {
     expect([ARMOR_SETS.kroll.prot, ARMOR_SETS.gorgo.prot, ARMOR_SETS.voltaro.prot]).toEqual([34, 36, 40]);
-    expect(SET_ORDER.slice(-4)).toEqual(['kroll', 'gorgo', 'voltaro', 'blendax']);
+    expect(SET_ORDER.slice(-5)).toEqual(['kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe']);
     for (const id of ['panzerhaut', 'wuehler', 'ueberladung', 'erdung']) expect(SKILLS[id].desc(2)).toBeTruthy();
     const k = skillEffects(armorSkills(armorOf('kroll')));
     expect(k.rustDurMul).toBeCloseTo(0.5); expect(k.protectMul).toBeCloseTo(1.1);

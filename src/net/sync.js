@@ -58,6 +58,8 @@ export class HuntNet {
     this.net.sendHost(MSG.HIT, encodeHit(monster.id, res, this.myId));
     monster.hitFlash = 0.12;
   }
+  /** Mampfaffe-Futterklau: der getroffene Gast meldet dem Host, was er verloren hat (der Host setzt den Buff). Host selbst: direkt im Brocken. */
+  sendSteal(monsterId, kind) { if (this.isGuest) this.net.sendHost(MSG.EV, { k: 'fst', m: monsterId, f: String(kind).slice(0, 16) }); }
   /** Gast: eigener Pirscher ist umgekippt -> Host zählt. */
   sendKo() { this.net.sendHost(MSG.EV, { k: 'ko' }); }
   /** [G] camp chest: my outfit changed mid-hunt -> compact gear code to everybody (remote rigs follow). */
@@ -128,6 +130,8 @@ export class HuntNet {
         if (!e?.player?.local || !e.monster || !(e.dmg > 0)) return;
         n.sendAll(MSG.EV, encodeDn(e.monster.id, e.part, e.dmg, e.player.glitching ? 'gbig' : e.weak ? 'weak' : e.crit ? 'crit' : 'hit', e.player.id));
       }));
+      // Mampfaffe frisst eine Futterstelle: Stand an alle Gäste (nicht als 'gathered' senden: das würde Items gutschreiben)
+      off.push(hunt.bus.on('foodEaten', (e) => { const pt = hunt.world.gatherPoints?.find((g) => g.id === e?.pointId); if (pt) n.sendAll(MSG.GATHER, { id: pt.id, u: pt.usesLeft }); }));
       off.push(hunt.bus.on('partBreak', (e) => n.sendAll(MSG.EV, { k: 'pb', m: e.monster.id, p: e.part })));
       off.push(hunt.bus.on('monsterStun', (e) => n.sendAll(MSG.EV, { k: 'st', m: e.monster.id })));
       off.push(hunt.bus.on('monsterDead', (e) => n.sendAll(MSG.EV, { k: 'dead', m: e.monster.id })));
@@ -175,6 +179,7 @@ export class HuntNet {
     const hunt = this.hunt;
     switch (d.k) {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
+      case 'fst': if (this.isHost) { const m = this.#mon(d.m); if (m?.alive) m.def.onFoodStolen?.(m, d.f); } break; // Gast wurde bestohlen: Mampfaffe frisst das Futter
       case 'gcm': if (this.isHost) for (const m of hunt.monsters) if (m.alive && m.def.id === d.m && m.attack?.id === d.a) m.def.onGlitchCounter?.(m, d.a, this.peers.get(from)?.player); break;
       case 'gear': this.#onGear(from, d.g); break;
       case 'ia': hunt.interact?.onNet(d, from); break;

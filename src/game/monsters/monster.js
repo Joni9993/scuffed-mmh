@@ -52,6 +52,8 @@ export const routeOf = (m) => m.ctx.world.routeFor?.(m.def.id) ?? null;
  * def: see docs/ARCHITECTURE.md "Monster definition". Attacks run as AttackInstance (deterministic, networkable).
  * Optional def hooks (all take the monster first): init, tick(m, dt), combat(m, dt) -> true if handled, poseHook(m, target),
  *   onDamage(m, res, ev), onAttackEnd(m, attackId), onStatus(m, type), onElement(m, type, opts) -> bool, snapExtra(m).
+ *   Smaragdkueste-Hooks: wander(m, dt) -> bool (Mampfaffe frisst im Wandern; Angriffe mit `wanderAttack` laufen dort), onHitPlayer(m, player, h, res)
+ *   (nach einem Treffer, nur lokaler Pirscher), hitDmgMul(m, hit), dmgFactor(m), partHpMul(m, part), glow(m) -> [r,g,b] | null (Dauerleuchten).
  * Status API (docs/PHASE2_CONTRACTS.md): applyStatus(type, opts) -> bool.
  */
 export class Monster {
@@ -140,7 +142,7 @@ export class Monster {
   /** Mutator-Hooks (GDD 16.5, data/mutators.js): generisch fuer alle Brocken, nie fuer Kleinvieh. */
   get mm() { return this.minor ? null : this.ctx.mods?.monster ?? null; }
   get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1) * (this.mm?.speedMul ?? 1) * (this.def.speedFactor?.(this) ?? 1); }
-  get dmgMul() { return (this.rage ? 1.15 : 1) * (this.mm?.dmgMul ?? 1); }
+  get dmgMul() { return (this.rage ? 1.15 : 1) * (this.mm?.dmgMul ?? 1) * (this.def.dmgFactor?.(this) ?? 1); } // def.dmgFactor: z. B. Mampfaffe hungrig +10 %
   get limping() { return this.hp <= this.maxHp * LIMP_HP && this.alive && !this.minor; }
   get eating() { return this.state === 'fressen'; } // [L] predator busy with its prey: sneak-hit window
   get flying() { return this.state === 'fly' || this.state === 'fall'; }
@@ -154,6 +156,7 @@ export class Monster {
     const prev = this.state;
     this.state = s;
     this.stateT = 0;
+    if (this.attack?.inst.def.wanderAttack && s !== 'wander') this._interrupt(); // Angriff, der nur im Wandern laeuft (Mampfaffe frisst): Zustandswechsel bricht ab
     if (s === 'notice' || s === 'enrage') this.ctx.bus.emit('sfx', { name: 'roar', pos: this.pos });
     this.ctx.bus.emit('monsterState', { monster: this, state: s, prev });
   }
@@ -313,7 +316,7 @@ export class Monster {
     const ev = { monster: this, part, dmg: total, res, broke: false, stunned: false, killed: false };
     if (part) {
       if (part.breakHp && !part.broken) {
-        part.hp -= total * (this.st.rustT > 0 ? RUST_PART_MUL : 1) * (res.partDmgMul ?? 1); // partDmgMul: Kroll-Ast-Waffen
+        part.hp -= total * (this.st.rustT > 0 ? RUST_PART_MUL : 1) * (res.partDmgMul ?? 1) * (this.def.partHpMul?.(this, part) ?? 1); // partDmgMul: Kroll-Ast-Waffen; def.partHpMul: Mampfaffe harter Schaedel
         const jit = clamp(1 - part.hp / part.breakHp, 0, 1) * (part.jitter ?? 0.05);
         for (const m of part.mats) m.userData.ps1.uJit.value = jit;
         if (part.hp <= 0) { this._breakPart(part); ev.broke = true; }
@@ -788,6 +791,7 @@ export class Monster {
       }
     }
     if (this.st.stink > 0) { this._stinkFlee(dt); return; }
+    if (this.def.wander?.(this, dt)) return; // def.wander(m, dt) -> true wenn behandelt (Mampfaffe: Futter suchen/fressen)
     if (predationTick(this, dt)) return; // [L]
     this.wanderT -= dt;
     if (this.wanderT <= 0 && !this.wanderTo) this.wanderTo = this._nextWanderPoint();
@@ -906,11 +910,12 @@ export class Monster {
         if (fc !== undefined && Math.abs(angleDiff(this.ctx.cameraYaw ?? p.rot, yawOf(this.pos.x - p.pos.x, this.pos.z - p.pos.z))) > fc * Math.PI / 180) continue;
         if (!caps.some((c) => overlap(h.shape, c))) continue;
         const res = p.takeHit({
-          dmg: h.dmg * this.dmgMul, knock: h.knock, key: h.key + '|' + p.id, sourcePos: this.pos, attackId: inst.params.attackId, monster: this,
+          dmg: h.dmg * this.dmgMul * (this.def.hitDmgMul?.(this, h.hit) ?? 1), knock: h.knock, key: h.key + '|' + p.id, sourcePos: this.pos, attackId: inst.params.attackId, monster: this,
           status: h.hit.status, push: h.hit.push,
         });
         if (res === 'hit' || res === 'block' || res === 'perfect') inst.hitSet.add(k); // perfect = Glitch-Konter: der Treffer ist verbraucht
         if (res === 'hit' && h.dmg > 0) this.ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
+        if (res === 'hit') this.def.onHitPlayer?.(this, p, h, res); // Treffer-Folgen je Brocken (Mampfaffe: Futterklau, Verwirrung)
       }
     }
     if (this.authority && this.ctx.revier) this.ctx.revier.resolve(this, inst, hits); // Revierkampf: Brocken trifft Brocken (nur Host)
@@ -1340,12 +1345,14 @@ export class Monster {
     const blink = Math.floor(this.time * 10) % 2 === 0;
     const gs = this.def.glitchSpots;
     const tint = this._statusTint();
+    const glow = this.def.glow?.(this) ?? null;
     for (const part of this.parts) {
       if (part.gone) continue;
       const spot = !!gs && gs.includes(part.id);
       let r = 0, g = 0, b = 0;
       if (tele && tele.includes(part.id)) { if (this.mm?.hideColorCues) { /* nur Ton */ } else if (blink) { r = 0.9; g = 0.9; b = 0.9; } else { r = 0.9; g = 0.05; b = 0.05; } }
       else if (this.hitFlash > 0) { r = g = b = 0.45; }
+      else if (glow) { r = glow[0]; g = glow[1]; b = glow[2]; } // def.glow(m) -> [r,g,b] | null: Dauerleuchten (Mampfaffe-Futterbuff), schlaegt Status-Farbe
       else if (spot && !part.broken && (this.time + (this.id?.length ?? 0) * 0.37) % GL_CYCLE < GL_PULSE) { const c = Math.floor(this.time * 20) % 2 ? GL_CYAN : GL_MAGENTA, k = 0.55 + 0.45 * Math.sin(this.time * 18); r = c[0] * k; g = c[1] * k; b = c[2] * k; } // Owner-Feedback Okt 2026: nur kurzer Puls alle ~3,6 s statt Dauerflackern
       else if (tint) { r = tint[0]; g = tint[1]; b = tint[2]; }
       if (spot && !part.broken && part.breakHp) { // gelegentlicher Positions-Jitter der Teil-Materialien

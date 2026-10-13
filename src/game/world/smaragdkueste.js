@@ -27,9 +27,9 @@ const ENV = [
 const GROUND_TEX = ['sand', 'jungle', 'mossfloor', 'templefloor'];
 const GROUND_TINT = ['#ffffff', '#ffffff', '#e0f0e0', '#ffffff'];
 const CLIFF_TINT = ['#e0d0a8', '#9ab080', '#6a8a6a', '#9ab8b0'];
-const NEST_ZONE = { jaggo: 2, barrotz: 3, blendax: 3 }; // everything else (the apex monsters) nests in the temple
+const NEST_ZONE = { jaggo: 2, barrotz: 3, blendax: 3, mampfaffe: 2 }; // everything else (the apex monsters) nests in the temple
 // Brocken, die durch mehrere Zonen streifen: Zonen-Reihenfolge ab Nest-Zone; die Routen berühren sich an den Pässen (PASSES: 0 = Z1-Z2, 1 = Z2-Z3, 2 = Z3-Z4)
-const ROUTE_ZONES = { blendax: [3, 2] };
+const ROUTE_ZONES = { blendax: [3, 2], mampfaffe: [2, 1] }; // Mampfaffe: Revier nur Zone 1 + 2 (frisst dort Kokosnuss, Feuerpilz, Giftkraut, Glitchpilz)
 const PASS_OF = { '1-2': 0, '2-3': 1, '3-4': 2 };
 const ZONE_BOXES = { 1: [-114, -114, -14, -14], 2: [-114, 14, -14, 114], 3: [14, 14, 114, 114], 4: [14, -114, 114, -14] };
 

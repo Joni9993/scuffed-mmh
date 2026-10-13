@@ -49,6 +49,8 @@ export function skillEffects(skills = {}) {
     shockResist: 1 - 0.8 ** lvl('erdung'),
     // Smaragdkueste-Macke Blendschutz (Blendax-Set): Sekunden, die von Weiss und Betaeubung abgehen
     blendCut: 0.3 * lvl('blendschutz'),
+    // Macke Eisenmagen (Mampfaffe-Set): Dauer von Gift, Brennen, Verwirrung und Item-Sperre -15 % je Stufe
+    eisenCut: 0.15 * lvl('eisenmagen'),
   };
 }
 

@@ -38,11 +38,15 @@ export class ItemSystem {
 
   canStart() {
     const p = this.player;
-    return !this.using && p.alive && p.state === 'free' && !p.weapon.busy;
+    return !this.using && p.alive && p.state === 'free' && !p.weapon.busy && !p.status?.itemlock; // itemlock: Mampfaffe-Stinkwolke
   }
 
   request() {
     if (this.using) return false;
+    if (this.player.status?.itemlock) { // Item-Sperre: kein Puffern, nur ein Hinweis (alle 1,2 s)
+      if ((this.lockToastT ?? 0) <= 0) { this.lockToastT = 1.2; this.hunt.toast?.('Gestank! Keine Items'); this.hunt.fx?.number?.({ x: this.player.pos.x, y: this.player.pos.y + 2.1, z: this.player.pos.z }, 'GESTANK!', 'mon'); }
+      return false;
+    }
     if (!this.canStart()) { this.buffer = BUFFER; return false; }
     return this.start();
   }
@@ -69,6 +73,7 @@ export class ItemSystem {
   update(dt) {
     const p = this.player;
     this.#tickBuffs(dt);
+    this.lockToastT = Math.max(0, (this.lockToastT ?? 0) - dt);
     this.buffer = Math.max(0, this.buffer - dt);
     if (this.using) {
       const u = this.using;

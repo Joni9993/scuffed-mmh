@@ -16,7 +16,8 @@ export const RANKS = [
   { jr: 6, keys: ['kroll', 'gorgo'], rp: RANK_RP[6] },
   { jr: 7, keys: ['voltaro'], rp: RANK_RP[7] },
   { jr: 8, keys: ['blendax'], rp: RANK_RP[8] },
-  // Rang 9 (mampfaffe) und 10 (krachfaust): Eintrag erst mit dem jeweiligen Brocken ergaenzen (Spec docs/SMARAGD_BROCKEN.md 0.2),
+  { jr: 9, keys: ['mampfaffe'], rp: RANK_RP[9] },
+  // Rang 10 (krachfaust): Eintrag erst mit dem Brocken ergaenzen (Spec docs/SMARAGD_BROCKEN.md 0.2),
   // sonst zeigt die UI einen toten Schluessel.
 ];
 export const isKeyQuest = (quest, save) => !!quest.jrUp && (!save || quest.jrUp > save.jr);

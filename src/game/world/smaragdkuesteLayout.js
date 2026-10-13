@@ -263,7 +263,7 @@ export function buildLayout(seed = 1) {
     3: R([NESTS[3], { x: 40, z: 50 }, { x: 100, z: 100 }, { x: 60, z: 100 }, { x: 30, z: 90 }, { x: 100, z: 40 }, { x: 20, z: 60 }, { x: 65, z: 20 }]),
     4: R([NESTS[4], { x: 45, z: -45 }, { x: 85, z: -45 }, { x: 85, z: -85 }, { x: 45, z: -85 }, { x: 65, z: -45 }, { x: 65, z: -22 }, { x: 65, z: -85 }]),
   };
-  const monsterSpawns = { jaggo: snap({ x: -84, z: 86 }, 4), barrotz: snap({ x: 76, z: 76 }, 4), blendax: snap({ x: 30, z: 70 }, 4), default: snap({ x: 80, z: -80 }, 4) };
+  const monsterSpawns = { jaggo: snap({ x: -84, z: 86 }, 4), barrotz: snap({ x: 76, z: 76 }, 4), blendax: snap({ x: 30, z: 70 }, 4), mampfaffe: snap({ x: -62, z: 20 }, 4), default: snap({ x: 80, z: -80 }, 4) };
 
   return {
     seed, H, heightAt, slopeAt, ground, groundType, sdf, sdfAt, blocked, collide, walkable, snapWalkable, reachable, reach, clearOfColliders,

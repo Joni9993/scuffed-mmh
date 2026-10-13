@@ -152,7 +152,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
   };
 
   // Brocken-Glitch-Overlays (Hacker-Neongruen #39ff14, nie Cyan/Magenta): Weissblitz (Blendax) + kaputter Bildschirm. Reines CSS (ui.css .mon-*), Zaehler laufen in update().
-  let whiteEl = null, whiteT = 0, whiteTail = 0, brokenEl = null, brokenT = 0;
+  let whiteEl = null, whiteT = 0, whiteTail = 0, brokenEl = null, brokenT = 0, confEl = null, confT = 0;
   const monEl = (cls, html = '') => {
     const e = document.createElement('div');
     e.className = cls;
@@ -244,7 +244,15 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       brokenT = dur;
     },
     /** Verwirrt-/Schleim-Overlay (Hacker-Gruen): Zeilenverschiebung + Vignette, KEIN RGB-Split. */
-    monGlitch(dur = 1) { fx.brokenScreen(dur, ''); },
+    monGlitch(dur = 1) { fx.confuse(dur); },
+    /** Glitch-Verwirrung (Mampfaffe/Glitchpilz): Steuerung verkehrt. Neongruene Zeilenverschiebung, Vignette, grosses gespiegeltes "VERKEHRT!" mit Pfeilen. */
+    confuse(dur = 3) {
+      if (nofx) return;
+      confEl ??= monEl('mon-confuse', '<i class="mc-scan"></i><i class="mc-vig"></i><b class="mc-text">&#8644; VERKEHRT! &#8644;</b>');
+      confEl.classList.remove('on'); void confEl.offsetWidth; confEl.classList.add('on');
+      confT = dur;
+    },
+    clearConfuse() { confT = 0; confEl?.classList.remove('on'); },
 
     /** Blitz von a nach b (gezackt, flackert, Seitenäste). opts: color, width (m), life (s), jag (Zackigkeit). */
     bolt(a, b, { color = '#9fe8ff', width = 0.35, life = 0.22, jag = 1 } = {}) {
@@ -352,6 +360,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
         if (whiteT <= 0) whiteEl?.classList.remove('on', 'tail');
       }
       if (brokenT > 0) { brokenT -= dt; if (brokenT <= 0) brokenEl?.classList.remove('on'); }
+      if (confT > 0) { confT -= dt; if (confT <= 0) confEl?.classList.remove('on'); }
       if (glTearT > 0) { glTearT -= dt; if (glTearT <= 0) glEl?.classList.remove('tear'); }
       // glitch
       if (glitchT > 0) {

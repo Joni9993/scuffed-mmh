@@ -9,6 +9,7 @@ import { dummy } from './dummy.js';
 import { mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbock, schlackkitz, schrottler, palmbock, palmbockbulle, palmbockkitz, strandhuepfer, dschungelhuepfer } from './mampfer.js'; // [L]
 import { kroll } from './kroll.js'; // [Rostwerke]
 import { blendax } from './blendax.js'; // [Smaragdküste]
+import { mampfaffe } from './mampfaffe.js'; // [Smaragdküste]
 
 export const monsters = {
   jaggo,
@@ -22,6 +23,7 @@ export const monsters = {
   palmbock, palmbockbulle, palmbockkitz, strandhuepfer, dschungelhuepfer, // Smaragdküste
   kroll, // [Rostwerke]
   blendax, // [Smaragdküste]
+  mampfaffe, // [Smaragdküste]
 };
 
 export function getMonsterDef(id) {

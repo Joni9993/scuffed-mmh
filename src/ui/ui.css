@@ -262,3 +262,19 @@ body.glitch-mode .hud-name { text-shadow: 2px 0 #ff2bd6, -2px 0 #00ffe5; }
 .dmg.mon { color: #39ff14; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #0b2a0b, 0 0 8px #39ff14; z-index: 2; }
 .hud-center.mon, .hud-banner.mon { color: #39ff14; text-shadow: 2px 2px 0 #0b2a0b, 0 0 10px #39ff14; font-size: max(18px, 7vmin); }
 .st-blend { color: #fff; background: #1f9d0f; padding: 0 .6vmin; }
+/* Mampfaffe: Glitch-Verwirrung (Steuerung verkehrt), Item-Sperre, Futter-Zahlen */
+.mon-confuse { position: fixed; inset: 0; z-index: 7; pointer-events: none; display: none; overflow: hidden; }
+.mon-confuse.on { display: block; animation: monflick .09s steps(1) infinite; }
+.mon-confuse i { position: absolute; display: block; inset: 0; }
+.mon-confuse .mc-scan { background: repeating-linear-gradient(rgba(57,255,20,.18) 0 2px, rgba(11,42,11,.28) 2px 6px); mix-blend-mode: screen; animation: mcshift .35s steps(4) infinite; }
+.mon-confuse .mc-vig { box-shadow: inset 0 0 14vmin 3vmin rgba(57,255,20,.7), inset 0 0 40vmin 8vmin rgba(11,42,11,.65); }
+.mon-confuse .mc-text { position: absolute; left: 50%; top: 14%; transform: translate(-50%,-50%) scaleX(-1); font-size: max(20px, 9vmin); color: #39ff14; white-space: nowrap; letter-spacing: .12em;
+  text-shadow: .6vmin .6vmin 0 #0b2a0b, -.6vmin 0 0 #0b2a0b, 0 0 3vmin #39ff14; animation: mctext .2s steps(1) infinite; }
+@keyframes mcshift { 0% { transform: translateY(0); } 50% { transform: translateY(-5px); } 100% { transform: translateY(3px); } }
+@keyframes mctext { 50% { transform: translate(-50%,-50%) scaleX(-1) rotate(-3deg) scale(1.1); color: #d8ffd0; } }
+.hud-status .st-verwirrt { color: #0b2a0b; background: #39ff14; padding: 0 .6vmin; animation: monflick .12s steps(1) infinite; }
+.hud-status .st-itemlock { color: #1c2400; background: #a8c030; padding: 0 .6vmin; }
+.dmg.mf-kokosnuss { color: #e8b04a; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #4a2c0a, 0 0 8px #c8902c; z-index: 2; }
+.dmg.mf-feuerpilz { color: #ff5a1a; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #4a0a00, 0 0 8px #ff4a1a; z-index: 2; }
+.dmg.mf-giftkraut { color: #c8e040; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #2a3000, 0 0 8px #a8c030; z-index: 2; }
+.dmg.mf-glitchpilz { color: #39ff14; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #0b2a0b, 0 0 8px #39ff14; z-index: 2; }

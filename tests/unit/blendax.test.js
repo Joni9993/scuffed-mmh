@@ -198,7 +198,7 @@ describe('Geblendet (Pirscher-Status) und Blendschutz', () => {
     expect(SKILLS.blendschutz.desc(3)).toContain('keine Betäubung');
     expect(ARMOR_SETS.blendax.prot).toBe(44);
     expect(ARMOR_SETS.blendax.skills).toContain('blendschutz');
-    expect(SET_ORDER[SET_ORDER.length - 1]).toBe('blendax');
+    expect(SET_ORDER.indexOf('blendax')).toBeGreaterThan(SET_ORDER.indexOf('voltaro'));
   });
   it('Respawn / clearStatus räumt Weißbild und Sterne ab', () => {
     const { p, fx } = bare();

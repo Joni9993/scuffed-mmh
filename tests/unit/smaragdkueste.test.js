@@ -32,9 +32,11 @@ describe('smaragdkueste', () => {
   });
   it('places its gather kinds only in the intended zones', () => {
     const kinds = Object.entries(GATHER_KINDS).filter(([, d]) => d.world === 'smaragdkueste');
-    expect(kinds.length).toBe(5);
+    expect(kinds.length).toBe(8); // + Feuerpilz, Giftkraut, Glitchpilz (Futter des Mampfaffen)
     for (const [kind, d] of kinds) for (const p of w.gatherPoints.filter((q) => q.kind === kind)) expect(Object.keys(d.zones).map(Number)).toContain(p.zone);
     expect(w.gatherPoints.length).toBeGreaterThan(20);
+    // Mampfaffe-Revier (Zone 1 + 2) enthaelt jedes Futter, das er frisst
+    for (const food of ['kokosnuss', 'feuerpilz', 'giftkraut', 'glitchpilz']) expect(w.gatherPoints.some((q) => q.kind === food && q.zone <= 2), food).toBe(true);
     expect(getQuest('inselausflug').world).toBe('smaragdkueste');
     expect(getQuest('inselausflug').jr).toBe(7); // Voltaro-Sieg schaltet die Karte frei
     expect(getQuest('inselausflug').jrUp).toBeUndefined();

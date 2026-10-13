@@ -71,6 +71,19 @@ export const GATHER_KINDS = {
     name: 'Glühpilz', world: 'smaragdkueste', zones: { 3: 6 }, uses: [1, 2], sparkle: '#60ffd8',
     drops: [{ id: 'gluehpilz', w: 100, n: [1, 1] }],
   },
+  // Futter des Mampfaffen (docs/SMARAGD_BROCKEN.md 1.5). Seine Patrouille ist Zone 1+2: jedes Futter hat dort Stellen (Glitchpilz zusaetzlich in 3+4 fuer die Pirscher).
+  feuerpilz: {
+    name: 'Feuerpilz', world: 'smaragdkueste', zones: { 2: 5 }, uses: [1, 2], sparkle: '#ff7a3a',
+    drops: [{ id: 'feuerpilz', w: 100, n: [1, 1] }],
+  },
+  giftkraut: {
+    name: 'Giftkraut', world: 'smaragdkueste', zones: { 2: 3, 3: 4 }, uses: [1, 3], sparkle: '#c8e060',
+    drops: [{ id: 'giftkraut', w: 100, n: [1, 2] }],
+  },
+  glitchpilz: {
+    name: 'Glitchpilz', world: 'smaragdkueste', zones: { 1: 2, 2: 2, 3: 3, 4: 4 }, uses: [1, 2], sparkle: '#39ff14',
+    drops: [{ id: 'glitchpilz', w: 100, n: [1, 1] }],
+  },
   tempelstein: {
     name: 'Tempelstein', world: 'smaragdkueste', zones: { 4: 4 }, uses: [1, 2], sparkle: '#58ffd0',
     drops: [{ id: 'tempelstein', w: 100, n: [1, 1] }],
@@ -83,7 +96,7 @@ export const GATHER_ITEM_NAMES = {
   schrotterz: 'Schrotterz', glimmstein: 'Glimmstein', altknochen: 'Altknochen', grossknochen: 'Großknochen',
   brummkaefer: 'Brummkäfer', blitzkaefer: 'Blitzkäfer', glutbrocken: 'Glutbrocken', sprudelwasser: 'Sprudelwasser',
   kupferdraht: 'Kupferdraht', schlacke: 'Schlacke', rostkaefer: 'Rostkäfer', giftschlamm: 'Giftschlamm', funkenstein: 'Funkenstein',
-  muschel: 'Muschel', kokosnuss: 'Kokosnuss', dschungelkraut: 'Dschungelkraut', gluehpilz: 'Glühpilz', tempelstein: 'Tempelstein',
+  muschel: 'Muschel', kokosnuss: 'Kokosnuss', dschungelkraut: 'Dschungelkraut', gluehpilz: 'Glühpilz', feuerpilz: 'Feuerpilz', giftkraut: 'Giftkraut', glitchpilz: 'Glitchpilz', tempelstein: 'Tempelstein',
 };
 
 export const GATHER_TIME = 0.8; // seconds of holding the context button

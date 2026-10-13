@@ -73,6 +73,16 @@ export const DROPS = {
     },
     reward: [{ id: 'blendax_schuppe', n: [1, 2], chance: 1 }, { id: 'blendax_klaue', n: 1, chance: 0.5 }, { id: 'blendax_schirm', n: 1, chance: 0.3 }, { id: 'blendax_flimmerlinse', n: 1, chance: 0.12 }],
   },
+  // Smaragdküste (docs/SMARAGD_BROCKEN.md 3.8). Break-Tags: head, pranke. Mageninhalt: carve gibt auch Futter.
+  mampfaffe: {
+    carve: [{ id: 'mampfaffe_fell', w: 38 }, { id: 'mampfaffe_knoechel', w: 24 }, { id: 'mampfaffe_backe', w: 14 }, { id: 'kokosnuss', w: 4 }, { id: 'feuerpilz', w: 4 }, { id: 'giftkraut', w: 4 }, { id: 'glitchpilz', w: 8 }, { id: 'mampfaffe_magenstein', w: 4 }],
+    tail: [],
+    breaks: {
+      head: [{ id: 'mampfaffe_backe', n: 1, chance: 1 }],
+      pranke: [{ id: 'mampfaffe_knoechel', n: 1, chance: 1 }],
+    },
+    reward: [{ id: 'mampfaffe_fell', n: [1, 2], chance: 1 }, { id: 'mampfaffe_knoechel', n: 1, chance: 0.5 }, { id: 'glitchpilz', n: 1, chance: 0.4 }, { id: 'mampfaffe_magenstein', n: 1, chance: 0.12 }],
+  },
   voltaro: {
     carve: [{ id: 'voltaro_spule', w: 36 }, { id: 'voltaro_fell', w: 36 }, { id: 'voltaro_kamm', w: 12 }, { id: 'funkenstein', w: 12 }, { id: 'voltaro_herz', w: 4 }],
     tail: [{ id: 'voltaro_fell', w: 60 }, { id: 'voltaro_spule', w: 30 }, { id: 'voltaro_herz', w: 10 }], // Schwanz abgetrennt: bessere Chance aufs Herz

@@ -106,6 +106,21 @@ export const BESTIARY = [
       { at: 4, kind: 'angriff', name: 'Flimmerfieber', text: 'Unter der Hälfte rennt er in einem Bogen heran und beißt zum Schluss. Der Blitz kommt dann öfter.' },
     ],
   },
+  {
+    id: 'mampfaffe', name: 'Mampfaffe', where: 'Smaragdküste · Strand & Dschungel', title: 'Magenkönig',
+    intro: 'Ein hockender Affe, der alles frisst, was im Dschungel wächst, und von jedem Happen etwas ganz anderes wird. Sein Fell leuchtet in der Farbe seines letzten Futters: lies es, bevor er zuschlägt.',
+    entries: [
+      { at: 1, kind: 'angriff', name: 'Fäuste', text: 'Ausfallschritt, linke Faust, rechte Faust, dann beide Fäuste in den Boden. Seitlich raus, nicht zurück. Der grüne Ring am Boden zeigt die Reichweite.' },
+      { at: 1, kind: 'verhalten', name: 'Fressen', text: 'Er sucht Kokosnüsse, Feuerpilze, Giftkraut und Glitchpilze, läuft hin und mampft 2 s lang mit offenem Maul: freier Schlag. Wer die Stellen vorher abräumt, nimmt ihm den Buff.' },
+      { at: 2, kind: 'verhalten', name: 'Futterklau', text: 'Sein Wischer klaut dir genau eines der vier Futter aus dem Beutel (Kokosnuss, Feuerpilz, Giftkraut, Glitchpilz), sonst nichts. Er frisst es sofort und wird zu dem, was du geerntet hattest.' },
+      { at: 2, kind: 'angriff', name: 'Stampfer, Rolle & Brusttrommeln', text: 'Hocksprung mit Schockwelle (5 m). Rolle als Fellkugel, 12 m geradeaus: seitlich raus, an der Wand knallt er dagegen und ist 1 s benommen. Beim Trommeln nagelt er alle im 8-m-Ring kurz fest: im richtigen Moment rollen kontert mit einem Glitch.' },
+      { at: 2, kind: 'angriff', name: 'Kokos (braunes Fell)', text: 'Harter Schädel: Kopftreffer richten nur halben Schaden an und klingen nach Kokosnuss. Dazu wirft er drei Kokosnüsse in hohem Bogen, die Ringe am Boden zeigen den Aufschlag.' },
+      { at: 3, kind: 'angriff', name: 'Feuerpilz (rotes Fell)', text: 'Die Backen blähen sich rot auf wie Ballons, dann ein Feuerrülpser im Kegel, 8 m: Brennen. Mit dem Pilz im Bauch ist er feuerfest.' },
+      { at: 3, kind: 'angriff', name: 'Giftkraut (gelbgrünes Fell)', text: 'Er spuckt eine Stinkwolke, 5,5 m, 9 s: Gift, und du kannst keine Items benutzen, solange du drinstehst. Raus, dann heilen.' },
+      { at: 4, kind: 'angriff', name: 'Glitchpilz (grünes Flackern)', text: 'Er flackert aus dem Bild und taucht bis 9 m weiter neben dir wieder auf. Jeder Treffer verwirrt dich 3 s: Steuerung verkehrt. Sprudelwasser hilft. Schock gibt ihm einen Kurzschluss.' },
+      { at: 4, kind: 'schwaeche', name: 'Magen', text: 'Betäubung oder Kopfbruch spucken den Pilz wieder aus. Ist alles Futter im Revier weg, wird er nach zwei Minuten hungrig und aggressiv. Feuer wirkt auf den Bauch, Schock auf die Beine.' },
+    ],
+  },
 ];
 export const BESTIARY_IDS = BESTIARY.map((b) => b.id);
 
@@ -117,8 +132,11 @@ export const CONDITIONS = [
   { id: 'rost', name: 'Rost', who: 'du', text: 'Deine Rüstung schützt 30 % schlechter, 20 s lang. Kommt von Krolls Dampf und Gorgos Schlacke. Panzerhaut verkürzt ihn, Kühlbrause entfernt ihn.' },
   { id: 'shock', name: 'Schock', who: 'du', text: 'Voltaros Blitze. Die Macke Erdung (Voltaro-Set) senkt den Schaden, ein Erdungsstab baut 20 s eine 4-m-Schutzzone – darin trifft dich der Donnerschlag nicht.' },
   { id: 'blend', name: 'Geblendet', who: 'du', text: 'Blendax-Blitz: 1 s Vollbild weiß, danach 1 s betäubt. Nur wer hinsieht. Wegdrehen schützt, ein Glitch-Konter dreht den Spieß um. Die Macke Blendschutz (Blendax-Set) verkürzt beides.' },
+  { id: 'verwirrt', name: 'Glitch-Verwirrung', who: 'du', text: 'Mampfaffe mit Glitchpilz: Jeder Treffer dreht deine Steuerung 3 s lang um, auch die Ausweichrolle. Sprudelwasser entfernt sie, die Macke Eisenmagen verkürzt sie.' },
+  { id: 'itemlock', name: 'Item-Sperre', who: 'du', text: 'Mampfaffes Stinkwolke: Solange du in der Wolke stehst (und eine Sekunde danach), geht kein Item. Essen und Buffs bleiben. Raus aus der Wolke!' },
   { id: 'bruise', name: 'Prellung', who: 'du', text: 'Die Hälfte jedes Treffers ist nur geprellt (dunkelrot im Balken) und heilt mit der Zeit zurück – solange du nicht gleich wieder getroffen wirst.' },
   { id: 'glitch', name: 'Glitch-Konter & Glitch-Modus', who: 'du', text: 'Perfekt ausgewichen = Glitch-Konter: Zeitlupe, nächster Treffer +50 % und ein Drittel Glitch-Leiste. Volle Leiste: 8 s Glitch-Modus mit +30 % Schaden und dem Waffen-Glitch.' },
+  { id: 'm_fed', name: 'Gefüttert', who: 'brocken', text: 'Mampfaffe: 40 s Futter-Buff, das Fell leuchtet in der Futterfarbe (Braun Kokos, Rot Feuer, Gelbgrün Gift, Neongrün Glitch). Betäubung oder Kopfbruch beenden ihn.' },
   { id: 'm_poison', name: 'Vergiftet', who: 'brocken', text: 'Giftspitzen und Giftschlamm bauen Gift auf. Ist es voll, verliert der Brocken 15 s lang zusammen 3 % seines Lebens.' },
   { id: 'm_rost', name: 'Verrostet', who: 'brocken', text: 'Rost-Treffer bauen auf. Verrostet nimmt er 15 s lang 15 % mehr Schaden, und Teile brechen 1,5× schneller.' },
   { id: 'm_scald', name: 'Verbrüht', who: 'brocken', text: 'Heißer Dampf aus einem Ventil der Rostwerke: 10 s lang +10 % Schaden auf ihn. Lässt sich mit Rost kombinieren.' },
@@ -136,6 +154,7 @@ export const ELEM_NOTES = {
   voltaro: 'Feuer wirkt nur, solange er nicht aufgeladen ist (Spulen dunkel).',
   gorgo: 'Eingegraben ist er unverwundbar – erst rausholen, dann draufhauen.',
   blendax: 'Schock auf dem Schirm schließt ihn kurz: er flackert wild und blitzt 6 s nicht mehr.',
+  mampfaffe: 'Mit Feuerpilz im Bauch ist Feuer wirkungslos; mit Glitchpilz verträgt er keinen Schock (Kurzschluss, Teleport 5 s gesperrt); mit Kokosnuss ist der Kopf hart.',
   kroll: 'In Panzerdeckung kommt von vorn kaum etwas an, egal welches Element.',
 };
 
