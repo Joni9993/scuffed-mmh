@@ -116,7 +116,8 @@ const HUNTY = (k) => k === 'hunt' || k === 'rost' || k === 'smaragd'; // Jagd-Tr
 let want = null;
 let intensity = 0, nextT = 0, step = 0, bar = 0, lastScene = null;
 const volOf = () => (settings.musicOn === false ? 0 : (settings.musicVolume ?? 0.5)) * 0.6;
-const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4, rostStep = 60 / 112 / 4, smBpm = 126;
+const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4, rostStep = 60 / 112 / 4;
+let smBpm = 126; // Smaragd-Tempo, ändert sich am Taktanfang
 const SM_BPM = [126, 138, 148, 156]; // Smaragd: Tempo steigt mit Kampf-Intensität (Wechsel am Taktanfang)
 const smStep = () => 60 / smBpm / 4;
 const stepOf = (k) => (k === 'hub' ? hubStep : k === 'rost' ? rostStep : k === 'smaragd' ? smStep() : huntStep);
