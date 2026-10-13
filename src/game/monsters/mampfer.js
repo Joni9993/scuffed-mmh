@@ -14,10 +14,17 @@ registerTexture('mampfer_hide', noise(['#9aa468', '#8a9658', '#a8b274', '#7a8650
 registerTexture('hoppler_fur', noise(['#c8a070', '#b88e5c', '#d8b484', '#a87c4c']));
 registerTexture('schlackbock_hide', noise(['#6a5a52', '#5a4a44', '#7a6a60', '#4a3c38', '#8a5a3a']));
 registerTexture('schrottler_fur', noise(['#7a7468', '#6a645a', '#8a8478', '#9a5a30']));
+registerTexture('palmbock_hide', noise(['#c8a468', '#b89458', '#d8b478', '#6a9a58', '#a88448']));
+registerTexture('strandhuepfer_fur', noise(['#e0583a', '#c84a30', '#f07050', '#f4d8b0']));
+registerTexture('dschungelhuepfer_fur', noise(['#4aa850', '#3a9040', '#68c068', '#e8d040']));
 void tex;
 // rost-skins for the Rostwerke (same behaviour, new look)
 const PAL_MAMPFER = { map: 'mampfer_hide', hide: '#9aa468', dark: '#7c8650', belly: '#d9c99a', horn: '#efe3c4', snout: '#c4b678', jaw: '#8a7a50', tip: '#c8603a' };
 const PAL_BOCK = { map: 'schlackbock_hide', hide: '#6a5a52', dark: '#4e403c', belly: '#8a7a6c', horn: '#b8b0a0', snout: '#8a7060', jaw: '#5e4a40', tip: '#e0802a' };
+// inselskins for the Smaragdküste (same behaviour, new look)
+const PAL_PALMBOCK = { map: 'palmbock_hide', hide: '#c8a468', dark: '#8a7040', belly: '#f0e4c0', horn: '#f4ecd8', snout: '#d8b890', jaw: '#9a7a48', tip: '#58b868' };
+const PAL_STRAND = { map: 'strandhuepfer_fur', fur: '#e0583a', dark: '#b03a24', light: '#f4d8b0' };
+const PAL_DSCHUNGEL = { map: 'dschungelhuepfer_fur', fur: '#4aa850', dark: '#2e7a38', light: '#e8e090' };
 const PAL_HOPPLER = { map: 'hoppler_fur', fur: '#c8a070', dark: '#a87c4c', light: '#eadcc0' };
 const PAL_SCHROTTLER = { map: 'schrottler_fur', fur: '#7a7468', dark: '#5a554c', light: '#b0a898' };
 
@@ -160,3 +167,10 @@ export const hoppler = {
 };
 
 export const schrottler = { ...hoppler, id: 'schrottler', name: 'Schrottler', build: () => buildHoppler(PAL_SCHROTTLER) };
+
+// Smaragdküste: Palmbock herd (like Mampfer), Strandhüpfer (crab-red) and Dschungelhüpfer (green) as the small hoppers
+export const palmbock = { ...mk('palmbock', 'Palmbock', 120, 1.0, 1.05, false, 1.5, 5.2, PAL_PALMBOCK), dropId: 'mampfer' };
+export const palmbockbulle = { ...mk('palmbockbulle', 'Palmbock-Bulle', 150, 1.2, 1.25, true, 1.5, 5.4, PAL_PALMBOCK), dropId: 'mampfer' };
+export const palmbockkitz = { ...mk('palmbockkitz', 'Palmbock-Kitz', 45, 0.55, 0.55, false, 1.7, 5.0, PAL_PALMBOCK), dropId: 'mampferkalb' };
+export const strandhuepfer = { ...hoppler, id: 'strandhuepfer', name: 'Strandhüpfer', build: () => buildHoppler(PAL_STRAND) };
+export const dschungelhuepfer = { ...hoppler, id: 'dschungelhuepfer', name: 'Dschungelhüpfer', build: () => buildHoppler(PAL_DSCHUNGEL) };

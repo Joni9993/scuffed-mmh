@@ -6,7 +6,7 @@ import { brathalos } from './brathalos.js'; // [M]
 import { gorgo } from './gorgo.js'; // [Gorgo]
 import { voltaro } from './voltaro.js'; // [V]
 import { dummy } from './dummy.js';
-import { mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbock, schlackkitz, schrottler } from './mampfer.js'; // [L]
+import { mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbock, schlackkitz, schrottler, palmbock, palmbockbulle, palmbockkitz, strandhuepfer, dschungelhuepfer } from './mampfer.js'; // [L]
 import { kroll } from './kroll.js'; // [Rostwerke]
 
 export const monsters = {
@@ -18,6 +18,7 @@ export const monsters = {
   brathalos, // [M]
   voltaro, // [V]
   mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbock, schlackkitz, schrottler, // [L] neutral fauna
+  palmbock, palmbockbulle, palmbockkitz, strandhuepfer, dschungelhuepfer, // Smaragdküste
   kroll, // [Rostwerke]
 };
 

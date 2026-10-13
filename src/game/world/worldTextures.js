@@ -44,6 +44,7 @@ export function registerWorldTextures() {
   });
   registerTexture('path', noise(['#7a6244', '#6a5238', '#8a7050', '#5a4430']));
   registerRostwerkeTextures();
+  registerSmaragdTextures();
 }
 
 // ---- Rostwerke: rust, slag, steel plates, toxic sludge
@@ -82,4 +83,28 @@ function registerRostwerkeTextures() {
     for (let y = 0; y < n; y += 4) { g.fillStyle = '#3e3e46'; g.fillRect(0, y, n, 1); }
     g.fillStyle = '#c8a028'; g.fillRect(0, 0, 2, n); g.fillRect(n - 2, 0, 2, n);
   });
+}
+
+// ---- Smaragdküste: Sand, Dschungelboden, Tempelstein, Meer
+function registerSmaragdTextures() {
+  // Zone 1: bright, almost white sand with shell specks
+  registerTexture('sand', (g, n, r) => { noise(['#f2e8c4', '#eadfb4', '#f8f0d4', '#e2d4a2'])(g, n, r); dots(g, n, r, ['#fffaf0', '#c8b488', '#f0b8a0'], 8); });
+  // Zone 2: lush undergrowth
+  registerTexture('jungle', (g, n, r) => { noise(['#3f8a2c', '#4a9a34', '#35781f', '#58a842'])(g, n, r); dots(g, n, r, ['#2a5a1c', '#8ac860', '#e8d050'], 12, 2, 1); });
+  // Zone 3: dark, mossy forest floor with roots
+  registerTexture('mossfloor', (g, n, r) => { noise(['#2c4a28', '#243e22', '#365a30', '#3a3020'])(g, n, r); dots(g, n, r, ['#1a2a16', '#5a8a40', '#4a3a24'], 14, 2, 1); });
+  // Zone 4: overgrown temple flagstones (moss in the joints)
+  registerTexture('templefloor', (g, n, r) => {
+    noise(['#7a8a82', '#6c7c74', '#88988e', '#5e6e66'])(g, n, r);
+    g.fillStyle = '#2e4a30'; g.fillRect(0, 0, n, 1); g.fillRect(0, n >> 1, n, 1); g.fillRect(0, 0, 1, n); g.fillRect(n >> 1, 0, 1, n);
+    dots(g, n, r, ['#4a7a3c', '#3a5a2e'], 8, 2, 1);
+  });
+  // cliffs: mossy grey rock / temple walls
+  registerTexture('mosswall', (g, n, r) => {
+    noise(['#6e7468', '#5e6458', '#7e8478', '#4c5448'])(g, n, r);
+    for (let y = 5; y < n; y += 9) { g.fillStyle = '#2c3a2a'; g.fillRect(0, y, n, 1); }
+    dots(g, n, r, ['#4a7a3a', '#5a8a44'], 10, 3, 2);
+  });
+  // sea: turquoise with white glints
+  registerTexture('seawater', (g, n, r) => { noise(['#2cc4c0', '#38d0cc', '#24b4b4', '#5ce0d8'])(g, n, r); dots(g, n, r, ['#e8fffc', '#a8f4ee'], 14, 3, 1); });
 }

@@ -13,8 +13,11 @@ const STEP = {
   slag: { color: '#6a5a50', n: 3, speed: 1.8, up: 0 },
   metal: { color: '#a89c90', n: 2, speed: 2.0, up: 0 },
   toxic: { color: '#8aff4a', n: 5, speed: 2.4, up: 1 },
+  sand: { color: '#f2e8c4', n: 4, speed: 1.9, up: 0 },
+  moss: { color: '#4a7a3a', n: 2, speed: 1.6, up: 0 },
+  stone: { color: '#9aaa9e', n: 3, speed: 1.9, up: 0 },
 };
-const STEP_SFX = { slag: 'rock', metal: 'rock', toxic: 'mud' }; // existing step sounds reused for the Rostwerke ground types
+const STEP_SFX = { slag: 'rock', metal: 'rock', toxic: 'mud', sand: 'grass', moss: 'grass', stone: 'rock' }; // existing step sounds reused for the Rostwerke ground types
 export const TOXIC_DELAY = 1.5; // standing in Giftschlamm this long -> Gift status
 
 export function createHazards(layout) {

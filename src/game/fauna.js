@@ -7,12 +7,13 @@ export const HERD_COUNT = 3, HOPPLER_GROUPS = [1, 1, 2, 4, 4];
 /** -> { herds:[Herd], groups:[Herd] }. Deterministic from the hunt seed. */
 export function spawnFauna(hunt) {
   const w = hunt.world, rng = createRng((hunt.seed ^ 0xfa07a) >>> 0), out = { herds: [], groups: [] };
-  const rost = w.id === 'rostwerke';
+  const smar = w.id === 'smaragdkueste', rost = w.id === 'rostwerke' || smar; // rost = herds graze around a free spot (no pastures)
   if ((w.id !== 'schotterklamm' && !rost) || !w.zones) return out;
-  const DEF = rost ? { bull: 'schlackbullbock', calf: 'schlackkitz', cow: 'schlackbock', small: 'schrottler' } : { bull: 'mampferbulle', calf: 'mampferkalb', cow: 'mampfer', small: 'hoppler' };
+  const DEF = smar ? { bull: 'palmbockbulle', calf: 'palmbockkitz', cow: 'palmbock', small: 'strandhuepfer' }
+    : rost ? { bull: 'schlackbullbock', calf: 'schlackkitz', cow: 'schlackbock', small: 'schrottler' } : { bull: 'mampferbulle', calf: 'mampferkalb', cow: 'mampfer', small: 'hoppler' };
   const L = w.layout, seed = () => rng.int(1, 1e9);
   const used = new Set();
-  (rost ? [1, 2, 1] : [1, 1, 3]).slice(0, HERD_COUNT).forEach((zone, hi) => {
+  (smar ? [2, 1, 2] : rost ? [1, 2, 1] : [1, 1, 3]).slice(0, HERD_COUNT).forEach((zone, hi) => {
     let pa;
     if (rost) { // no pastures: herd grazes around a free spot of its zone
       const zc = w.zones[zone - 1];
@@ -42,7 +43,7 @@ export function spawnFauna(hunt) {
     out.herds.push(herd);
   });
   const placed = [];
-  (rost ? [1, 1, 2, 4, 4] : HOPPLER_GROUPS).forEach((zone, gi) => {
+  (smar ? [1, 1, 2, 2, 3] : rost ? [1, 1, 2, 4, 4] : HOPPLER_GROUPS).forEach((zone, gi) => {
     const zc = w.zones[zone - 1];
     for (let t = 0; t < 80; t++) {
       const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 42, x = zc.x + Math.cos(a) * r, z = zc.z + Math.sin(a) * r;
@@ -53,7 +54,7 @@ export function spawnFauna(hunt) {
       const n = rng.int(3, 5);
       for (let i = 0; i < n; i++) {
         const b = rng() * 6.28, rr = 0.8 + rng() * 2.2;
-        herd.add(hunt.spawnMonster(DEF.small, { x: x + Math.cos(b) * rr, z: z + Math.sin(b) * rr, yaw: rng() * 6.28, state: 'graze', id: `hoppler-${gi}-${i}`, seed: seed() }));
+        herd.add(hunt.spawnMonster(smar && zone > 1 ? 'dschungelhuepfer' : DEF.small, { x: x + Math.cos(b) * rr, z: z + Math.sin(b) * rr, yaw: rng() * 6.28, state: 'graze', id: `hoppler-${gi}-${i}`, seed: seed() }));
       }
       out.groups.push(herd);
       break;

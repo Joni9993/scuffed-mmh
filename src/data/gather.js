@@ -54,6 +54,27 @@ export const GATHER_KINDS = {
     name: 'Funkenstein', world: 'rostwerke', zones: { 4: 3 }, uses: [1, 2], sparkle: '#a8e8ff',
     drops: [{ id: 'funkenstein', w: 100, n: [1, 1] }],
   },
+  // ---- Smaragdküste (world: 'smaragdkueste')
+  muschel: {
+    name: 'Muschelbank', world: 'smaragdkueste', zones: { 1: 8 }, uses: [1, 3], sparkle: '#ffd8e8',
+    drops: [{ id: 'muschel', w: 100, n: [1, 2] }],
+  },
+  kokosnuss: {
+    name: 'Kokosnüsse', world: 'smaragdkueste', zones: { 1: 4, 2: 4 }, uses: [1, 3], sparkle: '#e8c890',
+    drops: [{ id: 'kokosnuss', w: 100, n: [1, 2] }],
+  },
+  dschungelkraut: {
+    name: 'Dschungelkraut', world: 'smaragdkueste', zones: { 2: 6, 3: 3 }, uses: [1, 3], sparkle: '#9dffb0',
+    drops: [{ id: 'dschungelkraut', w: 100, n: [1, 2] }],
+  },
+  gluehpilz: {
+    name: 'Glühpilz', world: 'smaragdkueste', zones: { 3: 6 }, uses: [1, 2], sparkle: '#60ffd8',
+    drops: [{ id: 'gluehpilz', w: 100, n: [1, 1] }],
+  },
+  tempelstein: {
+    name: 'Tempelstein', world: 'smaragdkueste', zones: { 4: 4 }, uses: [1, 2], sparkle: '#58ffd0',
+    drops: [{ id: 'tempelstein', w: 100, n: [1, 1] }],
+  },
 };
 
 /** German display names of the gatherable materials (for floating pickup text). */
@@ -62,6 +83,7 @@ export const GATHER_ITEM_NAMES = {
   schrotterz: 'Schrotterz', glimmstein: 'Glimmstein', altknochen: 'Altknochen', grossknochen: 'Großknochen',
   brummkaefer: 'Brummkäfer', blitzkaefer: 'Blitzkäfer', glutbrocken: 'Glutbrocken', sprudelwasser: 'Sprudelwasser',
   kupferdraht: 'Kupferdraht', schlacke: 'Schlacke', rostkaefer: 'Rostkäfer', giftschlamm: 'Giftschlamm', funkenstein: 'Funkenstein',
+  muschel: 'Muschel', kokosnuss: 'Kokosnuss', dschungelkraut: 'Dschungelkraut', gluehpilz: 'Glühpilz', tempelstein: 'Tempelstein',
 };
 
 export const GATHER_TIME = 0.8; // seconds of holding the context button

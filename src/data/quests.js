@@ -81,11 +81,19 @@ Object.assign(quests, {
     desc: 'Voltaro, dauerwütend, 40 % mehr Leben.',
   },
 });
+// Smaragdküste-Auftrag: Sammelausflug an Strand und Dschungel.
+Object.assign(quests, {
+  inselausflug: {
+    id: 'inselausflug', name: 'Inselausflug', type: 'gather', monster: null, world: 'smaragdkueste', timeLimit: 15 * 60, reward: 300, rp: 25, jr: 3,
+    gather: { id: 'kokosnuss', n: 8 },
+    desc: 'Sammle 8 Kokosnüsse an der Smaragdküste und gib sie ab. Kein Brocken.',
+  },
+});
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
-QUEST_ORDER.push('kroll', 'gorgo', 'rostiger_ausflug', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut');
+QUEST_ORDER.push('kroll', 'gorgo', 'rostiger_ausflug', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug');
 
 export function getQuest(id) {
   const q = quests[id];

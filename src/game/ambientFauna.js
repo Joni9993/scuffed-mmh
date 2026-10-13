@@ -16,7 +16,7 @@ function wingGeo(w, l) { // flat V (two triangles angled up), flap = scale.y
 }
 
 export function createAmbientFauna(hunt) {
-  const w = hunt.world, L = w.layout, rost = w.id === 'rostwerke';
+  const w = hunt.world, L = w.layout, rost = w.id === 'rostwerke', smar = w.id === 'smaragdkueste';
   const group = new THREE.Group();
   group.name = 'ambient-fauna';
   if (!L) return { group, update() {}, dispose() {}, stats: {} };
@@ -45,17 +45,17 @@ export function createAmbientFauna(hunt) {
     }
     flocks.push(f);
   }
-  const birdMat = basic({ color: rost ? '#4a3a32' : '#2a2630', side: THREE.DoubleSide });
+  const birdMat = basic({ color: smar ? '#f4f2ea' : rost ? '#4a3a32' : '#2a2630', side: THREE.DoubleSide });
   const birds = new THREE.InstancedMesh(wingGeo(0.28, 0.38), birdMat, Math.max(1, flocks.length * PER_FLOCK));
   birds.frustumCulled = false; birds.count = 0;
   group.add(birds);
 
   // ---------------------------------------------------------------- flowers + butterflies (zone 1)
   const patches = [];
-  for (let i = 0; i < FLOWER_PATCHES; i++) { const s = spot(1, 16); if (s) patches.push({ ...s, y: w.heightAt(s.x, s.z) }); }
+  for (let i = 0; i < FLOWER_PATCHES; i++) { const s = spot(smar ? 2 : 1, 16); if (s) patches.push({ ...s, y: w.heightAt(s.x, s.z) }); }
   const fgeo = new THREE.PlaneGeometry(0.22, 0.22); fgeo.translate(0, 0.32, 0);
   const flowers = new THREE.InstancedMesh(fgeo, basic({ color: '#ffffff', side: THREE.DoubleSide }), Math.max(1, patches.length * FLOWERS));
-  const cols = rost ? ['#e8742a', '#c8501e', '#d8a040', '#8a8a90'] : ['#f2e26a', '#e07ab0', '#f4f0f0', '#ff8a5a']; // rost: Funkenfalter + Rostblüten
+  const cols = smar ? ['#ff5a7a', '#ffd24a', '#ff9a3a', '#f4f0f0'] : rost ? ['#e8742a', '#c8501e', '#d8a040', '#8a8a90'] : ['#f2e26a', '#e07ab0', '#f4f0f0', '#ff8a5a']; // rost: Funkenfalter + Rostblüten, smar: Hibiskus + Schmetterlinge
   let fi = 0;
   for (const p of patches) for (let k = 0; k < FLOWERS; k++) {
     const x = p.x + (rng() - 0.5) * 7, z = p.z + (rng() - 0.5) * 7;
@@ -80,7 +80,7 @@ export function createAmbientFauna(hunt) {
   const bugGeo = new THREE.BufferGeometry();
   bugGeo.setAttribute('position', new THREE.BufferAttribute(bugPos, 3));
   bugGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1e4);
-  const bugMat = new THREE.PointsMaterial({ color: rost ? '#ff9a3a' : '#d8ff60', size: 0.22, sizeAttenuation: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+  const bugMat = new THREE.PointsMaterial({ color: smar ? '#7affd8' : rost ? '#ff9a3a' : '#d8ff60', size: 0.22, sizeAttenuation: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
   const bugs = new THREE.Points(bugGeo, bugMat);
   bugs.frustumCulled = false;
   group.add(bugs);
