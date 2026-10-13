@@ -9,7 +9,7 @@ const R = Math.PI / 180;
  * Part ids: head, body, legs, tail. Every part owns its materials so it can flash / jitter on its own.
  * Pose keys: see MREST in monster.js.
  */
-export function buildRaptor({ scale = 1.3, skin = 'scale', crest = true, eye = '#ffe14d' } = {}) {
+export function buildRaptor({ scale = 1.3, skin = 'scale', belly = 'belly', crest = true, eye = '#ffe14d' } = {}) {
   const root = new THREE.Group();
   const g = new THREE.Group();
   g.scale.setScalar(scale);
@@ -34,7 +34,7 @@ export function buildRaptor({ scale = 1.3, skin = 'scale', crest = true, eye = '
   body.position.y = 1.6;
   g.add(body);
   add('body', 1, 1, 2, mat('body', skin), body, 0, 0, 0);
-  add('body', 0.8, 0.5, 1.4, mat('body', 'belly'), body, 0, -0.4, 0.1);
+  add('body', 0.8, 0.5, 1.4, mat('body', belly), body, 0, -0.4, 0.1);
   for (const sx of [1, -1]) add('body', 0.15, 0.5, 0.15, mat('body', skin), body, sx * 0.5, -0.1, 0.9, 0.9);
 
   const neck = new THREE.Group();
@@ -46,7 +46,7 @@ export function buildRaptor({ scale = 1.3, skin = 'scale', crest = true, eye = '
   head.position.set(0, 0.62, 0);
   neck.add(head);
   add('head', 0.6, 0.5, 1.0, mat('head', skin), head, 0, 0.05, 0.4);
-  add('head', 0.5, 0.18, 0.8, mat('head', 'belly'), head, 0, -0.25, 0.4, 0.2);
+  add('head', 0.5, 0.18, 0.8, mat('head', belly), head, 0, -0.25, 0.4, 0.2);
   const eyeM = basic({ color: eye });
   for (const sx of [1, -1]) add('head', 0.12, 0.12, 0.12, eyeM, head, sx * 0.31, 0.12, 0.5);
   let crestMesh = null, stump = null;

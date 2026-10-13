@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { make, DT } from './p3helpers.js';
 import { Player } from '../../src/game/player.js';
 import { monsters } from '../../src/game/monsters/index.js';
-import { blendax, BLENDAX } from '../../src/game/monsters/blendax.js';
+import { blendax, BLENDAX, buildBlendax } from '../../src/game/monsters/blendax.js';
 import { jaggo } from '../../src/game/monsters/jaggo.js';
 import { retune } from '../../src/game/monsters/common.js';
 import { MIN_TELEGRAPH, AttackInstance } from '../../src/game/monsters/attack.js';
@@ -68,12 +68,25 @@ describe('Blendax: Definition', () => {
   });
   it('Klone sind tiefe Kopien: Jaggo bleibt unverändert, Blendax ist härter und schneller', () => {
     expect(blendax.attacks.blendax_bissreihe.hits).not.toBe(jaggo.attacks.jaggo_bissreihe.hits);
-    expect(blendax.attacks.blendax_bissreihe.hits[0].dmg).toBe(17);
+    expect(blendax.attacks.blendax_bissreihe.hits[0].dmg).toBe(20); // 17 +20 %
     expect(jaggo.attacks.jaggo_bissreihe.hits[0].dmg).toBe(12);
     expect(blendax.attacks.blendax_bissreihe.tempo).toBeGreaterThan(jaggo.attacks.jaggo_bissreihe.tempo);
     const c = retune(jaggo.attacks.jaggo_huepfer, { id: 'x', dmg: 5, range: [1, 2] });
     expect(c.hits[0].dmg).toBe(5); expect(c.id).toBe('x'); expect(c.range).toEqual([1, 2]);
     expect(jaggo.attacks.jaggo_huepfer.range).toEqual([3.5, 10]);
+  });
+  it('Schaden: alle Treffer +20 % gegenüber den alten Werten (Blitz bleibt 0)', () => {
+    const A = blendax.attacks, dmgs = (id) => A[id].hits.map((h) => h.dmg);
+    expect(BLENDAX.DMG_MUL).toBe(1.2);
+    expect(dmgs('blendax_bissreihe')).toEqual([20, 20, 20]); expect(dmgs('blendax_huepfer')).toEqual([38]); expect(dmgs('blendax_schwanz')).toEqual([29]);
+    expect(dmgs('blendax_rueckhuepfer')).toEqual([29]); expect(dmgs('blendax_zickzack')).toEqual([18, 18, 18, 24]); expect(dmgs('blendax_hetzjagd')).toEqual([36, 29]);
+    expect([A.blendax_sprung, A.blendax_sprung2, A.blendax_sprung3].map((a) => a.hits[0].dmg)).toEqual([34, 34, 41]);
+    expect(dmgs('blendax_blitz')).toEqual([0]);
+  });
+  it('Körper gelbgrün: Haut- und Bauchfarbe im Gelbgrün-Bereich (Hue 70-100 Grad), Schirm bleibt Neongrün', () => {
+    const hue = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), d = mx - Math.min(r, g, b); return (mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60; };
+    for (const c of [BLENDAX.SKIN, BLENDAX.BELLY]) { expect(hue(c), c).toBeGreaterThan(70); expect(hue(c), c).toBeLessThan(100); }
+    expect(buildBlendax().extra.frillMat).toBeTruthy();
   });
   it('Blitz: 1 s Telegraph, dmg 0, kein Knockback, faceCheck 80, Status blend, gesperrt bei Schirmbruch', () => {
     const b = blendax.attacks.blendax_blitz;
@@ -166,7 +179,7 @@ describe('Blendax: Schirm, Schock, Nebel', () => {
   it('Kette: Blitz -> Sprung -> Sprung2 -> Sprung3 (3 Folgeglieder erlaubt), letzter Sprung wirft um', () => {
     expect(blendax.chainMax).toBe(3);
     expect(blendax.attacks.blendax_sprung3.hits[0].knock).toBe('down');
-    expect(blendax.attacks.blendax_sprung.hits[0].dmg).toBe(28);
+    expect(blendax.attacks.blendax_sprung.hits[0].dmg).toBe(34); // 28 +20 %
   });
 });
 

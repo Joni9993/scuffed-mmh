@@ -32,7 +32,10 @@ export const FOOD_IDS = Object.keys(FOODS);
 export const MAMPFAFFE = {
   BUFF: 40, BUFF_RAGE: 60, CD: 12, CD_RAGE: 6, HUNGER: 120, EAT_NEAR: 18, EAT_FAR: 40, EAT_DIST: 3.0, SAFE_DIST: 8,
   CLOUD_R: 5.5, CLOUD_SECS: 9, TP_MAX: 9, TP_LOCK: 5, DIZZY: 1.6, CRASH_STUN: 1.2, VERWIRRT: 3,
+  RAMPAGE: 15, TIRED: 5.5, TIRED_DMG: 1.3, FORAGE_MAX: 60, FORAGE_FAR: 260, RAMPAGE_SPEED: 1.3,
 };
+/** Affenwut: Wut (m.rage / Phase 2 / Rotglut) = Kette ohne Pause, dann ERSCHÖPFT, dann Futtersuche (auch in anderen Zonen), dann neue Kette mit neuem Futter-Status. */
+export const furious = (m) => m.rage || m.phase >= 1 || !!m.mm?.rageAlways;
 
 // ---- Texturen (16 px): braun-beiges Fell, dunkles Gesicht, heller Bauch, rosige Backen, Kokosschale, Fäuste
 registerTexture('mampfaffe_fur', (g, n, rnd) => {
@@ -282,24 +285,24 @@ function clearFood(m, why = 'ausgespuckt') {
 }
 
 // ---------------------------------------------------------------- Angriffe
-const TEMPO = 1.15;
+const TEMPO = 1.3;
 
 // ---- Fäuste (Lehrangriff): Ausfallschritt, linke Faust, rechte Faust, dann Doppel-Stampf
 const faeuste = {
-  id: 'mampfaffe_faeuste', range: [0, 5.5], weight: 4, cooldown: 2.5, telegraph: 0.6, flashParts: ['prankeL', 'prankeR'], duration: 2.2, tempo: TEMPO,
+  id: 'mampfaffe_faeuste', range: [0, 6.5], weight: 4, cooldown: 2.5, telegraph: 0.55, flashParts: ['prankeL', 'prankeR'], duration: 2.2, tempo: TEMPO,
   cue: cue('klick', NEON_HI), audit: [2.5, 4.5], stam: 8,
-  marker: ring(5.8), markerUntil: 0.75,
+  marker: ring(7), markerUntil: 0.75,
   hits: [
-    { t0: 0.72, t1: 0.84, shape: 'sphere', at: [0.9, 1.5, 3.3], radius: 1.35, dmg: 30, knock: 'flinch', side: 'L' },
-    { t0: 1.02, t1: 1.14, shape: 'sphere', at: [-0.9, 1.5, 3.3], radius: 1.35, dmg: 30, knock: 'flinch', side: 'R' },
-    { t0: 1.45, t1: 1.58, shape: 'sphere', at: [0, 0.6, 3.4], radius: 2.5, dmg: 36, knock: 'down' },
+    { t0: 0.72, t1: 0.86, shape: 'sphere', at: [1.0, 1.5, 3.6], radius: 2.0, dmg: 38, knock: 'flinch', side: 'L' },
+    { t0: 1.02, t1: 1.16, shape: 'sphere', at: [-1.0, 1.5, 3.6], radius: 2.0, dmg: 38, knock: 'flinch', side: 'R' },
+    { t0: 1.45, t1: 1.6, shape: 'sphere', at: [0, 0.6, 3.6], radius: 3.4, dmg: 46, knock: 'down' },
   ],
   motion(tau, a) {
-    const f = 1.5 * smooth(clamp01((tau - 0.5) / 0.35));
+    const f = 2.0 * smooth(clamp01((tau - 0.5) / 0.35));
     return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
   },
   pose: mTrack([
-    [0, { ...Z }], [0.3, { legL: -50, bodyPitch: -6, bodyRoll: 6, bodyY: 0.05 }], [0.6, { legL: -55, bodyPitch: -8, bodyRoll: 8 }],
+    [0, { ...Z }], [0.3, { legL: -50, bodyPitch: -6, bodyRoll: 6, bodyY: 0.05 }], [0.55, { legL: -55, bodyPitch: -8, bodyRoll: 8 }],
     [0.72, { legL: 85, legR: -35, bodyPitch: 10, bodyRoll: -6, head: 6 }, 'lin'], [0.86, { legL: 30, legR: -50, bodyPitch: 2, bodyRoll: 0 }],
     [0.95, { legR: -58, bodyRoll: -8 }], [1.02, { legR: 85, legL: -35, bodyPitch: 10, bodyRoll: 6 }, 'lin'], [1.18, { legR: 30, legL: 0, bodyRoll: 0, bodyPitch: 2 }],
     [1.3, { legL: -75, legR: -75, bodyPitch: -14, bodyY: 0.4, head: -15, wing: 0.3 }], [1.45, { legL: 90, legR: 90, bodyPitch: 16, bodyY: -0.3, head: 15, wing: 0.4 }, 'lin'],
@@ -309,22 +312,25 @@ const faeuste = {
 
 // ---- Grabbel: schneller Wischer, klaut ein Futter (nur die vier Sorten) aus dem Beutel
 const grabbel = {
-  id: 'mampfaffe_grabbel', range: [0, 4.5], weight: (m) => (m.extra.hungry ? 7 : 3), cooldown: 3, telegraph: 0.5, flashParts: ['prankeL'], duration: 1.3, tempo: TEMPO,
+  id: 'mampfaffe_grabbel', range: [0, 5.5], weight: (m) => (m.extra.hungry ? 7 : 3), cooldown: 3, telegraph: 0.5, flashParts: ['prankeL'], duration: 1.3, tempo: TEMPO,
   cue: cue('zisch', NEON_PEAK), audit: [2, 3.8], stam: 6,
   marker: ring(5), markerUntil: 0.65,
-  hits: [{ t0: 0.55, t1: 0.67, shape: 'sphere', at: [0, 1.4, 2.9], radius: 1.4, dmg: 14, knock: 'flinch', steal: true }],
+  hits: [{ t0: 0.55, t1: 0.67, shape: 'sphere', at: [0, 1.4, 3.2], radius: 1.9, dmg: 20, knock: 'flinch', steal: true }],
   pose: mTrack([
     [0, { ...Z }], [0.3, { legL: -60, bodyPitch: -5, bodyRoll: 8, head: -8, jaw: 12 }], [0.5, { legL: -65, bodyRoll: 10 }],
     [0.6, { legL: 90, bodyPitch: 12, bodyRoll: -8, jaw: 25 }, 'lin'], [0.85, { legL: 40, bodyPitch: 4, bodyRoll: 0, jaw: 0 }], [1.3, { ...Z }],
   ]),
 };
 
-// ---- Stampfer: Hocksprung auf der Stelle, Landung mit Schockwelle r 5
+// ---- Stampfer: Hocksprung auf der Stelle, Landung mit Schockwelle r 6,5 und einer zweiten, weiteren Welle (r 9,5)
 const stampfer = {
-  id: 'mampfaffe_stampfer', range: [0, 7], weight: 3, cooldown: 5, telegraph: 0.7, flashParts: ['legs'], duration: 2.2, tempo: TEMPO,
+  id: 'mampfaffe_stampfer', range: [0, 9], weight: 3, cooldown: 5, telegraph: 0.55, flashParts: ['legs'], duration: 2.2, tempo: TEMPO,
   cue: cue('brumm'), audit: [3, 5], stam: 10,
-  marker: ring(5), markerUntil: 1.45,
-  hits: [{ t0: 1.3, t1: 1.43, shape: 'sphere', at: [0, 0.5, 0], radius: 5.0, dmg: 32, knock: 'down' }],
+  marker: ring(6.6), markerUntil: 1.45,
+  hits: [
+    { t0: 1.3, t1: 1.43, shape: 'sphere', at: [0, 0.5, 0], radius: 6.5, dmg: 42, knock: 'down' },
+    { t0: 1.37, t1: 1.48, shape: 'sphere', at: [0, 0.5, 0], radius: 9.5, dmg: 22, knock: 'flinch' },
+  ],
   motion(tau) {
     const k = clamp01((tau - 0.78) / 0.52);
     return { air: 2.6 * 4 * k * (1 - k) };
@@ -336,13 +342,90 @@ const stampfer = {
   ]),
 };
 
+// ---- Erdschlag (Bodenstampfer): beide Fäuste hoch, Schlag vor die Füße (r 3,4) und eine Druckwelle um ihn (r 8)
+const erdschlag = {
+  id: 'mampfaffe_erdschlag', range: [0, 6], weight: 3, cooldown: 4, telegraph: 0.55, flashParts: ['prankeL', 'prankeR'], duration: 1.9, tempo: TEMPO,
+  cue: cue('brumm', NEON_PEAK), audit: [2.5, 5], stam: 10,
+  marker: ring(8.2), markerUntil: 1.0,
+  hits: [
+    { t0: 0.8, t1: 0.92, shape: 'sphere', at: [0, 0.6, 3.2], radius: 3.4, dmg: 44, knock: 'down' },
+    { t0: 0.86, t1: 0.98, shape: 'sphere', at: [0, 0.5, 0], radius: 8, dmg: 26, knock: 'flinch' },
+  ],
+  events: [{ t: 0.82, call: 'wumms', all: true }],
+  calls: {
+    wumms(m, ctx) {
+      const c = m.nodes.body.localToWorld(new THREE.Vector3(0, -1.2, 3.0));
+      ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
+      ctx.fx.shake?.(0.5, 0.35);
+      ctx.fx.spark(c, 26, NEON, 7); ctx.fx.spark(c, 12, NEON_PEAK, 5);
+    },
+  },
+  pose: mTrack([
+    [0, { ...Z }], [0.35, { legL: -70, legR: -70, bodyPitch: -10, bodyY: 0.2, wing: 0.2 }], [0.55, { legL: -110, legR: -110, bodyPitch: -20, bodyY: 0.5, head: -18, wing: 0.5 }],
+    [0.8, { legL: 100, legR: 100, bodyPitch: 20, bodyY: -0.5, head: 18, wing: 0 }, 'lin'], [1.1, { legL: 60, legR: 60, bodyPitch: 12, bodyY: -0.3 }], [1.9, { ...Z }],
+  ]),
+};
+
+// ---- Rundum (Wirbel-Schlag, 360 Grad): breitet die Arme aus und dreht sich zweimal, zwei Schläge r 6 rundherum, der zweite wirft um
+const rundum = {
+  id: 'mampfaffe_rundum', range: [0, 8], weight: 4, cooldown: 5, telegraph: 0.55, flashParts: ['prankeL', 'prankeR', 'body'], duration: 2.1, tempo: TEMPO,
+  cue: cue('droehn', NEON_HI), audit: [3, 6], stam: 12,
+  marker: ring(6.4), markerUntil: 1.2,
+  hits: [
+    { t0: 0.8, t1: 0.9, shape: 'sphere', at: [0, 1.2, 0], radius: 6, dmg: 36, knock: 'flinch' },
+    { t0: 0.88, t1: 0.98, shape: 'sphere', at: [0, 1.2, 0], radius: 6.3, dmg: 44, knock: 'down' },
+  ],
+  motion(tau, a) {
+    const k = smooth(clamp01((tau - 0.45) / 0.75)), f = 3.0 * smooth(clamp01((tau - 0.5) / 0.6));
+    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f, yaw: a.yaw0 + Math.PI * 4 * k }; // zwei volle Drehungen
+  },
+  pose: mTrack([
+    [0, { ...Z }], [0.3, { legL: 50, legR: -50, bodyPitch: -4, bodyRoll: 10, wing: -0.5, bodyY: -0.1 }], [0.55, { legL: 70, legR: 70, bodyPitch: 4, bodyRoll: 18, wing: -1, bodyY: -0.2 }],
+    [1.1, { legL: 70, legR: 70, bodyRoll: 22, wing: -1, bodyY: -0.15 }], [1.35, { legL: 40, legR: 40, bodyRoll: 8, wing: -0.4, bodyY: -0.3 }], [2.1, { ...Z }],
+  ]),
+};
+
+// ---- Sprungschlag (Gap-Closer): springt weit (bis 26 m) auf den Pirscher und kracht mit Wucht + Welle herunter
+const sprungschlag = {
+  id: 'mampfaffe_sprungschlag', range: [8, 26], weight: 5, cooldown: 5, telegraph: 0.6, flashParts: ['legs'], duration: 2.0, tempo: TEMPO,
+  cue: cue('schrill', NEON), audit: [10, 20], stam: 12,
+  marker: { at: 'landing', radius: 4.6, color: NEON, peak: NEON_PEAK }, markerUntil: 1.25,
+  prepare(a) {
+    const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1, len = Math.min(26, d);
+    a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
+    a.jumpYaw = yawOf(dx, dz);
+  },
+  hits: [
+    { t0: 1.1, t1: 1.22, shape: 'sphere', at: [0, 0.6, 0], radius: 4.6, dmg: 46, knock: 'down' },
+    { t0: 1.17, t1: 1.28, shape: 'sphere', at: [0, 0.6, 0], radius: 7, dmg: 24, knock: 'flinch' },
+  ],
+  events: [{ t: 1.1, call: 'bumm', all: true }],
+  calls: {
+    bumm(m, ctx) {
+      ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
+      ctx.fx.shake?.(0.6, 0.4);
+      const c = { x: m.pos.x, y: m.pos.y + 0.4, z: m.pos.z };
+      ctx.fx.spark(c, 30, NEON, 8); ctx.fx.spark(c, 14, NEON_PEAK, 6);
+    },
+  },
+  motion(tau, a) {
+    const k = clamp01((tau - 0.5) / 0.6);
+    return { x: a.origin.x + (a.landing.x - a.origin.x) * k, z: a.origin.z + (a.landing.z - a.origin.z) * k, yaw: a.jumpYaw, air: 6 * 4 * k * (1 - k) };
+  },
+  pose: mTrack([
+    [0, { ...Z }], [0.35, { legL: -60, legR: -60, bodyY: -0.5, bodyPitch: 8 }], [0.6, { legL: -100, legR: -100, bodyY: -0.6, bodyPitch: 10, wing: 0.2 }],
+    [0.8, { legL: -120, legR: -120, bodyY: 0.4, bodyPitch: -18, head: -15, wing: 0.5 }], [1.1, { legL: 100, legR: 100, bodyY: -0.4, bodyPitch: 18, head: 16, wing: 0 }, 'lin'],
+    [1.35, { legL: 50, legR: 50, bodyY: -0.2, bodyPitch: 8 }], [2.0, { ...Z }],
+  ]),
+};
+
 // ---- Rolle: rollt als Fellkugel 12 m gerade durch; Wand-Prall = 1,2 s benommen (Verhöhnung inklusive)
-const ROLL_LEN = 12;
+const ROLL_LEN = 14;
 const rolle = {
-  id: 'mampfaffe_rolle', range: [5, 16], weight: 3, cooldown: 7, telegraph: 0.7, flashParts: ['body'], duration: 2.6, tempo: TEMPO,
+  id: 'mampfaffe_rolle', range: [5, 18], weight: 3, cooldown: 7, telegraph: 0.6, flashParts: ['body'], duration: 2.6, tempo: TEMPO,
   cue: cue('droehn', NEON), audit: [9, 14], stam: 12,
   marker: { at: 'self', radius: 3.4, color: NEON, peak: NEON_PEAK }, markerUntil: 0.9,
-  hits: [{ t0: 0.85, t1: 1.7, shape: 'capsule', from: [0, 1.5, -0.8], to: [0, 1.5, 2.0], radius: 1.7, dmg: 30, knock: 'down' }],
+  hits: [{ t0: 0.85, t1: 1.7, shape: 'capsule', from: [0, 1.5, -0.8], to: [0, 1.5, 2.0], radius: 2.5, dmg: 40, knock: 'down' }],
   motion(tau, a) {
     const f = ROLL_LEN * smooth(clamp01((tau - 0.8) / 0.9));
     return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
@@ -396,6 +479,7 @@ const fressen = {
       ctx.world.setGatherState?.(pt.id, pt.usesLeft - 1);
       ctx.bus.emit('foodEaten', { pointId: pt.id, kind: pt.kind });
       setFood(m, pt.kind);
+      afterEat(m);
     },
   },
   pose: mTrack([
@@ -420,7 +504,7 @@ const kokosCall = (m, ctx, inst, age = 0) => {
     }
     const to = { x: tx, y: ctx.world.heightAt(tx, tz), z: tz };
     const dur = 1.0 + dist * 0.03 + i * 0.12;
-    m.projectiles.spawn({ ...kokosDef({ from, to, dur, arc: 6.5, dmg: 16, splash: 1.5, key: `${inst.key}:k${i}` }), attackId: inst.params.attackId }, age);
+    m.projectiles.spawn({ ...kokosDef({ from, to, dur, arc: 6.5, dmg: 22, splash: 2.0, key: `${inst.key}:k${i}` }), attackId: inst.params.attackId }, age);
   }
   ctx.bus.emit('sfx', { name: 'coconut', pos: from });
   ctx.fx.spark(from, 14, FOODS.kokosnuss.hi, 5);
@@ -439,11 +523,11 @@ const kokoswurf = {
 // ---- Feuerrülpser (Feuerpilz-Buff): Backen blähen sich rot auf, Kegel 8 m / 60 Grad vor dem Maul, Brennen
 const BURP_T = 1.0;
 const feuerruelpser = {
-  id: 'mampfaffe_feuerruelpser', range: [1.5, 10], weight: 6, cooldown: 6, telegraph: 0.9, flashParts: ['belly'], duration: 2.6, tempo: TEMPO, stam: 10,
+  id: 'mampfaffe_feuerruelpser', range: [1.5, 10], weight: 6, cooldown: 6, telegraph: 0.75, flashParts: ['belly'], duration: 2.6, tempo: TEMPO, stam: 10,
   cue: cue('droehn', FOODS.feuerpilz.color), audit: [3.5, 6],
   cond: (m) => hasBuff(m, 'feuerpilz'),
   marker: { at: 'self', radius: 8.4, color: FOODS.feuerpilz.color, peak: FOODS.feuerpilz.hi }, markerUntil: 1.2,
-  hits: [[2.5, 1.6, 1.0], [5.0, 2.2, 1.2], [7.5, 2.8, 1.4]].map(([z, r, t0]) => ({ t0, t1: t0 + 0.12, shape: 'sphere', at: [0, 1.5, z], radius: r, dmg: 20, knock: 'flinch', status: { type: 'burn' } })),
+  hits: [[2.5, 1.6, 1.0], [5.0, 2.2, 1.2], [7.5, 2.8, 1.4]].map(([z, r, t0]) => ({ t0, t1: t0 + 0.12, shape: 'sphere', at: [0, 1.5, z], radius: r + 0.6, dmg: 26, knock: 'flinch', status: { type: 'burn' } })),
   events: [{ t: 0.95, call: 'rulps', all: true }],
   calls: {
     rulps(m, ctx, inst, age = 0) {
@@ -492,7 +576,7 @@ const flimmersprung = {
   id: 'mampfaffe_flimmersprung', range: [3, 16], weight: 6, cooldown: 6, telegraph: 0.5, flashParts: ['legs'], duration: 2.0, tempo: TEMPO, stam: 8,
   cue: cue('schrill', NEON), audit: [4, 8],
   cond: (m) => hasBuff(m, 'glitchpilz') && !(m.extra.tpLock > 0),
-  marker: { at: 'landing', radius: 2.9, color: NEON, peak: NEON_PEAK }, markerUntil: 1.0,
+  marker: { at: 'landing', radius: 3.6, color: NEON, peak: NEON_PEAK }, markerUntil: 1.0,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
     const side = a.r(0) < 0.5 ? 1 : -1;
@@ -502,7 +586,7 @@ const flimmersprung = {
     a.landing = { x: a.origin.x + (tx / td) * len, z: a.origin.z + (tz / td) * len };
     a.landYaw = yawOf(a.target.x - a.landing.x, a.target.z - a.landing.z);
   },
-  hits: [{ t0: 0.85, t1: 0.97, shape: 'sphere', at: [0, 1.2, 0], radius: 2.4, dmg: 24, knock: 'down' }],
+  hits: [{ t0: 0.85, t1: 0.97, shape: 'sphere', at: [0, 1.2, 0], radius: 3.4, dmg: 34, knock: 'down' }],
   events: [{ t: TP_AT, call: 'tp', all: true }],
   calls: {
     tp(m, ctx) {
@@ -578,9 +662,18 @@ function visuals(m, dt) {
       }
     } else e.auraMat.opacity = 0;
   }
+  // ---- Affenwut / Erschöpfung (Hacker-Neongrün): Funkenregen, Fell flackert; erschöpft: grüner Dampf
+  if (m.alive && (e.fz === 'rampage' || e.fz === 'tired') && Math.random() < dt * (e.fz === 'rampage' ? 30 : 8)) {
+    const sx = (Math.random() - 0.5) * 4.5, sz = (Math.random() - 0.5) * 4.5;
+    ctx.fx.spark({ x: m.pos.x + sx, y: m.pos.y + (e.fz === 'rampage' ? 0.5 + Math.random() * 4 : 3.2), z: m.pos.z + sz }, 1, Math.random() < 0.5 ? NEON : NEON_PEAK, e.fz === 'rampage' ? 3 : 1.0);
+  }
+  if (m.attack?.id === 'mampfaffe_rundum' && m.alive) { // Wirbel: Neon-Funkenring auf Armlänge
+    const tau = m.attack.inst.sample(m.attack.t).tau;
+    if (tau > 0.7 && tau < 1.4) for (let i = 0; i < 4; i++) { const a = Math.random() * 6.283; ctx.fx.spark({ x: m.pos.x + Math.cos(a) * 5.2, y: m.pos.y + 1.2, z: m.pos.z + Math.sin(a) * 5.2 }, 1, i % 2 ? NEON : NEON_PEAK, 3); }
+  }
   // ---- Glitchpilz: Scanline-Versatz (Wurzelknoten springt seitlich), Teleport-Flackern
   const g = m.nodes.root;
-  if (food === 'glitchpilz' && m.alive && Math.floor(t * 12) % 4 === 0) g.position.x = (((Math.floor(t * 12) * 7919) % 11) / 11 - 0.5) * 0.4; else g.position.x = 0;
+  if ((food === 'glitchpilz' || e.fz === 'rampage') && m.alive && Math.floor(t * 12) % 4 === 0) g.position.x = (((Math.floor(t * 12) * 7919) % 11) / 11 - 0.5) * 0.4; else g.position.x = 0;
   let tpFlick = false;
   if (m.attack?.id === 'mampfaffe_flimmersprung') {
     const tau = m.attack.inst.sample(m.attack.t).tau;
@@ -654,6 +747,128 @@ function goEat(m, dt, maxD, calm) {
   return true;
 }
 
+// ---------------------------------------------------------------- Affenwut: Kette -> erschöpft -> Futtersuche (Zonenwechsel) -> neue Kette
+const BUFF_ATK = { kokosnuss: 'mampfaffe_kokoswurf', feuerpilz: 'mampfaffe_feuerruelpser', giftkraut: 'mampfaffe_stinkwolke', glitchpilz: 'mampfaffe_flimmersprung' };
+const FZ_CODE = ['calm', 'rampage', 'tired', 'forage'];
+const distTo = (m, t) => Math.hypot(t.pos.x - m.pos.x, t.pos.z - m.pos.z);
+const gfx = (m, n, col = NEON, sp = 6) => { const p = m.nodes.body.getWorldPosition(new THREE.Vector3()); p.y += 1.5; m.ctx.fx.spark(p, n, col, sp); return p; };
+
+function startRampage(m) {
+  const e = m.extra;
+  e.fz = 'rampage'; e.fzT = MAMPFAFFE.RAMPAGE * (m.mm?.rageAlways ? 1.2 : 1); e.last = null; e.links = 0;
+  m.queued = null; m.chainNext = null; m.recover = Math.min(m.recover, 0.2); m.stamina = 100;
+  const p = gfx(m, 40, NEON, 8); gfx(m, 20, NEON_PEAK, 6);
+  m.ctx.fx.number({ x: p.x, y: p.y + 1.6, z: p.z }, 'AFFENWUT!', 'mon');
+  m.ctx.hud?.center?.('AFFENWUT!', 1.6);
+  m.ctx.fx.shake?.(0.5, 0.5);
+  m.ctx.bus.emit('sfx', { name: 'roar', pos: m.pos });
+}
+function startTired(m) {
+  const e = m.extra;
+  e.fz = 'tired';
+  m._interrupt(); m.queued = null; m.chainNext = null;
+  m.tired = true; m.tiredT = MAMPFAFFE.TIRED; m.stamina = 0;
+  m.ctx.bus.emit('monsterTired', { monster: m, on: true });
+  const p = gfx(m, 24, NEON, 4);
+  m.ctx.fx.number({ x: p.x, y: p.y + 1.6, z: p.z }, 'ERSCHÖPFT!', 'weak');
+  m.ctx.hud?.center?.('ERSCHÖPFT! JETZT REINHALTEN!', 1.8);
+  m.ctx.bus.emit('sfx', { name: 'burp', pos: m.pos });
+}
+/** Nächste Futterstelle in IRGENDEINER Zone (andere Sorte als zuletzt bevorzugt, Strafe in Metern). */
+function pickForage(m) {
+  const pts = m.ctx.world?.gatherPoints;
+  if (!pts) return null;
+  const e = m.extra;
+  let best = null, bs = Infinity;
+  for (const pt of pts) {
+    if (!FOODS[pt.kind] || !(pt.usesLeft > 0)) continue;
+    const d = Math.hypot(pt.pos.x - m.pos.x, pt.pos.z - m.pos.z);
+    if (d > MAMPFAFFE.FORAGE_FAR) continue;
+    const sc = d + (pt.kind === e.lastFood || pt.kind === e.food ? 35 : 0);
+    if (sc < bs) { bs = sc; best = pt; }
+  }
+  return best;
+}
+function furyTick(m, dt) {
+  const e = m.extra;
+  e.fzCd = Math.max(0, e.fzCd - dt);
+  if (!m.alive || m.state === 'dead') return;
+  if (e.fz === 'calm') {
+    if (furious(m) && m.state === 'combat' && e.fzCd <= 0 && m.target?.alive && !(m.stunT > 0) && !(m.stagT > 0) && !m.fleeing) startRampage(m);
+  } else if (e.fz === 'rampage') {
+    e.fzT -= dt; m.stamina = Math.max(m.stamina, 50);
+    if (e.fzT <= 0 && !m.attack && m.state === 'combat') startTired(m);
+    else if (!m.target?.alive && m.state !== 'combat') e.fz = 'calm';
+  } else if (e.fz === 'tired') {
+    if (!m.tired && !(m.stunT > 0)) { // Atem zurück: auf Futtersuche
+      e.fz = 'forage'; e.fzT = 0; e.eatPt = null; e.eatT = 0;
+      m.ctx.hud?.center?.('MAMPFAFFE HAT HUNGER!', 1.4);
+    }
+  } else if (e.fz === 'forage') {
+    e.fzT += dt;
+    if (e.fzT > MAMPFAFFE.FORAGE_MAX) { e.fz = 'calm'; e.fzCd = 3; e.eatPt = null; }
+  }
+}
+/** Nach dem Fressen in der Futtersuche: neuer Status -> neue Kette. */
+function afterEat(m) {
+  const e = m.extra;
+  e.lastFood = e.food;
+  if (e.fz === 'forage') { if (furious(m)) startRampage(m); else { e.fz = 'calm'; e.fzCd = 3; } }
+}
+function rampageStep(m, dt) {
+  const e = m.extra, tgt = m.target;
+  m.chainNext = null; m.queued = null;
+  if (m.attack) { m.chain = null; return false; } // läuft normal weiter, kein Kettenwürfeln
+  if (m.recover > 0 || m.phaseT > 0 || !tgt) return false;
+  const dist = distTo(m, tgt), want = yawOf(tgt.pos.x - m.pos.x, tgt.pos.z - m.pos.z);
+  const diff = Math.abs(angleDiff(m.rot, want)), turn = m.def.turn ?? 1;
+  const A = m.def.attacks, bk = BUFF_ATK[e.food];
+  const opts = [];
+  const add = (id, w) => { const a = A[id]; if (a && id !== e.last && dist >= a.range[0] && dist <= a.range[1] && (!a.cond || a.cond(m, m.ctx)) && m._atkAllowed(a)) opts.push([id, w]); };
+  add('mampfaffe_sprungschlag', 6); add('mampfaffe_rolle', 2);
+  add('mampfaffe_rundum', 5); add('mampfaffe_faeuste', 4); add('mampfaffe_erdschlag', 4); add('mampfaffe_stampfer', 3); add('mampfaffe_grabbel', 1.5);
+  if (bk) add(bk, 4);
+  if (!opts.length) { m._navTo(dt, tgt.pos.x, tgt.pos.z, m.def.run, 3.2 * turn); return true; } // hinterher, nie Pause
+  if (diff > 0.45) { m._faceTarget(dt, 7 * turn); m._brake(dt); return true; }
+  if (m._aggroGate?.()) { m.recover = 0.2; return true; }
+  let r = m.rng() * opts.reduce((q, o) => q + o[1], 0), pick = opts[opts.length - 1][0];
+  for (const o of opts) { r -= o[1]; if (r <= 0) { pick = o[0]; break; } }
+  e.last = pick; e.links = (e.links ?? 0) + 1;
+  m.beginAttack(pick);
+  m.chain = null;
+  return true;
+}
+function forageStep(m, dt) {
+  const e = m.extra;
+  if (m.attack) { if (m.attack.inst.def.wanderAttack) { m._runAttack(dt); return true; } return false; }
+  if (m.stunT > 0 || m.stagT > 0) return false;
+  m.chainNext = null; m.queued = null;
+  if (e.eatPt && !(e.eatPt.usesLeft > 0)) e.eatPt = null;
+  if (!e.eatPt) {
+    e.eatPt = pickForage(m); e.eatT = 0;
+    if (!e.eatPt) { e.fz = 'calm'; e.fzCd = 3; return false; } // nichts mehr zu fressen: wütet ohne neuen Status weiter
+    const z = m.ctx.world.zoneAt?.(e.eatPt.pos.x, e.eatPt.pos.z), z0 = m.ctx.world.zoneAt?.(m.pos.x, m.pos.z);
+    if (z != null && z0 != null && z !== z0) { // Zonenwechsel: Futter ist woanders
+      e.zoneHops++;
+      const p = gfx(m, 30, NEON, 7);
+      m.ctx.fx.number({ x: p.x, y: p.y + 1.6, z: p.z }, 'REVIERWECHSEL!', 'mon');
+      m.ctx.bus.emit('mampfaffeZone', { monster: m, from: z0, to: z });
+    }
+  }
+  const pt = e.eatPt;
+  e.eatT += dt;
+  if (e.eatT > MAMPFAFFE.FORAGE_MAX) { e.eatPt = null; return false; }
+  const dx = pt.pos.x - m.pos.x, dz = pt.pos.z - m.pos.z, d = Math.hypot(dx, dz);
+  if (d <= MAMPFAFFE.EAT_DIST) {
+    const want = yawOf(dx, dz);
+    m.rot = stepAngle(m.rot, want, 4 * dt); m._brake(dt);
+    if (Math.abs(angleDiff(m.rot, want)) < 0.35) m.beginAttack('mampfaffe_fressen');
+    return true;
+  }
+  m._navTo(dt, pt.pos.x, pt.pos.z, m.def.run, 3.4 * (m.def.turn ?? 1));
+  return true;
+}
+
 function brain(m, dt) {
   const e = m.extra;
   e.foodCd = Math.max(0, e.foodCd - dt);
@@ -674,6 +889,7 @@ function brain(m, dt) {
     if (hungry && !e.hungry) { const p = mouthOf(m); m.ctx.fx.number({ x: p.x, y: p.y + 1.6, z: p.z }, 'KNURRRR!', 'mon'); m.ctx.bus.emit('sfx', { name: 'burp', pos: m.pos }); }
     e.hungry = hungry;
   }
+  furyTick(m, dt);
   // Wand-Prall der Rolle: weicht die Position nennenswert vom Plan ab, ist er gegen etwas geknallt
   if (m.attack?.id === 'mampfaffe_rolle') {
     const s = m.attack.inst.sample(m.attack.t);
@@ -720,10 +936,11 @@ export const mampfaffe = {
   ],
   attacks: {
     mampfaffe_faeuste: faeuste, mampfaffe_grabbel: grabbel, mampfaffe_stampfer: stampfer, mampfaffe_rolle: rolle, mampfaffe_brust: brust, mampfaffe_fressen: fressen,
+    mampfaffe_erdschlag: erdschlag, mampfaffe_rundum: rundum, mampfaffe_sprungschlag: sprungschlag,
     mampfaffe_kokoswurf: kokoswurf, mampfaffe_feuerruelpser: feuerruelpser, mampfaffe_stinkwolke: stinkwolke, mampfaffe_flimmersprung: flimmersprung,
   },
   teachAttack: 'mampfaffe_faeuste',
-  recoverAfter: (m) => (0.15 + m.rng() * 0.3) / m.speedMul,
+  recoverAfter: (m) => (m.extra.fz === 'rampage' ? 0.03 + m.rng() * 0.05 : (0.1 + m.rng() * 0.22) / m.speedMul), // Affenwut: kaum Atempause
   stamina: true,
   flinchDmg: 1050,
   phases: [{
@@ -732,31 +949,37 @@ export const mampfaffe = {
   }],
   chains: {
     mampfaffe_faeuste: [
-      { atk: 'mampfaffe_grabbel', w: 3 }, { atk: 'mampfaffe_stampfer', w: 3 },
+      { atk: 'mampfaffe_grabbel', w: 3 }, { atk: 'mampfaffe_stampfer', w: 3 }, { atk: 'mampfaffe_rundum', w: 3 }, { atk: 'mampfaffe_erdschlag', w: 3 },
       anyBuff('mampfaffe_kokoswurf'), anyBuff('mampfaffe_feuerruelpser'), anyBuff('mampfaffe_stinkwolke'), anyBuff('mampfaffe_flimmersprung'),
       { atk: null, w: 3 },
     ],
     mampfaffe_grabbel: [{ atk: 'mampfaffe_faeuste', w: 4 }, { atk: null, w: 2 }],
-    mampfaffe_rolle: [{ atk: 'mampfaffe_stampfer', w: 2 }, { atk: null, w: 3 }],
+    mampfaffe_rolle: [{ atk: 'mampfaffe_stampfer', w: 2 }, { atk: 'mampfaffe_sprungschlag', w: 2 }, { atk: null, w: 3 }],
+    mampfaffe_rundum: [{ atk: 'mampfaffe_erdschlag', w: 3 }, { atk: 'mampfaffe_faeuste', w: 2 }, { atk: null, w: 3 }],
+    mampfaffe_sprungschlag: [{ atk: 'mampfaffe_rundum', w: 4 }, { atk: 'mampfaffe_faeuste', w: 3 }, { atk: null, w: 2 }],
     mampfaffe_brust: [{ atk: 'mampfaffe_rolle', w: 2 }, { atk: 'mampfaffe_faeuste', w: 3 }],
   },
+  speedFactor: (m) => (m.extra.fz === 'rampage' ? MAMPFAFFE.RAMPAGE_SPEED : m.extra.fz === 'forage' ? 1.4 : 1),
   dmgFactor: (m) => (m.extra.hungry ? 1.1 : 1), // Knurrender Magen: +10 % Schaden
   hitDmgMul: (m, hit) => (hit.side && m.partById['pranke' + hit.side]?.broken ? 0.75 : 1), // Faustbruch: -25 % auf der Seite
-  partHpMul: (m, part) => (part.id === 'head' && m.extra.hard ? 0.5 : 1), // harter Schädel: Teil-HP-Schaden halbiert
+  partHpMul: (m, part) => (part.id === 'head' && m.extra.hard ? 0.5 : 1) * (m.extra.fz === 'tired' ? MAMPFAFFE.TIRED_DMG : 1), // erschöpft: Teile nehmen +30 % // harter Schädel: Teil-HP-Schaden halbiert
   build: () => buildMampfaffe({ scale: SC }),
   init(m) {
     Object.assign(m.extra, {
-      food: null, foodT: 0, foodCd: 3, noBuffT: 0, hungry: false, hungerScan: 2, eatPt: null, eatT: 0, scanT: 0.5, clouds: [], burpUntil: 0, tpLock: 0, crashT: 0, noteT: 0, hard: false, puffT: 0,
+      food: null, foodT: 0, foodCd: 3, noBuffT: 0, hungry: false, hungerScan: 2, eatPt: null, eatT: 0, scanT: 0.5, clouds: [], burpUntil: 0, tpLock: 0, crashT: 0, noteT: 0, hard: false, puffT: 0, fz: 'calm', fzT: 0, fzCd: 0, lastFood: null, zoneHops: 0, last: null, links: 0,
     });
   },
   // Im Wandern: Futter suchen und fressen (Angriff 'fressen' läuft hier)
   wander(m, dt) {
+    if (m.extra.fz === 'forage') return forageStep(m, dt);
     if (m.attack) { if (m.attack.inst.def.wanderAttack) { m._runAttack(dt); return true; } return false; }
     if (!canEat(m)) { m.extra.eatPt = null; return false; }
     return goEat(m, dt, MAMPFAFFE.EAT_FAR);
   },
   // Im Kampf: nur wenn der Pirscher > 8 m weg ist, in 18 m Umkreis
   combat(m, dt) {
+    if (m.extra.fz === 'rampage') return rampageStep(m, dt);
+    if (m.extra.fz === 'forage') return forageStep(m, dt);
     if (!canEat(m) || m.chainNext || m.queued || m.phaseT > 0 || m.recover > 0 || !m.target) { if (m.extra.eatPt && !m.attack) m.extra.eatPt = null; return false; }
     const far = Math.hypot(m.target.pos.x - m.pos.x, m.target.pos.z - m.pos.z) > MAMPFAFFE.SAFE_DIST;
     return goEat(m, dt, MAMPFAFFE.EAT_NEAR, far);
@@ -767,6 +990,7 @@ export const mampfaffe = {
   },
   glow(m) {
     const f = m.extra.food;
+    if (m.extra.fz === 'rampage' && !f) return Math.floor(m.time * 14) % 2 ? NEON_GLOW : null;
     if (!f) return m.extra.tpFlick ? NEON_GLOW : null;
     const c = FOODS[f].glow, t = m.time;
     let k = 0.82 + 0.18 * Math.sin(t * 5);
@@ -825,12 +1049,13 @@ export const mampfaffe = {
       m.ctx.fx.number({ x: p.x, y: p.y + 1.2, z: p.z }, 'AUTSCH!', 'weak');
     }
   },
-  snapExtra: (m) => ({ f: m.extra.food || 0, t: Math.round(m.extra.foodT || 0), h: m.extra.hungry ? 1 : 0 }),
+  snapExtra: (m) => ({ f: m.extra.food || 0, t: Math.round(m.extra.foodT || 0), h: m.extra.hungry ? 1 : 0, w: Math.max(0, FZ_CODE.indexOf(m.extra.fz)) }),
   applySnapExtra(m, ex) {
     const e = m.extra, f = ex.f || null;
     if (f !== (e.food || null)) { e.food = f; applyFoodState(m, f); if (f) foodFx(m, f); }
     e.foodT = ex.t ?? 0;
     e.hungry = !!ex.h;
+    e.fz = FZ_CODE[ex.w || 0] ?? 'calm';
   },
   // Perfekt ausgewichen (Glitch-Konter auf das Brusttrommeln): er verschluckt sich und taumelt
   onGlitchCounter(m, attackId) {

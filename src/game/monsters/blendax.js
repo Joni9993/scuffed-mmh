@@ -19,18 +19,26 @@ const cue = (tone, color = NEON) => ({ color, tone, noShift: true }); // noShift
 const ring = (radius) => ({ at: 'self', radius, color: NEON, peak: NEON_PEAK });
 
 export const BLENDAX = {
-  BLITZ_CD: 14, BLITZ_CD_FOG: 9, FURY: 25, SHORT: 6, DIZZY: 1.8, FACE_DEG: 80, FOG_ZONE: 3,
+  BLITZ_CD: 14, BLITZ_CD_FOG: 9, FURY: 25, SHORT: 6, DIZZY: 1.8, FACE_DEG: 80, FOG_ZONE: 3, DMG_MUL: 1.2, SKIN: '#8fcf1e', BELLY: '#d6f26a', // DMG_MUL: alle Blendax-Treffer +20 %
 };
+const dm = (d) => (Array.isArray(d) ? d.map(dm) : Math.round(d * BLENDAX.DMG_MUL));
 
-// ---- Texturen: Haut ziegelrot/orange mit blauem Rücken, Schirm = kaputtes Testbild (nur Schwarz/Weiß/Grüntöne)
+// ---- Texturen: Haut gelbgrün (Neon-Akzente des Schirms), dunkle Zeichnung hält sie lesbar; Schirm = kaputtes Testbild (nur Schwarz/Weiß/Grüntöne)
 registerTexture('blendax_scale', (g, n, rnd) => {
-  g.fillStyle = '#c0452a'; g.fillRect(0, 0, n, n);
-  g.fillStyle = '#e8873a';
+  g.fillStyle = BLENDAX.SKIN; g.fillRect(0, 0, n, n);
+  g.fillStyle = '#c4f03c';
   for (let i = 0; i < n * 2; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1);
-  g.fillStyle = '#7a2418';
+  g.fillStyle = '#3f7a0c';
   for (let y = 2; y < n; y += 4) g.fillRect(0, y, n, 1);
-  g.fillStyle = '#2f5fd0'; // blauer Rückenstreifen
+  g.fillStyle = '#18480e'; // dunkler Rückenstreifen (Kontrast zum Gelbgrün)
   g.fillRect(0, 0, n, 3);
+});
+registerTexture('blendax_belly', (g, n, rnd) => {
+  g.fillStyle = BLENDAX.BELLY; g.fillRect(0, 0, n, n);
+  g.fillStyle = '#b4dc3a';
+  for (let y = 1; y < n; y += 3) g.fillRect(0, y, n, 1);
+  g.fillStyle = '#f0ffa0';
+  for (let i = 0; i < n; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1);
 });
 registerTexture('blendax_frill', (g, n, rnd) => {
   g.fillStyle = '#05100a'; g.fillRect(0, 0, n, n);
@@ -52,7 +60,7 @@ registerTexture('blendax_frill', (g, n, rnd) => {
  * immer lesbar), spread (0..1) klappt ihn auf, ein additiver Halo dahinter pulsiert während des Blitzes.
  */
 export function buildBlendax({ scale = SC } = {}) {
-  const b = buildRaptor({ scale, skin: 'blendax_scale', crest: true, eye: '#ffe14d' });
+  const b = buildRaptor({ scale, skin: 'blendax_scale', belly: 'blendax_belly', crest: true, eye: '#ffe14d' });
   const crest = b.extra.crest;
   const frillMat = basic({ map: tex('blendax_frill', { size: 32 }), side: THREE.DoubleSide, fog: false });
   crest.material = frillMat;
@@ -80,10 +88,10 @@ const J = jaggo.attacks;
 const TEMPO = 1.3;
 
 // Klone von Jaggo (nach dessen +25-%-Tempo-/+20-%-Größen-Block): härter, schneller, neongrüne Telegraph-Ringe
-const bissreihe = retune(J.jaggo_bissreihe, { id: 'blendax_bissreihe', dmg: 17, tempo: TEMPO, cue: cue('klick', NEON_HI), audit: [2.5, 4.5], marker: ring(6), markerUntil: 0.75 });
+const bissreihe = retune(J.jaggo_bissreihe, { id: 'blendax_bissreihe', dmg: dm(17), tempo: TEMPO, cue: cue('klick', NEON_HI), audit: [2.5, 4.5], marker: ring(6), markerUntil: 0.75 });
 bissreihe.weight = (m) => (m.partById.head?.broken ? 6 : 4);
 
-const huepfer = retune(J.jaggo_huepfer, { id: 'blendax_huepfer', dmg: 32, tempo: TEMPO, cue: cue('brumm'), range: [3.5, 12], audit: [5, 9], marker: { at: 'landing', radius: 3.6, color: NEON, peak: NEON_PEAK } });
+const huepfer = retune(J.jaggo_huepfer, { id: 'blendax_huepfer', dmg: dm(32), tempo: TEMPO, cue: cue('brumm'), range: [3.5, 12], audit: [5, 9], marker: { at: 'landing', radius: 3.6, color: NEON, peak: NEON_PEAK } });
 huepfer.prepare = (a) => {
   const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
   const len = Math.min(12, Math.max(3, d));
@@ -91,11 +99,11 @@ huepfer.prepare = (a) => {
   a.jumpYaw = yawOf(dx, dz);
 };
 
-const schwanz = retune(J.jaggo_schwanz, { id: 'blendax_schwanz', dmg: 24, tempo: TEMPO, cue: cue('zisch', NEON_PEAK), audit: [1.5, 4], marker: ring(7.2), markerUntil: 0.8 });
-const rueckhuepfer = retune(J.jaggo_rueckhuepfer, { id: 'blendax_rueckhuepfer', dmg: 24, tempo: TEMPO, cue: cue('knurr'), audit: [1.5, 3.5], marker: ring(7.5), markerUntil: 0.75 });
-const zickzack = retune(J.jaggo_zickzack, { id: 'blendax_zickzack', dmg: [15, 15, 15, 20], tempo: TEMPO, cue: cue('schrill', NEON_HI), audit: [3, 6], marker: ring(7), markerUntil: 0.85 });
+const schwanz = retune(J.jaggo_schwanz, { id: 'blendax_schwanz', dmg: dm(24), tempo: TEMPO, cue: cue('zisch', NEON_PEAK), audit: [1.5, 4], marker: ring(7.2), markerUntil: 0.8 });
+const rueckhuepfer = retune(J.jaggo_rueckhuepfer, { id: 'blendax_rueckhuepfer', dmg: dm(24), tempo: TEMPO, cue: cue('knurr'), audit: [1.5, 3.5], marker: ring(7.5), markerUntil: 0.75 });
+const zickzack = retune(J.jaggo_zickzack, { id: 'blendax_zickzack', dmg: dm([15, 15, 15, 20]), tempo: TEMPO, cue: cue('schrill', NEON_HI), audit: [3, 6], marker: ring(7), markerUntil: 0.85 });
 zickzack.weight = (m) => (m.partById.tail?.broken ? 6 : m.partById.frill?.broken ? 5 : 3);
-const hetzjagd = retune(J.jaggo_hetzjagd, { id: 'blendax_hetzjagd', dmg: [30, 24], tempo: TEMPO, cue: cue('droehn', NEON_PEAK), audit: [8, 14], marker: { at: 'landing', radius: 2.6, color: NEON, peak: NEON_PEAK } });
+const hetzjagd = retune(J.jaggo_hetzjagd, { id: 'blendax_hetzjagd', dmg: dm([30, 24]), tempo: TEMPO, cue: cue('droehn', NEON_PEAK), audit: [8, 14], marker: { at: 'landing', radius: 2.6, color: NEON, peak: NEON_PEAK } });
 
 // ---- Blitz: Schirm klappt auf (0,3 s), flackert 24 Hz; bei t = 1,0 s blendet er alle, die ihn ansehen (Kamera zeigt zu Blendax, ±80 Grad).
 const facing = (m, p, deg) => Math.abs(angleDiff(m.ctx.cameraYaw ?? p.rot, yawOf(m.pos.x - p.pos.x, m.pos.z - p.pos.z))) <= deg * R;
@@ -124,7 +132,7 @@ const blitz = {
 
 // ---- Sprungkette: je Sprung neues Ziel = Position des Pirschers beim Start (Landemarker zeigt wohin). 3 Glieder, das letzte wirft um.
 function sprung(i) {
-  const tg = [0.55, 0.5, 0.5][i], dur = [1.4, 1.35, 1.5][i], dmg = [28, 28, 34][i], land = tg + 0.45;
+  const tg = [0.55, 0.5, 0.5][i], dur = [1.4, 1.35, 1.5][i], dmg = dm([28, 28, 34][i]), land = tg + 0.45;
   return {
     id: i === 0 ? 'blendax_sprung' : `blendax_sprung${i + 1}`, internal: true, range: [2.5, 30], weight: 1, cooldown: 0, telegraph: tg, flashParts: ['legs'], duration: dur,
     cue: cue(['klick', 'zisch', 'knurr'][i], [NEON, NEON_HI, NEON_PEAK][i]), audit: [5, 9], stam: 8,

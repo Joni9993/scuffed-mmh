@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { make, DT } from './p3helpers.js';
 import { monsters } from '../../src/game/monsters/index.js';
 import { mampfaffe, MAMPFAFFE, FOODS, FOOD_IDS, setFood, stealFromPouch } from '../../src/game/monsters/mampfaffe.js';
-import { MIN_TELEGRAPH } from '../../src/game/monsters/attack.js';
+import { MIN_TELEGRAPH, AttackInstance } from '../../src/game/monsters/attack.js';
 import { pickTone } from '../../src/game/cues.js';
 import { time } from '../../src/core/time.js';
 import { HuntInventory } from '../../src/game/inventory.js';
@@ -73,19 +73,21 @@ describe('Mampfaffe: Definition', () => {
     expect(mampfaffe.attacks[mampfaffe.phases[0].special]).toBeTruthy();
     expect(pickTone('mampfaffe_faeuste', mampfaffe.attacks.mampfaffe_faeuste.cue, 3).color).toBe('#7dff3a');
   });
-  it('Grundangriffe nach Spec: Treffer 14-44, Fäuste 30/30/36, Brust dmg 0 + pin, Stampfer r 5', () => {
+  it('Grundangriffe (verschärft): Treffer bis 48, Fäuste 38/38/46 mit großen Hitboxen, Brust dmg 0 + pin, Stampfer r 6,5 + Welle', () => {
     const A = mampfaffe.attacks;
-    expect(A.mampfaffe_faeuste.hits.map((h) => h.dmg)).toEqual([30, 30, 36]);
+    expect(A.mampfaffe_faeuste.hits.map((h) => h.dmg)).toEqual([38, 38, 46]);
+    expect(A.mampfaffe_faeuste.hits.every((h) => h.radius >= 2.0)).toBe(true);
     expect(A.mampfaffe_faeuste.hits[2].knock).toBe('down');
-    expect(A.mampfaffe_grabbel.hits[0]).toMatchObject({ dmg: 14, steal: true });
-    expect(A.mampfaffe_stampfer.hits[0]).toMatchObject({ radius: 5, dmg: 32, knock: 'down' });
-    expect(A.mampfaffe_rolle.hits[0]).toMatchObject({ dmg: 30, radius: 1.7 });
+    expect(A.mampfaffe_grabbel.hits[0]).toMatchObject({ dmg: 20, steal: true });
+    expect(A.mampfaffe_stampfer.hits[0]).toMatchObject({ radius: 6.5, dmg: 42, knock: 'down' });
+    expect(A.mampfaffe_stampfer.hits[1].radius).toBe(9.5);
+    expect(A.mampfaffe_rolle.hits[0]).toMatchObject({ dmg: 40, radius: 2.5 });
     expect(A.mampfaffe_brust.hits[0]).toMatchObject({ dmg: 0, knock: 'pin' });
-    expect(A.mampfaffe_feuerruelpser.telegraph).toBeCloseTo(0.9, 5);
-    expect(A.mampfaffe_feuerruelpser.hits.every((h) => h.dmg === 20 && h.status?.type === 'burn')).toBe(true);
-    expect(A.mampfaffe_flimmersprung.hits[0]).toMatchObject({ radius: 2.4, dmg: 24, knock: 'down' });
+    expect(A.mampfaffe_feuerruelpser.telegraph).toBeCloseTo(0.75, 5);
+    expect(A.mampfaffe_feuerruelpser.hits.every((h) => h.dmg === 26 && h.status?.type === 'burn')).toBe(true);
+    expect(A.mampfaffe_flimmersprung.hits[0]).toMatchObject({ radius: 3.4, dmg: 34, knock: 'down' });
     const max = Math.max(...Object.values(A).flatMap((a) => (a.hits ?? []).map((h) => h.dmg)));
-    expect(max).toBeLessThanOrEqual(44);
+    expect(max).toBeLessThanOrEqual(48);
   });
 });
 
@@ -407,9 +409,9 @@ describe('Angriffe im Einzelnen', () => {
     const jets = [];
     ctx.fx.jet = (...a) => jets.push(a);
     m.beginAttack('mampfaffe_feuerruelpser', { tgMul: 1 });
-    run(m, ctx, 0.8);
+    run(m, ctx, 0.6);
     expect(jets.length).toBe(0);
-    run(m, ctx, 1.0);
+    run(m, ctx, 1.2);
     expect(jets.length).toBeGreaterThan(3);
     expect(p.status.burn).toBeTruthy();
     expect(p.v.hp).toBeLessThan(p.v.maxHp);
@@ -432,17 +434,17 @@ describe('Angriffe im Einzelnen', () => {
     run(m, ctx, 10);
     expect(m.extra.clouds.length).toBe(0);
   });
-  it('Flimmersprung: Teleport an die Landemarke (<= 9 m), Mesh flackert vorher, Treffer r 2,4 mit down, Verwirrung durch den Treffer', () => {
+  it('Flimmersprung: Teleport an die Landemarke (<= 9 m), Mesh flackert vorher, Treffer r 3,4 mit down, Verwirrung durch den Treffer', () => {
     const { ctx, m, p } = fresh(14);
     setFood(m, 'glitchpilz');
     const start = { x: m.pos.x, z: m.pos.z };
     const inst = m.beginAttack('mampfaffe_flimmersprung', { tgMul: 1 });
     expect(Math.hypot(inst.landing.x - start.x, inst.landing.z - start.z)).toBeLessThanOrEqual(MAMPFAFFE.TP_MAX + 1e-6);
     let flick = false;
-    run(m, ctx, 0.75, () => { if (!m.mesh.visible) flick = true; });
+    run(m, ctx, 0.6, () => { if (!m.mesh.visible) flick = true; });
     expect(flick).toBe(true);
     expect(Math.hypot(m.pos.x - start.x, m.pos.z - start.z)).toBeLessThan(0.1);
-    run(m, ctx, 0.2);
+    run(m, ctx, 0.35);
     expect(Math.hypot(m.pos.x - inst.landing.x, m.pos.z - inst.landing.z)).toBeLessThan(0.1);
     void p;
   });
@@ -461,7 +463,7 @@ describe('Angriffe im Einzelnen', () => {
     run(m, ctx, 1.1);
     expect(m.projectiles.list.length).toBe(3);
     expect(m.projectiles.list[0].def.kind).toBe('kokos');
-    expect(m.projectiles.list[0].def.dmg).toBe(16);
+    expect(m.projectiles.list[0].def.dmg).toBe(22);
   });
   it('Rolle: 12 m geradeaus; Wand-Prall = 1,2 s benommen', () => {
     const { ctx, m } = fresh(14);
@@ -559,5 +561,78 @@ describe('Mampfaffe: Welt, Daten, Fortschritt', () => {
     const { p } = make(def, 'combat', 0, 9);
     p.addStatus('verwirrt'); p.addStatus('itemlock');
     expect(p.snapshot().status).toEqual(expect.arrayContaining(['verwirrt', 'itemlock']));
+  });
+});
+
+describe('Mampfaffe: wilder Gorilla (Affenwut)', () => {
+  const A = mampfaffe.attacks;
+  const raging = (dist = 6, specs = []) => {
+    const s = make(def, 'combat', 0, dist);
+    s.m._taught = true; s.m.recover = 0; s.p.god = true;
+    s.pts = foodWorld(s.ctx, specs);
+    s.m.rage = true; s.m.rageT = 1e9;
+    return s;
+  };
+  it('neue Schlag-Angriffe: Rundum (360 Grad, zwei Drehungen), Sprungschlag (Gap-Closer), Erdschlag; Kette ohne Pause', () => {
+    for (const id of ['mampfaffe_rundum', 'mampfaffe_sprungschlag', 'mampfaffe_erdschlag']) {
+      expect(A[id], id).toBeTruthy();
+      expect(A[id].audit.length).toBeGreaterThan(0);
+      expect(A[id].hits.some((h) => h.dmg >= 36 && h.knock === 'down'), id).toBe(true);
+    }
+    expect(A.mampfaffe_rundum.hits.every((h) => h.radius >= 6)).toBe(true);
+    expect(A.mampfaffe_sprungschlag.range[0]).toBeGreaterThanOrEqual(8); expect(A.mampfaffe_sprungschlag.range[1]).toBeGreaterThanOrEqual(24);
+    const ins = new AttackInstance(A.mampfaffe_rundum, { attackId: 'x', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, seed: 1 });
+    expect(ins.sample(ins.duration).yaw).toBeCloseTo(Math.PI * 4, 3); // 2 volle Drehungen
+    const leap = new AttackInstance(A.mampfaffe_sprungschlag, { attackId: 'x', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 20 }, seed: 1 });
+    const s = leap.sample(leap.duration);
+    expect(s.z).toBeCloseTo(20, 1); // landet auf dem Pirscher
+  });
+  it('Wut startet Affenwut: Angriffskette ohne Atempause, schneller; nur Neongrün', () => {
+    const { ctx, m, p } = raging(6);
+    const ids = [], nums = [];
+    ctx.fx.number = (_p, t) => nums.push(t);
+    run(m, ctx, 0.5);
+    expect(m.extra.fz).toBe('rampage');
+    expect(nums).toContain('AFFENWUT!');
+    expect(m.speedMul).toBeGreaterThan(1.5);
+    let gaps = 0, idle = 0;
+    run(m, ctx, 10, () => { p.pos.set(0, 0, 6); if (m.attack) { ids.push(m.attack.id); idle = 0; } else if (++idle > 0.3 / DT) gaps++; });
+    expect(new Set(ids).size).toBeGreaterThanOrEqual(3);
+    expect(gaps).toBe(0); // nie 0,3 s ohne Angriff
+  });
+  it('Zyklus: Kette -> ERSCHÖPFT (tired, Teile +30 %) -> Futtersuche -> frisst -> neue Kette mit neuem Status', () => {
+    const { ctx, m, p } = raging(6, [['feuerpilz', 20, 0, 1], ['giftkraut', -20, 0, 1]]);
+    setFood(m, 'kokosnuss');
+    const seen = [];
+    let tiredSeen = false, boost = 0;
+    run(m, ctx, 60, () => { p.pos.set(0, 0, 40); if (!seen.length || seen.at(-1) !== m.extra.fz) seen.push(m.extra.fz); if (m.tired && m.extra.fz === 'tired') { tiredSeen = true; boost = mampfaffe.partHpMul(m, m.partById.body); } });
+    expect(seen.slice(0, 4)).toEqual(['calm', 'rampage', 'tired', 'forage']);
+    expect(tiredSeen).toBe(true);
+    expect(boost).toBeCloseTo(MAMPFAFFE.TIRED_DMG, 5);
+    expect(['feuerpilz', 'giftkraut']).toContain(m.extra.food);
+    expect(m.extra.food).not.toBe('kokosnuss');
+    expect(seen.filter((z) => z === 'rampage').length).toBeGreaterThanOrEqual(2); // nach dem Fressen wieder Kette
+  });
+  it('Zonenwechsel: Futter nur in Zone 3 -> er wandert hin (Revierwechsel), Futter-KI im Wandern bleibt auf Zone 1+2', () => {
+    const { ctx, m, p } = raging(6, [['glitchpilz', 60, 0, 3]]);
+    ctx.world.zoneAt = (x) => (x > 40 ? 3 : 1);
+    const zones = [];
+    ctx.bus.on('mampfaffeZone', (e) => zones.push(e));
+    m.extra.fz = 'forage';
+    let maxX = -99;
+    run(m, ctx, 30, () => { p.pos.set(-20, 0, 0); maxX = Math.max(maxX, m.pos.x); });
+    expect(zones.length).toBeGreaterThanOrEqual(1);
+    expect(zones[0]).toMatchObject({ from: 1, to: 3 });
+    expect(m.extra.food).toBe('glitchpilz');
+    expect(maxX).toBeGreaterThan(55); // stand am Pilz in Zone 3, bevor die nächste Kette ihn zurückjagt
+  });
+  it('Gäste sehen die Wut-Phase (snapExtra w)', () => {
+    const { m } = wandering();
+    m.extra.fz = 'tired';
+    const ex = mampfaffe.snapExtra(m);
+    expect(ex.w).toBe(2);
+    const g = wandering(); g.m.authority = false;
+    mampfaffe.applySnapExtra(g.m, ex);
+    expect(g.m.extra.fz).toBe('tired');
   });
 });
