@@ -45,11 +45,6 @@ export function kokosDef({ from, to, dur = 1.1, arc = 6, splash = 1.4, dmg = 16,
   return { kind: 'kokos', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.5, splash, hold: 0.2, dmg, knock: 'flinch', key };
 }
 
-/** Krachfaust-Schleimball: hoher Bogen, Aufschlag-Marker in Neongruen, Splash-Treffer; der Aufschlag hinterlaesst eine Schleim-Pfuetze (macht der Angriff selbst). */
-export function slimeDef({ from, to, dur = 1.0, arc = 5, splash = 1.4, dmg = 20, key }) {
-  return { kind: 'slime', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.5, splash, hold: 0.2, dmg, knock: 'flinch', key };
-}
-
 const geoBox = new THREE.BoxGeometry(1, 1, 1);
 const mats = {};
 const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : '#5a3e22' }));
@@ -88,7 +83,7 @@ export class ProjectileSet {
       }
       if (def.kind === 'fire' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#ff8a20' : '#ffd060', 1.2);
       if (def.mode === 'impact') {
-        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' ? '#ff2a2a' : def.kind === 'slime' ? '#39ff14' : '#b06a20';
+        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' ? '#ff2a2a' : def.kind === 'slime' ? '#ff2a2a' : '#b06a20';
         const mr = def.kind === 'kokos' ? def.splash + 0.4 : def.splash; // Kokos: Marker = echte Reichweite (Splash + Pirscher-Radius 0,4)
         if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, false);
         else if (!pr.landed) {

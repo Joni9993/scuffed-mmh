@@ -558,7 +558,7 @@ const krachfaust = {
     const { torso } = c.P, k = c.k;
     torso.box(0.9, 0.7, 0.54, KF[0], { y: 0.52 });
     for (let i = 0; i < 4; i++) torso.box(0.92, 0.05, 0.56, KF[1], { y: 0.28 + i * 0.16 });
-    torso.box(0.3, 0.36, 0.05, KF[7], { y: 0.54, z: 0.29 }); torso.box(0.06, 0.34, 0.06, KF[3], { y: 0.54, z: 0.31, glow: 1 }); torso.box(0.26, 0.06, 0.06, KF[3], { y: 0.6, z: 0.31, glow: 1 }); // Runenherz
+    torso.box(0.3, 0.3, 0.05, KF[7], { y: 0.54, z: 0.29, rz: PI / 4 }); torso.box(0.2, 0.2, 0.06, KF[3], { y: 0.54, z: 0.31, glow: 1, rz: PI / 4 }); torso.box(0.09, 0.09, 0.07, KF[4], { y: 0.54, z: 0.32, glow: 1, rz: PI / 4 }); // Runenherz: leuchtende Raute (kein Kreuz)
     for (const o of [-1, 1]) torso.box(0.1, 0.5 * k, 0.1, KF[3], { x: o * 0.3, y: 0.95, z: -0.3, glow: 0.8 }); // Rücken-Runen
     arms(c, (a, o) => {
       a.box(0.42, 0.18, 0.46, KF[2], { x: o * 0.05, y: 0.12 });

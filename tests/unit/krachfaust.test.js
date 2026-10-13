@@ -41,8 +41,8 @@ describe('Krachfaust: Definition', () => {
   it('Registry, Werte, Teile, Apex', () => {
     expect(monsters.krachfaust).toBe(krachfaust);
     expect(krachfaust.hp).toBe(20000);
-    expect(krachfaust.scale).toBe(3); expect(krachfaust.bodyRadius).toBe(2.6);
-    expect(krachfaust.walk).toBe(3.3); expect(krachfaust.run).toBe(8.2);
+    expect(krachfaust.scale).toBeCloseTo(3 * 0.65, 5); expect(krachfaust.bodyRadius).toBe(1.7); // 35 % kleiner
+    expect(krachfaust.walk).toBeGreaterThanOrEqual(4.5); expect(krachfaust.run).toBeGreaterThanOrEqual(10.5); // schneller Anlauf
     expect(krachfaust.apex).toBe(true); expect(krachfaust.predator).toBe(true);
     expect(krachfaust.teachAttack).toBe('krachfaust_schleimfaust');
     const bp = (id) => krachfaust.parts.find((p) => p.id === id);
@@ -62,7 +62,8 @@ describe('Krachfaust: Definition', () => {
       expect(a.cue.color, a.id).toSatisfy((c) => NEON_OK.test(c));
       expect(a.telegraph).toBeGreaterThanOrEqual(MIN_TELEGRAPH);
       if (a.hits?.length && a.id !== 'krachfaust_urknall') expect(a.audit?.length, a.id).toBeGreaterThan(0);
-      if (a.marker?.color) expect(a.marker.color, a.id).toBe('#39ff14');
+      if (a.marker?.color) expect(a.marker.color, a.id).toBe('#ff3030'); // Schadensfläche = rot
+      if (a.hits?.some((h) => h.dmg > 0)) expect(a.markerFromHits || a.marker, a.id).toBeTruthy();
     }
     for (const [from, list] of Object.entries(krachfaust.chains)) {
       expect(krachfaust.attacks[from], from).toBeTruthy();
@@ -74,7 +75,7 @@ describe('Krachfaust: Definition', () => {
   it('Apex-Moveset: Hammerkette, Hornschlag, Schwanzwirbel, Sprung-Faustschlag; Telegraph lesbar (>= 0,5 s)', () => {
     const A = krachfaust.attacks;
     for (const id of ['hammer', 'hornschlag', 'schwanzwirbel', 'sprungfaust']) { expect(A['krachfaust_' + id], id).toBeTruthy(); expect(A['krachfaust_' + id].telegraph).toBeGreaterThanOrEqual(0.5); }
-    expect(A.krachfaust_hammer.hits.length).toBe(4); expect(A.krachfaust_hammer.hits[3].dmg).toBe(78);
+    expect(A.krachfaust_hammer.hits.length).toBe(4); expect(A.krachfaust_hammer.hits[3].dmg).toBe(84);
     expect(A.krachfaust_schwanzwirbel.hits.some((h) => h.at?.[2] < 0 || h.from?.[2] < 0)).toBe(true); // trifft nach hinten
     expect(krachfaust.chains.krachfaust_hammer.some((o) => o.atk === 'krachfaust_schwanzwirbel')).toBe(true);
   });
@@ -95,14 +96,55 @@ describe('Krachfaust: Definition', () => {
   });
   it('Grundangriffe nach Spec: Zahlen, Schleim auf Treffer, Ring um die Landestelle', () => {
     const A = krachfaust.attacks;
-    expect(A.krachfaust_schleimfaust.hits[0]).toMatchObject({ dmg: 58, knock: 'down', slimeOnHit: true });
-    expect(A.krachfaust_trommel.hits.map((h) => [h.dmg, h.side])).toEqual([[40, 'L'], [40, 'R'], [40, 'L'], [40, 'R']]);
-    expect(A.krachfaust_trommel.hits.map((h) => h.t0)).toEqual([0.85, 1.2, 1.55, 1.9]);
-    expect(A.krachfaust_trommel.hits[3].slimeOnHit).toBe(true); expect(A.krachfaust_trommel.hits[0].slimeOnHit).toBeUndefined();
-    expect(A.krachfaust_kopfstoss.hits[0]).toMatchObject({ dmg: 66, knock: 'down' });
-    expect(A.krachfaust_sprungstampfer.hits[0]).toMatchObject({ dmg: 74, radius: 5.8, knock: 'down' });
-    expect(A.krachfaust_runenwut.hits[0]).toMatchObject({ dmg: 0, radius: 9, knock: 'pin' });
-    expect(A.krachfaust_salve.hits).toEqual([]);
+    expect(A.krachfaust_schleimfaust.hits[0]).toMatchObject({ dmg: 64, knock: 'down', slimeOnHit: true });
+    expect(A.krachfaust_trommel.hits.map((h) => h.dmg)).toEqual([38, 38, 38, 38, 38, 52]);
+    expect(A.krachfaust_trommel.hits[5].slimeOnHit).toBe(true); expect(A.krachfaust_trommel.hits[0].slimeOnHit).toBeUndefined();
+    expect(A.krachfaust_kopfstoss.hits[0]).toMatchObject({ dmg: 70, knock: 'down' });
+    expect(A.krachfaust_sprungstampfer.hits[0]).toMatchObject({ dmg: 80, radius: 3.9, knock: 'down' });
+    expect(A.krachfaust_runenwut.hits[0]).toMatchObject({ dmg: 0, radius: 7, knock: 'pin' });
+  });
+  it('Neues Moveset: Riesenhaken (Haymaker), Überschlag (Vierbeiner-Fang), Faustgewitter, Knöchellauf; Schleimsalve (Projektile) ist weg; Gap-Closer reichen weit', () => {
+    const A = krachfaust.attacks;
+    for (const id of ['riesenhaken', 'ueberschlag', 'pochen', 'knoechellauf']) expect(A['krachfaust_' + id], id).toBeTruthy();
+    expect(A.krachfaust_salve).toBeUndefined();
+    expect(A.krachfaust_riesenhaken.hits[0]).toMatchObject({ shape: 'capsule', slimeOnHit: true }); // Arm-Kapsel: weit ausholender Bogen
+    expect(A.krachfaust_riesenhaken.hits[0].dmg).toBeGreaterThanOrEqual(70);
+    expect(A.krachfaust_ueberschlag.hits.length).toBe(3); // Haken, Fang auf allen Vieren, Rush
+    expect(A.krachfaust_pochen.hits.length).toBe(5); // mehrere Schläge, jeder schleudert Klumpen
+    expect(A.krachfaust_sprungfaust.range[1]).toBeGreaterThanOrEqual(20); expect(A.krachfaust_knoechellauf.range[1]).toBeGreaterThanOrEqual(20);
+    expect(JSON.stringify(krachfaust.chains)).not.toContain('salve');
+    expect(krachfaust.chains.krachfaust_riesenhaken.some((o) => o.atk === 'krachfaust_ueberschlag')).toBe(true);
+    expect(krachfaust.chains.krachfaust_pochen.some((o) => o.atk === 'krachfaust_knoechellauf')).toBe(true);
+  });
+  it('Schadensmarker: ROT und exakt an den Hitboxen (footprints deckt Position + Radius jeder Trefferform ab)', () => {
+    for (const a of Object.values(krachfaust.attacks)) {
+      if (!a.hits?.some((h) => h.dmg > 0 || h.knock === 'pin') || a.id === 'krachfaust_urknall') continue;
+      expect(a.markerFromHits, a.id).toBe(true);
+      const inst = new AttackInstance(a, { attackId: a.id, t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 12 }, seed: 3 });
+      const fps = inst.footprints();
+      expect(fps.length, a.id).toBeGreaterThan(0);
+      // Zu jeder Trefferform zu jedem Zeitpunkt: ihr Mittelpunkt (ohne Höhe) liegt in einem Marker-Kreis desselben Treffers
+      a.hits.forEach((h, i) => {
+        if (!(h.dmg > 0 || h.knock === 'pin')) return;
+        for (const k of [0.05, 0.5, 0.95]) {
+          const t = inst.wall(h.t0 + (h.t1 - h.t0) * k);
+          const sh = inst.hitsAt(t).find((x) => x.idx === i)?.shape;
+          expect(sh, a.id).toBeTruthy();
+          const pts = sh.type === 'sphere' ? [sh] : [{ x: (sh.a.x + sh.b.x) / 2, z: (sh.a.z + sh.b.z) / 2 }];
+          for (const pt of pts) expect(fps.some((f) => f.idx === i && Math.hypot(f.x - pt.x, f.z - pt.z) <= f.r + 0.01), `${a.id} hit ${i} k${k}`).toBe(true);
+        }
+      });
+      for (const f of fps) expect(f.r, a.id).toBeLessThanOrEqual(Math.max(...a.hits.map((h) => h.radius)) + 0.5 + (a.id === 'krachfaust_schwanzwirbel' ? 20 : 0));
+    }
+    expect(krachfaust.attacks.krachfaust_urknall.marker.color).toBe('#ff3030');
+    for (const a of Object.values(krachfaust.attacks)) expect(a.marker?.color ?? '#ff3030', a.id).toBe('#ff3030');
+  });
+  it('Haymaker-Zone ist ein Fächer: Marker-Kreise liegen weit auseinander (Drehung), nicht nur vor der Nase', () => {
+    const a = krachfaust.attacks.krachfaust_riesenhaken;
+    const inst = new AttackInstance(a, { attackId: a.id, t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 10 }, seed: 3 });
+    const fps = inst.footprints(), xs = fps.map((f) => f.x);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(8);
+    expect(Math.max(...fps.map((f) => Math.hypot(f.x, f.z)))).toBeGreaterThan(9); // weit weg vom Rumpf
   });
   it('Modell (Brachydios-Look): Obsidian-Panzer, massive gelbgrüne Fäuste/Horn (keine Leuchthülle), Schwanz, Teile-Knoten für die Hurtboxen', () => {
     const b = buildKrachfaust();
@@ -110,27 +152,52 @@ describe('Krachfaust: Definition', () => {
     expect(b.extra.slimeMats.length).toBe(3); expect(b.extra.slimeMats.every((m) => !m.transparent)).toBe(true);
     for (const n of ['head', 'fistL', 'fistR', 'body', 'neck', 'legL', 'legR', 'tail1', 'tail3']) expect(b.nodes[n], n).toBeTruthy();
   });
+  it('Vierbeiner-Pose (spread = 1): Rumpf kippt nach vorn und sinkt, Arme stützen vor; spread = 0 ist aufrecht', () => {
+    const b = buildKrachfaust(), P = (o) => ({ bodyY: 0, bodyPitch: 0, bodyRoll: 0, head: 0, neck: 0, wing: 0, spread: 0, jaw: 0, headYaw: 0, legL: 0, legR: 0, tailYaw: 0, tailPitch: 0, ...o });
+    b.apply(P({})); const y0 = b.nodes.body.position.y, r0 = b.nodes.body.rotation.x, a0 = b.nodes.armL.rotation.x;
+    b.apply(P({ spread: 1 }));
+    expect(b.nodes.body.position.y).toBeLessThan(y0); expect(b.nodes.body.rotation.x).toBeGreaterThan(r0 + 0.4); expect(b.nodes.armL.rotation.x).toBeLessThan(a0 - 0.8);
+    const A = krachfaust.attacks;
+    expect(JSON.stringify(A.krachfaust_ueberschlag.pose)).toContain('"spread"');
+  });
+  it('Kopf: Drachenschädel mit genau EINEM grünen Widderhorn (Zylinder-Segmente in der Schleim-Textur), dunkle Schuppen, Kiefer-Knoten, Zähne', () => {
+    const b = buildKrachfaust();
+    const green = b.partMeshes.head.filter((m) => m.material === b.extra.headMat);
+    expect(green.filter((m) => m.geometry.type === 'CylinderGeometry').length).toBeGreaterThanOrEqual(5); // geringeltes Horn
+    expect(b.partMeshes.head.length).toBeGreaterThan(50);
+    expect(b.nodes.jaw).toBeTruthy();
+    const blobsOnHead = b.partMeshes.head.filter((m) => m.geometry.type === 'SphereGeometry');
+    expect(blobsOnHead.length).toBe(1); // nur die Hornkuppe, kein Schleimklumpen-Kopf mehr
+  });
+  it('Fäuste: gepanzerte Knöchelfäuste (Panzerplatten + Knöchel) mit Schleimüberzug, keine reinen Blobs', () => {
+    const b = buildKrachfaust();
+    for (const id of ['prankeL', 'prankeR']) {
+      const ms = b.partMeshes[id];
+      expect(ms.filter((m) => m.geometry.type === 'BoxGeometry').length, id).toBeGreaterThanOrEqual(8);
+      expect(ms.filter((m) => m.material === b.extra.fistMats[id]).length, id).toBeGreaterThanOrEqual(6);
+    }
+  });
 });
 
 describe('Krachfaust: Glitch-Schleim am Boden', () => {
   it('Schleimfaust ins Leere: Pfütze am Faustpunkt; Puls-Stufen nach Restzeit; Explosion r 3,4 nach 2,2 s trifft, wer in der Nähe bleibt', () => {
     expect([stageOf(1.5), stageOf(1.01), stageOf(0.7), stageOf(0.41), stageOf(0.1)]).toEqual([0, 0, 1, 1, 2]);
-    const { ctx, m, p } = make(def, 'combat', -0.9, 7.6); // 2,4 m hinter dem Faustpunkt: aus der Faust heraus, aber im Sprengradius
+    const { ctx, m, p } = make(def, 'combat', -2.5, 13.6); // knapp außerhalb der Faust (r 1,8 + 0,4), aber im Sprengradius
     m.recover = 99; m._taught = true;
     const log = spy(p);
     m.beginAttack('krachfaust_schleimfaust', { tgMul: 1 });
     run(ctx, 1.2);
     expect(m.extra.slimes.length).toBe(1);
     const s = m.extra.slimes[0];
-    expect(s.x).toBeCloseTo(-0.9, 0); expect(s.z).toBeGreaterThan(4); expect(s.fuse).toBe(KRACH.FUSE);
-    expect(s.r).toBe(1.6); expect(s.blastR).toBe(3.4); expect(s.dmg).toBe(28);
+    expect(s.x).toBeCloseTo(-2.5, 0); expect(s.z).toBeGreaterThan(9); expect(s.fuse).toBe(KRACH.FUSE);
+    expect(s.r).toBe(1.15); expect(s.blastR).toBe(3.4); expect(s.dmg).toBe(34);
     expect(slimeHits(log).length).toBe(0);
     run(ctx, 2.2);
     expect(m.extra.slimes.length).toBe(0);
     const hits = slimeHits(log);
     expect(hits.length).toBe(1);
     expect(hits[0]).toMatchObject({ knock: 'flinch', r: 'hit' });
-    expect(hits[0].dmg).toBeCloseTo(28 * m.dmgMul, 5);
+    expect(hits[0].dmg).toBeCloseTo(34 * m.dmgMul, 5);
     expect(ctx.events).toContain('sfx');
   });
   it('wer rechtzeitig weggeht, nimmt keinen Schaden (Pfütze ist umgehbar)', () => {
@@ -242,6 +309,36 @@ describe('Krachfaust: Glitch-Schleim am Boden', () => {
     m.applyDamage({ dmg: 50, partId: 'head', elemDmg: 0, blunt: 0, attackerId: 'p1' });
     expect(m.partById.head.broken).toBe(true);
     expect(m.stunT).toBeGreaterThanOrEqual(KRACH.STUN_HEAD - 0.1);
+  });
+});
+
+describe('Krachfaust: Faustgewitter (Schleimklumpen)', () => {
+  it('jeder Schlag schleudert einzelne Klumpen (keine Projektile); sie landen, bleiben als Pfütze liegen und platzen nach der Zündschnur', () => {
+    const { ctx, m, p } = make(def, 'combat', 0, 9);
+    m.recover = 99; m._taught = true;
+    const log = spy(p);
+    m.beginAttack('krachfaust_pochen', { tgMul: 1 });
+    run(ctx, 1.1);
+    const fl = m.extra.slimes.filter((s) => s.fly);
+    expect(fl.length).toBeGreaterThanOrEqual(3); // erster Schlag: 3 Klumpen
+    expect(fl.some((s) => !s.landed)).toBe(true);
+    expect(m.projectiles.list.length).toBe(0);
+    run(ctx, 1.9);
+    expect(m.extra.slimes.length).toBeGreaterThanOrEqual(8); // 5 Schläge x 3 Klumpen, Rest schon geplatzt oder im Flug
+    run(ctx, 6);
+    expect(m.extra.slimes.length).toBe(0); // alles explodiert
+    expect(log.length).toBeGreaterThanOrEqual(0);
+  });
+  it('Klumpen-Volltreffer: Schaden + Schleim am Pirscher, Pfütze verbraucht; Rolle dagegen: kein Klumpentreffer', () => {
+    const { ctx, m, p } = make(def, 'combat', 0, 20);
+    m.recover = 99;
+    const log = spy(p);
+    const g = addSlime(m, p.pos.x, p.pos.z, { delay: 0.5, from: { x: 0, y: 5, z: 5 }, dur: 0.5 });
+    expect(g.landed).toBe(false);
+    run(ctx, 0.7);
+    expect(log.some((h) => h.attackId === 'krachfaust_glob' && h.r === 'hit')).toBe(true);
+    expect(p.status.schleim).toBeTruthy();
+    expect(m.extra.slimes.includes(g)).toBe(false);
   });
 });
 

@@ -8,17 +8,17 @@ import * as THREE from 'three';
 import { basic, lambert } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
-import { slimeDef } from './mprojectiles.js';
 import { smooth, clamp01 } from './common.js';
 import { localToWorld, yawOf } from '../../core/math.js';
 import { time } from '../../core/time.js';
 import { slimeBlast, SLIME_R, SLIME_DMG } from '../effects.js';
 import { TEMPLE_C, onTemple } from '../world/smaragdkuesteLayout.js';
 
-const SC = 3.0;
+const SC = 3.0 * 0.65; // Spielerfeedback: 35 % kleiner (Modell-Einheiten unverändert, nur der Maßstab)
 const NEON = '#39ff14', NEON_HI = '#7dff3a', NEON_PEAK = '#d8ffd0', NEON_DARK = '#1f9d0f';
+const RED = '#ff3030', RED_PEAK = '#ffb0a0'; // Schadensflächen (Marker) immer rot; Grün ist nur Deko (Schleim, Glitch)
 const cue = (tone, color = NEON) => ({ color, tone, noShift: true });
-const ring = (radius) => ({ at: 'self', radius, color: NEON, peak: NEON_PEAK });
+
 
 export const KRACH = {
   FUSE: 2.2, FUSE_WUT: 1.5, PLAYER_FUSE: 2.0, PLAYER_FUSE_WUT: 1.4, ABSORB_R: 1.3, MAX_SLIMES: 24,
@@ -51,6 +51,10 @@ registerTexture('krachfaust_face', (g, n, rnd) => {
   g.fillStyle = '#242c4c';
   for (let i = 0; i < n; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 2, 1);
   g.fillStyle = '#0a0c1a'; g.fillRect(0, n - 3, n, 1);
+});
+registerTexture('krachfaust_bone', (g, n, rnd) => { // Zähne / Hornspitzen: vergilbtes Bein
+  g.fillStyle = '#d8cfa4'; g.fillRect(0, 0, n, n);
+  g.fillStyle = '#a8a078'; for (let i = 0; i < n; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 2);
 });
 registerTexture('krachfaust_slime', (g, n, rnd) => { // gelbgrün (Brachydios-Schleim) mit dunklerem Schuppenmuster
   g.fillStyle = '#b4d422'; g.fillRect(0, 0, n, n);
@@ -134,7 +138,8 @@ export function buildKrachfaust({ scale = SC } = {}) {
   for (const [x, y, z, w, h, d] of [[-0.55, 1.82, 0.5, 0.16, 0.05, 0.9], [0.55, 1.82, 0.5, 0.16, 0.05, 0.9], [0, 1.83, 1.2, 1.2, 0.05, 0.14], [-0.7, 0.7, -1.3, 0.06, 0.9, 0.16], [0.7, 0.7, -1.3, 0.06, 0.9, 0.16], [0, 0.78, -1.45, 0.9, 0.06, 0.12]]) {
     const m = new THREE.Mesh(boxGeo, runeMat); m.scale.set(w, h, d); m.position.set(x, y, z); torso.add(m); runes.push(m);
   }
-  // Hals + Kopf: Hals dick, Kopf tief, langer Schädel; Rüssel/Horn = gelbgrün, stumpf, riesig
+  // Hals + Kopf: dicker Hals, ECHTER Drachenschädel (Brachydios): Keilschnauze, Brauenwülste, Augen, Kiefer mit Zähnen, Nackenfrill aus Hörnern, dunkle Obsidian-Schuppen.
+  // Auf der Schnauze sitzt EIN grüner Widderhorn-Wulst (stumpf, geringelt, gelbgrün), der sich nach vorn-oben krümmt.
   const neck = new THREE.Group();
   neck.position.set(0, 1.0, 1.5);
   torso.add(neck);
@@ -142,24 +147,51 @@ export function buildKrachfaust({ scale = SC } = {}) {
   for (const [z, len] of [[0.1, 2.3], [0.7, 1.9], [1.2, 1.5]]) spike('body', 0.5, len, neck, 0, 0.75, z, 50); // Nackenkamm
   const head = new THREE.Group();
   head.position.set(0, -0.05, 1.35);
+  head.scale.setScalar(1.3); // großer Drachenschädel
   neck.add(head);
-  box('head', 1.15, 0.95, 1.7, 'krachfaust_face', head, 0, 0, 0.55);
-  box('head', 1.3, 0.3, 1.0, 'krachfaust_plate', head, 0, 0.55, 0.3); // Brauenplatte
-  const slimeHead = mat('head', 'krachfaust_slime');
-  put('head', blobGeo, slimeHead, head, 0, -0.1, 1.75, 0.68, 0.62, 1.45); // das riesige stumpfe Horn-Rüssel
-  put('head', blobGeo, slimeHead, head, 0, 0.12, 2.45, 0.5, 0.45, 0.55); // Hornspitze
+  box('head', 1.15, 0.95, 1.2, 'krachfaust_face', head, 0, 0, 0.35); // Hirnschädel
+  box('head', 0.95, 0.72, 1.3, 'krachfaust_face', head, 0, -0.08, 1.2, 0.05); // Oberkiefer / Schnauze, hoch am Ansatz
+  box('head', 0.62, 0.46, 0.8, 'krachfaust_face', head, 0, -0.14, 2.0, 0.1); // Schnauzenspitze, verjüngt
+  box('head', 0.95, 0.14, 1.3, 'krachfaust_plate', head, 0, 0.3, 1.2, 0.04); // Schuppenplatte auf dem Nasenrücken
   for (const sx of [1, -1]) {
-    spike('head', 0.45, 2.6, head, sx * 0.4, 0.55, 0.1, 25, sx * 14); // Kronenhörner, weit zurück
+    box('head', 0.2, 0.2, 0.1, 'krachfaust_hide', head, sx * 0.2, -0.04, 2.42); // Nüstern-Wülste
+    box('head', 0.1, 0.08, 0.06, 'krachfaust_face', head, sx * 0.2, -0.02, 2.48);
+    box('head', 0.5, 0.26, 1.0, 'krachfaust_plate', head, sx * 0.46, 0.5, 0.78, 0.0, sx * -0.12, sx * 0.34); // Brauenwulst, schräg nach außen
+    spike('head', 0.2, 1.0, head, sx * 0.55, 0.56, 0.3, 14, sx * 40); // Brauenstachel nach hinten-außen
+    box('head', 0.4, 0.5, 0.9, 'krachfaust_plate', head, sx * 0.55, -0.2, 0.55, 0, 0, sx * 0.12); // Wangenplatte
+    spike('head', 0.45, 2.6, head, sx * 0.4, 0.55, -0.1, 25, sx * 14); // Kronenhörner, weit zurück
     spike('head', 0.3, 1.5, head, sx * 0.62, 0.15, 0.0, 10, sx * 38); // Wangenstacheln
-    spike('head', 0.22, 1.1, head, sx * 0.6, -0.25, 0.2, 6, sx * 50);
+    spike('head', 0.22, 1.1, head, sx * 0.6, -0.3, 0.1, 6, sx * 55);
+    spike('head', 0.22, 1.2, head, sx * 0.3, 0.6, -0.4, 52, sx * 30); // Nackenfrill-Hörner
   }
   const eyeM = basic({ color: '#ffe14d' });
-  for (const sx of [1, -1]) put('head', boxGeo, eyeM, head, sx * 0.58, 0.22, 0.95, 0.12, 0.18, 0.3);
+  for (const sx of [1, -1]) {
+    box('head', 0.16, 0.2, 0.34, 'krachfaust_face', head, sx * 0.55, 0.22, 0.98); // Augenhöhle
+    put('head', boxGeo, eyeM, head, sx * 0.62, 0.22, 1.0, 0.1, 0.15, 0.26); // Auge, gelb
+  }
+  // Widderhorn: fünf gerippte Segmente, vom Nasenrücken erst schräg hoch, dann nach vorn gekrümmt, stumpfes Ende
+  const slimeHead = mat('head', 'krachfaust_slime');
+  const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 8);
+  let hy = 0.3, hz = 1.75;
+  box('head', 0.9, 0.2, 0.9, 'krachfaust_plate', head, 0, 0.3, 1.75); // Hornsockel (dunkel)
+  for (let i = 0; i < 3; i++) {
+    const th = (48 - i * 24) * R, len = 0.42, r = 0.36 - i * 0.025;
+    const cy = hy + Math.sin(th) * len * 0.5, cz = hz + Math.cos(th) * len * 0.5;
+    put('head', cylGeo, slimeHead, head, 0, cy, cz, r, len, r, Math.PI / 2 - th, 0, 0);
+    put('head', cylGeo, slimeHead, head, 0, hy + Math.sin(th) * len * 0.9, hz + Math.cos(th) * len * 0.9, r * 1.22, 0.1, r * 1.22, Math.PI / 2 - th, 0, 0); // Wulstring
+    hy += Math.sin(th) * len; hz += Math.cos(th) * len;
+    if (i === 2) put('head', blobGeo, slimeHead, head, 0, hy, hz, r * 1.02, r * 0.95, r * 1.02); // stumpfe Kuppe
+  }
   const jaw = new THREE.Group();
-  jaw.position.set(0, -0.4, 0.5);
+  jaw.position.set(0, -0.42, 0.45);
   head.add(jaw);
-  box('head', 0.9, 0.22, 1.5, 'krachfaust_face', jaw, 0, -0.05, 0.55);
-  // Arme: Oberarm gepanzert mit Ellbogenstachel, Unterarm = riesige Keule (gelbgrün, Schuppenmuster)
+  box('head', 0.74, 0.2, 1.7, 'krachfaust_face', jaw, 0, -0.04, 0.9); // Unterkiefer
+  box('head', 0.5, 0.16, 0.5, 'krachfaust_plate', jaw, 0, -0.1, 1.8); // Kinn
+  for (const sx of [1, -1]) for (let i = 0; i < 4; i++) { // Zähne unten (nach oben) und Fangzähne oben (nach unten)
+    put('head', spikeGeo, mat('head', 'krachfaust_bone'), jaw, sx * 0.34, 0.25, 0.7 + i * 0.4, 0.08, 0.34, 0.08);
+    put('head', spikeGeo, mat('head', 'krachfaust_bone'), head, sx * 0.34, -0.44, 0.9 + i * 0.4, 0.08, 0.3 + (i === 3 ? 0.2 : 0), 0.08, Math.PI, 0, 0);
+  }
+  // Arme: Oberarm gepanzert mit Ellbogenstachel, Unterarm = gepanzerte Keule mit Knöchelfaust, überzogen von gelbgrünem Schleim
   const arms = {}, fists = {}, fistMats = {};
   for (const [name, sx, fist] of [['armL', 1, 'prankeL'], ['armR', -1, 'prankeR']]) {
     const a = new THREE.Group();
@@ -176,9 +208,22 @@ export function buildKrachfaust({ scale = SC } = {}) {
     f.position.set(0, -0.7, 0.05);
     fa.add(f);
     fistMats[fist] = mat(fist, 'krachfaust_slime');
-    put(fist, blobGeo, fistMats[fist], f, 0, -0.85, 0.12, 0.72, 1.45, 0.78); // Keule: lang gestreckt wie ein Baseballschläger
-    put(fist, blobGeo, fistMats[fist], f, 0, -1.75, 0.2, 0.85, 0.6, 0.88); // dicke Faustkuppe am Ende
-    for (const kx of [-0.34, 0, 0.34]) claw(fist, 0.1, 0.4, f, kx, -2.0, 0.55, 40);
+    const sm = fistMats[fist];
+    // Panzerhandschuh: Manschette, Handrücken-Platten, vier Knöchelblöcke
+    box(fist, 0.98, 0.5, 1.0, 'krachfaust_plate', f, 0, -0.2, 0.0);
+    box(fist, 0.9, 1.1, 0.95, 'krachfaust_hide', f, 0, -0.9, 0.05);
+    for (const py of [-0.55, -0.95, -1.35]) box(fist, 1.04, 0.14, 1.06, 'krachfaust_plate', f, 0, py, 0.05); // Panzerringe
+    box(fist, 1.0, 0.7, 1.0, 'krachfaust_plate', f, 0, -1.7, 0.2); // Faustblock
+    // Schleimüberzug: Kappe auf dem Handrücken, Knöchel-Wülste vorn, Tropfen
+    put(fist, blobGeo, sm, f, 0, -1.2, -0.3, 0.55, 0.6, 0.25);
+    put(fist, blobGeo, sm, f, 0, -1.05, 0.55, 0.5, 0.4, 0.3);
+    for (const kx of [-0.36, -0.12, 0.12, 0.36]) {
+      put(fist, blobGeo, sm, f, kx, -1.95, 0.62, 0.17, 0.2, 0.2); // Knöchel
+      box(fist, 0.18, 0.1, 0.18, 'krachfaust_plate', f, kx, -1.8, 0.7); // Knöchelplatte darüber
+    }
+    put(fist, blobGeo, sm, f, sx * 0.5, -1.45, 0.15, 0.16, 0.5, 0.2); // Schleimtropfen seitlich
+    put(fist, blobGeo, sm, f, 0, -2.2, 0.35, 0.28, 0.2, 0.3);
+    for (const kx of [-0.34, 0, 0.34]) claw(fist, 0.1, 0.4, f, kx, -2.15, 0.7, 40);
     arms[name] = a; fists[name] = f;
   }
   // Hinterbeine: Oberschenkel, abgeknickter Lauf, Krallenfuß
@@ -215,18 +260,20 @@ export function buildKrachfaust({ scale = SC } = {}) {
     root, nodes, partMeshes,
     extra: { eyeMat: eyeM, scale, runeMat, runes, fistMats, headMat: slimeHead, slimeMats: [fistMats.prankeL, fistMats.prankeR, slimeHead] },
     apply(p) {
-      body.position.y = BASE + p.bodyY / scale;
-      body.rotation.set(p.bodyPitch * R, 0, p.bodyRoll * R);
-      neck.rotation.x = 0.2 + p.neck;
-      head.rotation.set(-(0.2 + p.neck) + 0.1 + p.head * R, p.headYaw * R, 0);
+      const q = p.spread; // 0 = aufrecht auf zwei Beinen, 1 = auf alle Viere gefallen (Fäuste am Boden)
+      body.position.y = BASE + p.bodyY / scale - q * 0.75;
+      body.rotation.set((p.bodyPitch + q * 36) * R, 0, p.bodyRoll * R);
+      neck.rotation.x = 0.2 + p.neck - q * 0.2;
+      head.rotation.set(-(0.2 + p.neck) - 0.12 + p.head * R - q * 0.35, p.headYaw * R, 0);
       jaw.rotation.x = p.jaw * R;
-      arms.armL.rotation.set(-(ARM_REST + p.legL + 30 * p.wing) * R, 0, -p.wing * 0.95);
-      arms.armR.rotation.set(-(ARM_REST + p.legR + 30 * p.wing) * R, 0, p.wing * 0.95);
-      fists.armL.rotation.x = -0.25 - p.wing * 0.4; fists.armR.rotation.x = -0.25 - p.wing * 0.4;
-      legs.legL.rotation.x = -p.legR * 0.55 * R; // Beine gegengleich zum Arm
-      legs.legR.rotation.x = -p.legL * 0.55 * R;
+      const qa = q * 62;
+      arms.armL.rotation.set(-(ARM_REST + p.legL + 30 * p.wing + qa) * R, 0, -p.wing * 0.95);
+      arms.armR.rotation.set(-(ARM_REST + p.legR + 30 * p.wing + qa) * R, 0, p.wing * 0.95);
+      fists.armL.rotation.x = -0.25 - p.wing * 0.4 + q * 0.35; fists.armR.rotation.x = -0.25 - p.wing * 0.4 + q * 0.35;
+      legs.legL.rotation.x = -p.legR * 0.55 * R + q * 0.55; // Beine gegengleich zum Arm; auf allen Vieren geknickt
+      legs.legR.rotation.x = -p.legL * 0.55 * R + q * 0.55;
       const ty = p.tailYaw * R, tp = p.tailPitch * R;
-      tail1.rotation.set(tp * 0.4, ty * 0.45, 0); tail2.rotation.set(tp * 0.35, ty * 0.35, 0); tail3.rotation.set(tp * 0.25, ty * 0.3, 0);
+      tail1.rotation.set(tp * 0.4 + q * 0.25, ty * 0.45, 0); tail2.rotation.set(tp * 0.35, ty * 0.35, 0); tail3.rotation.set(tp * 0.25, ty * 0.3, 0);
     },
   };
 }
@@ -237,7 +284,8 @@ const Z = { legL: 0, legR: 0, bodyPitch: 0, bodyY: 0, bodyRoll: 0, head: 0, neck
 export const wut = (m) => m.phase >= 1 || !!m.mm?.rageAlways;
 const fuseOf = (m) => (wut(m) ? KRACH.FUSE_WUT : KRACH.FUSE);
 const playerFuse = (m) => (wut(m) ? KRACH.PLAYER_FUSE_WUT : KRACH.PLAYER_FUSE);
-const STAGE_COL = [[NEON_DARK, '#2bc010'], [NEON, NEON_HI], [NEON_PEAK, '#ffffff']];
+const STAGE_COL = [[NEON_DARK, '#2bc010'], [NEON, NEON_HI], [NEON_PEAK, '#ffffff']]; // Pfützen-Optik (grün)
+const WARN_COL = [['#a01818', RED], [RED, '#ff6a4a'], ['#ff6a4a', RED_PEAK]]; // Sprengradius-Marker (rot, pulsiert mit)
 const TINT = [[[1, 1, 1], [0.85, 0.95, 0.8]], [[1.5, 1.6, 0.9], [1, 1.1, 0.8]], [[2.4, 2.4, 1.9], [1.3, 1.5, 1.0]]], TINT_BROKEN = [0.4, 0.45, 0.4];
 const STAGE_HZ = [2, 5, 12], STAGE_PITCH = [1, 1.3, 1.7];
 /** Puls-Stufe nach Restzeit: > 1,0 s dunkelgrün 2 Hz, 1,0-0,4 s hellgrün 5 Hz, < 0,4 s weißgrün 12 Hz. */
@@ -250,19 +298,48 @@ function atLocal(inst, tau, lx, lz) {
 }
 
 // ---- Boden-Schleim (m.extra.slimes), gefüllt durch `all`-Events -> bei allen Clients gleich
-export function addSlime(m, x, z, { delay = 0, age = 0, small = false } = {}) {
+export function addSlime(m, x, z, { delay = 0, age = 0, small = false, from = null, dur = 0, key = '' } = {}) {
   const list = m.extra.slimes;
   const used = new Set(list.map((q) => q.slot));
   let slot = 0; while (used.has(slot)) slot++;
   const s = {
-    x, y: m.ctx.world.heightAt(x, z), z, start: m.time - age + delay, fuse: fuseOf(m), r: small ? 1.2 : 1.6, blastR: small ? 2.6 : SLIME_R, dmg: small ? 20 : SLIME_DMG,
+    x, y: m.ctx.world.heightAt(x, z), z, start: m.time - age + delay, fuse: fuseOf(m), r: small ? 0.85 : 1.15, blastR: small ? 2.3 : SLIME_R, dmg: small ? 24 : 34,
     slot, mesh: null, tick: -9, key: `${m.id}:sl${slot}`,
+    fly: from ? { x: from.x, y: from.y, z: from.z, dur, arc: 3 + dur * 2.5 } : null, landed: !from, gmesh: null, gkey: `${m.id}:gl${slot}`,
   };
   list.push(s);
   if (list.length > KRACH.MAX_SLIMES) { const o = list.shift(); dropSlime(m, o); }
   return s;
 }
-function dropSlime(m, s) { s.mesh?.removeFromParent(); s.mesh?.userData.mat.dispose(); m.ctx.fx.clearMarker?.(s.key); }
+function dropSlime(m, s) { s.mesh?.removeFromParent(); s.mesh?.userData.mat.dispose(); s.gmesh?.removeFromParent(); s.gmesh = null; m.ctx.fx.clearMarker?.(s.key); m.ctx.fx.clearMarker?.(s.gkey); }
+
+/** Schleimklumpen (Boden-Pochen): wird im Bogen von `from` geschleudert (Schlagpunkt), landet bei (x, z), klebt dort als Pfütze und zündet nach der Zündschnur. */
+export function flingGlob(m, from, x, z, { age = 0, dur = 0.9, small = true } = {}) {
+  return addSlime(m, x, z, { age, small, delay: dur, from, dur });
+}
+const GLOB_R = 1.2, GLOB_DMG = 26;
+const globMat = basic({ color: NEON, fog: false });
+function globFlight(m, s, age) { // age in (-dur, 0): Klumpen fliegt, roter Aufschlag-Marker
+  const f = s.fly, k = 1 + age / f.dur, ctx = m.ctx;
+  if (!s.gmesh && ctx.scene) { s.gmesh = new THREE.Mesh(blobGeo, globMat); s.gmesh.scale.setScalar(0.55); ctx.scene.add(s.gmesh); }
+  const y = f.y + (s.y - f.y) * k + f.arc * 4 * k * (1 - k);
+  if (s.gmesh) { s.gmesh.position.set(f.x + (s.x - f.x) * k, y, f.z + (s.z - f.z) * k); s.gmesh.rotation.set(age * 9, age * 6, 0); }
+  ctx.fx.spark?.({ x: f.x + (s.x - f.x) * k, y, z: f.z + (s.z - f.z) * k }, 1, Math.random() < 0.5 ? NEON : NEON_PEAK, 0.8);
+  ctx.fx.marker?.(s.gkey, { x: s.x, y: s.y, z: s.z }, GLOB_R, RED, false); // Aufschlagfläche des Treffers (rot)
+}
+/** Aufschlag: trifft ein lokaler Pirscher im Radius, klebt der Klumpen an ihm (Schaden + Schleim), sonst bleibt er als Pfütze liegen. true = Klumpen verbraucht. */
+function globLand(m, s) {
+  const ctx = m.ctx;
+  s.landed = true;
+  s.gmesh?.removeFromParent(); s.gmesh = null; ctx.fx.clearMarker?.(s.gkey);
+  ctx.fx.spark?.({ x: s.x, y: s.y + 0.4, z: s.z }, 14, NEON, 5); ctx.bus.emit('sfx', { name: 'slimeSplat', pos: s });
+  for (const p of ctx.players) {
+    if (!p.local || !p.alive || Math.hypot(p.pos.x - s.x, p.pos.z - s.z) > GLOB_R + 0.4) continue;
+    const res = p.takeHit({ dmg: GLOB_DMG * m.dmgMul, knock: 'flinch', key: `${s.key}|${p.id}|${Math.round(m.time * 10)}`, sourcePos: { x: s.x, y: s.y, z: s.z }, attackId: 'krachfaust_glob', monster: m });
+    if (res === 'hit') { p.addStatus?.('schleim', { t: playerFuse(m) }); return true; }
+  }
+  return false;
+}
 
 /** Pfützen im Radius platzen sofort und harmlos (Schock fährt durch den Schleim). */
 export function popSlimes(m, at, r = 4) {
@@ -304,255 +381,332 @@ function areaHit(m, ctx, at, r, dmg, key, knock = 'flinch') {
 }
 
 // ---------------------------------------------------------------- Angriffe
-/** Aufprall einer Faust: Schleim am Faustpunkt (immer), Funken, Wackler; in der Wut zusätzlich Druckwelle r 3 (14 Schaden). */
-const slam = (tau, lx, lz, { small = false, tag = '' } = {}) => (m, ctx, inst, age = 0) => {
+// Maße in Metern im Brocken-Rahmen (+z = vorwärts) bei Maßstab 1,95 (Modell 35 % kleiner als zuvor). Jede Schadenszone (hits mit dmg) wird über def.markerFromHits automatisch als ROTER Bodenmarker
+// an der Welt-Position des Treffers gezeigt (Radius = Treffer-Radius, Kapsel = Kreisreihe), Vorlauf 0,9 s. Stand: zweibeinig; Viere (spread = 1) nach großen Schwüngen (Fang, Rush).
+const FIST_Y = 1.2;
+/** Aufprall einer Faust: Schleim am Faustpunkt (immer), Funken, Wackler; in der Wut zusätzlich Druckwelle r 2,2. */
+const slam = (tau, lx, lz, { small = false, tag = '', pool = true } = {}) => (m, ctx, inst, age = 0) => {
   const p = atLocal(inst, tau, lx, lz);
-  addSlime(m, p.x, p.z, { age, small });
+  if (pool) addSlime(m, p.x, p.z, { age, small });
   const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
   ctx.fx.spark(at, 14, NEON, 6); ctx.fx.spark(at, 6, NEON_PEAK, 4);
   ctx.fx.shake?.(0.22, 0.18);
   ctx.bus.emit('sfx', { name: 'heavy', pos: at });
-  if (wut(m)) { ctx.fx.ring?.(at, 0.6, 3, { color: NEON, life: 0.3 }); areaHit(m, ctx, p, 3, 14, `${inst.key}:w${tag}${tau}`); }
+  if (wut(m)) { ctx.fx.ring?.(at, 0.5, 2.2, { color: NEON, life: 0.3 }); areaHit(m, ctx, p, 2.2, 16, `${inst.key}:w${tag}${tau}`); }
 };
-const fist = (side, t0, dmg, knock, extra = {}) => ({ t0, t1: t0 + 0.12, shape: 'sphere', at: [side === 'L' ? 0.9 : -0.9, 1.4, 3.6], radius: 1.5, dmg, knock, side, ...extra });
+const fist = (side, t0, dmg, knock, extra = {}) => ({ t0, t1: t0 + 0.14, shape: 'sphere', at: [side === 'L' ? 1.8 : -1.8, 0.4, 6.4], radius: 1.8, dmg, knock, side, ...extra }); // Faust auf dem Boden: ~6,4 m vor dem Rumpf-Ursprung (Messung der Pose)
+const motionFwd = (from, to, dist) => (tau, a) => {
+  const f = dist * smooth(clamp01((tau - from) / (to - from)));
+  return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
+};
 
 // ---- Schleimfaust (Lehrangriff): Ausfallschritt, rechte Faust. Treffer -> Schleim am Pirscher, Fehlschlag -> Pfütze am Faustpunkt
 const schleimfaust = {
-  id: 'krachfaust_schleimfaust', range: [0, 7], weight: 4, cooldown: 2.0, telegraph: 0.65, flashParts: ['prankeR'], duration: 2.0,
-  cue: cue('klick', NEON_HI), audit: [2.5, 5], stam: 8,
-  marker: ring(6.2), markerUntil: 0.8,
-  hits: [fist('R', 0.8, 58, 'down', { slimeOnHit: true })],
-  events: [{ t: 0.82, call: 'slam', all: true }],
-  calls: { slam: slam(0.82, -0.9, 3.6) },
-  motion(tau, a) {
-    const f = 1.6 * smooth(clamp01((tau - 0.5) / 0.32));
-    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
-  },
+  id: 'krachfaust_schleimfaust', range: [0, 13], weight: 5, cooldown: 1.6, telegraph: 0.6, flashParts: ['prankeR'], duration: 1.8, markerFromHits: true,
+  cue: cue('klick', NEON_HI), audit: [8, 12], stam: 8,
+  hits: [fist('R', 0.74, 64, 'down', { slimeOnHit: true, at: [-2.5, 0.3, 8.0] })],
+  events: [{ t: 0.76, call: 'slam', all: true }],
+  calls: { slam: slam(0.76, -2.5, 8.0) },
+  motion: motionFwd(0.4, 0.78, 3.0),
   pose: mTrack([
-    [0, { ...Z }], [0.3, { legR: -55, bodyPitch: -6, bodyRoll: -6, wing: 0.15 }], [0.62, { legR: -75, bodyPitch: -12, bodyRoll: -10, head: -8, wing: 0.2 }],
-    [0.8, { legR: 95, legL: -20, bodyPitch: 16, bodyRoll: 8, head: 10, wing: 0 }, 'lin'], [1.05, { legR: 55, legL: 0, bodyPitch: 8, bodyRoll: 2 }], [1.4, { legR: 20, bodyPitch: 3 }], [2.0, { ...Z }],
+    [0, { ...Z }], [0.28, { legR: -55, bodyPitch: -6, bodyRoll: -6, wing: 0.15 }], [0.58, { legR: -80, bodyPitch: -12, bodyRoll: -10, head: -8, wing: 0.2 }],
+    [0.76, { legR: 40, legL: -20, bodyPitch: 16, bodyRoll: 8, head: 10, wing: 0, bodyY: -0.3 }, 'lin'], [1.0, { legR: 40, legL: 0, bodyPitch: 8, bodyRoll: 2 }], [1.3, { legR: 15, bodyPitch: 3 }], [1.8, { ...Z }],
   ]),
 };
 
-// ---- Trommelwirbel: vier Schläge L/R/L/R, jeder lässt eine versetzte Pfütze liegen, der letzte klebt Schleim an den Pirscher
-const TR = [0.85, 1.2, 1.55, 1.9];
-const trommel = {
-  id: 'krachfaust_trommel', range: [0, 7.5], weight: 3, cooldown: 3.5, telegraph: 0.7, flashParts: ['prankeL', 'prankeR'], duration: 3.0,
-  cue: cue('droehn', NEON), audit: [2.5, 5], stam: 10,
-  marker: ring(6.7), markerUntil: 0.85,
-  hits: TR.map((t, i) => fist(i % 2 ? 'R' : 'L', t, 40, 'flinch', i === 3 ? { slimeOnHit: true } : {})),
-  events: TR.map((t, i) => ({ t: t + 0.02, call: 'slam' + i, all: true })),
-  calls: Object.fromEntries(TR.map((t, i) => ['slam' + i, slam(t + 0.02, (i % 2 ? -1 : 1) * 2.1, 3.6 + (i % 2 ? 0.8 : -0.6), { tag: i })])),
-  motion(tau, a) {
-    const f = 0.8 * clamp01((tau - 0.7) / 1.3);
-    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
+// ---- Riesenhaken: weit ausgeholter Haymaker. Der rechte Arm steht seitlich ausgestreckt, der ganze Körper dreht sich mit (Yaw -0,6 -> +1,5 rad): die Faust fegt einen riesigen Bogen von rechts
+// quer vor ihm nach links. Trefferzone = Unterarm + Faust (Kapsel, 7-12 m vom Rumpf), mit der Drehung als Fächer; Treffer klebt Schleim.
+const HAY_ARM = { shape: 'capsule', from: [-6.0, 1.6, 3.5], to: [-8.5, 1.4, 5.5], radius: 2.4 };
+const hayMotion = (reach, wind) => (tau, a) => {
+  const f = reach * smooth(clamp01((tau - 0.45) / 0.55));
+  const yaw = a.yaw0 - 0.6 * smooth(clamp01((tau - 0.3) / 0.5)) + 2.1 * smooth(clamp01((tau - 0.95) / 0.4));
+  return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f, yaw };
+};
+const riesenhaken = {
+  id: 'krachfaust_riesenhaken', range: [2, 14], weight: 5, cooldown: 3, telegraph: 0.85, flashParts: ['prankeR', 'prankeL'], duration: 2.3, markerFromHits: true,
+  cue: cue('droehn', NEON), audit: [8, 12], stam: 12,
+  hits: [{ ...HAY_ARM, t0: 1.0, t1: 1.35, dmg: 76, knock: 'down', side: 'R', slimeOnHit: true }],
+  events: [{ t: 1.2, call: 'bam', all: true }],
+  calls: { bam: (m, ctx, inst, age = 0) => { const p = atLocal(inst, 1.2, -7.0, 5.0); addSlime(m, p.x, p.z, { age }); ctx.fx.spark({ x: p.x, y: p.y + 0.6, z: p.z }, 26, NEON, 8); ctx.fx.shake?.(0.4, 0.3); ctx.bus.emit('sfx', { name: 'heavy', pos: p }); } },
+  motion: hayMotion(2.0),
+  pose: mTrack([
+    [0, { ...Z }], [0.4, { legR: -90, wing: -0.7, bodyPitch: -10, bodyRoll: 12 }], [0.85, { legR: -100, wing: -1.0, bodyPitch: -14, bodyRoll: 18, bodyY: 0.1, head: -8 }],
+    [1.05, { legR: 45, wing: -1.0, bodyPitch: 8, bodyRoll: -10 }, 'lin'], [1.35, { legR: 50, wing: -0.8, bodyPitch: 12, bodyRoll: -14 }], [1.75, { legR: 25, wing: 0, bodyPitch: 6 }], [2.3, { ...Z }],
+  ]),
+};
+
+// ---- Überschlag: der Haymaker reißt ihn nach vorn, er fängt sich auf allen Vieren (Fäuste krachen in den Boden), stürmt im Knöchellauf los und richtet sich wieder auf
+const ueberschlag = {
+  id: 'krachfaust_ueberschlag', range: [4, 16], weight: 4, cooldown: 6, telegraph: 0.85, flashParts: ['prankeL', 'prankeR'], duration: 3.7, markerFromHits: true,
+  cue: cue('brumm', NEON_HI), audit: [8, 12], stam: 14,
+  hits: [
+    { ...HAY_ARM, t0: 1.0, t1: 1.35, dmg: 62, knock: 'down', side: 'R', slimeOnHit: true },
+    { t0: 1.62, t1: 1.78, shape: 'sphere', at: [0, 0.3, 7.5], radius: 3.0, dmg: 46, knock: 'down' },
+    { t0: 2.0, t1: 2.55, shape: 'capsule', from: [0, 1.5, 2.0], to: [0, 1.5, 12.0], radius: 2.2, dmg: 58, knock: 'down' },
+  ],
+  events: [{ t: 1.2, call: 'bam', all: true }, { t: 1.64, call: 'catch', all: true }, { t: 2.0, call: 'rush', all: true }, { t: 2.9, call: 'rise', all: true }],
+  calls: {
+    bam: (m, ctx, inst, age = 0) => { const p = atLocal(inst, 1.2, -7.0, 5.0); ctx.fx.spark({ x: p.x, y: p.y + 0.6, z: p.z }, 22, NEON, 8); ctx.fx.shake?.(0.35, 0.25); ctx.bus.emit('sfx', { name: 'heavy', pos: p }); },
+    catch: (m, ctx, inst, age = 0) => {
+      const p = atLocal(inst, 1.66, 0, 7.5);
+      addSlime(m, p.x - 2.0, p.z, { age, small: true }); addSlime(m, p.x + 2.0, p.z, { age, small: true });
+      const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35); ctx.bus.emit('sfx', { name: 'heavy', pos: at });
+      if (wut(m)) areaHit(m, ctx, p, 3.2, 18, `${inst.key}:wc`);
+    },
+    rush: (m, ctx) => { ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.6, z: m.pos.z }, 14, NEON, 5); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); },
+    rise: (m, ctx) => { ctx.fx.shake?.(0.25, 0.2); ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 1, z: m.pos.z }, 10, NEON, 5); },
   },
+  motion(tau, a) {
+    const f = 1.6 * smooth(clamp01((tau - 0.45) / 0.55)) + 1.2 * smooth(clamp01((tau - 1.2) / 0.4)) + 7.5 * smooth(clamp01((tau - 1.95) / 0.65));
+    const yaw = a.yaw0 - 0.6 * smooth(clamp01((tau - 0.3) / 0.5)) + 2.1 * smooth(clamp01((tau - 0.95) / 0.4)) - 1.5 * smooth(clamp01((tau - 1.35) / 0.3)); // nach dem Schwung dreht er wieder auf das Ziel
+    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f, yaw };
+  },
+  pose: mTrack([
+    [0, { ...Z }], [0.45, { legR: -90, wing: -0.7, bodyPitch: -10, bodyRoll: 12 }], [0.85, { legR: -100, wing: -1.0, bodyPitch: -14, bodyRoll: 18, bodyY: 0.1 }],
+    [1.05, { legR: 45, wing: -1.0, bodyPitch: 8, bodyRoll: -10 }, 'lin'], [1.35, { legR: 30, wing: -0.3, bodyPitch: 20, spread: 0.3 }],
+    [1.62, { legL: 10, legR: 10, wing: 0, bodyPitch: 6, spread: 1, bodyY: -0.1 }, 'lin'], [1.85, { spread: 1, bodyPitch: 4, legL: -15, legR: 25 }],
+    [2.15, { spread: 1, bodyPitch: 6, legL: 25, legR: -15 }], [2.45, { spread: 1, bodyPitch: 4, legL: -15, legR: 25 }], [2.8, { spread: 0.8, bodyPitch: 2, legL: 10, legR: 10 }],
+    [3.2, { spread: 0.1, bodyPitch: -10, legL: -30, legR: -30, bodyY: 0.1 }], [3.7, { ...Z }],
+  ]),
+};
+
+// ---- Trommelwirbel: sechs Schläge L/R/L/R/L/R im Vorwärtsdrang, jeder lässt eine Pfütze liegen, der letzte klebt Schleim an den Pirscher
+const TR = [0.78, 1.08, 1.38, 1.68, 1.98, 2.28];
+const trommel = {
+  id: 'krachfaust_trommel', range: [0, 12], weight: 4, cooldown: 3, telegraph: 0.65, flashParts: ['prankeL', 'prankeR'], duration: 3.2, markerFromHits: true,
+  cue: cue('droehn', NEON), audit: [7, 11], stam: 12,
+  hits: TR.map((t, i) => fist(i % 2 ? 'R' : 'L', t, i === 5 ? 52 : 38, i === 5 ? 'down' : 'flinch', i === 5 ? { slimeOnHit: true } : {})),
+  events: TR.map((t, i) => ({ t: t + 0.02, call: 'slam' + i, all: true })),
+  calls: Object.fromEntries(TR.map((t, i) => ['slam' + i, slam(t + 0.02, (i % 2 ? -1 : 1) * 1.8, 6.4, { tag: i, small: i < 5 })])),
+  motion: motionFwd(0.6, 2.3, 3.6),
   pose: mTrack([
     [0, { ...Z }], [0.35, { legL: -60, legR: -60, bodyPitch: -10, wing: 0.3, bodyY: 0.1 }], [0.7, { legL: -80, legR: -60, bodyPitch: -14, wing: 0.2 }],
-    [0.85, { legL: 90, legR: -50, bodyPitch: 10, bodyRoll: 6 }, 'lin'], [1.03, { legL: -50, legR: -80, bodyRoll: -2 }], [1.2, { legR: 90, legL: -50, bodyPitch: 10, bodyRoll: -6 }, 'lin'],
-    [1.38, { legR: -50, legL: -80, bodyRoll: 2 }], [1.55, { legL: 90, legR: -50, bodyPitch: 10, bodyRoll: 6 }, 'lin'], [1.72, { legL: -50, legR: -80, bodyRoll: -2 }],
-    [1.9, { legR: 95, legL: -40, bodyPitch: 14, bodyRoll: -8 }, 'lin'], [2.3, { legR: 40, legL: 10, bodyPitch: 4, bodyRoll: 0 }], [3.0, { ...Z }],
+    ...TR.flatMap((t, i) => {
+      const L = i % 2 === 0, hi = { legL: L ? 40 : -50, legR: L ? -50 : 40, bodyPitch: 12, bodyY: -0.3, bodyRoll: L ? 6 : -6 }, lo = { legL: L ? -50 : -80, legR: L ? -80 : -50, bodyRoll: L ? -2 : 2 };
+      return [[t, hi, 'lin'], [t + 0.16, lo]];
+    }),
+    [2.6, { legR: 40, legL: 10, bodyPitch: 4, bodyRoll: 0 }], [3.2, { ...Z }],
   ]),
 };
 
-// ---- Kopfstoß: 6 m Anlauf, Schädel voraus; hinterlässt drei kleine Pfützen auf der Strecke
+// ---- Kopfstoß (Rammbock auf Vieren): duckt sich, stürmt mit gesenktem Schädel und grünem Horn voraus; hinterlässt drei kleine Pfützen auf der Strecke
 const kopfstoss = {
-  id: 'krachfaust_kopfstoss', range: [3, 11], weight: 3, cooldown: 5, telegraph: 0.7, flashParts: ['head'], duration: 2.2,
-  cue: cue('knurr', NEON), audit: [4, 9], stam: 10,
-  marker: ring(7.5), markerUntil: 0.9,
-  hits: [{ t0: 0.9, t1: 1.22, shape: 'capsule', from: [0, 2.2, 0.8], to: [0, 2.0, 3.4], radius: 1.9, dmg: 66, knock: 'down' }],
-  events: [0.95, 1.07, 1.19].map((t, i) => ({ t, call: 'trail' + i, all: true })),
-  calls: Object.fromEntries([0.95, 1.07, 1.19].map((t, i) => ['trail' + i, (m, ctx, inst, age = 0) => {
+  id: 'krachfaust_kopfstoss', range: [4, 16], weight: 4, cooldown: 4, telegraph: 0.65, flashParts: ['head'], duration: 2.1, markerFromHits: true,
+  cue: cue('knurr', NEON), audit: [9, 14], stam: 10,
+  hits: [{ t0: 0.8, t1: 1.3, shape: 'capsule', from: [0, 1.4, 7.0], to: [0, 1.0, 12.5], radius: 2.0, dmg: 70, knock: 'down' }],
+  events: [0.85, 1.0, 1.15].map((t, i) => ({ t, call: 'trail' + i, all: true })),
+  calls: Object.fromEntries([0.85, 1.0, 1.15].map((t, i) => ['trail' + i, (m, ctx, inst, age = 0) => {
     const p = atLocal(inst, t, 0, -0.5);
     addSlime(m, p.x, p.z, { age, small: true });
     ctx.fx.spark({ x: p.x, y: p.y + 0.4, z: p.z }, 8, NEON, 4);
   }])),
-  motion(tau, a) {
-    const f = 6 * smooth(clamp01((tau - 0.7) / 0.5));
-    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
-  },
+  motion: motionFwd(0.65, 1.2, 8),
   pose: mTrack([
-    [0, { ...Z }], [0.4, { bodyPitch: -8, head: -14, legL: -30, legR: -30, bodyY: -0.2 }], [0.7, { bodyPitch: -10, head: -18, legL: -50, legR: -50, bodyY: -0.3, neck: -0.2 }],
-    [0.95, { bodyPitch: 24, head: 28, legL: 60, legR: 60, bodyY: -0.1, neck: 0.3 }, 'lin'], [1.3, { bodyPitch: 14, head: 14, legL: 40, legR: 40 }], [1.6, { bodyPitch: 6, head: 4, legL: 15, legR: 15 }], [2.2, { ...Z }],
+    [0, { ...Z }], [0.4, { bodyPitch: -4, head: 14, legL: -30, legR: -30, bodyY: -0.2, spread: 0.5, neck: 0.1 }], [0.65, { bodyPitch: 6, head: 22, legL: -45, legR: -45, bodyY: -0.35, spread: 0.9, neck: 0.2 }],
+    [0.85, { bodyPitch: 10, head: 26, legL: 30, legR: 30, bodyY: -0.2, spread: 1, neck: 0.3 }, 'lin'], [1.3, { bodyPitch: 8, head: 18, legL: 40, legR: 40, spread: 1 }], [1.7, { bodyPitch: 4, spread: 0.4, legL: 15, legR: 15 }], [2.1, { ...Z }],
   ]),
 };
 
-// ---- Sprungstampfer: Hocksprung bis 16 m auf das Ziel, Landung r 5,5; Ring aus 5 Pfützen r 6 um die Landestelle
+// ---- Sprungstampfer: Hocksprung bis 16 m auf das Ziel (Gap-Closer), Landung r 3,8; Ring aus 5 Pfützen r 4,6 um die Landestelle
 const stampfer = {
-  id: 'krachfaust_sprungstampfer', range: [4, 16], weight: 2, cooldown: 7, telegraph: 0.8, flashParts: ['legs'], duration: 2.5,
-  cue: cue('brumm', NEON), audit: [5, 14], stam: 10,
-  marker: { at: 'landing', radius: 5.8, color: NEON, peak: NEON_PEAK }, markerUntil: 1.5,
+  id: 'krachfaust_sprungstampfer', range: [5, 20], weight: 3, cooldown: 5, telegraph: 0.7, flashParts: ['legs'], duration: 2.3, markerFromHits: true,
+  cue: cue('brumm', NEON), audit: [8, 16], stam: 10,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
-    const len = Math.min(16, Math.max(4, d));
+    const len = Math.min(18, Math.max(4, d));
     a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
     a.jumpYaw = yawOf(dx, dz);
   },
-  hits: [{ t0: 1.4, t1: 1.53, shape: 'sphere', at: [0, 0.6, 0], radius: 5.8, dmg: 74, knock: 'down' }],
-  events: [{ t: 1.42, call: 'ring', all: true }],
+  hits: [{ t0: 1.25, t1: 1.4, shape: 'sphere', at: [0, 0.6, 0], radius: 3.9, dmg: 80, knock: 'down' }],
+  events: [{ t: 1.27, call: 'ring', all: true }],
   calls: {
     ring(m, ctx, inst, age = 0) {
       const L = inst.landing, a0 = inst.r(0) * 6.28;
-      for (let i = 0; i < 5; i++) { const a = a0 + (i / 5) * 6.28; addSlime(m, L.x + Math.cos(a) * 6, L.z + Math.sin(a) * 6, { age }); }
+      for (let i = 0; i < 5; i++) { const a = a0 + (i / 5) * 6.28; addSlime(m, L.x + Math.cos(a) * 4.6, L.z + Math.sin(a) * 4.6, { age }); }
       const at = { x: L.x, y: ctx.world.heightAt(L.x, L.z) + 0.4, z: L.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 6, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 4.5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
-      if (wut(m)) areaHit(m, ctx, L, 3, 14, `${inst.key}:w`);
+      if (wut(m)) areaHit(m, ctx, L, 2.4, 18, `${inst.key}:w`);
     },
   },
   motion(tau, a) {
-    const k = clamp01((tau - 0.8) / 0.6);
-    return { x: a.origin.x + (a.landing.x - a.origin.x) * k, z: a.origin.z + (a.landing.z - a.origin.z) * k, yaw: a.jumpYaw, air: 4.2 * 4 * k * (1 - k) };
+    const k = clamp01((tau - 0.7) / 0.55);
+    return { x: a.origin.x + (a.landing.x - a.origin.x) * k, z: a.origin.z + (a.landing.z - a.origin.z) * k, yaw: a.jumpYaw, air: 4.0 * 4 * k * (1 - k) };
   },
   pose: mTrack([
-    [0, { ...Z }], [0.4, { legL: -40, legR: -40, bodyY: -0.45, bodyPitch: 8 }], [0.8, { legL: -70, legR: -70, bodyY: -0.6, wing: 0.2 }],
-    [1.0, { legL: -100, legR: -100, bodyY: 0.5, bodyPitch: -14, wing: 0.5 }], [1.4, { legL: 80, legR: 80, bodyY: -0.5, bodyPitch: 16, wing: 0 }, 'lin'],
-    [1.7, { legL: 50, legR: 50, bodyY: -0.2, bodyPitch: 8 }], [2.5, { ...Z }],
+    [0, { ...Z }], [0.4, { legL: -40, legR: -40, bodyY: -0.45, bodyPitch: 8 }], [0.7, { legL: -70, legR: -70, bodyY: -0.6, wing: 0.2 }],
+    [0.95, { legL: -100, legR: -100, bodyY: 0.5, bodyPitch: -14, wing: 0.5 }], [1.25, { legL: 80, legR: 80, bodyY: -0.5, bodyPitch: 16, wing: 0 }, 'lin'],
+    [1.6, { legL: 50, legR: 50, bodyY: -0.2, bodyPitch: 8 }], [2.3, { ...Z }],
   ]),
 };
 
-// ---- Schleimsalve: drei Schleimbälle im hohen Bogen, Aufschlag-Marker, Splash 1,4 m / 20 Schaden; jeder lässt eine Pfütze liegen
-const salveCall = (m, ctx, inst, age = 0) => {
-  const o = inst.origin, a = inst.yaw0;
-  const from = { x: o.x + Math.sin(a) * 3.0, y: o.y + 4.6, z: o.z + Math.cos(a) * 3.0 };
-  const dx = inst.target.x - from.x, dz = inst.target.z - from.z, dist = Math.hypot(dx, dz) || 1;
-  const balls = wut(m) ? 5 : 3;
-  for (let i = 0; i < balls; i++) {
+// ---- Faustgewitter: bäumt sich auf und hämmert fünfmal L/R abwechselnd auf den Boden. JEDER Schlag schleudert Schleimklumpen im Bogen ringsum (einer zielt auf den Pirscher);
+// sie landen als rote Aufschlagfläche, kleben als Pfütze am Boden (oder am getroffenen Pirscher) und platzen nach der Zündschnur.
+const PO = [0.95, 1.35, 1.75, 2.15, 2.55];
+const poundCall = (i) => (m, ctx, inst, age = 0) => {
+  const L = i % 2 === 0, p = atLocal(inst, PO[i] + 0.02, L ? 1.8 : -1.8, 7.9);
+  const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
+  ctx.fx.spark(at, 16, NEON, 7); ctx.fx.ring?.(at, 0.6, 2.6, { color: NEON, life: 0.3 }); ctx.fx.shake?.(0.3, 0.2);
+  ctx.bus.emit('sfx', { name: 'heavy', pos: at });
+  const n = wut(m) ? 4 : 3, from = { x: at.x, y: at.y + 0.8, z: at.z };
+  const dx = inst.target.x - inst.origin.x, dz = inst.target.z - inst.origin.z, ang0 = Math.atan2(dx, dz), dist = Math.hypot(dx, dz);
+  for (let j = 0; j < n; j++) {
+    const r1 = inst.r(i * 3 + j), r2 = inst.r(i * 3 + j + 5);
     let tx, tz;
-    if (i === 0) { tx = inst.target.x + (inst.r(0) - 0.5) * 1.4; tz = inst.target.z + (inst.r(6) - 0.5) * 1.4; }
+    if (j === 0 && i % 2 === 0) { tx = inst.target.x + (r1 - 0.5) * 2.0; tz = inst.target.z + (r2 - 0.5) * 2.0; } // einer aufs Ziel
     else {
-      const ang = Math.atan2(dx, dz) + (i % 2 ? 1 : -1) * (0.18 + 0.12 * Math.ceil(i / 2) + inst.r(i) * 0.1);
-      const d = Math.max(6, Math.min(26, dist * (0.85 + inst.r(i + 6) * 0.3)));
-      tx = from.x + Math.sin(ang) * d; tz = from.z + Math.cos(ang) * d;
+      const side = j % 2 ? 1 : -1, a = ang0 + side * (0.55 + r1 * 0.9), d = Math.max(5, Math.min(14, dist * (0.7 + r2 * 0.7)));
+      tx = inst.origin.x + Math.sin(a) * d; tz = inst.origin.z + Math.cos(a) * d;
     }
-    const to = { x: tx, y: ctx.world.heightAt(tx, tz), z: tz };
-    const dur = 1.0 + dist * 0.03 + i * 0.12;
-    m.projectiles.spawn({ ...slimeDef({ from, to, dur, arc: 7, dmg: 28, splash: 1.5, key: `${inst.key}:s${i}` }), attackId: inst.params.attackId }, age);
-    addSlime(m, tx, tz, { delay: dur + 0.1, age, small: true });
+    flingGlob(m, from, tx, tz, { age, dur: 0.85 + Math.hypot(tx - from.x, tz - from.z) * 0.03 });
   }
-  ctx.bus.emit('sfx', { name: 'slimeSplat', pos: from });
-  ctx.fx.spark(from, 16, NEON, 6);
+  if (wut(m)) areaHit(m, ctx, p, 2.2, 14, `${inst.key}:wp${i}`);
 };
-const salve = {
-  id: 'krachfaust_salve', range: [8, 26], weight: 3, cooldown: 7, telegraph: 0.8, flashParts: ['prankeL', 'prankeR'], duration: 2.4,
-  cue: cue('zisch', NEON_HI), stam: 8,
-  events: [{ t: 1.0, call: 'wurf', all: true }], calls: { wurf: salveCall }, hits: [],
+const pochen = {
+  id: 'krachfaust_pochen', range: [0, 20], weight: 4, cooldown: 6, telegraph: 0.8, flashParts: ['prankeL', 'prankeR'], duration: 3.5, markerFromHits: true,
+  cue: cue('droehn', NEON_HI), audit: [8, 12], stam: 12,
+  hits: PO.map((t, i) => ({ t0: t, t1: t + 0.14, shape: 'sphere', at: [i % 2 ? -1.8 : 1.8, 0.3, 7.9], radius: 1.7, dmg: 34, knock: 'flinch', side: i % 2 ? 'R' : 'L' })),
+  events: PO.map((t, i) => ({ t: t + 0.02, call: 'p' + i, all: true })),
+  calls: Object.fromEntries(PO.map((t, i) => ['p' + i, poundCall(i)])),
+  motion: motionFwd(0.7, 1.4, 1.2),
   pose: mTrack([
-    [0, { ...Z }], [0.4, { legL: -70, legR: -70, bodyPitch: -12, head: -10, wing: 0.2 }], [0.8, { legL: -100, legR: -100, bodyPitch: -20, bodyY: 0.2, head: -16, wing: 0.5 }],
-    [1.0, { legL: 85, legR: 85, bodyPitch: 14, head: 14, wing: 0 }, 'lin'], [1.4, { legL: 40, legR: 40, bodyPitch: 6 }], [2.4, { ...Z }],
+    [0, { ...Z }], [0.4, { legL: -80, legR: -80, bodyPitch: -12, wing: 0.3, bodyY: 0.2 }], [0.8, { legL: -110, legR: -110, bodyPitch: -20, wing: 0.5, bodyY: 0.4, head: -14 }],
+    ...PO.flatMap((t, i) => {
+      const L = i % 2 === 0;
+      return [[t, { legL: L ? 40 : -60, legR: L ? -60 : 40, bodyPitch: 14, bodyY: -0.4, wing: 0.1, head: 8 }, 'lin'], [t + 0.2, { legL: L ? -20 : -105, legR: L ? -105 : -20, bodyPitch: -10, bodyY: 0.3, wing: 0.4, head: -10 }]];
+    }),
+    [2.9, { legL: 30, legR: 30, bodyPitch: 6 }], [3.5, { ...Z }],
   ]),
 };
 
-// ---- Hammerkette: drei schnelle Faustschläge R/L/R, dann der Doppelhammer (beide Fäuste), der den Boden mit Schleim-Knallern pflastert
-const HM = [0.8, 1.1, 1.4];
+// ---- Hammerkette: drei schnelle Haken R/L/R im Vorwärtsdrang, dann der Doppelhammer (beide Fäuste), der den Boden mit Schleim pflastert
+const HM = [0.78, 1.06, 1.34];
 const hammer = {
-  id: 'krachfaust_hammer', range: [0, 7.5], weight: 3, cooldown: 4, telegraph: 0.7, flashParts: ['prankeL', 'prankeR'], duration: 3.0,
-  cue: cue('droehn', NEON), audit: [2.5, 5], stam: 12,
-  marker: ring(7.2), markerUntil: 0.9,
-  hits: [...HM.map((t, i) => fist(i % 2 ? 'L' : 'R', t, 36, 'flinch')), { t0: 2.0, t1: 2.14, shape: 'sphere', at: [0, 1.1, 4.2], radius: 3.0, dmg: 78, knock: 'down', slimeOnHit: true }],
+  id: 'krachfaust_hammer', range: [0, 12], weight: 4, cooldown: 3.5, telegraph: 0.65, flashParts: ['prankeL', 'prankeR'], duration: 3.0, markerFromHits: true,
+  cue: cue('droehn', NEON), audit: [7, 11], stam: 14,
+  hits: [...HM.map((t, i) => fist(i % 2 ? 'L' : 'R', t, 40, 'flinch')), { t0: 2.0, t1: 2.14, shape: 'sphere', at: [0, 0.3, 7.1], radius: 3.3, dmg: 84, knock: 'down', slimeOnHit: true }],
   events: [...HM.map((t, i) => ({ t: t + 0.02, call: 'h' + i, all: true })), { t: 2.02, call: 'big', all: true }],
   calls: {
-    ...Object.fromEntries(HM.map((t, i) => ['h' + i, slam(t + 0.02, (i % 2 ? -1 : 1) * 0.9, 3.6, { small: true, tag: 'h' + i })])),
+    ...Object.fromEntries(HM.map((t, i) => ['h' + i, slam(t + 0.02, (i % 2 ? 1 : -1) * 1.7, 6.6, { small: true, tag: 'h' + i })])),
     big(m, ctx, inst, age = 0) {
-      const p = atLocal(inst, 2.02, 0, 4.2);
-      for (let i = 0; i < 4; i++) { const a = inst.yaw0 + (i - 1.5) * 0.9; addSlime(m, p.x + Math.sin(a) * 3.4, p.z + Math.cos(a) * 3.4, { age, small: true }); }
+      const p = atLocal(inst, 2.02, 0, 7.1);
+      for (let i = 0; i < 4; i++) { const a = inst.yaw0 + (i - 1.5) * 0.9; addSlime(m, p.x + Math.sin(a) * 3.0, p.z + Math.cos(a) * 3.0, { age, small: true }); }
       addSlime(m, p.x, p.z, { age });
       const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.spark(at, 12, NEON_PEAK, 6); ctx.fx.ring?.(at, 0.8, 5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.spark(at, 12, NEON_PEAK, 6); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
-      if (wut(m)) areaHit(m, ctx, p, 4.5, 20, `${inst.key}:wbig`);
+      if (wut(m)) areaHit(m, ctx, p, 3.2, 22, `${inst.key}:wbig`);
     },
   },
   motion(tau, a) {
-    const f = 2.4 * clamp01((tau - 0.7) / 1.3);
+    const f = 2.4 * smooth(clamp01((tau - 0.6) / 1.4));
     return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
   },
   pose: mTrack([
     [0, { ...Z }], [0.35, { legL: -40, legR: -70, bodyPitch: -8, wing: 0.2 }], [0.7, { legL: -50, legR: -85, bodyPitch: -12, wing: 0.2 }],
-    [0.82, { legR: 95, legL: -40, bodyPitch: 12, bodyRoll: -6 }, 'lin'], [0.95, { legL: -85, legR: -40, bodyRoll: 2 }], [1.1, { legL: 95, legR: -40, bodyPitch: 12, bodyRoll: 6 }, 'lin'],
-    [1.25, { legR: -85, legL: -40, bodyRoll: -2 }], [1.4, { legR: 95, legL: -40, bodyPitch: 12, bodyRoll: -6 }, 'lin'],
+    [0.78, { legR: 40, legL: -40, bodyPitch: 12, bodyY: -0.3, bodyRoll: -6 }, 'lin'], [0.92, { legL: -85, legR: -40, bodyRoll: 2 }], [1.06, { legL: 40, legR: -40, bodyPitch: 12, bodyY: -0.3, bodyRoll: 6 }, 'lin'],
+    [1.2, { legR: -85, legL: -40, bodyRoll: -2 }], [1.34, { legR: 40, legL: -40, bodyPitch: 12, bodyY: -0.3, bodyRoll: -6 }, 'lin'],
     [1.65, { legL: -110, legR: -110, wing: 0.5, bodyPitch: -22, bodyY: 0.35 }], [1.95, { legL: -120, legR: -120, wing: 0.6, bodyPitch: -26, bodyY: 0.45 }],
-    [2.05, { legL: 110, legR: 110, wing: 0, bodyPitch: 22, bodyY: -0.4 }, 'lin'], [2.5, { legL: 60, legR: 60, bodyPitch: 12 }], [3.0, { ...Z }],
+    [2.05, { legL: 42, legR: 42, wing: 0, bodyPitch: 24, bodyY: -0.5 }, 'lin'], [2.5, { legL: 60, legR: 60, bodyPitch: 12 }], [3.0, { ...Z }],
   ]),
 };
 
-// ---- Hornschlag: bäumt sich auf, das riesige Horn kracht senkrecht nach unten; Schleim links und rechts, in der Wut Druckwelle
+// ---- Hornschlag: bäumt sich auf, der Schädel mit dem grünen Widderhorn kracht senkrecht nach unten; Schleim links und rechts, in der Wut Druckwelle
 const hornschlag = {
-  id: 'krachfaust_hornschlag', range: [0, 8.5], weight: 3, cooldown: 4.5, telegraph: 0.85, flashParts: ['head'], duration: 2.4,
-  cue: cue('knurr', NEON_HI), audit: [3, 7], stam: 12,
-  marker: ring(8.5), markerUntil: 1.1,
-  hits: [{ t0: 1.05, t1: 1.2, shape: 'capsule', from: [0, 3.2, 3.2], to: [0, 0.6, 6.4], radius: 2.2, dmg: 72, knock: 'down' }],
-  events: [{ t: 1.07, call: 'bam', all: true }],
+  id: 'krachfaust_hornschlag', range: [0, 12], weight: 3, cooldown: 4, telegraph: 0.8, flashParts: ['head'], duration: 2.3, markerFromHits: true,
+  cue: cue('knurr', NEON_HI), audit: [7, 10], stam: 12,
+  hits: [{ t0: 1.0, t1: 1.15, shape: 'capsule', from: [0, 3.0, 8.4], to: [0, 0.4, 6.4], radius: 2.2, dmg: 76, knock: 'down' }],
+  events: [{ t: 1.02, call: 'bam', all: true }],
   calls: {
     bam(m, ctx, inst, age = 0) {
-      const p = atLocal(inst, 1.07, 0, 6.0);
+      const p = atLocal(inst, 1.02, 0, 6.6);
       addSlime(m, p.x, p.z, { age });
-      for (const sx of [-1, 1]) { const q = atLocal(inst, 1.07, sx * 3.6, 5.0); addSlime(m, q.x, q.z, { age, small: true }); }
+      for (const sx of [-1, 1]) { const q = atLocal(inst, 1.02, sx * 3.4, 6.0); addSlime(m, q.x, q.z, { age, small: true }); }
       const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
-      ctx.fx.spark(at, 28, NEON, 9); ctx.fx.spark(at, 10, NEON_PEAK, 5); ctx.fx.ring?.(at, 0.8, 5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.3);
+      ctx.fx.spark(at, 28, NEON, 9); ctx.fx.spark(at, 10, NEON_PEAK, 5); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.3);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
-      if (wut(m)) areaHit(m, ctx, p, 5, 22, `${inst.key}:wh`);
+      if (wut(m)) areaHit(m, ctx, p, 3.4, 22, `${inst.key}:wh`);
     },
   },
-  motion(tau, a) {
-    const f = 1.8 * smooth(clamp01((tau - 0.85) / 0.3));
-    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
-  },
+  motion: motionFwd(0.8, 1.1, 2.2),
   pose: mTrack([
-    [0, { ...Z }], [0.45, { bodyPitch: -14, neck: -0.35, head: -30, jaw: 20, bodyY: 0.2, legL: -20, legR: -20 }], [0.85, { bodyPitch: -22, neck: -0.5, head: -50, jaw: 30, bodyY: 0.4, legL: -40, legR: -40 }],
-    [1.07, { bodyPitch: 24, neck: 0.5, head: 55, jaw: 0, bodyY: -0.2, legL: 30, legR: 30 }, 'lin'], [1.5, { bodyPitch: 14, head: 30, legL: 20, legR: 20 }], [2.4, { ...Z }],
+    [0, { ...Z }], [0.45, { bodyPitch: -14, neck: -0.35, head: -30, jaw: 20, bodyY: 0.2, legL: -20, legR: -20 }], [0.8, { bodyPitch: -22, neck: -0.5, head: -50, jaw: 30, bodyY: 0.4, legL: -40, legR: -40 }],
+    [1.02, { bodyPitch: 24, neck: 0.5, head: 55, jaw: 0, bodyY: -0.2, legL: 30, legR: 30 }, 'lin'], [1.5, { bodyPitch: 14, head: 30, legL: 20, legR: 20 }], [2.3, { ...Z }],
   ]),
 };
 
 // ---- Schwanzwirbel: dreht sich einmal um die eigene Achse, der Stachelfächer fegt rundherum (auch nach hinten, wo man sich sicher fühlt)
 const schwanz = {
-  id: 'krachfaust_schwanzwirbel', range: [0, 12], weight: 2, cooldown: 6, telegraph: 0.8, flashParts: ['tail'], duration: 2.3,
-  cue: cue('zisch', NEON), audit: [3, 9], stam: 12,
-  marker: ring(12), markerUntil: 1.0,
-  hits: [{ t0: 0.95, t1: 1.75, shape: 'capsule', from: [0, 1.4, -4.5], to: [0, 1.4, -11], radius: 2.0, dmg: 64, knock: 'down' }, { t0: 0.95, t1: 1.75, shape: 'sphere', at: [0, 1.5, -4], radius: 3.2, dmg: 40, knock: 'flinch' }],
-  events: [{ t: 1.0, call: 'whoosh', all: true }, { t: 1.75, call: 'stop', all: true }],
+  id: 'krachfaust_schwanzwirbel', range: [0, 14], weight: 3, cooldown: 5, telegraph: 0.7, flashParts: ['tail'], duration: 2.2, markerFromHits: true,
+  cue: cue('zisch', NEON), audit: [4, 10], stam: 12,
+  hits: [{ t0: 0.9, t1: 1.7, shape: 'capsule', from: [0, 1.2, -5.5], to: [0, 1.2, -14.5], radius: 2.2, dmg: 68, knock: 'down' }, { t0: 0.9, t1: 1.7, shape: 'sphere', at: [0, 1.2, -4.0], radius: 3.2, dmg: 42, knock: 'flinch' }],
+  events: [{ t: 0.95, call: 'whoosh', all: true }, { t: 1.7, call: 'stop', all: true }],
   calls: {
-    whoosh(m, ctx) { ctx.fx.ring?.({ x: m.pos.x, y: m.pos.y + 0.3, z: m.pos.z }, 3, 11, { color: NEON, life: 0.6 }); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); ctx.fx.shake?.(0.25, 0.5); },
+    whoosh(m, ctx) { ctx.fx.ring?.({ x: m.pos.x, y: m.pos.y + 0.3, z: m.pos.z }, 2, 8, { color: NEON, life: 0.6 }); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); ctx.fx.shake?.(0.25, 0.5); },
     stop(m, ctx) { ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 1, z: m.pos.z }, 12, NEON, 6); },
   },
-  motion(tau, a) { return { x: a.origin.x, z: a.origin.z, yaw: a.yaw0 + Math.PI * 2 * smooth(clamp01((tau - 0.95) / 0.8)) }; },
+  motion(tau, a) { return { x: a.origin.x, z: a.origin.z, yaw: a.yaw0 + Math.PI * 2 * smooth(clamp01((tau - 0.9) / 0.8)) }; },
   pose: mTrack([
-    [0, { ...Z }], [0.5, { tailYaw: -70, bodyRoll: -6, bodyPitch: -6, legL: -30, legR: -30 }], [0.9, { tailYaw: -85, bodyRoll: -10, bodyPitch: -8, wing: 0.3 }],
-    [1.35, { tailYaw: 55, bodyRoll: 8, wing: 0.2 }], [1.75, { tailYaw: 20, bodyRoll: 0, bodyPitch: 6 }], [2.3, { ...Z }],
+    [0, { ...Z }], [0.45, { tailYaw: -70, bodyRoll: -6, bodyPitch: -6, legL: -30, legR: -30 }], [0.85, { tailYaw: -85, bodyRoll: -10, bodyPitch: -8, wing: 0.3 }],
+    [1.3, { tailYaw: 55, bodyRoll: 8, wing: 0.2 }], [1.7, { tailYaw: 20, bodyRoll: 0, bodyPitch: 6 }], [2.2, { ...Z }],
   ]),
 };
 
-// ---- Sprung-Faustschlag: Sprung bis 14 m (hoch!), beide Fäuste voraus in den Boden, Schleim-Ring
+// ---- Satzfaust (Gap-Closer): springt bis 16 m durch die Luft, die Faust voraus; beim Aufprall Schleim-Ring. Danach steht er sofort in Reichweite
 const sprungfaust = {
-  id: 'krachfaust_sprungfaust', range: [5, 16], weight: 3, cooldown: 6, telegraph: 0.75, flashParts: ['prankeL', 'prankeR', 'legs'], duration: 2.4,
-  cue: cue('brumm', NEON_HI), audit: [6, 14], stam: 12,
-  marker: { at: 'landing', radius: 5, color: NEON, peak: NEON_PEAK }, markerUntil: 1.5,
+  id: 'krachfaust_sprungfaust', range: [7, 22], weight: 4, cooldown: 4.5, telegraph: 0.65, flashParts: ['prankeL', 'prankeR', 'legs'], duration: 2.2, markerFromHits: true,
+  cue: cue('brumm', NEON_HI), audit: [10, 16], stam: 12,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
-    const len = Math.min(14, Math.max(4, d - 2.5));
+    const len = Math.min(16, Math.max(3, d - 7.5)); // die Fäuste (8 m vor dem Ursprung) landen auf dem Ziel
     a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
     a.jumpYaw = yawOf(dx, dz);
   },
-  hits: [{ t0: 1.35, t1: 1.5, shape: 'sphere', at: [0, 1.0, 3.0], radius: 3.6, dmg: 80, knock: 'down', slimeOnHit: true }],
-  events: [{ t: 1.37, call: 'ring', all: true }],
+  hits: [{ t0: 1.2, t1: 1.35, shape: 'sphere', at: [0, 0.3, 8.0], radius: 3.4, dmg: 82, knock: 'down', slimeOnHit: true }],
+  events: [{ t: 1.22, call: 'ring', all: true }],
   calls: {
     ring(m, ctx, inst, age = 0) {
       const L = inst.landing, a0 = inst.r(1) * 6.28;
-      for (let i = 0; i < 4; i++) { const a = a0 + (i / 4) * 6.28; addSlime(m, L.x + Math.cos(a) * 4.5, L.z + Math.sin(a) * 4.5, { age, small: true }); }
-      const at = { x: L.x, y: ctx.world.heightAt(L.x, L.z) + 0.4, z: L.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 6, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
+      for (let i = 0; i < 4; i++) { const a = a0 + (i / 4) * 6.28; addSlime(m, L.x + Math.cos(a) * 3.8 + Math.sin(inst.jumpYaw) * 8, L.z + Math.sin(a) * 3.8 + Math.cos(inst.jumpYaw) * 8, { age, small: true }); }
+      const F = { x: L.x + Math.sin(inst.jumpYaw) * 8, z: L.z + Math.cos(inst.jumpYaw) * 8 }, at = { x: F.x, y: ctx.world.heightAt(F.x, F.z) + 0.4, z: F.z };
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 4.5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
-      if (wut(m)) areaHit(m, ctx, L, 5, 22, `${inst.key}:w`);
+      if (wut(m)) areaHit(m, ctx, F, 3.4, 22, `${inst.key}:w`);
     },
   },
   motion(tau, a) {
-    const k = clamp01((tau - 0.75) / 0.6);
-    return { x: a.origin.x + (a.landing.x - a.origin.x) * k, z: a.origin.z + (a.landing.z - a.origin.z) * k, yaw: a.jumpYaw, air: 5.0 * 4 * k * (1 - k) };
+    const k = clamp01((tau - 0.65) / 0.55);
+    return { x: a.origin.x + (a.landing.x - a.origin.x) * k, z: a.origin.z + (a.landing.z - a.origin.z) * k, yaw: a.jumpYaw, air: 3.6 * 4 * k * (1 - k) };
   },
   pose: mTrack([
-    [0, { ...Z }], [0.4, { legL: -50, legR: -50, bodyY: -0.5, bodyPitch: 8 }], [0.75, { legL: -90, legR: -90, bodyY: -0.6, wing: 0.3 }],
-    [1.0, { legL: -125, legR: -125, bodyY: 0.6, bodyPitch: -20, wing: 0.7 }], [1.35, { legL: 115, legR: 115, bodyY: -0.4, bodyPitch: 22, wing: 0 }, 'lin'],
-    [1.7, { legL: 60, legR: 60, bodyY: -0.2, bodyPitch: 10 }], [2.4, { ...Z }],
+    [0, { ...Z }], [0.35, { legL: -50, legR: -50, bodyY: -0.5, bodyPitch: 8 }], [0.65, { legL: -90, legR: -90, bodyY: -0.6, wing: 0.3 }],
+    [0.9, { legL: -125, legR: -125, bodyY: 0.6, bodyPitch: -20, wing: 0.7 }], [1.2, { legL: 45, legR: 45, bodyY: -0.5, bodyPitch: 24, wing: 0 }, 'lin'],
+    [1.55, { legL: 60, legR: 60, bodyY: -0.2, bodyPitch: 10 }], [2.2, { ...Z }],
+  ]),
+};
+
+// ---- Knöchellauf (Rush auf Vieren): wirft sich auf alle Viere und stürmt auf Fäusten bis 12 m heran (Gap-Closer), reißt sich am Ende mit einem Doppelhieb hoch
+const knoechel = {
+  id: 'krachfaust_knoechellauf', range: [8, 24], weight: 4, cooldown: 5, telegraph: 0.7, flashParts: ['prankeL', 'prankeR'], duration: 3.0, markerFromHits: true,
+  cue: cue('brumm', NEON), audit: [12, 18], stam: 14,
+  hits: [
+    { t0: 0.85, t1: 1.6, shape: 'capsule', from: [0, 1.5, 2.0], to: [0, 1.5, 12.0], radius: 2.2, dmg: 60, knock: 'down' },
+    { t0: 1.78, t1: 1.94, shape: 'sphere', at: [0, 0.3, 7.5], radius: 3.0, dmg: 66, knock: 'down', side: 'L', slimeOnHit: true },
+  ],
+  events: [{ t: 0.85, call: 'go', all: true }, { t: 1.8, call: 'rise', all: true }],
+  calls: {
+    go: (m, ctx) => { ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.5, z: m.pos.z }, 16, NEON, 6); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); },
+    rise: (m, ctx, inst, age = 0) => { const p = atLocal(inst, 1.8, 0, 7.5); addSlime(m, p.x, p.z, { age }); ctx.fx.spark({ x: p.x, y: p.y + 0.6, z: p.z }, 22, NEON, 8); ctx.fx.shake?.(0.4, 0.3); ctx.bus.emit('sfx', { name: 'heavy', pos: p }); },
+  },
+  motion(tau, a) {
+    const f = 10 * smooth(clamp01((tau - 0.7) / 0.9));
+    return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
+  },
+  pose: mTrack([
+    [0, { ...Z }], [0.4, { legL: -40, legR: -40, bodyPitch: 4, spread: 0.6, bodyY: -0.2 }], [0.75, { legL: -30, legR: 30, bodyPitch: 6, spread: 1, bodyY: -0.15 }],
+    [1.0, { legL: 40, legR: -30, spread: 1, bodyPitch: 6 }], [1.25, { legL: -30, legR: 40, spread: 1, bodyPitch: 6 }], [1.5, { legL: 40, legR: -30, spread: 1, bodyPitch: 6 }],
+    [1.7, { legL: -115, legR: -115, spread: 0, bodyPitch: -22, bodyY: 0.3, wing: 0.4 }], [1.8, { legL: 45, legR: 45, spread: 0, bodyPitch: 22, bodyY: -0.5 }, 'lin'], [2.3, { legL: 50, legR: 50, bodyPitch: 8 }], [3.0, { ...Z }],
   ]),
 };
 
@@ -560,8 +714,8 @@ const sprungfaust = {
 const runenwut = {
   id: 'krachfaust_runenwut', internal: true, range: [0, 99], weight: 0, cooldown: 30, telegraph: 1.0, flashParts: ['body', 'head'], duration: 2.6,
   cue: cue('droehn', NEON_PEAK), audit: [3, 7], stam: 10,
-  marker: { at: 'self', radius: 9, color: NEON, peak: NEON_PEAK }, markerUntil: 1.3,
-  hits: [{ t0: 1.2, t1: 1.3, shape: 'sphere', at: [0, 0.8, 0], radius: 9, dmg: 0, knock: 'pin' }],
+  markerFromHits: true,
+  hits: [{ t0: 1.2, t1: 1.3, shape: 'sphere', at: [0, 0.8, 0], radius: 7, dmg: 0, knock: 'pin' }],
   events: [{ t: 1.2, call: 'brull', all: true }],
   calls: {
     brull(m, ctx) {
@@ -584,7 +738,7 @@ const URK = 'krachfaust_urknall';
 const urknall = {
   id: URK, internal: true, range: [0, 99], weight: 0, cooldown: 30, telegraph: 6.5, flashParts: ['prankeL', 'prankeR', 'head'], duration: 8.5,
   cue: cue('droehn', NEON_PEAK), stam: 0, noFace: true,
-  marker: { at: 'landing', radius: KRACH.URK_R, color: NEON, peak: '#ff4a2a' }, markerUntil: 7.0,
+  marker: { at: 'landing', radius: KRACH.URK_R, color: RED, peak: RED_PEAK }, markerUntil: 7.0,
   prepare(a) { a.landing = onTemple(a.origin.x, a.origin.z) ? { x: TEMPLE_C.x, z: TEMPLE_C.z } : { x: a.origin.x, z: a.origin.z }; },
   hits: [{ t0: KRACH.URK_BOOM, t1: KRACH.URK_END, shape: 'sphere', at: [0, 0.8, 0], radius: KRACH.URK_R, dmg: 0, dmgPct: KRACH.URK_PCT, knock: 'down', occlude: true, noPerfect: true }],
   events: [
@@ -736,7 +890,8 @@ function visuals(m, dt) {
   for (let i = list.length - 1; i >= 0; i--) {
     const s = list[i], age = t - s.start, lf = s.fuse - age;
     if (!m.alive) { dropSlime(m, s); list.splice(i, 1); continue; }
-    if (age < 0) continue;
+    if (age < 0) { if (s.fly && age > -s.fly.dur) globFlight(m, s, age); continue; }
+    if (!s.landed && globLand(m, s)) { dropSlime(m, s); list.splice(i, 1); continue; }
     if (!s.mesh && ctx.scene) { s.mesh = makeSlimeMesh(s); ctx.scene.add(s.mesh); }
     const st = stageOf(lf), shz = STAGE_HZ[st], sph = Math.floor(lf * shz * 2) % 2;
     if (s.mesh) {
@@ -745,7 +900,7 @@ function visuals(m, dt) {
       u.disc.scale.setScalar(s.r * (1 + 0.12 * (st + 1) * sph) * Math.min(1, age / 0.25 + 0.2));
       u.blobs.forEach((b, k) => { b.position.y = 0.3 + 0.12 * (1 + st) * (sph ? 1 : 0.4) + 0.05 * Math.sin(t * 6 + k); });
     }
-    if (st >= 1) ctx.fx.marker?.(s.key, { x: s.x, y: s.y, z: s.z }, s.blastR, STAGE_COL[st][sph], false); // Sprengradius zeigen, wenn es ernst wird
+    if (st >= 1) ctx.fx.marker?.(s.key, { x: s.x, y: s.y, z: s.z }, s.blastR, WARN_COL[st][sph], false); // Sprengradius (rot) zeigen, wenn es ernst wird
     const tick = Math.floor(lf * shz);
     if (tick !== s.tick) { s.tick = tick; ctx.bus.emit('sfx', { name: 'slimePulse', pos: s, pitch: STAGE_PITCH[st] }); }
     // hineinlaufen: Pfütze wird absorbiert, der Pirscher bekommt Schleim (statt Explosion am Boden)
@@ -777,13 +932,13 @@ export const krachfaust = {
   name: 'Krachfaust, der Tempelbrecher',
   hp: 20000,
   scale: SC,
-  bodyRadius: 2.6,
+  bodyRadius: 1.7,
   predator: true,
   apex: true, // Revier-Apex: greift alles an, was den Tempel betritt (hunt.js -> Revier { apex })
-  walk: 3.3, run: 8.2, turn: 0.95, detect: 36, prefer: 5.5,
+  walk: 4.6, run: 11, turn: 1.25, detect: 36, prefer: 8, // Tempel-Apex: schneller Anlauf (Spielerfeedback: viel zu träge)
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 1300, jitter: 0.07, elem: { fire: 12, shock: 20 }, blunt: true, stunPart: true,
-      spheres: [{ node: 'head', offset: [0, 0.0, 0.5], r: 0.75 }, { node: 'head', offset: [0, -0.1, 1.8], r: 0.8 }] },
+      spheres: [{ node: 'head', offset: [0, 0.0, 0.5], r: 0.95 }, { node: 'head', offset: [0, -0.1, 1.8], r: 0.95 }, { node: 'head', offset: [0, 0.3, 2.3], r: 0.7 }] },
     { id: 'prankeL', label: 'Linke Schleimfaust', factor: 0.8, breakHp: 900, jitter: 0.06, elem: { fire: 10, shock: 30 },
       spheres: [{ node: 'fistL', offset: [0, -1.2, 0.2], r: 1.0 }] },
     { id: 'prankeR', label: 'Rechte Schleimfaust', factor: 0.8, breakHp: 900, jitter: 0.06, elem: { fire: 10, shock: 30 },
@@ -796,13 +951,14 @@ export const krachfaust = {
       spheres: [{ node: 'legL', offset: [0, -0.9, 0.0], r: 0.9 }, { node: 'legR', offset: [0, -0.9, 0.0], r: 0.9 }] },
   ],
   attacks: {
-    krachfaust_schleimfaust: schleimfaust, krachfaust_trommel: trommel, krachfaust_kopfstoss: kopfstoss, krachfaust_sprungstampfer: stampfer, krachfaust_salve: salve, krachfaust_hammer: hammer, krachfaust_hornschlag: hornschlag, krachfaust_schwanzwirbel: schwanz, krachfaust_sprungfaust: sprungfaust,
+    krachfaust_schleimfaust: schleimfaust, krachfaust_riesenhaken: riesenhaken, krachfaust_ueberschlag: ueberschlag, krachfaust_trommel: trommel, krachfaust_kopfstoss: kopfstoss, krachfaust_sprungstampfer: stampfer,
+    krachfaust_pochen: pochen, krachfaust_hammer: hammer, krachfaust_hornschlag: hornschlag, krachfaust_schwanzwirbel: schwanz, krachfaust_sprungfaust: sprungfaust, krachfaust_knoechellauf: knoechel,
     krachfaust_runenwut: runenwut, [URK]: urknall,
   },
   teachAttack: 'krachfaust_schleimfaust',
-  recoverAfter: (m) => (wut(m) ? m.rng() * 0.12 : 0.05 + m.rng() * 0.2) / m.speedMul, // kaum Verschnaufpause, in der Wut fast keine
-  speedFactor: (m) => (wut(m) ? 1.3 : 1.08), // Runenwut: Lauftempo 1,3
-  attackTempo: (m) => (wut(m) ? 1.35 : 1.1), // Angriffe: Grundtempo 1,1; Runenwut: Telegraph kürzer und der Ablauf 1,35x flotter (Telegraph nie unter 0,5 s)
+  recoverAfter: (m) => (wut(m) ? m.rng() * 0.08 : 0.02 + m.rng() * 0.12) / m.speedMul, // kaum Verschnaufpause, in der Wut fast keine
+  speedFactor: (m) => (wut(m) ? 1.3 : 1.12), // Runenwut: Lauftempo 1,3
+  attackTempo: (m) => (wut(m) ? 1.4 : 1.15), // Angriffe: Grundtempo 1,15; Runenwut: Telegraph kürzer und der Ablauf 1,4x flotter (Telegraph nie unter 0,5 s)
   stamina: true,
   flinchDmg: 1500,
   phases: [
@@ -810,16 +966,20 @@ export const krachfaust = {
     { at: 0.12, name: 'ZERFALL', cue: cue('droehn', '#ffe14d'), special: URK },
     { at: 0.05, name: 'ZERFALL II', cue: cue('droehn', '#ffe14d'), special: URK, enter(m) { if (!m.mm?.rageAlways) m.phaseSpecial = null; } }, // zweiter Urknall nur in Rotglut
   ],
+  // Ketten: Zweibeiner-Schwünge münden oft in den Vierbeiner-Fang (Überschlag) oder einen Gap-Closer; Rush endet im Faustschlag-Nahkampf
   chains: {
-    krachfaust_schleimfaust: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_trommel', w: 3 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 2 }, { atk: null, w: 1 }],
-    krachfaust_trommel: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_salve', w: 1 }],
-    krachfaust_hammer: [{ atk: 'krachfaust_schwanzwirbel', w: 4 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_schleimfaust', w: 2 }, { atk: null, w: 1 }],
-    krachfaust_hornschlag: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_schleimfaust', w: 3 }],
-    krachfaust_schwanzwirbel: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_hammer', w: 2 }, { atk: null, w: 1 }],
-    krachfaust_kopfstoss: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_sprungfaust', w: 3 }, { atk: 'krachfaust_trommel', w: 2 }],
-    krachfaust_sprungfaust: [{ atk: 'krachfaust_schleimfaust', w: 4 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_hammer', w: 2 }],
-    krachfaust_sprungstampfer: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_sprungfaust', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
-    krachfaust_salve: [{ atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_trommel', w: 3 }, { atk: 'krachfaust_sprungfaust', w: 3 }],
+    krachfaust_schleimfaust: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_riesenhaken', w: 4 }, { atk: 'krachfaust_trommel', w: 3 }, { atk: 'krachfaust_pochen', w: 2 }, { atk: 'krachfaust_hornschlag', w: 2 }],
+    krachfaust_riesenhaken: [{ atk: 'krachfaust_ueberschlag', w: 4 }, { atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
+    krachfaust_ueberschlag: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_pochen', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
+    krachfaust_trommel: [{ atk: 'krachfaust_riesenhaken', w: 4 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_schleimfaust', w: 2 }],
+    krachfaust_hammer: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_ueberschlag', w: 3 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }],
+    krachfaust_hornschlag: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_pochen', w: 2 }, { atk: 'krachfaust_riesenhaken', w: 3 }],
+    krachfaust_schwanzwirbel: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }, { atk: 'krachfaust_hammer', w: 2 }],
+    krachfaust_kopfstoss: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_sprungfaust', w: 2 }, { atk: 'krachfaust_trommel', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }],
+    krachfaust_sprungfaust: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }, { atk: 'krachfaust_hornschlag', w: 2 }],
+    krachfaust_sprungstampfer: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
+    krachfaust_pochen: [{ atk: 'krachfaust_knoechellauf', w: 4 }, { atk: 'krachfaust_sprungfaust', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_hammer', w: 2 }],
+    krachfaust_knoechellauf: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_riesenhaken', w: 4 }, { atk: 'krachfaust_trommel', w: 3 }],
   },
   build: () => buildKrachfaust({ scale: SC }),
   init(m) {
