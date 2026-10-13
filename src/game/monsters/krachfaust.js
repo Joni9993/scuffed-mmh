@@ -390,7 +390,8 @@ const slam = (tau, lx, lz, { small = false, tag = '', pool = true } = {}) => (m,
   if (pool) addSlime(m, p.x, p.z, { age, small });
   const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
   ctx.fx.spark(at, 14, NEON, 6); ctx.fx.spark(at, 6, NEON_PEAK, 4);
-  ctx.fx.shake?.(0.22, 0.18);
+  ctx.fx.spark(at, 10, NEON_DARK, 5); ctx.fx.ring?.(at, 0.5, 3, { color: NEON, life: 0.3 });
+  ctx.fx.shake?.(0.55, 0.28);
   ctx.bus.emit('sfx', { name: 'heavy', pos: at });
   if (wut(m)) { ctx.fx.ring?.(at, 0.5, 2.2, { color: NEON, life: 0.3 }); areaHit(m, ctx, p, 2.2, 16, `${inst.key}:w${tag}${tau}`); }
 };
@@ -451,7 +452,7 @@ const ueberschlag = {
       const p = atLocal(inst, 1.66, 0, 7.5);
       addSlime(m, p.x - 2.0, p.z, { age, small: true }); addSlime(m, p.x + 2.0, p.z, { age, small: true });
       const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35); ctx.bus.emit('sfx', { name: 'heavy', pos: at });
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.8, 0.4); ctx.bus.emit('sfx', { name: 'heavy', pos: at });
       if (wut(m)) areaHit(m, ctx, p, 3.2, 18, `${inst.key}:wc`);
     },
     rush: (m, ctx) => { ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.6, z: m.pos.z }, 14, NEON, 5); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); },
@@ -503,8 +504,8 @@ const kopfstoss = {
   }])),
   motion: motionFwd(0.65, 1.2, 8),
   pose: mTrack([
-    [0, { ...Z }], [0.4, { bodyPitch: -4, head: 14, legL: -30, legR: -30, bodyY: -0.2, spread: 0.5, neck: 0.1 }], [0.65, { bodyPitch: 6, head: 22, legL: -45, legR: -45, bodyY: -0.35, spread: 0.9, neck: 0.2 }],
-    [0.85, { bodyPitch: 10, head: 26, legL: 30, legR: 30, bodyY: -0.2, spread: 1, neck: 0.3 }, 'lin'], [1.3, { bodyPitch: 8, head: 18, legL: 40, legR: 40, spread: 1 }], [1.7, { bodyPitch: 4, spread: 0.4, legL: 15, legR: 15 }], [2.1, { ...Z }],
+    [0, { ...Z }], [0.4, { bodyPitch: -4, head: 14, legL: -30, legR: -30, bodyY: -0.2, spread: 0.15, neck: 0.1 }], [0.65, { bodyPitch: 6, head: 22, legL: -45, legR: -45, bodyY: -0.35, spread: 0.25, neck: 0.2 }],
+    [0.85, { bodyPitch: 10, head: 26, legL: 30, legR: 30, bodyY: -0.2, spread: 0.3, neck: 0.3 }, 'lin'], [1.3, { bodyPitch: 8, head: 18, legL: 40, legR: 40, spread: 0.3 }], [1.7, { bodyPitch: 4, spread: 0.4, legL: 15, legR: 15 }], [2.1, { ...Z }],
   ]),
 };
 
@@ -525,7 +526,7 @@ const stampfer = {
       const L = inst.landing, a0 = inst.r(0) * 6.28;
       for (let i = 0; i < 5; i++) { const a = a0 + (i / 5) * 6.28; addSlime(m, L.x + Math.cos(a) * 4.6, L.z + Math.sin(a) * 4.6, { age }); }
       const at = { x: L.x, y: ctx.world.heightAt(L.x, L.z) + 0.4, z: L.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 4.5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 4.5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.8, 0.4);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
       if (wut(m)) areaHit(m, ctx, L, 2.4, 18, `${inst.key}:w`);
     },
@@ -561,6 +562,10 @@ const poundCall = (i) => (m, ctx, inst, age = 0) => {
     }
     flingGlob(m, from, tx, tz, { age, dur: 0.85 + Math.hypot(tx - from.x, tz - from.z) * 0.03 });
   }
+  if (i % 2 === 0) { // zweiter, weiterer Ring: Fernkämpfer sind nicht sicher
+    const n2 = wut(m) ? 5 : 4, a2 = inst.r(40 + i) * 6.28;
+    for (let j = 0; j < n2; j++) { const a = a2 + (j / n2) * 6.28, d = 17 + inst.r(50 + i * 5 + j) * 7; flingGlob(m, from, inst.origin.x + Math.sin(a) * d, inst.origin.z + Math.cos(a) * d, { age, dur: 1.2 + d * 0.025 }); }
+  }
   if (wut(m)) areaHit(m, ctx, p, 2.2, 14, `${inst.key}:wp${i}`);
 };
 const pochen = {
@@ -594,7 +599,7 @@ const hammer = {
       for (let i = 0; i < 4; i++) { const a = inst.yaw0 + (i - 1.5) * 0.9; addSlime(m, p.x + Math.sin(a) * 3.0, p.z + Math.cos(a) * 3.0, { age, small: true }); }
       addSlime(m, p.x, p.z, { age });
       const at = { x: p.x, y: ctx.world.heightAt(p.x, p.z) + 0.3, z: p.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.spark(at, 12, NEON_PEAK, 6); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.spark(at, 12, NEON_PEAK, 6); ctx.fx.ring?.(at, 0.8, 4, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.8, 0.4);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
       if (wut(m)) areaHit(m, ctx, p, 3.2, 22, `${inst.key}:wbig`);
     },
@@ -670,7 +675,7 @@ const sprungfaust = {
       const L = inst.landing, a0 = inst.r(1) * 6.28;
       for (let i = 0; i < 4; i++) { const a = a0 + (i / 4) * 6.28; addSlime(m, L.x + Math.cos(a) * 3.8 + Math.sin(inst.jumpYaw) * 8, L.z + Math.sin(a) * 3.8 + Math.cos(inst.jumpYaw) * 8, { age, small: true }); }
       const F = { x: L.x + Math.sin(inst.jumpYaw) * 8, z: L.z + Math.cos(inst.jumpYaw) * 8 }, at = { x: F.x, y: ctx.world.heightAt(F.x, F.z) + 0.4, z: F.z };
-      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 4.5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.5, 0.35);
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.ring?.(at, 1, 4.5, { color: NEON, life: 0.4 }); ctx.fx.shake?.(0.8, 0.4);
       ctx.bus.emit('sfx', { name: 'heavy', pos: at });
       if (wut(m)) areaHit(m, ctx, F, 3.4, 22, `${inst.key}:w`);
     },
@@ -704,8 +709,8 @@ const knoechel = {
     return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f };
   },
   pose: mTrack([
-    [0, { ...Z }], [0.4, { legL: -40, legR: -40, bodyPitch: 4, spread: 0.6, bodyY: -0.2 }], [0.75, { legL: -30, legR: 30, bodyPitch: 6, spread: 1, bodyY: -0.15 }],
-    [1.0, { legL: 40, legR: -30, spread: 1, bodyPitch: 6 }], [1.25, { legL: -30, legR: 40, spread: 1, bodyPitch: 6 }], [1.5, { legL: 40, legR: -30, spread: 1, bodyPitch: 6 }],
+    [0, { ...Z }], [0.4, { legL: -40, legR: -40, bodyPitch: 4, spread: 0.1, bodyY: -0.2 }], [0.75, { legL: -30, legR: 30, bodyPitch: 6, spread: 0.15, bodyY: -0.15 }],
+    [1.0, { legL: 40, legR: -30, spread: 0.15, bodyPitch: 6 }], [1.25, { legL: -30, legR: 40, spread: 0.15, bodyPitch: 6 }], [1.5, { legL: 40, legR: -30, spread: 0.15, bodyPitch: 6 }],
     [1.7, { legL: -115, legR: -115, spread: 0, bodyPitch: -22, bodyY: 0.3, wing: 0.4 }], [1.8, { legL: 45, legR: 45, spread: 0, bodyPitch: 22, bodyY: -0.5 }, 'lin'], [2.3, { legL: 50, legR: 50, bodyPitch: 8 }], [3.0, { ...Z }],
   ]),
 };
@@ -935,7 +940,7 @@ export const krachfaust = {
   bodyRadius: 1.7,
   predator: true,
   apex: true, // Revier-Apex: greift alles an, was den Tempel betritt (hunt.js -> Revier { apex })
-  walk: 4.6, run: 11, turn: 1.25, detect: 36, prefer: 8, // Tempel-Apex: schneller Anlauf (Spielerfeedback: viel zu träge)
+  walk: 7.5, run: 17, turn: 2.6, detect: 36, prefer: 8, // Tempel-Apex: schneller Anlauf (Spielerfeedback: viel zu träge)
   parts: [
     { id: 'head', label: 'Kopf', factor: 1.0, breakHp: 1300, jitter: 0.07, elem: { fire: 12, shock: 20 }, blunt: true, stunPart: true,
       spheres: [{ node: 'head', offset: [0, 0.0, 0.5], r: 0.95 }, { node: 'head', offset: [0, -0.1, 1.8], r: 0.95 }, { node: 'head', offset: [0, 0.3, 2.3], r: 0.7 }] },
@@ -956,10 +961,12 @@ export const krachfaust = {
     krachfaust_runenwut: runenwut, [URK]: urknall,
   },
   teachAttack: 'krachfaust_schleimfaust',
-  recoverAfter: (m) => (wut(m) ? m.rng() * 0.08 : 0.02 + m.rng() * 0.12) / m.speedMul, // kaum Verschnaufpause, in der Wut fast keine
-  speedFactor: (m) => (wut(m) ? 1.3 : 1.12), // Runenwut: Lauftempo 1,3
-  attackTempo: (m) => (wut(m) ? 1.4 : 1.15), // Angriffe: Grundtempo 1,15; Runenwut: Telegraph kürzer und der Ablauf 1,4x flotter (Telegraph nie unter 0,5 s)
+  recoverAfter: (m) => (wut(m) ? m.rng() * 0.04 : 0.01 + m.rng() * 0.06) / m.speedMul, // kaum Verschnaufpause, in der Wut fast keine
+  speedFactor: (m) => (wut(m) ? 1.45 : 1.25), // Runenwut: Lauftempo 1,45
+  attackTempo: (m) => (wut(m) ? 1.75 : 1.4), // Angriffe: Grundtempo 1,15; Runenwut: Telegraph kürzer und der Ablauf 1,4x flotter (Telegraph nie unter 0,5 s)
   stamina: true,
+  chainMax: 4, // Kombos bis 5 Hiebe; jeder Hieb zielt neu auf den Pirscher (Zwischen-Nachführen)
+  hitDmgMul: (m, h) => (h.dmg > 0 ? 1.3 : 1), // Fäuste schallern
   flinchDmg: 1500,
   phases: [
     { at: 0.4, name: 'RUNENWUT', cue: cue('droehn', NEON_PEAK), special: 'krachfaust_runenwut' },
@@ -997,6 +1004,13 @@ export const krachfaust = {
   // Treffer auf den Pirscher: Schleimfaust/Trommel-Schluss kleben Schleim an (außer die Faust dieser Seite ist gebrochen)
   onHitPlayer(m, p, h) {
     const hit = h.hit;
+    if (hit.dmg > 0) { // Wucht: Schüttelfrost, Hitstop, Funken und Trümmer, lauter Schlag
+      p.hitstop = Math.max(p.hitstop ?? 0, 0.16);
+      const at = { x: p.pos.x, y: (p.pos.y ?? 0) + 0.9, z: p.pos.z };
+      m.ctx.fx.shake?.(0.9, 0.45); m.ctx.fx.spark(at, 26, NEON, 9); m.ctx.fx.spark(at, 14, '#ffffff', 6); m.ctx.fx.spark({ ...at, y: at.y - 0.6 }, 12, NEON_DARK, 5);
+      m.ctx.fx.ring?.({ ...at, y: at.y - 0.6 }, 0.6, 3, { color: NEON, life: 0.3 });
+      m.ctx.bus.emit('sfx', { name: 'heavy', pos: at });
+    }
     if (!hit?.slimeOnHit) return;
     if (hit.side && m.partById['pranke' + hit.side]?.broken) return;
     p.addStatus?.('schleim', { t: playerFuse(m) });
@@ -1053,6 +1067,11 @@ export const krachfaust = {
     m.ctx.bus.emit('monsterStun', { monster: m, reason: 'glitch' });
   },
   poseHook(m, p) {
+    if (!m.attack && !m.tired && !m.extra.finaleOn) { // zweibeinig, aufrecht, Fäuste schlenkern wild
+      p.spread = 0; p.bodyPitch = Math.min(p.bodyPitch, -4);
+      p.legL = p.legL * 2.2 + Math.sin(m.time * 5.3) * 14; p.legR = p.legR * 2.2 + Math.cos(m.time * 4.7) * 14;
+      p.wing += 0.25 + 0.2 * Math.sin(m.time * 6.1);
+    }
     if (m.extra.finaleOn && m.attack?.id === URK) { // Zittern beim Aufladen
       const tau = m.attack.inst.sample(m.attack.t).tau;
       if (tau > 2.6 && tau < KRACH.URK_BOOM) { const k = clamp01((tau - 2.6) / 3.9); p.bodyRoll += Math.sin(m.time * 55) * (1 + 3 * k); p.bodyY += Math.sin(m.time * 70) * 0.03 * k; }

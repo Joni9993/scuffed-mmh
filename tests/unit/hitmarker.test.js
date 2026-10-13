@@ -116,7 +116,7 @@ describe('Blendax: Sprünge zielen, Nachblitz-Sprung auf den Schwächsten', () =
     for (; t < 6 && leapT === null; t += DT) { ctx.players.forEach((x) => x.update(DT)); m.update(DT); if (m.attack) m.recover = 99; else if (!m.chainNext) m.recover = 99; }
     expect(leapT).not.toBeNull();
     expect(m.target).toBe(q);
-    // Weiß 1 s + Betäubung 2 s ab t = 1,0 -> der Sprung beginnt ungefähr mit dem Aufwachen (4,0 s)
-    expect(leapT).toBeGreaterThan(3.2); expect(leapT).toBeLessThan(4.4);
+    // Weiß 1 s + Betäubung 2 s ab t = 1,0 -> der Sprung beginnt bei 1,5 s: Absprung bei 2,0 s = 1 s in der Betäubung
+    expect(leapT).toBeGreaterThan(1.3); expect(leapT).toBeLessThan(1.8);
   });
 });

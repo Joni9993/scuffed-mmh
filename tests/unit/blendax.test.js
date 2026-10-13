@@ -102,6 +102,7 @@ describe('Blendax: Definition', () => {
 describe('Blendax: Blitz trifft nur, wer hinsieht', () => {
   it('Kamera zum Brocken: Geblendet (Weißbild 1 s, danach Betäubung mit Sternen), Warnbildschirm beim Start', () => {
     const { ctx, m, p, fx } = blitzScene();
+    p.god = true; // der Sprung landet jetzt noch in der Betäubung
     m.beginAttack('blendax_blitz');
     run(m, ctx, 0.1);
     expect(fx.some((c) => c[0] === 'brokenScreen')).toBe(true); // Warnung für alle, die ihn im Bild haben
@@ -117,7 +118,7 @@ describe('Blendax: Blitz trifft nur, wer hinsieht', () => {
     m.recover = 99; run(m, ctx, 2.1);
     expect(p.status.blend).toBeUndefined();
     expect(p.stars.visible).toBe(false);
-    expect(p.state).toBe('free');
+    expect(p.state).not.toBe('pinned'); // Sprung darf schon getroffen haben (flinch)
   });
   it('weggedreht (Kamera 180 Grad): kein Treffer, kein Zustand, keine Warnung', () => {
     const { ctx, m, p, fx } = blitzScene({ camera: 0 });

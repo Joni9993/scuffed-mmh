@@ -111,7 +111,7 @@ const facing = (m, p, deg) => Math.abs(angleDiff(m.ctx.cameraYaw ?? p.rot, yawOf
 const targetDist = (m) => (m.target ? Math.hypot(m.target.pos.x - m.pos.x, m.target.pos.z - m.pos.z) : 99);
 const OPEN = { spread: 1, head: -10, neck: -0.25, bodyPitch: -6, bodyY: 0.1, tailPitch: -10 };
 const blitz = {
-  id: 'blendax_blitz', lockedByBreak: 'frill', range: [4, 45], weight: 3.5, cooldown: 4, telegraph: 1.0, flashParts: ['frill'], duration: 3.5,
+  id: 'blendax_blitz', lockedByBreak: 'frill', range: [4, 45], weight: 3.5, cooldown: 4, telegraph: 1.0, flashParts: ['frill'], duration: 1.5, // Sprung folgt sofort: Absprung bei t=2,0 = 1 s in der 2-s-Betäubung
   cue: cue('schrill', NEON_PEAK), audit: [6, 14], stam: 10,
   cond: (m) => !(m.extra.blitzT > 0) && !(m.extra.blitzLock > 0) && targetDist(m) <= (m.fogged ? 45 : 30),
   marker: { at: 'self', radius: 12, color: '#ffe14d', peak: '#ffffff' }, markerUntil: 1.15, // gelb: Warnung "nicht hinsehen", kein Schadensbereich
@@ -127,7 +127,7 @@ const blitz = {
     },
   },
   pose: mTrack([
-    [0, {}], [0.3, OPEN], [1.12, { ...OPEN, bodyY: 0.15 }], [1.5, { ...OPEN, spread: 0.6 }], [2.2, { spread: 0.3, bodyY: -0.3, bodyPitch: 8, legL: 40, legR: 40 }], [3.5, { spread: 0.3, bodyY: -0.5, bodyPitch: 10, legL: 55, legR: 55 }], // duckt sich: gleich springt er
+    [0, {}], [0.3, OPEN], [1.12, { ...OPEN, bodyY: 0.15 }], [1.3, { spread: 0.4, bodyY: -0.3, bodyPitch: 8, legL: 40, legR: 40 }], [1.5, { spread: 0.3, bodyY: -0.5, bodyPitch: 10, legL: 55, legR: 55 }], // duckt sich: gleich springt er
   ]),
 };
 
