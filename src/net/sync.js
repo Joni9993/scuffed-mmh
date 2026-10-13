@@ -136,6 +136,8 @@ export class HuntNet {
       off.push(n.on(MSG.M, (d) => this.#onM(d)));
       off.push(n.on(MSG.ATK, (d) => this.#onAtk(d)));
       off.push(n.on(MSG.END, (d) => { this.ended = true; hunt.netFinish(d.r, d.why); }));
+      // Glitch-Konter eines Gastes auf einen Brocken-Angriff (Blendax-Blitz): der Host entscheidet, was der Brocken tut (def.onGlitchCounter)
+      off.push(hunt.bus.on('glitchCounter', (e) => { const lh = e?.player?.lastHit; if (e?.player?.local && lh?.attackId) n.sendHost(MSG.EV, { k: 'gcm', a: lh.attackId, m: lh.monsterId }); }));
     }
   }
 
@@ -173,6 +175,7 @@ export class HuntNet {
     const hunt = this.hunt;
     switch (d.k) {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
+      case 'gcm': if (this.isHost) for (const m of hunt.monsters) if (m.alive && m.def.id === d.m && m.attack?.id === d.a) m.def.onGlitchCounter?.(m, d.a, this.peers.get(from)?.player); break;
       case 'gear': this.#onGear(from, d.g); break;
       case 'ia': hunt.interact?.onNet(d, from); break;
       case 'kk': if (this.peers.has(from)) onKkEvent(hunt, d); break; // [KK] Buff-Radius wird beim Empfaenger geprueft

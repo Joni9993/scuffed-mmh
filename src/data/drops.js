@@ -62,6 +62,17 @@ export const DROPS = {
     },
     reward: [{ id: 'gorgo_segment', n: [1, 2], chance: 1 }, { id: 'gorgo_zahn', n: 1, chance: 0.5 }, { id: 'gorgo_kern', n: 1, chance: 0.2 }],
   },
+  // Smaragdküste (docs/SMARAGD_BROCKEN.md 2.10). Break-Tags: head, frill, tail.
+  blendax: {
+    carve: [{ id: 'blendax_schuppe', w: 46 }, { id: 'blendax_klaue', w: 28 }, { id: 'blendax_schirm', w: 10 }, { id: 'glimmstein', w: 12 }, { id: 'blendax_flimmerlinse', w: 4 }],
+    tail: [{ id: 'blendax_klaue', w: 60 }, { id: 'blendax_schuppe', w: 30 }, { id: 'blendax_flimmerlinse', w: 10 }],
+    breaks: {
+      frill: [{ id: 'blendax_schirm', n: 1, chance: 1 }],
+      head: [{ id: 'blendax_schuppe', n: [1, 2], chance: 1 }],
+      tail: [{ id: 'blendax_klaue', n: [1, 2], chance: 1 }],
+    },
+    reward: [{ id: 'blendax_schuppe', n: [1, 2], chance: 1 }, { id: 'blendax_klaue', n: 1, chance: 0.5 }, { id: 'blendax_schirm', n: 1, chance: 0.3 }, { id: 'blendax_flimmerlinse', n: 1, chance: 0.12 }],
+  },
   voltaro: {
     carve: [{ id: 'voltaro_spule', w: 36 }, { id: 'voltaro_fell', w: 36 }, { id: 'voltaro_kamm', w: 12 }, { id: 'funkenstein', w: 12 }, { id: 'voltaro_herz', w: 4 }],
     tail: [{ id: 'voltaro_fell', w: 60 }, { id: 'voltaro_spule', w: 30 }, { id: 'voltaro_herz', w: 10 }], // Schwanz abgetrennt: bessere Chance aufs Herz

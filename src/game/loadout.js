@@ -52,6 +52,10 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
     if (addStatus) {
       player.addStatus = (type, opts = {}) => {
         const r = player.resist;
+        if (type === 'blend') { // Macke Blendschutz: -0,3 s Weiss und -0,3 s Betaeubung je Stufe (Stufe 3: Weiss 0,1 s, keine Betaeubung)
+          const cut = player._sk.blendCut ?? 0;
+          return addStatus(type, { ...opts, white: Math.max(0.1, 1 - cut), stun: 1 - cut < 0.15 ? 0 : 1 - cut });
+        }
         if ((type === 'rust' || type === 'rost') && opts.t && player._sk.rustDurMul < 1) opts = { ...opts, t: opts.t * player._sk.rustDurMul }; // Panzerhaut
         const k = (type === 'burn' ? 1 - r.fire : 1) * (type === 'burn' || type === 'poison' ? 1 - r.status : 1);
         return addStatus(type, opts.t ? { ...opts, t: opts.t * k } : opts);

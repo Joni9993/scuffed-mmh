@@ -27,7 +27,10 @@ const ENV = [
 const GROUND_TEX = ['sand', 'jungle', 'mossfloor', 'templefloor'];
 const GROUND_TINT = ['#ffffff', '#ffffff', '#e0f0e0', '#ffffff'];
 const CLIFF_TINT = ['#e0d0a8', '#9ab080', '#6a8a6a', '#9ab8b0'];
-const NEST_ZONE = { jaggo: 2, barrotz: 3 }; // everything else (the apex monsters) nests in the temple
+const NEST_ZONE = { jaggo: 2, barrotz: 3, blendax: 3 }; // everything else (the apex monsters) nests in the temple
+// Brocken, die durch mehrere Zonen streifen: Zonen-Reihenfolge ab Nest-Zone; die Routen berühren sich an den Pässen (PASSES: 0 = Z1-Z2, 1 = Z2-Z3, 2 = Z3-Z4)
+const ROUTE_ZONES = { blendax: [3, 2] };
+const PASS_OF = { '1-2': 0, '2-3': 1, '3-4': 2 };
 const ZONE_BOXES = { 1: [-114, -114, -14, -14], 2: [-114, 14, -14, 114], 3: [14, 14, 114, 114], 4: [14, -114, 114, -14] };
 
 // ---------------------------------------------------------------- gather points (deterministic from the hunt seed)
@@ -378,7 +381,15 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
 
   // ================================================================ world interface
   const nestFor = (defId) => ({ ...L.nests[NEST_ZONE[defId] ?? 4] });
-  const routeFor = (defId) => L.routes[NEST_ZONE[defId] ?? 4].map((p) => ({ x: p.x, z: p.z }));
+  const routeFor = (defId) => {
+    const zs = ROUTE_ZONES[defId] ?? [NEST_ZONE[defId] ?? 4], out = [];
+    zs.forEach((z, i) => {
+      out.push(...L.routes[z]);
+      const nz = zs[(i + 1) % zs.length], pass = zs.length > 1 ? PASSES[PASS_OF[`${Math.min(z, nz)}-${Math.max(z, nz)}`]] : null;
+      if (pass) out.push(pass); // über den Pass in die nächste Zone (und am Ende zurück)
+    });
+    return out.map((p) => ({ x: p.x, z: p.z }));
+  };
   const hazards = createHazards(L);
   const env0 = ENV[0];
   const world = {

@@ -110,6 +110,9 @@ export class Monster {
     this._offs = [];
     if (def.chains && !this.minor) this._offs.push(ctx.bus.on('glitchCounter', (e) => { if (e?.monster && e.monster !== this) return; this._chainBreak(); }));
 
+    // def.onGlitchCounter(m, attackId, player): ein Pirscher hat genau diesen Angriff perfekt gekontert (nur Autoritaet; Gaeste melden per Netz-Event 'gcm')
+    if (def.onGlitchCounter && !this.minor) this._offs.push(ctx.bus.on('glitchCounter', (e) => { const aid = e?.player?.lastHit?.attackId; if (this.authority && aid && this.attack?.id === aid) def.onGlitchCounter(this, aid, e.player); }));
+
     const built = def.build();
     this.mesh = built.root;
     this.rigApply = built.apply;
@@ -558,7 +561,7 @@ export class Monster {
     const ch = this.chain; this.chain = null;
     if (!ch) return;
     const list = this.def.chains?.[id], tgt = this.target;
-    if (!ch.broken && list && ch.idx < 2 && this.state === 'combat' && !this.tired && this.stamina > 0 && this.stunT <= 0 && this.stagT <= 0 && tgt?.alive) {
+    if (!ch.broken && list && ch.idx < (this.def.chainMax ?? 2) && this.state === 'combat' && !this.tired && this.stamina > 0 && this.stunT <= 0 && this.stagT <= 0 && tgt?.alive) {
       const dist = Math.hypot(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z);
       const opts = list.filter((o) => {
         if (o.atk === null) return true;
@@ -775,7 +778,7 @@ export class Monster {
 
   _wander(dt) {
     const { p, d } = this._nearestPlayer();
-    const detect = this.def.detect ?? 28;
+    const detect = this.def.detectFor?.(this) ?? this.def.detect ?? 28; // detectFor: z. B. Blendax im Nebel
     if (p && d < detect) {
       const ang = Math.abs(angleDiff(this.rot, yawOf(p.pos.x - this.pos.x, p.pos.z - this.pos.z)));
       if (d < detect * 0.4 || ang < 1.3) {
@@ -898,12 +901,15 @@ export class Monster {
         const k = p.id + '|' + h.idx;
         if (inst.hitSet.has(k)) continue;
         this.ctx.debugShape?.(h.shape, '#ff3030');
+        // faceCheck (Blendax-Blitz): zaehlt nur, wenn die Kamera des lokalen Pirschers zum Brocken zeigt (Bildschirm = was er sieht); weggedreht = kein Treffer
+        const fc = h.hit.faceCheck;
+        if (fc !== undefined && Math.abs(angleDiff(this.ctx.cameraYaw ?? p.rot, yawOf(this.pos.x - p.pos.x, this.pos.z - p.pos.z))) > fc * Math.PI / 180) continue;
         if (!caps.some((c) => overlap(h.shape, c))) continue;
         const res = p.takeHit({
           dmg: h.dmg * this.dmgMul, knock: h.knock, key: h.key + '|' + p.id, sourcePos: this.pos, attackId: inst.params.attackId, monster: this,
           status: h.hit.status, push: h.hit.push,
         });
-        if (res === 'hit' || res === 'block') inst.hitSet.add(k);
+        if (res === 'hit' || res === 'block' || res === 'perfect') inst.hitSet.add(k); // perfect = Glitch-Konter: der Treffer ist verbraucht
         if (res === 'hit' && h.dmg > 0) this.ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
       }
     }
@@ -1252,7 +1258,7 @@ export class Monster {
         let at = this.pos;
         if (mk.at === 'landing' && a.inst.landing) at = a.inst.landing;
         else if (mk.at === 'target') at = a.inst.target;
-        this.ctx.fx.marker(this.id, { x: at.x, y: this.ctx.world.heightAt(at.x, at.z), z: at.z }, mk.radius, '#ff3030', s.phase !== 'telegraph');
+        this.ctx.fx.marker(this.id, { x: at.x, y: this.ctx.world.heightAt(at.x, at.z), z: at.z }, mk.radius, mk.color ? (s.phase === 'telegraph' && Math.floor(this.time * 10) % 2 === 0 ? mk.peak ?? mk.color : mk.color) : '#ff3030', s.phase !== 'telegraph');
       } else this.ctx.fx.clearMarker?.(this.id);
     } else if (this.sleeping) {
       Object.assign(target, { bodyY: -0.75, head: 35, neck: -0.2, legL: 70, legR: 70, bodyPitch: 4 }, this.def.sleepPose);

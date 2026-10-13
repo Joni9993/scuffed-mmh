@@ -61,3 +61,16 @@ export function severTail(m) {
   m.ctx.fx.spark(pos, 30, '#c03020', 7);
   m.ctx.bus.emit('tailSevered', { monster: m, pos: { x: pos.x, y: gy, z: pos.z }, mesh: drop });
 }
+
+/**
+ * Angriff klonen und umstimmen (Blendax aus Jaggo): tiefe Kopie von hits/marker, `pose`/`motion` bleiben geteilt.
+ * opts: id, dmgMul (alle Treffer) | dmg (Zahl oder Array je Treffer), tempo, cooldown, plus beliebige Felder, die den Klon ueberschreiben (range, weight, telegraph ...).
+ */
+export function retune(def, { id, dmgMul = 1, dmg, ...over } = {}) {
+  const c = { ...def, ...over, id: id ?? def.id };
+  c.hits = (def.hits ?? []).map((h, i) => ({ ...h, dmg: Array.isArray(dmg) ? dmg[i] ?? h.dmg : typeof dmg === 'number' ? dmg : Math.round(h.dmg * dmgMul), at: h.at && [...h.at], from: h.from && [...h.from], to: h.to && [...h.to] }));
+  if (c.marker) c.marker = { ...c.marker };
+  if (c.audit) c.audit = [...c.audit];
+  if (c.range) c.range = [...c.range];
+  return c;
+}

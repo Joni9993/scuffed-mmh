@@ -137,6 +137,14 @@ const SOUNDS = {
     tone({ f0: 440, f1: 880, dur: 0.15, type: 'square', vol: 0.12, delay: 0.25 });
   },
   glitchOff: () => { noise({ dur: 0.3, vol: 0.2, f0: 4000, f1: 150, type: 'highpass' }); tone({ f0: 600, f1: 60, dur: 0.35, type: 'sawtooth', vol: 0.14 }); },
+  // ---- Smaragdkueste / Blendax: Blitz = 1 s steigender Saegezahn + Rauschbursts (schrill, "Fernseher geht kaputt"), Weissbild = kurzes Rauschen
+  blendFlash: () => {
+    tone({ f0: 300, f1: 3600, dur: 1.0, type: 'sawtooth', vol: 0.16, lp: 6000 });
+    tone({ f0: 150, f1: 1800, dur: 1.0, type: 'square', vol: 0.08 });
+    for (let i = 0; i < 5; i++) noise({ dur: 0.07, vol: 0.2, f0: 8000, f1: 1500, type: 'highpass', delay: 0.15 + i * 0.19 });
+    tone({ f0: 5200, f1: 5200, dur: 0.12, type: 'square', vol: 0.1, delay: 0.95 });
+  },
+  whiteStatic: () => { noise({ dur: 0.25, vol: 0.32, f0: 9000, f1: 2500, type: 'highpass' }); tone({ f0: 80, f1: 40, dur: 0.3, vol: 0.4 }); },
   mutheal: () => { tone({ f0: 520, f1: 880, dur: 0.09, type: 'square', vol: 0.07 }); tone({ f0: 880, f1: 1320, dur: 0.1, type: 'square', vol: 0.06, delay: 0.07 }); noise({ dur: 0.08, vol: 0.05, f0: 6000, f1: 2000, type: 'highpass' }); }, // Speicherleck: kleiner Heil-Blip
   // ---- [KK] Krachkiste: Zonen-Toene. IMMER gleich (egal welcher Brocken / welche Stufe) und klar unterscheidbar:
   //      Kopf = DING (hohe Glocke) · Koerper = BUMM (tiefer Kick) · Glieder = TSCHAK (Snare). Abspiel-Beat = die Leiste nacheinander.
@@ -238,8 +246,8 @@ const SOUNDS = {
   },
 };
 
-const DUR = { kkDing: 0.6, kkBumm: 0.35, kkTschak: 0.2, kkBeat: 1.2, kkRemix: 1.1, tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
-const PRIO = { kkDing: 3, kkBumm: 3, kkTschak: 3, kkBeat: 3, kkRemix: 3, windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
+const DUR = { kkDing: 0.6, kkBumm: 0.35, kkTschak: 0.2, kkBeat: 1.2, kkRemix: 1.1, tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, blendFlash: 1.1, whiteStatic: 0.3, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
+const PRIO = { kkDing: 3, kkBumm: 3, kkTschak: 3, kkBeat: 3, kkRemix: 3, windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, blendFlash: 4, whiteStatic: 4, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
 const MIN_GAP = { windup: 0.05, step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
 
 // ------------------------------------------------------------------ ambient (per zone)

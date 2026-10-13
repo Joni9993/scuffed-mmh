@@ -89,11 +89,23 @@ Object.assign(quests, {
     desc: 'Sammle 8 Kokosnüsse an der Smaragdküste und gib sie ab. Kein Brocken.',
   },
 });
+// Smaragdküste-Brocken (docs/SMARAGD_BROCKEN.md 0.2): Blendax ist der Schlüssel-Auftrag für JR 8 (Voltaro -> JR 7 öffnet die Karte).
+Object.assign(quests, {
+  blendax: {
+    id: 'blendax', name: 'Flimmern im Dschungel', type: 'hunt', monster: 'blendax', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 3000, rp: 200, jr: 7, jrUp: 8,
+    desc: 'Blendax im Dschungel. Sein Schirm flackert, dann blitzt er: nicht hinsehen! Schock auf den Schirm schließt ihn kurz.',
+  },
+  blendax_rotglut: {
+    id: 'blendax_rotglut', name: 'Rotglut: Blendax', type: 'hunt', monster: 'blendax', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 5100, rp: 290, jr: 10,
+    variant: 'rotglut', mutators: ['rotglut'],
+    desc: 'Blendax, dauerwütend, 40 % mehr Leben. Doppelte Materialien.',
+  },
+});
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
-QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug');
+QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'blendax_rotglut');
 
 export function getQuest(id) {
   const q = quests[id];
@@ -115,6 +127,6 @@ QUEST_ORDER.push('revierstreit');
 export function setFieldStudyQuest(q) { quests.feldstudie = q; }
 
 /** Basis-RP je Brocken (Feldstudie-Berechnung). */
-export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180 };
+export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200 };
 /** RP-Schwelle je Zielrang (Schlüssel-Auftrag). progression.js baut daraus RANKS. */
 export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200, 8: 1700, 9: 2300, 10: 3000 };

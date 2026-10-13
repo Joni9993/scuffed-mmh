@@ -47,6 +47,8 @@ export function skillEffects(skills = {}) {
     windImmune: lvl('wuehler') >= 2, // Turbinen-Wind
     counterBuff: lvl('ueberladung') > 0 ? { atk: Math.round(5 * lvl('ueberladung')) / 100, dur: 8 } : null, // nach Glitch-Konter
     shockResist: 1 - 0.8 ** lvl('erdung'),
+    // Smaragdkueste-Macke Blendschutz (Blendax-Set): Sekunden, die von Weiss und Betaeubung abgehen
+    blendCut: 0.3 * lvl('blendschutz'),
   };
 }
 

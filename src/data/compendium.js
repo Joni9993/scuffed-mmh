@@ -93,6 +93,19 @@ export const BESTIARY = [
       { at: 6, kind: 'schwaeche', name: 'Ungeladen ist er verwundbar', text: 'Schock kitzelt ihn nur. Feuer und Rost wirken – aber Feuer nur, solange er nicht geladen ist. Kamm brechen halbiert sein Aufladen, der Schwanz lässt sich abtrennen.' },
     ],
   },
+  {
+    id: 'blendax', name: 'Blendax', where: 'Smaragdküste · Dschungel & Tiefer Dschungel', title: 'Flimmerfürst',
+    intro: 'Ein Raptor mit einem Schirm wie ein kaputter Bildschirm. Wenn er flackert, ist es zu spät zum Nachdenken: nicht hinsehen.',
+    entries: [
+      { at: 1, kind: 'angriff', name: 'Bissreihe & Hüpfer', text: 'Wie Jaggo, nur schneller und härter. Drei Bisse, dann ein Sprung bis 12 m. Rollen, nicht rückwärts laufen.' },
+      { at: 1, kind: 'angriff', name: 'Blitz', text: 'Der Schirm klappt auf und flackert neongrün, dazu ein Pfeifen. Eine Sekunde später blendet er alle, die ihn ansehen: 1 s Weiß, 1 s Sterne, und er springt dir schon entgegen. Wegdrehen hilft.' },
+      { at: 2, kind: 'angriff', name: 'Sprungkette', text: 'Nach dem Blitz: drei Sprünge hintereinander auf den Geblendeten, jeder landet dort, wo du eben standest. Der grüne Ring am Boden zeigt wohin.' },
+      { at: 2, kind: 'verhalten', name: 'Glitch-Konter', text: 'Wer ihn im Moment des Blitzes ansieht und im richtigen Augenblick rollt, kontert mit einem Glitch: Blendax taumelt knapp 2 s.' },
+      { at: 3, kind: 'schwaeche', name: 'Schirm', text: 'Schock auf den Schirm schließt ihn kurz: 6 s kein Blitz. Bricht er, blitzt Blendax nie wieder, springt dafür 25 s lang in wütenden Ketten.' },
+      { at: 3, kind: 'verhalten', name: 'Nebel', text: 'Im Tiefen Dschungel blitzt er öfter und von weiter weg. Den Schirm erkennst du auch im Nebel.' },
+      { at: 4, kind: 'angriff', name: 'Flimmerfieber', text: 'Unter der Hälfte rennt er in einem Bogen heran und beißt zum Schluss. Der Blitz kommt dann öfter.' },
+    ],
+  },
 ];
 export const BESTIARY_IDS = BESTIARY.map((b) => b.id);
 
@@ -103,6 +116,7 @@ export const CONDITIONS = [
   { id: 'mud', name: 'Verschlammt', who: 'du', text: 'Langsamer und kein Sprint, bis zu 25 s. Drei Rollen schütteln den Schlamm ab. In der Schlammsenke bei Barrotz an der Tagesordnung.' },
   { id: 'rost', name: 'Rost', who: 'du', text: 'Deine Rüstung schützt 30 % schlechter, 20 s lang. Kommt von Krolls Dampf und Gorgos Schlacke. Panzerhaut verkürzt ihn, Kühlbrause entfernt ihn.' },
   { id: 'shock', name: 'Schock', who: 'du', text: 'Voltaros Blitze. Die Macke Erdung (Voltaro-Set) senkt den Schaden, ein Erdungsstab baut 20 s eine 4-m-Schutzzone – darin trifft dich der Donnerschlag nicht.' },
+  { id: 'blend', name: 'Geblendet', who: 'du', text: 'Blendax-Blitz: 1 s Vollbild weiß, danach 1 s betäubt. Nur wer hinsieht. Wegdrehen schützt, ein Glitch-Konter dreht den Spieß um. Die Macke Blendschutz (Blendax-Set) verkürzt beides.' },
   { id: 'bruise', name: 'Prellung', who: 'du', text: 'Die Hälfte jedes Treffers ist nur geprellt (dunkelrot im Balken) und heilt mit der Zeit zurück – solange du nicht gleich wieder getroffen wirst.' },
   { id: 'glitch', name: 'Glitch-Konter & Glitch-Modus', who: 'du', text: 'Perfekt ausgewichen = Glitch-Konter: Zeitlupe, nächster Treffer +50 % und ein Drittel Glitch-Leiste. Volle Leiste: 8 s Glitch-Modus mit +30 % Schaden und dem Waffen-Glitch.' },
   { id: 'm_poison', name: 'Vergiftet', who: 'brocken', text: 'Giftspitzen und Giftschlamm bauen Gift auf. Ist es voll, verliert der Brocken 15 s lang zusammen 3 % seines Lebens.' },
@@ -121,6 +135,7 @@ export const ELEM_NOTES = {
   barrotz: 'Mit Schlammpanzer prallt Feuer komplett ab – Schock sprengt den Panzer.',
   voltaro: 'Feuer wirkt nur, solange er nicht aufgeladen ist (Spulen dunkel).',
   gorgo: 'Eingegraben ist er unverwundbar – erst rausholen, dann draufhauen.',
+  blendax: 'Schock auf dem Schirm schließt ihn kurz: er flackert wild und blitzt 6 s nicht mehr.',
   kroll: 'In Panzerdeckung kommt von vorn kaum etwas an, egal welches Element.',
 };
 

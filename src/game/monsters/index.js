@@ -8,6 +8,7 @@ import { voltaro } from './voltaro.js'; // [V]
 import { dummy } from './dummy.js';
 import { mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbock, schlackkitz, schrottler, palmbock, palmbockbulle, palmbockkitz, strandhuepfer, dschungelhuepfer } from './mampfer.js'; // [L]
 import { kroll } from './kroll.js'; // [Rostwerke]
+import { blendax } from './blendax.js'; // [Smaragdküste]
 
 export const monsters = {
   jaggo,
@@ -20,6 +21,7 @@ export const monsters = {
   mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbock, schlackkitz, schrottler, // [L] neutral fauna
   palmbock, palmbockbulle, palmbockkitz, strandhuepfer, dschungelhuepfer, // Smaragdküste
   kroll, // [Rostwerke]
+  blendax, // [Smaragdküste]
 };
 
 export function getMonsterDef(id) {

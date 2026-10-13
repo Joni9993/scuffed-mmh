@@ -14,6 +14,8 @@ export const SKILLS = {
   panzerhaut: { id: 'panzerhaut', name: 'Panzerhaut', max: 3, desc: (l) => `Rost-Dauer −${Math.round(50 * l / 3)} %, +${Math.round(10 * l / 3)} % Schutz` },
   wuehler: { id: 'wuehler', name: 'Wühler', max: 3, desc: (l) => (l >= 2 ? 'Immun gegen Sog und Wind' : 'Ab Stufe 2: immun gegen Sog und Wind') },
   ueberladung: { id: 'ueberladung', name: 'Überladung', max: 3, desc: (l) => `Nach Glitch-Konter 8 s +${5 * l} % Angriff` },
+  // Smaragdküste-Macken. Zahlen: meta/loadout.js skillEffects.blendCut, gelesen in game/loadout.js (Status blend).
+  blendschutz: { id: 'blendschutz', name: 'Blendschutz', max: 3, desc: (l) => (l >= 3 ? 'Geblendet: Weiß nur 0,1 s, keine Betäubung' : `Geblendet: Weiß −${(0.3 * l).toFixed(1).replace('.', ',')} s, Betäubung −${(0.3 * l).toFixed(1).replace('.', ',')} s`) },
   erdung: { id: 'erdung', name: 'Erdung', max: 3, desc: (l) => `Schock-Resistenz ${Math.round(100 * (1 - 0.8 ** l))} %` },
 };
 
@@ -66,8 +68,14 @@ export const ARMOR_SETS = {
     body: piece('Voltaro-Spulenharnisch', { schrott: 1800, voltaro_spule: 4, voltaro_fell: 3, voltaro_kamm: 1, funkenstein: 2 }, { ueberladung: 1, erdung: 1 }),
     legs: piece('Voltaro-Blitzläufer', { schrott: 1500, voltaro_spule: 3, voltaro_fell: 3, funkenstein: 1 }, { ueberladung: 1, erdung: 1 }),
   }),
+  // Smaragdküste-Set (Prot 44, Spec 2.11)
+  blendax: set('blendax', 'Blendax', 44, ['blendschutz', 'flinkfuss'], {
+    head: piece('Blendax-Blinzelhaube', { schrott: 2000, blendax_schuppe: 3, blendax_schirm: 1, glimmstein: 1 }, { blendschutz: 1, flinkfuss: 1 }),
+    body: piece('Blendax-Schuppenpanzer', { schrott: 2300, blendax_schuppe: 5, blendax_klaue: 2, blendax_schirm: 1 }, { blendschutz: 1, flinkfuss: 1 }),
+    legs: piece('Blendax-Sprungstiefel', { schrott: 2000, blendax_schuppe: 3, blendax_klaue: 3 }, { blendschutz: 1, flinkfuss: 1 }),
+  }),
 };
-export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro'];
+export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};

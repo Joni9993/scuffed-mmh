@@ -462,7 +462,50 @@ const voltaro = {
   },
 };
 
-const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro };
+// ======================================================================= BLENDAX (tier 7): ziegelrote Schuppen, Bildschirm-Visier, Schirm-Fächer, Neongrün (Hacker-Grün, nie Cyan/Magenta)
+const BX = ['#c0452a', '#7a2418', '#05100a', '#39ff14', '#d8ffd0', '#e8873a', '#1f9d0f', '#0b2a0b'];
+const blendax = {
+  head(c) {
+    const { head } = c.P, k = c.k;
+    head.box(0.58, 0.46, 0.58, BX[0], { y: 0.3 });
+    head.box(0.6, 0.07, 0.6, BX[1], { y: 0.54 }); head.box(0.6, 0.07, 0.6, BX[1], { y: 0.1 });
+    head.box(0.46, 0.22, 0.05, BX[2], { y: 0.32, z: 0.295 }); // Bildschirm-Visier
+    for (let i = 0; i < 4; i++) head.box(0.4, 0.025, 0.05, i % 2 ? BX[6] : BX[3], { y: 0.24 + i * 0.055, z: 0.31, glow: 1 }); // Scanlines
+    for (let i = -3; i <= 3; i++) { // Schirm-Fächer hinter dem Kopf: Balken in Testbild-Grün
+      const h = (0.34 + (3 - Math.abs(i)) * 0.12) * k;
+      bar(head, [i * 0.07, 0.5, -0.18], [i * 0.2, 0.5 + h, -0.3 - Math.abs(i) * 0.03], 0.07, 0.025, i % 2 ? BX[6] : BX[3], { glow: 0.9 });
+    }
+    head.box(0.7 * k, 0.03, 0.04, BX[4], { y: 0.5 + 0.22 * k, z: -0.3, glow: 1 });
+  },
+  body(c) {
+    const { torso } = c.P, k = c.k;
+    torso.box(0.84, 0.66, 0.5, BX[0], { y: 0.52 });
+    for (let i = 0; i < 4; i++) torso.box(0.86, 0.06, 0.52, BX[1], { y: 0.3 + i * 0.16 });
+    torso.box(0.34, 0.3, 0.05, BX[2], { y: 0.56, z: 0.275 }); // Brust-Bildschirm
+    for (let i = 0; i < 5; i++) torso.box(0.3, 0.02, 0.05, i % 2 ? BX[6] : BX[3], { y: 0.46 + i * 0.055, z: 0.3, glow: 1 });
+    for (const o of [-1, 1]) { // Rücken-Antennen mit Schnee-Funken
+      bar(torso, [o * 0.2, 0.85, -0.3], [o * (0.3 + 0.1 * k), 1.1 + 0.3 * k, -0.4], 0.05, 0.025, BX[5]);
+      torso.box(0.08, 0.08, 0.08, BX[4], { x: o * (0.3 + 0.1 * k), y: 1.12 + 0.3 * k, z: -0.4, glow: 1 });
+    }
+    arms(c, (a, o) => {
+      a.box(0.36, 0.08, 0.4, BX[1], { x: o * 0.03, y: 0.07 }); a.box(0.46, 0.08, 0.5, BX[0], { x: o * 0.07, y: 0.15 });
+      a.box(0.48, 0.03, 0.52, BX[3], { x: o * 0.07, y: 0.2, glow: 1 });
+      spike(a, [o * 0.2, 0.2, 0.1], [o * (0.42 + 0.1 * k), 0.2 + 0.5 * k, 0.1], 0.1 * k, BX[5], { glow: 0.3 });
+      for (let i = 0; i < 3; i++) { a.box(0.3, 0.07, 0.32, BX[1], { y: -0.4 - i * 0.1 }); a.box(0.31, 0.02, 0.33, BX[6], { y: -0.36 - i * 0.1, glow: 0.8 }); }
+    });
+  },
+  legs(c) {
+    const k = c.k;
+    legs(c, (l) => {
+      for (let i = 0; i < 4; i++) { l.box(0.36, 0.1, 0.38, i % 2 ? BX[1] : BX[0], { y: -0.26 - i * 0.12 }); l.box(0.365, 0.02, 0.385, BX[3], { y: -0.21 - i * 0.12, glow: 0.8 }); }
+      spike(l, [0, -0.2, 0.2], [0, -0.1, 0.2 + 0.4 * k], 0.09, BX[5], { glow: 0.3 });
+      l.box(0.4, 0.12, 0.5, BX[2], { y: -0.78, z: 0.05 }); l.box(0.41, 0.03, 0.51, BX[3], { y: -0.72, z: 0.05, glow: 1 });
+      for (let i = -1; i <= 1; i++) spike(l, [i * 0.1, -0.8, 0.28], [i * 0.12, -0.84, 0.28 + 0.26 * k], 0.05, BX[4]);
+    });
+  },
+};
+
+const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax };
 export const ARMOR_BUILDERS = SETS;
 export const SLOT_JOINTS = { head: ['head'], body: ['torso', 'armR', 'armL'], legs: ['legL', 'legR'] };
 

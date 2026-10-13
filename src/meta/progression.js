@@ -15,8 +15,9 @@ export const RANKS = [
   { jr: 5, keys: ['revierstreit'], rp: RANK_RP[5] },
   { jr: 6, keys: ['kroll', 'gorgo'], rp: RANK_RP[6] },
   { jr: 7, keys: ['voltaro'], rp: RANK_RP[7] },
-  // Smaragdkueste: Schluessel-Auftraege blendax/mampfaffe/krachfaust kommen mit den Brocken (Spec docs/SMARAGD_BROCKEN.md);
-  // bis dahin bleibt der Rang 8-10 unerreichbar, RANKS erst dann ergaenzen (sonst zeigt die UI einen toten Schluessel).
+  { jr: 8, keys: ['blendax'], rp: RANK_RP[8] },
+  // Rang 9 (mampfaffe) und 10 (krachfaust): Eintrag erst mit dem jeweiligen Brocken ergaenzen (Spec docs/SMARAGD_BROCKEN.md 0.2),
+  // sonst zeigt die UI einen toten Schluessel.
 ];
 export const isKeyQuest = (quest, save) => !!quest.jrUp && (!save || quest.jrUp > save.jr);
 

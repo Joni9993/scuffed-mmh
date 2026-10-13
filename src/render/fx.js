@@ -151,6 +151,16 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
     return glEl;
   };
 
+  // Brocken-Glitch-Overlays (Hacker-Neongruen #39ff14, nie Cyan/Magenta): Weissblitz (Blendax) + kaputter Bildschirm. Reines CSS (ui.css .mon-*), Zaehler laufen in update().
+  let whiteEl = null, whiteT = 0, whiteTail = 0, brokenEl = null, brokenT = 0;
+  const monEl = (cls, html = '') => {
+    const e = document.createElement('div');
+    e.className = cls;
+    e.innerHTML = html;
+    (document.body ?? layer).appendChild(e);
+    return e;
+  };
+
   const fx = {
     nofx,
     shakeOffset,
@@ -216,6 +226,25 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       fx.glitch(Math.max(dur, 0.35));
       fx.flash('rgba(90,216,255,.45)', 0.25);
     },
+
+    /** Vollbild weiss fuer `dur` s (Geblendet), die letzten `staticTail` s mit Bildrauschen. Greift auch mit nofx (Spielmechanik, kein Schmuck). */
+    whiteout(dur = 1, { staticTail = 0.2 } = {}) {
+      whiteEl ??= monEl('mon-white');
+      whiteEl.classList.remove('tail');
+      whiteEl.classList.add('on');
+      whiteT = dur; whiteTail = Math.min(staticTail, dur);
+    },
+    clearWhiteout() { whiteT = 0; whiteEl?.classList.remove('on', 'tail'); },
+    /** Kaputter Bildschirm (Blendax-Warnung): versetzte Streifen, neongruene Scanlines, 20-Hz-Flackern, Riesentext. Kein Schaden, nur Warnung. */
+    brokenScreen(dur = 1, text = 'NICHT HINSEHEN!') {
+      if (nofx) return;
+      brokenEl ??= monEl('mon-broken', '<i class="mb-scan"></i><i class="mb-tear a"></i><i class="mb-tear b"></i><i class="mb-tear c"></i><b class="mb-text"></b>');
+      brokenEl.querySelector('.mb-text').textContent = text;
+      brokenEl.classList.remove('on'); void brokenEl.offsetWidth; brokenEl.classList.add('on');
+      brokenT = dur;
+    },
+    /** Verwirrt-/Schleim-Overlay (Hacker-Gruen): Zeilenverschiebung + Vignette, KEIN RGB-Split. */
+    monGlitch(dur = 1) { fx.brokenScreen(dur, ''); },
 
     /** Blitz von a nach b (gezackt, flackert, Seitenäste). opts: color, width (m), life (s), jag (Zackigkeit). */
     bolt(a, b, { color = '#9fe8ff', width = 0.35, life = 0.22, jag = 1 } = {}) {
@@ -317,6 +346,12 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
         shakeOffset.set((Math.random() - 0.5) * k, (Math.random() - 0.5) * k, (Math.random() - 0.5) * k).multiplyScalar(0.9);
         trauma = Math.max(0, trauma - dt * 1.8);
       } else { shakeOffset.set(0, 0, 0); trauma = 0; }
+      if (whiteT > 0) {
+        whiteT -= dt;
+        if (whiteT <= whiteTail) whiteEl?.classList.add('tail');
+        if (whiteT <= 0) whiteEl?.classList.remove('on', 'tail');
+      }
+      if (brokenT > 0) { brokenT -= dt; if (brokenT <= 0) brokenEl?.classList.remove('on'); }
       if (glTearT > 0) { glTearT -= dt; if (glTearT <= 0) glEl?.classList.remove('tear'); }
       // glitch
       if (glitchT > 0) {
@@ -351,6 +386,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       for (const j of jets.values()) { scene.remove(j.mesh); j.mesh.material.dispose(); }
       for (const r of rings) { scene.remove(r.mesh); r.mesh.material.dispose(); }
       jetGeo.dispose(); jetTex?.dispose();
+      whiteEl?.remove(); whiteEl = null; brokenEl?.remove(); brokenEl = null;
       glEl?.remove(); glEl = null; document.body.classList.remove('glitch-mode');
       setSnapScale(1); setGlobalJitter(0);
       canvas?.classList.remove('glitch');

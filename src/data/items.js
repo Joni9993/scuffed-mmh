@@ -62,6 +62,10 @@ export const ITEMS = {
   voltaro_spule: mat('voltaro_spule', 'Voltaro-Spule', 'Gewickelt von der Natur selbst.', 'ore', '#8ab0ff', 80),
   voltaro_fell: mat('voltaro_fell', 'Voltaro-Fell', 'Statisch aufgeladen. Haare zu Berge.', 'fur', '#9fc8ff', 70),
   voltaro_herz: mat('voltaro_herz', 'Voltaro-Herz', 'Schlägt noch im Takt der Turbinen. Sehr selten.', 'gem', '#ffe14d', 300),
+  blendax_schuppe: mat('blendax_schuppe', 'Blendax-Schuppe', 'Schuppe, die Licht schluckt.', 'scale', '#c0452a', 75),
+  blendax_klaue: mat('blendax_klaue', 'Blendax-Klaue', 'Hinterlässt Kratzer und Standbilder.', 'bone', '#e8dcc0', 70),
+  blendax_schirm: mat('blendax_schirm', 'Blendax-Schirm', 'Zeigt noch ein Testbild. Rauscht leise.', 'crest', '#39ff14', 90),
+  blendax_flimmerlinse: mat('blendax_flimmerlinse', 'Flimmerlinse', 'Wer lange hineinsieht, sieht Schnee. Selten.', 'gem', '#7dff3a', 300),
 
   // ---- consumables
   flickbrause: { id: 'flickbrause', name: 'Flickbrause', desc: '+35 HP über 1 s. Schmeckt nach Pfefferminz und Eisen.', kind: 'consumable', max: 10, time: 0.9, applyAt: 0.45, icon: { shape: 'potion', color: '#58e060' }, value: 8, effect: { type: 'heal', hp: 35, over: 1 } },
@@ -152,6 +156,10 @@ const INFO = {
   voltaro_spule: 'Material: für Rostwerke-Ausrüstung.',
   voltaro_fell: 'Material: für Rostwerke-Ausrüstung.',
   voltaro_herz: 'Material: sehr selten, für die stärksten Rostwerke-Stücke.',
+  blendax_schuppe: 'Material: für Smaragdküsten-Ausrüstung.',
+  blendax_klaue: 'Material: für Smaragdküsten-Ausrüstung.',
+  blendax_schirm: 'Material: für Smaragdküsten-Ausrüstung.',
+  blendax_flimmerlinse: 'Material: sehr selten, für Smaragdküsten-Ausrüstung.',
   rostbombe: 'Wurf (6 m): baut 60 Rost auf (bei 100: 15 s Verrostet).',
   erdungsstab: 'Platzieren: 20 s Schutzzone (4 m) gegen Kettenblitz und Donnerschlag.',
   kuehlbrause: 'Heilt 30 HP und entfernt Rost und Brennen.',

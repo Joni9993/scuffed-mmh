@@ -278,12 +278,48 @@ export class Player {
   /** type: 'mud' | 'burn' | 'poison'; opts {t, rolls}. */
   addStatus(type, opts = {}) {
     if (this.state === 'ko') return false;
-    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 } }[type];
+    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 }, blend: { t: 2, rollsLeft: 0 } }[type];
     if (!base) return false;
     const had = !!this.status[type];
+    if (type === 'blend') return this.#blind(opts, had);
     this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
     if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
     return true;
+  }
+  /**
+   * Geblendet (Blendax-Blitz): Phase 1 = `white` s Vollbild weiss (steuerbar), Phase 2 = `stun` s Betaeubt (Sterne, wie Festhalten).
+   * Macke Blendschutz kuerzt beides (game/loadout.js reicht white/stun durch).
+   */
+  #blind(opts, had) {
+    const white = Math.max(0, opts.white ?? 1), stun = Math.max(0, opts.stun ?? 1);
+    this.status.blend = { t: white + stun, rollsLeft: 0, white, stun, stunned: false };
+    if (!had) this.ctx.bus.emit('playerStatus', { player: this, type: 'blend', on: true });
+    if (this.local && white > 0) {
+      this.ctx.fx?.whiteout?.(white, { staticTail: Math.min(0.2, white) });
+      this.ctx.bus.emit('sfx', { name: 'whiteStatic', pos: this.pos });
+    }
+    return true;
+  }
+  #endBlend() {
+    this.ctx.fx?.clearWhiteout?.();
+    if (this.stars) this.stars.visible = false;
+    if (this._blendPin && this.state === 'pinned') this.#enter('free');
+    this._blendPin = false;
+  }
+  /** Sterne-Kranz ueber dem Kopf (4 gelbe Oktaeder), nur sichtbar waehrend Phase 2 von Geblendet. */
+  #tickStars(on) {
+    if (!on) { if (this.stars) this.stars.visible = false; return; }
+    if (!this.stars) {
+      const g = new THREE.OctahedronGeometry(0.16, 0); g.scale(1, 1, 0.35);
+      const mat = new THREE.MeshBasicMaterial({ color: '#ffe14d', fog: false });
+      this.stars = new THREE.Group();
+      for (let i = 0; i < 4; i++) this.stars.add(new THREE.Mesh(g, mat));
+      this.stars.position.y = 2.15;
+      this.mesh.add(this.stars);
+    }
+    this.stars.visible = true;
+    const a = this.time * 5;
+    this.stars.children.forEach((c, i) => { const r = a + i * Math.PI / 2; c.position.set(Math.cos(r) * 0.42, Math.sin(a * 2 + i) * 0.05, Math.sin(r) * 0.42); c.rotation.y = r; });
   }
   /** Phase-3-Vertrag: player.applyStatus('rost') (Schutz -30 % fuer 20 s). */
   applyStatus(type, opts = {}) { return this.addStatus(type, opts); }
@@ -293,6 +329,7 @@ export class Player {
     for (const k of Object.keys(this.status)) {
       if (type && k !== type) continue;
       delete this.status[k];
+      if (k === 'blend') this.#endBlend();
       this.ctx.bus.emit('playerStatus', { player: this, type: k, on: false });
     }
   }
@@ -306,8 +343,18 @@ export class Player {
   #tickStatus(dt) {
     const st = this.status;
     this.v.rust = st.rost ? st.rost.t : 0;
-    if (!st.mud && !st.burn && !st.poison && !st.rost) return;
+    if (!st.mud && !st.burn && !st.poison && !st.rost && !st.blend) return;
     const fx = this.ctx.fx;
+    if (st.blend) {
+      const b = st.blend;
+      b.t -= dt;
+      if (b.t <= 0) this.clearStatus('blend');
+      else if (!b.stunned && b.t <= b.stun) { // Phase 2: Betaeubt (Sterne). Nur aus ruhigen Zustaenden; wer schon am Boden liegt, bekommt keine Extra-Pause
+        b.stunned = true;
+        if (b.stun > 0 && (this.state === 'free' || this.state === 'roll' || this.state === 'flinch')) { this.weapon.cancel(); this.#enter('pinned'); this._blendPin = true; }
+      }
+      this.#tickStars(!!st.blend && st.blend.stunned && st.blend.stun > 0);
+    }
     if (st.rost && (st.rost.t -= dt) <= 0) this.clearStatus('rost');
     else if (st.rost && Math.random() < dt * 3) fx.spark({ x: this.pos.x, y: this.pos.y + 1.2, z: this.pos.z }, 1, '#c8661e', 1);
     if (st.mud && (st.mud.t -= dt) <= 0) this.clearStatus('mud');

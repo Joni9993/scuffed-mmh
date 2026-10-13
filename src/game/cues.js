@@ -16,7 +16,7 @@ export function pickTone(attackId, cue, chainIdx = 0) {
   const timbre = TIMBRES.includes(cue?.tone) ? cue.tone : TIMBRES[h % TIMBRES.length];
   const f = (110 + ((h >>> 8) % 7) * 22) * (1 + 0.12 * Math.min(chainIdx, 4));
   const base = /^#[0-9a-f]{6}$/i.test(cue?.color ?? '') ? cue.color : TIMBRE_COLOR[timbre];
-  return { timbre, f, color: chainIdx > 0 ? shiftHue(base, 40 * chainIdx) : base };
+  return { timbre, f, color: chainIdx > 0 && !cue?.noShift ? shiftHue(base, 40 * chainIdx) : base /* noShift: Blendax bleibt im Neongrün */ };
 }
 
 export function shiftHue(hex, deg) {
