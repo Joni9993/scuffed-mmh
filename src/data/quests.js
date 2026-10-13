@@ -84,7 +84,7 @@ Object.assign(quests, {
 // Smaragdküste-Auftrag: Sammelausflug an Strand und Dschungel.
 Object.assign(quests, {
   inselausflug: {
-    id: 'inselausflug', name: 'Inselausflug', type: 'gather', monster: null, world: 'smaragdkueste', timeLimit: 15 * 60, reward: 300, rp: 25, jr: 3,
+    id: 'inselausflug', name: 'Inselausflug', type: 'gather', monster: null, world: 'smaragdkueste', timeLimit: 15 * 60, reward: 700, rp: 40, jr: 7,
     gather: { id: 'kokosnuss', n: 8 },
     desc: 'Sammle 8 Kokosnüsse an der Smaragdküste und gib sie ab. Kein Brocken.',
   },
@@ -93,7 +93,7 @@ Object.assign(quests, {
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
-QUEST_ORDER.push('kroll', 'gorgo', 'rostiger_ausflug', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug');
+QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug');
 
 export function getQuest(id) {
   const q = quests[id];
@@ -117,4 +117,4 @@ export function setFieldStudyQuest(q) { quests.feldstudie = q; }
 /** Basis-RP je Brocken (Feldstudie-Berechnung). */
 export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180 };
 /** RP-Schwelle je Zielrang (Schlüssel-Auftrag). progression.js baut daraus RANKS. */
-export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200 };
+export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200, 8: 1700, 9: 2300, 10: 3000 };

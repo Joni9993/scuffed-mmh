@@ -11,7 +11,7 @@ const hunt = (s, q, result = 'win', rpMul = 1) => applyHuntResult(s, q, buildRew
 describe('Rang-Punkte', () => {
   it('RANKS-Schwellen und Schlüssel', () => {
     expect(RANKS.map((r) => [r.jr, r.keys, r.rp])).toEqual([[2, ['jaggo'], 0], [3, ['barrotz'], 100], [4, ['brathalos'], 250], [5, ['revierstreit'], 450], [6, ['kroll', 'gorgo'], 800], [7, ['voltaro'], 1200]]);
-    expect(MAX_JR).toBe(7);
+    expect(MAX_JR).toBe(10); // 8-10 Smaragdkueste, RANKS folgt mit den Schluessel-Auftraegen
     for (const r of RANKS) for (const k of r.keys) expect(quests[k].jrUp).toBe(r.jr);
   });
   it('Sieg gibt Basis-RP, Niederlage 0, Training 0', () => {
@@ -69,5 +69,14 @@ describe('Rang-Punkte', () => {
     expect(sanitize(low).rp).toBe(250); // mindestens Schwelle des aktuellen Rangs
     expect(sanitize({ ...defaultSave(), rp: 77 }).rp).toBe(77);
     expect(sanitize({ ...defaultSave(), rp: -5 }).rp).toBe(0);
+  });
+});
+
+describe('Smaragd-Raenge', () => {
+  it('RANK_RP 8-10 steigen, Save-Clamp laesst JR 10 zu', async () => {
+    const { RANK_RP } = await import('../../src/data/quests.js');
+    expect(RANK_RP[8]).toBeGreaterThan(RANK_RP[7]); expect(RANK_RP[10]).toBeGreaterThan(RANK_RP[9]);
+    const { sanitize } = await import('../../src/meta/save.js');
+    expect(sanitize({ jr: 10 }).jr).toBe(10); expect(sanitize({ jr: 99 }).jr).toBe(10);
   });
 });

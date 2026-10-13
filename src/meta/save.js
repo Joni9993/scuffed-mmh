@@ -81,7 +81,7 @@ export function sanitize(d) {
   s.name = typeof d.name === 'string' && d.name.trim() ? cleanName(d.name) : base.name;
   s.nameSet = !!d.nameSet;
   s.color = PLAYER_COLORS.includes(d.color) ? d.color : PLAYER_COLORS[0];
-  s.jr = int(d.jr, 1, 7, 1);
+  s.jr = int(d.jr, 1, 10, 1);
   s.schrott = int(d.schrott, 0, MAX_SCHROTT, 0);
   // Rang-Punkte: fehlt rp (alter Save) -> Summe Basis-RP je einmal geclearter Auftrag, mindestens Schwelle des aktuellen Rangs
   if (d.rp === undefined) {

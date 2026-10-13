@@ -5,7 +5,7 @@ import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
 import { BESTIARY } from '../data/compendium.js';
 import { applyChestResult } from './huntChest.js';
 
-export const MAX_JR = 7; // 2 Jaggo, 3 Barrotz, 4 Brathalos, 5 Revierstreit, 6 Kroll/Gorgo, 7 Voltaro
+export const MAX_JR = 10; // 2 Jaggo, 3 Barrotz, 4 Brathalos, 5 Revierstreit, 6 Kroll/Gorgo, 7 Voltaro, 8 Blendax, 9 Mampfaffe, 10 Krachfaust
 
 /** Jägerrang-Stufen: Schlüssel-Aufträge (quest.jrUp = Rang) + Rang-Punkte-Schwelle (save.rp). */
 export const RANKS = [
@@ -15,6 +15,8 @@ export const RANKS = [
   { jr: 5, keys: ['revierstreit'], rp: RANK_RP[5] },
   { jr: 6, keys: ['kroll', 'gorgo'], rp: RANK_RP[6] },
   { jr: 7, keys: ['voltaro'], rp: RANK_RP[7] },
+  // Smaragdkueste: Schluessel-Auftraege blendax/mampfaffe/krachfaust kommen mit den Brocken (Spec docs/SMARAGD_BROCKEN.md);
+  // bis dahin bleibt der Rang 8-10 unerreichbar, RANKS erst dann ergaenzen (sonst zeigt die UI einen toten Schluessel).
 ];
 export const isKeyQuest = (quest, save) => !!quest.jrUp && (!save || quest.jrUp > save.jr);
 

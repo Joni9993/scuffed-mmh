@@ -160,7 +160,7 @@ describe('Quests + JR-Gating', () => {
     expect(q.jaggo_rotglut.jr).toBe(4); // bestehende Rotglut bleibt
   });
   it('JR: Revierstreit -> 5, Kroll/Gorgo -> 6, Voltaro -> 7, nie zurueck', () => {
-    expect(MAX_JR).toBe(7);
+    expect(MAX_JR).toBe(10); // 8-10 Smaragdkueste, RANKS folgt mit den Schluessel-Auftraegen
     const s = defaultSave();
     const win = (qu) => applyHuntResult(s, qu, buildRewards({ quest: qu, result: 'win', rng: createRng(1) }), { time: 100 });
     s.jr = 4; s.rp = 450;
@@ -178,6 +178,6 @@ describe('Quests + JR-Gating', () => {
     expect(questUnlocked(s, quests.voltaro_rotglut)).toBe(true);
     expect(win(quests.jaggo).jrUp).toBeNull();
     expect(s.jr).toBe(7);
-    expect(sanitize({ jr: 99 }).jr).toBe(7);
+    expect(sanitize({ jr: 99 }).jr).toBe(10);
   });
 });

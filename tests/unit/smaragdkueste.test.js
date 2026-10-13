@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createWorld } from '../../src/game/world/index.js';
 import { getNav } from '../../src/game/monsters/nav.js';
 import { GATHER_KINDS } from '../../src/data/gather.js';
-import { getQuest } from '../../src/data/quests.js';
+import { getQuest, questList } from '../../src/data/quests.js';
 
 let w, L;
 beforeAll(() => { w = createWorld('smaragdkueste', { seed: 1 }); L = w.layout; });
@@ -36,5 +36,9 @@ describe('smaragdkueste', () => {
     for (const [kind, d] of kinds) for (const p of w.gatherPoints.filter((q) => q.kind === kind)) expect(Object.keys(d.zones).map(Number)).toContain(p.zone);
     expect(w.gatherPoints.length).toBeGreaterThan(20);
     expect(getQuest('inselausflug').world).toBe('smaragdkueste');
+    expect(getQuest('inselausflug').jr).toBe(7); // Voltaro-Sieg schaltet die Karte frei
+    expect(getQuest('inselausflug').jrUp).toBeUndefined();
+    expect(getQuest('rostiger_ausflug').jr).toBe(5);
+    expect(questList().map((q) => q.id).indexOf('rostiger_ausflug')).toBeLessThan(questList().map((q) => q.id).indexOf('kroll'));
   });
 });

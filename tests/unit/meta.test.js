@@ -37,7 +37,7 @@ describe('save: versioning, migration, export/import', () => {
   });
   it('sanitizes invalid / hostile values', () => {
     const s = sanitize({ version: 1, name: '<b>Böse</b>', jr: 99, schrott: -5, box: { flickbrause: 500, nope: 3, altknochen: -1 }, weapons: { gs: { tier: 9, branch: 'x' } }, loadout: { weapon: 'axe', armor: { head: 'brathalos_head' }, items: [{ id: 'altknochen', n: 3 }, { id: 'flickbrause', n: 99 }] }, meal: 'gift' });
-    expect(s.jr).toBe(7);
+    expect(s.jr).toBe(10);
     expect(s.schrott).toBe(0);
     expect(s.box).toEqual({ flickbrause: 99 });
     expect(s.weapons.gs.tier).toBe(6);

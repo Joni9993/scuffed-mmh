@@ -1,25 +1,71 @@
 # Smaragdküste: drei neue Brocken (Design-Spec)
 
-Status: Spec, nichts implementiert. Zielgruppe: Builder-Agents, die die Brocken **nacheinander** bauen (Reihenfolge: Blendax -> Mampfaffe -> Krachfaust).
+Status: Spec. Nichts von den Brocken implementiert; die Rang-/Freischalt-Infrastruktur (Abschnitt 0) ist schon im Code. Zielgruppe: Builder-Agents, die die Brocken **nacheinander** bauen (Reihenfolge: Blendax -> Mampfaffe -> Krachfaust).
 Alle Zahlen sind an den vorhandenen Code gebunden (Stand origin/main `860dc0c`). Format-Referenzen: `src/game/monsters/{jaggo,voltaro,gorgo}.js`, `src/data/{drops,armor,weapons,quests,compendium,gather,items}.js`.
 
 | | Blendax | Mampfaffe | Krachfaust |
 |---|---|---|---|
 | Vorbild | Tzitzi-Ya-Ku | Conga | Brachydios |
-| Rolle | schneller Blender, Zone 2+3 | Fresser, Zone 1-4, Buff-Wechsel | Apex im Tempel (Zone 4), Finale-Explosion |
-| HP (Jaggo 7000 / Barrotz 9000 / Gorgo 14500 / Voltaro 18500) | 21 000 | 24 000 | 34 000 |
+| Rolle | schneller Blender, Zone 2+3 | Fresser, Zone 1+2 (Revier), Buff-Wechsel | Apex im Tempel (Zone 4), Finale-Explosion |
+| HP (Jaggo 7000 / Barrotz 9000 / Gorgo 14500 / Voltaro 18500; Smaragd bewusst darunter bzw. knapp darüber: Blendax ~0,76x, Mampfaffe ~0,86x, Krachfaust ~1,08x Voltaro; Teil-HP, Flinch und Zahlen mit ~0,67/0,67/0,59 skaliert, Schaden unverändert) | 14 000 | 16 000 | 20 000 |
 | Lauf walk/run (Jaggo 3,25/7,75; Voltaro 3,6/9,5) | 4,2 / 11,0 | 3,4 / 8,0 | 3,3 / 8,2 |
-| Treffer (Jaggo 11-22; Voltaro 28-44) | 15-34 | 14-44 | 28-60 (+ Finale tödlich) |
+| Treffer (Jaggo 11-22; Voltaro 28-44) | 15-34 | 14-44 | 28-60 (+ Finale 70 % Max-LP ohne Deckung) |
 | Rig | `buildRaptor` + Schirm-Mod | neu (hockender Affe) | neu (Mampfaffe-Rig, größer) |
 | Auftrag | `blendax` | `mampfaffe` | `krachfaust` |
 
 ---------------------------------------------------------------------------------------------------
 
+## 0. FINALE ENTSCHEIDUNGEN (Owner, Okt 2026) - überschreiben alles Abweichende weiter unten
+
+**0.1 Freischaltung wie Karte 2.** Muster im Code (`quests.js`, `progression.questLock`): ein Auftrag hat `jr` (nötiger Rang) und optional `jrUp` (Rang nach dem ersten Sieg). Rostwerke öffnet bei JR 5, den **Revierstreit** (Schotterklamm, jr 4 -> jrUp 5) gibt (nicht Brathalos: der gibt JR 4 und die Rotglut-Varianten von Karte 1). Dort ist `rostiger_ausflug` (jr 5, Sammelauftrag) jetzt **Erster im Brett** (`QUEST_ORDER`), vor Kroll/Gorgo. Genauso: **Voltaro** (`Der Funkenfürst`, jr 6 -> jrUp 7) erstmalig besiegt => JR 7 => Smaragdküste öffnet, erster Auftrag **`inselausflug`** (jr 7, Belohnung 700, rp 40, Sammelauftrag, schon umgesetzt). Es gibt keinen Sonderschalter und kein `needClears`: alles läuft über `jr` + `jrUp`. (`needClears` aus 1.1/1.6 entfällt.)
+
+**0.2 Reihenfolge und neue Jägerränge (umgesetzt: `MAX_JR = 10`, `RANK_RP`, Save-Clamp, Tests).** Kette nach Muster Karte 1 (jr1->2->3->4, dann Rotglut) und Karte 2 (jr5->6->7, dann Rotglut):
+
+| JR (Ziel) | Schlüssel-Auftrag | `jr` nötig | `jrUp` | RP-Schwelle `RANK_RP` |
+|---|---|---|---|---|
+| 7 | `voltaro` (existiert) | 6 | 7 | 1200 |
+| 8 | `blendax` | 7 | 8 | 1700 |
+| 9 | `mampfaffe` | 8 | 9 | 2300 |
+| 10 | `krachfaust` | 9 | 10 | 3000 |
+
+Reihenfolge im Spiel: `inselausflug` (jr 7) -> `blendax` (jr 7, jrUp 8) -> `mampfaffe` (jr 8, jrUp 9) -> `krachfaust` (jr 9, jrUp 10) -> dann alle auf **jr 10**: `blendax_rotglut`, `mampfaffe_rotglut`, `krachfaust_rotglut` und `revierstreit_smaragd` (Revierstreit-Variante nach Vorbild `revierstreit`, `multi: 'revier'`, die drei Smaragd-Brocken gegeneinander, hpMul je ~0,65, kein jrUp). Krachfaust braucht Blendax und Mampfaffe also **automatisch** (Rang 9 gibt es nur durch Mampfaffe-Sieg + 2300 RP). RP-Hinweis: Voltaro-Sieg gibt 180 RP bei Schwelle 1200 -> man muss auf der Karte etwas mitsammeln (Inselausflug, Rotglut-Wiederholungen), wie schon vor JR 6/7.
+
+**Bereits im Code:** `MAX_JR 10`, `RANK_RP[8..10]`, `save.js` `int(d.jr,1,10,1)`, `inselausflug` jr 7/700/rp 40, `rostiger_ausflug` zuerst im Brett, Tests angepasst. **Noch nicht:** `progression.RANKS` Einträge 8-10 (jeder Eintrag braucht seine existierende Quest als `keys`, sonst `rankpoints.test` rot und `rankLine` zeigt einen toten Schlüssel): wird mit jedem Brocken-Build ergänzt (siehe Quest-Tabelle unten). `rankLine` (hubPanelsB) zeigt "Höchstrang" bis dahin schon bei JR 7.
+
+**Vorgeplante Quests (Builder fügt sie mit dem jeweiligen Brocken in `quests.js` ein, `world: 'smaragdkueste'`, `QUEST_ORDER` in dieser Reihenfolge nach `inselausflug`, `MONSTER_RP`: blendax 200, mampfaffe 220, krachfaust 300):**
+
+| id | name | monster | jr | jrUp | Limit | reward | rp |
+|---|---|---|---|---|---|---|---|
+| `blendax` | Flimmern im Dschungel | blendax | 7 | 8 | 25 min | 3000 | 200 |
+| `mampfaffe` | Der Fressfeind | mampfaffe | 8 | 9 | 25 min | 3200 | 220 |
+| `krachfaust` | Krach im Tempel | krachfaust | 9 | 10 | 30 min | 5200 | 300 |
+| `blendax_rotglut` | Rotglut: Blendax | blendax | 10 | - | 25 min | 5100 | 290 |
+| `mampfaffe_rotglut` | Rotglut: Mampfaffe | mampfaffe | 10 | - | 25 min | 5400 | 320 |
+| `krachfaust_rotglut` | Rotglut: Krachfaust | krachfaust | 10 | - | 30 min | 8800 | 440 |
+| `revierstreit_smaragd` | Revierstreit: Smaragd | blendax + mampfaffe + krachfaust (`monsters`, `multi: 'revier'`) | 10 | - | 30 min | 7500 | 400 |
+
+Dazu je Eintrag in `progression.RANKS`: `{ jr: 8, keys: ['blendax'], rp: RANK_RP[8] }`, `{ jr: 9, keys: ['mampfaffe'], ... }`, `{ jr: 10, keys: ['krachfaust'], ... }`. Rotglut-Einträge wie bei Karte 2 (`variant: 'rotglut', mutators: ['rotglut']`).
+
+**0.3 Waffen: Stufe 6 aus Krachfaust.** Ersetzt den "Waffen-Haken" in 1.7. Jede Waffenart bekommt auf **Stufe 6 einen neuen Ast `x` ("Sprenger")**, erreichbar aus **jedem** Stufe-5-Ast (`k`, `g` oder `v`, wie die anderen Stufe-6-Pfade aus Stufe 5 abzweigen; `cleanBranch` in `save.js` und der Skill-/Tree-UI `hubPanelsA` entsprechend anpassen: Stufe 6 hat dann `v` und `x`). Material: Krachfaust (Apex): `krachfaust_kruste`, `krachfaust_faustplatte`, `krachfaust_runenherz` (je 1 pro Waffe) + Schrott, Kosten in `WEAPON_UPGRADES[6][type].x`. Werte relativ zum Stufe-6-`v` der Art: Kraft +8, Krit unverändert, **`elems.blast: 30`**, `partDmgMul 1.2`. **Neuer Zustand auf der Waffe "Sprengung" (Explosion)**, passend zum Brocken (Brachydios-Muster): jeder Treffer baut auf dem getroffenen Teil Sprengwert auf (`blast` x Trefferstärke, ähnlich Gift-Aufbau `poisonMul`); bei 100 detoniert es am Teil (Kugel r 2,2 m, fester Schaden ~ 8 % der Waffenkraft x 6, Teil-HP-Schaden x1,5, Funken orange/weiß `#ffb020`/`#fff2c0`, KEIN Grün: Grün gehört den Brocken, Cyan/Magenta den Pirschern). Name im Kompendium (`CONDITIONS`/`ELEM_NOTES`): "Sprengung: Treffer laden das Teil auf, ab 100 knallt es. Eigene Explosionen werfen dich nicht um." Namensvorschlag: `<Art>-Sprenger`, Beschreibung im Stil "Krachfaust-Faust, in Waffenform. Macht Peng." Die Waffen-Optik (`game/gear/weaponLook.js`): Standardmodell + orange Glut-Risse und Funken-Partikel.
+
+**0.4 Krachfaust-Finale ohne Deckung = 70 % der maximalen LP** (nicht tödlich): Treffer-Feld `dmgPct: 0.7` (berechnet aus `player.maxHp`; wer vorher volle LP hat, überlebt mit 30 %); mit Säule dazwischen 0. Ersetzt "dmg 400"/"tödlich" überall unten. Der Brocken ist danach erschöpft (Finish-Fenster), das Finale ist also überlebbar auch ohne Deckung, aber ein zweiter Treffer (Rotglut: zweiter Urknall) sitzt.
+
+**0.5 Mampfaffe-Revier.** Nest und Spawn in **Zone 2**, Patrouille **nur Zone 1 + 2** (`ROUTE_ZONES.mampfaffe = [1, 2]`, `monsterSpawns.mampfaffe` bleibt Zone 2 südlich). Frisst Kokosnuss (Zone 1+2) und Feuerpilz/Giftkraut (Zone 2); der Glitchpilz (Zone 3+4) ist für ihn **nur Quest-Item der Pirscher** (er rennt nicht dorthin), sein Glitchpilz-Buff kommt aus einem Item, das er trägt/ausspuckt (siehe 3.3, Builder hält es einfach: Buff-Wechsel wählt aus den vorhandenen drei, Glitchpilz-Zustand nur in der Wut oder als Pirscher-Köder, den Pirscher in Zone 1/2 auslegen können). Jedenfalls keine Zone-3/4-Wanderung.
+
+**0.6 Stil: laut, eindeutig, übertrieben.** Glitch Hunter: einfaches Design, aber laute, lesbare Sprache. Jeder Angriff hat eine **riesige Telegraph-Form in Neongrün** (`#39ff14` Kern, `#d8ffd0` Peak), Brocken-Glitch-Effekte immer **Hacker-Neongrün** (nie Cyan/Magenta). Verhalten absichtlich überzeichnet (Blendax: Schirm wie kaputter Fernseher mit Testbild, Mampfaffe: Backen wie Ballons, Rülpser sichtbar als Wolke, Krachfaust: Fäuste blasen auf wie Ballons und blinken im Takt). Gedacht für Skill-Checks und Lacher: Banner-Texte groß ("HINTER DIE SÄULEN!"), kurze Zeitlupen bei Treffern, Funken statt Zahlen. Neue Einzelheiten werden eher **lauter** als subtil gewählt; Kontrast zur Karte (Türkis) bleibt Gelbgrün.
+
+**0.7 Krachfaust-Finale episch, aber mit kleinem Budget.** Nur vorhandene Systeme: `fx.shake`, `fx.flash`, `fx.whiteout`, `time.slowmo`, `world.setRuneGlow`/`world.pulse`, Marker (`hud` / vorhandener Zonen-Marker), Banner, `sfx charge/boom`, `spark()`; Säulen als einfache `visible=false`-Meshes. Keine neuen Shader, Partikelsysteme oder Kameraanimationen. Ablauf: Marker über die ganze Plattform, Aufladen mit steigender Taktrate (Licht, Sound, Shake), 1 s Stille, Detonation (Weiß + Zeitlupe 0,3 s).
+
+**0.8 HP-Skala.** Bestehende Brocken: Jaggo 7000, Barrotz 9000, Gorgo 14500, Voltaro 18500. Neu: **Blendax 14 000, Mampfaffe 16 000, Krachfaust 20 000**. Blendax liegt damit unter Voltaro (Schnelligkeit + Blendung ersetzen HP), Krachfaust leicht darüber (Apex). Teil-HP/Flinch wurden entsprechend mit 0,67/0,67/0,59 skaliert (Tabellen unten schon umgerechnet); Schaden, Tempo, Telegraphs unverändert. Wut/Phasen-Schwellen sind relativ (`at`), bleiben.
+
+
+---------------------------------------------------------------------------------------------------
+
 ## 1. Gemeinsames
 
-### 1.1 Freischaltung (Entscheidung)
+### 1.1 Freischaltung (ÜBERHOLT, siehe Abschnitt 0.1/0.2; unten nur Dateiliste)
 
-**Empfehlung: kein JR 8. Alle Smaragd-Aufträge bekommen `jr: 7`.** JR 7 erreicht man ausschließlich über den Schlüssel-Auftrag Voltaro (`quests.voltaro.jrUp = 7`, `RANK_RP[7] = 1200`, `progression.RANKS`). "JR 7" heißt also automatisch "Voltaro besiegt + 1200 RP". Null Eingriff in Save/Rang-UI.
+**(Überholt: es gibt jetzt JR 8-10, siehe 0.2.) Frühere Empfehlung: kein JR 8, alle Smaragd-Aufträge `jr: 7`.** JR 7 erreicht man ausschließlich über den Schlüssel-Auftrag Voltaro (`quests.voltaro.jrUp = 7`, `RANK_RP[7] = 1200`, `progression.RANKS`). "JR 7" heißt also automatisch "Voltaro besiegt + 1200 RP". Null Eingriff in Save/Rang-UI.
 
 Warum nicht JR 8: bräuchte `MAX_JR` (progression.js), `int(d.jr,1,7,1)` (save.js:84), `RANK_RP` (quests.js), `RANKS` (progression.js), Rangtexte in `hubPanelsB.js` ("Höchstrang"), Tests (`rankpoints`, `progression3`, `questboard`) und einen Schlüssel-Auftrag. Gewinn: nur ein weiteres Zahlenschloss.
 
@@ -76,7 +122,7 @@ Sterne über dem Pirscher: kleiner Kranz aus 4 gelben Oktaedern am Pirscher-Mesh
 
 **Nest/Route/Spawn** (`src/game/world/smaragdkueste.js`, `smaragdkuesteLayout.js`):
 - Heute `NEST_ZONE = { jaggo: 2, barrotz: 3 }`, alles andere nistet in Zone 4; `routeFor(id)` = Route der Nest-Zone; `monsterSpawns = { jaggo, barrotz, default }` (Layout:265).
-- Neu: `NEST_ZONE.blendax = 3`, `NEST_ZONE.mampfaffe = 2`; `ROUTE_ZONES = { blendax: [2, 3], mampfaffe: [1, 2, 3, 4] }` -> `routeFor` konkateniert `L.routes[z]` der Zonen (Brocken streifen so durch mehrere Zonen; die Routen berühren sich an den `PASSES`). `krachfaust` bleibt Default (Zone 4, `default` Spawn `(80,-80)`).
+- Neu: `NEST_ZONE.blendax = 3`, `NEST_ZONE.mampfaffe = 2`; `ROUTE_ZONES = { blendax: [2, 3], mampfaffe: [1, 2] }` -> `routeFor` konkateniert `L.routes[z]` der Zonen (Brocken streifen so durch mehrere Zonen; die Routen berühren sich an den `PASSES`). `krachfaust` bleibt Default (Zone 4, `default` Spawn `(80,-80)`).
 - `monsterSpawns.blendax = snap({x:30,z:70},4)` (Zone 3 nahe Pass), `monsterSpawns.mampfaffe = snap({x:-62,z:20},4)` (Zone 2 südlich, nahe Pass 1-2). Test: `smaragdkueste.test.js` Erreichbarkeit für neue Spawns/Routen.
 
 **Futter** (Mampfaffe frisst, Pirscher können es vorher ernten):
@@ -105,9 +151,9 @@ Hinzuzufügen:
 
 **Brocken findet/frisst Futter** (Mampfaffe, Abschnitt 3.3): Quelle `ctx.world.gatherPoints` (Felder `kind, zone, pos, usesLeft`), Verbrauch `world.setGatherState(id, usesLeft - 1)` (nur Host/Solo), Gäste bekommen den Stand über `MSG.GATHER {id, u}`: `sync.js:112` sendet das bei Bus-Event `gathered`. Neues Bus-Event `foodEaten {pointId}` + 6 Zeilen in `sync.js`, die genauso `MSG.GATHER {id, u: pt.usesLeft}` an alle senden (nicht `gathered` missbrauchen: `huntmeta.#onGathered` würde Items gutschreiben).
 
-### 1.6 Quests / RP / Rotglut
+### 1.6 Quests / RP / Rotglut (Werte übernommen, jr/jrUp/needClears siehe 0.2)
 
-Alle `world: 'smaragdkueste'`, `type: 'hunt'`, `jr: 7`, **kein `jrUp`** (es gibt keinen JR 8; RP laufen trotzdem weiter in `save.rp`). Werte relativ zu Voltaro (2600 Schrott, 180 RP, 25 min), Rotglut-Faktor wie dort (~1,7 Schrott, ~1,45 RP).
+Alle `world: 'smaragdkueste'`, `type: 'hunt'`; **`jr`/`jrUp` gemäß 0.2, `needClears` entfällt**. Werte relativ zu Voltaro (2600 Schrott, 180 RP, 25 min), Rotglut-Faktor wie dort (~1,7 Schrott, ~1,45 RP).
 
 | id | name | monster | timeLimit | reward | rp | needClears |
 |---|---|---|---|---|---|---|
@@ -129,7 +175,7 @@ Rotglut-Einträge: `variant: 'rotglut', mutators: ['rotglut']` (gibt hpMul 1,4, 
 - **Kompendium** `data/compendium.js`: `BESTIARY`-Eintrag (`id,name,where,title,intro,entries[{at,kind,name,text}]`), `CONDITIONS` (Zustände), `ELEM_NOTES` (Sonderregeln).
 - **Brocken-Register** `monsters/index.js` (1 Import + 1 Zeile). Tests nach Muster `tests/unit/b3_voltaro.test.js`.
 
-**Waffen-Haken für Smaragd (spät, optional)**: Stufe 6 bekommt zusätzlich die Äste `b` (Blendax), `m` (Mampfaffe), `x` (Krachfaust), erreichbar aus **jedem** Stufe-5-Ast (kein Voltaro-Herz nötig; `v` bleibt der Voltaro-Weg). Deltas relativ zum Stufe-6-`v`-Wert desselben Typs: `b` Kraft +0, Krit +0,15; `m` Kraft +4, `bluntMul 1.4`; `x` Kraft +8, `elems.fire 34`, `partDmgMul 1.2`. Dateien: `weapons.js` (`tiers[5].branches` je Typ, `WEAPON_UPGRADES[6]` von flach auf pro Ast umstellen, `upgradeOptions` Stufe 6), `save.js` `cleanBranch` (`tier === 6` -> `b|m|x|v`), `hubPanelsA.js` `nodeState`/Baumknoten, `gearlook.js`/`*Look.js` (Fallback `volt`-Palette mit Tönung genügt), Tests `weapon.test.js`, `armory.test.js`. Kosten Stufe 6 (Smaragd): `schrott 3000` + Brocken-Mats (3.9/2.9/4.9) + `glimmstein 2`.
+**Waffen-Haken für Smaragd (ÜBERHOLT durch 0.3: nur Ast `x` aus Krachfaust, mit Sprengung)**: Stufe 6 bekommt zusätzlich die Äste `b` (Blendax), `m` (Mampfaffe), `x` (Krachfaust), erreichbar aus **jedem** Stufe-5-Ast (kein Voltaro-Herz nötig; `v` bleibt der Voltaro-Weg). Deltas relativ zum Stufe-6-`v`-Wert desselben Typs: `b` Kraft +0, Krit +0,15; `m` Kraft +4, `bluntMul 1.4`; `x` Kraft +8, `elems.fire 34`, `partDmgMul 1.2`. Dateien: `weapons.js` (`tiers[5].branches` je Typ, `WEAPON_UPGRADES[6]` von flach auf pro Ast umstellen, `upgradeOptions` Stufe 6), `save.js` `cleanBranch` (`tier === 6` -> `b|m|x|v`), `hubPanelsA.js` `nodeState`/Baumknoten, `gearlook.js`/`*Look.js` (Fallback `volt`-Palette mit Tönung genügt), Tests `weapon.test.js`, `armory.test.js`. Kosten Stufe 6 (Smaragd): `schrott 3000` + Brocken-Mats (3.9/2.9/4.9) + `glimmstein 2`.
 
 ### 1.8 Sound / Musik (gemeinsam)
 
@@ -156,9 +202,9 @@ Schneller, aggressiver Raptor mit Warnschirm. Nest Zone 3 (`NESTS[3] = (70,70)`)
 ### 2.3 Werte
 
 ```
-id 'blendax', name 'Blendax, der Flimmerfürst', hp 21000, scale 1.5, bodyRadius 1.7, predator true,
+id 'blendax', name 'Blendax, der Flimmerfürst', hp 14000, scale 1.5, bodyRadius 1.7, predator true,
 walk 4.2, run 11.0, turn 1.35, detect 34 (Zone 3: 40), prefer 5,
-stamina true, flinchDmg 1400, teachAttack 'blendax_bissreihe',
+stamina true, flinchDmg 950, teachAttack 'blendax_bissreihe',
 recoverAfter: (m) => (0.12 + m.rng() * 0.25) / (1.35 * m.speedMul)    // Jaggo: 0.2-0.6 / 1.25
 ```
 Angriffe laufen mit `tempo: 1.3` (Jaggo 1,25), Hit-Radien wie Jaggo nach seinem +20 %-Block (Jaggo verändert seine Defs beim Import; Blendax **klont** nach diesem Import).
@@ -200,11 +246,11 @@ Hinweis: wer weggedreht ist, kann nicht kontern (der Treffer wird per `faceCheck
 
 | id | label | factor | breakHp | elem (fire/shock) | Hinweis |
 |---|---|---|---|---|---|
-| `kopf` | Kopf | 1,0 | 1500 | 15/10 | `blunt`, `stunPart`; Bruch: Biss-Gewicht x1,5 |
-| `frill` | Warnschirm | 0,9 | 2200 | 10/**35** | Bruch: kein Blitz mehr, `hopFury` 25 s (wütende Sprungketten 2-3), Schirm-Stumpf |
+| `kopf` | Kopf | 1,0 | 1000 | 15/10 | `blunt`, `stunPart`; Bruch: Biss-Gewicht x1,5 |
+| `frill` | Warnschirm | 0,9 | 1450 | 10/**35** | Bruch: kein Blitz mehr, `hopFury` 25 s (wütende Sprungketten 2-3), Schirm-Stumpf |
 | `koerper` | Körper | 0,7 | - | 15/15 | |
 | `beine` | Beine | 0,8 | - | **22**/10 | |
-| `tail` | Schwanz | 0,8 | 1300 | 10/10 | Bruch: `severTail(m)` (common.js), Schwanzwirbel + Rückhüpfer entfallen |
+| `tail` | Schwanz | 0,8 | 850 | 10/10 | Bruch: `severTail(m)` (common.js), Schwanzwirbel + Rückhüpfer entfallen |
 
 `ELEM_NOTES.blendax`: "Schock auf dem Schirm kurzschließt ihn: er flackert wild und blitzt nicht mehr.". Umsetzung: `onElement`/`onDamage` auf `frill` mit Schock > 0 -> `m.extra.blitzLock = 6` s (Blitz gesperrt). Keine `glitchSpots` (Owner-Entscheidung Okt 2026 für Rostwerke-Brocken, gilt hier mit).
 
@@ -271,7 +317,7 @@ Ca. 650 Zeilen `blendax.js` (Klone sparen ~300), 250 Infrastruktur (faceCheck, S
 7. `src/game/world/smaragdkueste.js` + `...Layout.js`: `NEST_ZONE`, `ROUTE_ZONES`, `monsterSpawns.blendax`
 8. `src/data/{drops,items,compendium,quests,armor}.js` (+ `loadout.js` `blendCut`, `gearlook.js`, `gear/armor.js`)
 9. `src/audio/sfx.js` `blendFlash`, `whiteStatic`
-10. `src/meta/progression.js` + `hubPanelsB.js`: `needClears`, `inselausflug.jr = 7`
+10. (erledigt: Rang-Infrastruktur, `inselausflug.jr = 7`; offen: `RANKS`-Eintrag je Brocken, siehe 0.2)
 11. Tests: `blendax.test.js`, `smaragdkueste.test.js`
 
 ---------------------------------------------------------------------------------------------------
@@ -279,7 +325,7 @@ Ca. 650 Zeilen `blendax.js` (Klone sparen ~300), 250 Infrastruktur (faceCheck, S
 ## 3. MAMPFAFFE (Conga)
 
 ### 3.1 Rolle / Zonen
-Streunt durch **alle vier Zonen** (`ROUTE_ZONES.mampfaffe`), frisst Futterstellen und wechselt Buffs. Kein Apex, aber Taktik-Brocken: wer Futter vorher erntet, nimmt ihm Fähigkeiten. Nest Zone 2. Namens-Hinweis: nicht mit der friedlichen Fauna `mampfer` (monsters/mampfer.js, `mampfer*`) verwechseln: Id `mampfaffe`, Dateien `mampfaffe.js`.
+Streunt durch **Zone 1 und 2** (`ROUTE_ZONES.mampfaffe = [1, 2]`, ersetzt "alle vier Zonen"), frisst Futterstellen und wechselt Buffs. Kein Apex, aber Taktik-Brocken: wer Futter vorher erntet, nimmt ihm Fähigkeiten. Nest Zone 2, Patrouille nur Zone 1+2 (0.5). Namens-Hinweis: nicht mit der friedlichen Fauna `mampfer` (monsters/mampfer.js, `mampfer*`) verwechseln: Id `mampfaffe`, Dateien `mampfaffe.js`.
 
 ### 3.2 Modell
 Neues `buildMampfaffe({ scale: 1.8 })` (Boxen wie `buildBarrotz`/`buildRaptor`, Hilfsfunktionen `add(part, w,h,d, mat, parent, x,y,z)`; Teile-Meshes je `partMeshes[part]`; PS1 `lambert` mit Textur `tex(name, {size:16})`):
@@ -290,8 +336,8 @@ Neues `buildMampfaffe({ scale: 1.8 })` (Boxen wie `buildBarrotz`/`buildRaptor`, 
 ### 3.3 Werte und Futter-KI
 
 ```
-id 'mampfaffe', name 'Mampfaffe, der Magenkönig', hp 24000, scale 1.8, bodyRadius 1.9, predator true,
-walk 3.4, run 8.0, turn 1.1, detect 30, prefer 4.5, stamina true, flinchDmg 1500, teachAttack 'mampfaffe_faeuste',
+id 'mampfaffe', name 'Mampfaffe, der Magenkönig', hp 16000, scale 1.8, bodyRadius 1.9, predator true,
+walk 3.4, run 8.0, turn 1.1, detect 30, prefer 4.5, stamina true, flinchDmg 1050, teachAttack 'mampfaffe_faeuste',
 recoverAfter: (m) => (0.15 + m.rng() * 0.3) / m.speedMul
 ```
 Angriffe `tempo 1.15`, Treffer 14-44.
@@ -335,8 +381,8 @@ Phase 50 % "Fressrausch": `special: 'mampfaffe_brust'`, Buff-Dauer 60 s und `foo
 
 | id | label | factor | breakHp | elem (fire/shock) | Notiz |
 |---|---|---|---|---|---|
-| `kopf` | Kopf | 1,0 (Kokosbuff 0,5) | 1600 | 10/10 | `blunt`, `stunPart`; Bruch: Buff weg, Kokoswurf gesperrt |
-| `prankeL` / `prankeR` | Fäuste | 0,8 | 1000 | 15/10 | Bruch: Faustschlag-Schaden x0,75 auf der Seite |
+| `kopf` | Kopf | 1,0 (Kokosbuff 0,5) | 1050 | 10/10 | `blunt`, `stunPart`; Bruch: Buff weg, Kokoswurf gesperrt |
+| `prankeL` / `prankeR` | Fäuste | 0,8 | 650 | 15/10 | Bruch: Faustschlag-Schaden x0,75 auf der Seite |
 | `bauch` | Bauch/Backentaschen | 0,9 | - | **28**/10 | Feuer wirkt gut (Fett); mit Feuerpilz-Buff nur 0 (immun, "frisst Feuer") |
 | `koerper` | Körper | 0,6 | - | 15/15 | |
 | `beine` | Beine | 0,8 | - | 15/**25** | Schock lähmt: `stunT` Aufbau x1,3 |
@@ -421,8 +467,8 @@ Apex, haust im Tempel (Zone 4, Default-Nest `(65,-65)`, Default-Spawn `(80,-80)`
 ### 4.3 Werte
 
 ```
-id 'krachfaust', name 'Krachfaust, der Tempelbrecher', hp 34000, scale 2.7, bodyRadius 2.3, predator true,
-walk 3.3, run 8.2, turn 0.95, detect 36, prefer 5.5, stamina true, flinchDmg 1800, teachAttack 'krachfaust_schleimfaust',
+id 'krachfaust', name 'Krachfaust, der Tempelbrecher', hp 20000, scale 2.7, bodyRadius 2.3, predator true,
+walk 3.3, run 8.2, turn 0.95, detect 36, prefer 5.5, stamina true, flinchDmg 1200, teachAttack 'krachfaust_schleimfaust',
 recoverAfter: (m) => (0.1 + m.rng() * 0.25) / m.speedMul
 ```
 Angriffe `tempo 1.0` (Wut 1.15), Treffer 28-60 (Voltaro 28-44).
@@ -451,8 +497,8 @@ Wut (HP < 40 %): Fuse -0,7 s, `tempo 1.15`, **jeder** Faustschlag macht zusätzl
 
 | id | label | factor | breakHp | elem (fire/shock) |
 |---|---|---|---|---|
-| `kopf` | Kopf | 1,0 | 2200 | 12/20 (`blunt`, `stunPart`) |
-| `prankeL` / `prankeR` | Schleimfäuste | 0,8 | 1500 | 10/**30** |
+| `kopf` | Kopf | 1,0 | 1300 | 12/20 (`blunt`, `stunPart`) |
+| `prankeL` / `prankeR` | Schleimfäuste | 0,8 | 900 | 10/**30** |
 | `koerper` | Körper | 0,6 | - | 10/15 |
 | `beine` | Beine | 0,8 | - | 10/20 |
 
@@ -467,7 +513,7 @@ Kopfbruch zusätzlich: Spielt Betäubungsfenster 3 s. Kein Schwanz-Severing.
 |---|---|---|
 | 0-1,5 | springt zur Daismitte `TEMPLE_C (65,-65)`, schlägt beide Fäuste auf den Boden | Marker r 52 (die ganze Plattform: Kante zu Ecke ≤ 50 m) rot-grün pulsierend, Banner `hud.center('Hinter die Säulen!', 4)` |
 | 1,5-6,5 | **Aufladen**, 5 s: Runenring (`runeRing` Glow) und Rückenrunen steigern Helligkeit; Boden-Schleime im Radius poppen alle 1 s kleine Funken; `sfx charge` mit steigender Tonhöhe; `fx.shake` Amplitude 0,1 -> 0,5; `world.pulse(k)` Licht pulst mit dem Takt (Ambient x (1 + 0,45 sin)), **Takt beschleunigt**: 1 Hz -> 4 Hz | `slimePulse`-Farben wie 4.3 auf den Fäusten; letzte 1,0 s `#d8ffd0`, Bildschirmrand `fx.flash('rgba(57,255,20,.12)')` im Takt |
-| 6,5-7,1 | **Detonation**: Treffer-Kugel r 52 am Brocken (Mitte), `dmg 400`, `knock:'down'`, `occlude: true`, t0 6,5 / t1 7,1 (0,6 s: Rollen-I-Frames reichen nicht durch) | `sfx boom`, `fx.whiteout(0.5)` (nur Wirkung, bei Gedeckten kurzer Flash), `shake 1.0 / 0.6 s` |
+| 6,5-7,1 | **Detonation**: Treffer-Kugel r 52 am Brocken (Mitte), `dmgPct 0.7` (70 % Max-LP, 0.4), `knock:'down'`, `occlude: true`, t0 6,5 / t1 7,1 (0,6 s: Rollen-I-Frames reichen nicht durch) | `sfx boom`, `fx.whiteout(0.5)` (nur Wirkung, bei Gedeckten kurzer Flash), `shake 1.0 / 0.6 s` |
 | 7,1-8,5 | Brocken **erschöpft** 6 s (`m.recover = 6`, Atemwolken), voll angreifbar: Fenster zum Finishen | Säulen, die abgeschirmt haben, sind gebrochen |
 
 Rotglut: zweiter Urknall bei 5 %, Aufladen 3,5 s.
@@ -567,15 +613,15 @@ Ca. 950 Zeilen `krachfaust.js` (Modell 250, Schleim-System 200, Angriffe 350, Fi
 
 ## 5. Build-Reihenfolge
 
-1. **Blendax**: Infrastruktur für Status (`player.js` Basis), `faceCheck`/`hitStatus`, `retune`, Overlay-FX, Nest/Spawn/Route, `needClears`, Quest-Gating (`inselausflug` jr 7). Spielbar am Ende: Quest `blendax`.
+1. **Blendax**: Infrastruktur für Status (`player.js` Basis), `faceCheck`/`hitStatus`, `retune`, Overlay-FX, Nest/Spawn/Route; Quests `blendax` (+ RANKS-Eintrag JR 8) laut 0.2. Spielbar am Ende: Quest `blendax`.
 2. **Mampfaffe**: Futter (Items/Gather/Props), `onHitPlayer`, Sync `foodEaten`, Wolken (`itemlock`), `verwirrt`. Spielbar: `mampfaffe`.
 3. **Krachfaust**: Schleim, Revier-Apex, Tempel-Export (`pillars`), Finale. Spielbar: `krachfaust` (benötigt Clears aus 1+2).
 4. Optional zuletzt: Waffenäste `b/m/x` (1.7), Feldstudie, Eindringling.
 
 ## 6. Offene Fragen an den User
 
-1. `inselausflug` auf JR 7 heben und Belohnung 300 -> 700 anpassen? (Spec sagt ja, Belohnung optional.)
-2. Soll Krachfaust per `needClears` hinter Blendax+Mampfaffe liegen, oder alle drei sofort ab JR 7?
-3. Waffen-Haken (Stufe-6-Äste `b/m/x` aus jedem Stufe-5-Ast, ohne Voltaro-Herz): gewollt, oder lieber Stufe 7?
-4. Finale-Schaden 400 (jeder ungedeckte Pirscher tot): hart genug, oder 70 % HP statt tödlich?
-5. Kokosnuss in Zone 1 sammelbar (Strand): reicht, dass Mampfaffe dort durchstreift, oder Spawn dort?
+1. (Entschieden und umgesetzt: jr 7, 700.)
+2. (Entschieden, siehe 0.2: Rangkette, kein needClears.)
+3. (Entschieden, 0.3: Stufe 6, Ast `x` Sprengung.)
+4. (Entschieden, 0.4: 70 % Max-LP.)
+5. (Entschieden, 0.5: Spawn Zone 2, Patrouille Zone 1+2.)
