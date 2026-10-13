@@ -78,7 +78,7 @@ export function createHud(root) {
   const api = {
     el,
     banner(text, secs = 3) { refs.banner.classList.remove('mut'); refs.banner.textContent = text; refs.banner.classList.add('show'); bannerT = secs; },
-    center(text, secs = 2) { refs.center.textContent = text; refs.center.classList.add('show'); centerT = secs; },
+    center(text, secs = 2, mon = false) { refs.center.classList.toggle('mon', !!mon); refs.center.textContent = text; refs.center.classList.add('show'); centerT = secs; },
     update(hunt, dt = 0.016) {
       const p = hunt.player;
       if (!p) return;
@@ -158,7 +158,7 @@ export function createHud(root) {
       // [M] player status icons (Schlamm / Brennen / Gift), tiny
       const stKeys = Object.keys(p.status || {}).concat(p.glitchT > 0 ? ['konter'] : []).join(','); // [B] Glitch-Konter bonus ready (1.5 s)
       set('pstatus', stKeys, (x) => {
-        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', blend: 'Geblendet', verwirrt: 'VERKEHRT!', itemlock: 'Item-Sperre', konter: 'Konter x1,5' };
+        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', blend: 'Geblendet', verwirrt: 'VERKEHRT!', itemlock: 'Item-Sperre', schleim: 'SCHLEIM! ROLLEN!', konter: 'Konter x1,5' };
         refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k}">${names[k] ?? k}</span>`).join('') : '';
       });
       if (hunt.training) { // Übungsplatz: kein Zeitlimit, keine KOs, dafür DPS + Combo

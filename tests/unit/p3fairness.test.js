@@ -34,7 +34,7 @@ function simulate(def, attackId, d, rolls, { rage = false, seed = 11 } = {}) {
   m.rage = rage; if (rage) m.rageT = 1e9;
   const taken = [];
   const orig = p.takeHit.bind(p);
-  p.takeHit = (h) => { const r = orig(h); taken.push({ t: ctx_t, r, dmg: h.dmg, key: h.key, knock: h.knock }); return r; };
+  p.takeHit = (h) => { const r = orig(h); taken.push({ t: ctx_t, r, dmg: h.dmg, key: h.key, knock: h.knock, attackId: h.attackId }); return r; };
   let ctx_t = 0;
   if (attackId === 'brathalos_sturz') { m.setState('fly'); m.air = 7; }
   const inst = m.beginAttack(attackId, attackId === 'brathalos_sturz' ? { origin: { x: 0, y: 0, z: 0 } } : {});
@@ -59,7 +59,8 @@ function simulate(def, attackId, d, rolls, { rage = false, seed = 11 } = {}) {
     ctx_t += DT;
     if (p.state === 'ko') break;
   }
-  const hurt = taken.filter((e) => e.r === 'hit' || e.r === 'block');
+  // Glitch-Schleim (Krachfaust) hat eigene Regeln: die Zuendschnur gibt Zeit zum Weglaufen/Abrollen, getestet in krachfaust.test.js. Hier zaehlt nur der Angriff selbst.
+  const hurt = taken.filter((e) => (e.r === 'hit' || e.r === 'block') && e.attackId !== 'krachfaust_schleim');
   return { hurt, taken, inst, perfect: taken.filter((e) => e.r === 'perfect').length };
 }
 

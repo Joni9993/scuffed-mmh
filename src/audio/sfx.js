@@ -154,6 +154,11 @@ const SOUNDS = {
   confuse: () => { for (let i = 0; i < 4; i++) tone({ f0: 900 - i * 200, f1: 200 + i * 300, dur: 0.07, type: 'square', vol: 0.12, delay: i * 0.06 }); noise({ dur: 0.25, vol: 0.2, f0: 6000, f1: 800, type: 'highpass' }); },
   coconut: () => { tone({ f0: 330, f1: 110, dur: 0.12, type: 'triangle', vol: 0.4 }); noise({ dur: 0.12, vol: 0.3, f0: 1400, f1: 400, type: 'bandpass', q: 2 }); },
   mutheal: () => { tone({ f0: 520, f1: 880, dur: 0.09, type: 'square', vol: 0.07 }); tone({ f0: 880, f1: 1320, dur: 0.1, type: 'square', vol: 0.06, delay: 0.07 }); noise({ dur: 0.08, vol: 0.05, f0: 6000, f1: 2000, type: 'highpass' }); }, // Speicherleck: kleiner Heil-Blip
+  // ---- Smaragdkueste / Krachfaust: Schleim-Puls (Tick, pitch steigt), Platzen (nasser Klatsch), Urknall-Aufladen (steigende Saegezahn-Schlaege) und Boom (tief + lang)
+  slimePulse: (o) => tone({ f0: 520 * (o?.pitch || 1), f1: 440 * (o?.pitch || 1), dur: 0.06, type: 'square', vol: 0.13 }),
+  slimeSplat: () => { noise({ dur: 0.22, vol: 0.4, f0: 1800, f1: 200, type: 'bandpass', q: 0.9 }); tone({ f0: 240, f1: 60, dur: 0.22, type: 'triangle', vol: 0.45 }); },
+  krachCharge: (o) => { const k = o?.k || 0; tone({ f0: 70 + 260 * k, f1: 90 + 340 * k, dur: 0.22, type: 'sawtooth', vol: 0.22 + 0.1 * k, lp: 900 + 2500 * k }); noise({ dur: 0.1, vol: 0.12 + 0.12 * k, f0: 400 + 4000 * k, f1: 200, type: 'highpass' }); },
+  boom: () => { tone({ f0: 90, f1: 22, dur: 1.8, vol: 0.9 }); tone({ f0: 55, f1: 18, dur: 2.2, type: 'sawtooth', vol: 0.45, lp: 300 }); noise({ dur: 1.6, vol: 0.7, f0: 3000, f1: 60, type: 'lowpass' }); noise({ dur: 0.4, vol: 0.5, f0: 9000, f1: 800, type: 'highpass' }); },
   // ---- [KK] Krachkiste: Zonen-Toene. IMMER gleich (egal welcher Brocken / welche Stufe) und klar unterscheidbar:
   //      Kopf = DING (hohe Glocke) · Koerper = BUMM (tiefer Kick) · Glieder = TSCHAK (Snare). Abspiel-Beat = die Leiste nacheinander.
   kkDing: () => KK_ZONE.r(0),

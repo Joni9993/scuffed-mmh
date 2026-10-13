@@ -83,6 +83,16 @@ export const DROPS = {
     },
     reward: [{ id: 'mampfaffe_fell', n: [1, 2], chance: 1 }, { id: 'mampfaffe_knoechel', n: 1, chance: 0.5 }, { id: 'glitchpilz', n: 1, chance: 0.4 }, { id: 'mampfaffe_magenstein', n: 1, chance: 0.12 }],
   },
+  // Smaragdküste (docs/SMARAGD_BROCKEN.md 4.10). Break-Tags: head, pranke. Runenherz nur für die Sprenger-Waffen (Stufe 6).
+  krachfaust: {
+    carve: [{ id: 'krachfaust_kruste', w: 36 }, { id: 'krachfaust_schleim', w: 30 }, { id: 'krachfaust_faustplatte', w: 14 }, { id: 'tempelstein', w: 14 }, { id: 'krachfaust_runenherz', w: 6 }],
+    tail: [],
+    breaks: {
+      pranke: [{ id: 'krachfaust_faustplatte', n: 1, chance: 1 }],
+      head: [{ id: 'krachfaust_kruste', n: [1, 2], chance: 1 }],
+    },
+    reward: [{ id: 'krachfaust_kruste', n: [1, 2], chance: 1 }, { id: 'krachfaust_schleim', n: 1, chance: 0.6 }, { id: 'tempelstein', n: 1, chance: 0.4 }, { id: 'krachfaust_runenherz', n: 1, chance: 0.15 }],
+  },
   voltaro: {
     carve: [{ id: 'voltaro_spule', w: 36 }, { id: 'voltaro_fell', w: 36 }, { id: 'voltaro_kamm', w: 12 }, { id: 'funkenstein', w: 12 }, { id: 'voltaro_herz', w: 4 }],
     tail: [{ id: 'voltaro_fell', w: 60 }, { id: 'voltaro_spule', w: 30 }, { id: 'voltaro_herz', w: 10 }], // Schwanz abgetrennt: bessere Chance aufs Herz

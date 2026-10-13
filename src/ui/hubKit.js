@@ -88,7 +88,7 @@ export function itemInfoBox(id, countTxt = '', extra = '') {
 }
 
 // ---- Waffen-Kurzinfo (Schmiede / Truhe / Camp-Truhe): „Stufe 3 · Feuer 25"
-const ELEM_DE = { fire: 'Feuer', shock: 'Schock', rust: 'Rost', rost: 'Rost', poison: 'Gift' };
+const ELEM_DE = { fire: 'Feuer', shock: 'Schock', rust: 'Rost', rost: 'Rost', poison: 'Gift', blast: 'Sprengung' };
 export const elemShort = (st) => Object.entries(st.elems ?? {}).filter(([, v]) => v > 0).map(([k, v]) => `${ELEM_DE[k] ?? k} ${v}`).join(', ');
 export const weaponTag = (st, tier) => `St.${tier}${elemShort(st) ? ' · ' + elemShort(st) : ''}`;
 

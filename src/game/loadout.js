@@ -58,6 +58,7 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
           const cut = player._sk.blendCut ?? 0;
           return addStatus(type, { ...opts, white: Math.max(0.1, 1 - cut), stun: 1 - cut < 0.15 ? 0 : 1 - cut });
         }
+        if (type === 'schleim' && player._sk.schleimFuse > 0) opts = { ...opts, t: (opts.t ?? 2) + player._sk.schleimFuse }; // Schleimhaut: Zündschnur länger
         if (player._sk.eisenCut > 0 && EISEN_T[type]) opts = { ...opts, t: (opts.t ?? EISEN_T[type]) * (1 - player._sk.eisenCut) }; // Eisenmagen: Dauer -15 % je Stufe
         if ((type === 'rust' || type === 'rost') && opts.t && player._sk.rustDurMul < 1) opts = { ...opts, t: opts.t * player._sk.rustDurMul }; // Panzerhaut
         const k = (type === 'burn' ? 1 - r.fire : 1) * (type === 'burn' || type === 'poison' ? 1 - r.status : 1);

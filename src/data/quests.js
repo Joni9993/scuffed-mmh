@@ -99,6 +99,10 @@ Object.assign(quests, {
     id: 'mampfaffe', name: 'Der Fressfeind', type: 'hunt', monster: 'mampfaffe', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 3200, rp: 220, jr: 8, jrUp: 9,
     desc: 'Der Mampfaffe frisst sich durch Strand und Dschungel und wird von jedem Happen ein anderer Brocken. Sein Fell zeigt dir, was er zuletzt gegessen hat. Ernte das Futter vor ihm!',
   },
+  krachfaust: {
+    id: 'krachfaust', name: 'Krach im Tempel', type: 'hunt', monster: 'krachfaust', world: 'smaragdkueste', timeLimit: 30 * 60, reward: 5200, rp: 300, jr: 9, jrUp: 10,
+    desc: 'Krachfaust haust im Verfluchten Tempel und prügelt alles, was hereinkommt. Sein Schleim pulsiert, dann knallt er: abrollen! Am Ende lädt er auf und sprengt die ganze Plattform: hinter eine hohe Säule!',
+  },
   mampfaffe_rotglut: {
     id: 'mampfaffe_rotglut', name: 'Rotglut: Mampfaffe', type: 'hunt', monster: 'mampfaffe', world: 'smaragdkueste', timeLimit: 25 * 60, reward: 5400, rp: 320, jr: 10,
     variant: 'rotglut', mutators: ['rotglut'],
@@ -109,12 +113,23 @@ Object.assign(quests, {
     variant: 'rotglut', mutators: ['rotglut'],
     desc: 'Blendax, dauerwütend, 40 % mehr Leben. Doppelte Materialien.',
   },
+  krachfaust_rotglut: {
+    id: 'krachfaust_rotglut', name: 'Rotglut: Krachfaust', type: 'hunt', monster: 'krachfaust', world: 'smaragdkueste', timeLimit: 30 * 60, reward: 8800, rp: 440, jr: 10,
+    variant: 'rotglut', mutators: ['rotglut'],
+    desc: 'Krachfaust, dauerwütend, 40 % mehr Leben: die Runen glühen von Anfang an, der Schleim zündet schneller und es gibt ZWEI Urknalle (bei 12 % und 5 %). Doppelte Materialien.',
+  },
+  // Revierstreit der Smaragdküste (wie der Revierstreit von Karte 1): die drei Smaragd-Brocken gegeneinander, je 65 % HP, kein Rang-Aufstieg.
+  revierstreit_smaragd: {
+    id: 'revierstreit_smaragd', name: 'Revierstreit: Smaragd', type: 'hunt', monster: 'blendax', world: 'smaragdkueste', timeLimit: 30 * 60, reward: 7500, rp: 400, jr: 10,
+    monsters: [{ id: 'blendax', hpMul: 0.65 }, { id: 'mampfaffe', hpMul: 0.65 }, { id: 'krachfaust', hpMul: 0.65 }], multi: 'revier',
+    desc: 'Blendax, Mampfaffe und Krachfaust streiten ums Revier. Nutzt den Kampf: nach einer Minute oder bei zu viel Druck jagen sie euch gemeinsam.',
+  },
 });
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
-QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'mampfaffe', 'blendax_rotglut', 'mampfaffe_rotglut'); // Reihenfolge nach Spec 0.2: Schlüssel-Aufträge, dann alle Rotglut (Krachfaust: 'krachfaust' hinter 'mampfaffe', 'krachfaust_rotglut' ans Ende der Rotglut-Gruppe)
+QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'mampfaffe', 'krachfaust', 'blendax_rotglut', 'mampfaffe_rotglut', 'krachfaust_rotglut', 'revierstreit_smaragd'); // Reihenfolge nach Spec 0.2: Schlüssel-Aufträge, dann alle Rotglut, zuletzt der Revierstreit
 
 export function getQuest(id) {
   const q = quests[id];
@@ -136,6 +151,6 @@ QUEST_ORDER.push('revierstreit');
 export function setFieldStudyQuest(q) { quests.feldstudie = q; }
 
 /** Basis-RP je Brocken (Feldstudie-Berechnung). */
-export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200, mampfaffe: 220 };
+export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200, mampfaffe: 220, krachfaust: 300 };
 /** RP-Schwelle je Zielrang (Schlüssel-Auftrag). progression.js baut daraus RANKS. */
 export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200, 8: 1700, 9: 2300, 10: 3000 };

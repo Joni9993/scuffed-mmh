@@ -66,7 +66,7 @@ const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 /** Make arbitrary data a valid current-version save (drops unknown ids, clamps numbers). */
 export const ARMORY_MAX = 20;
-const cleanBranch = (tier, b) => (tier === 3 ? (b === 'b' ? 'b' : 'a') : tier === 4 ? (b === 'a' || b === 'b' ? b : null) : tier === 5 ? (b === 'g' || b === 'v' ? b : 'k') : tier === 6 ? 'v' : null);
+const cleanBranch = (tier, b) => (tier === 3 ? (b === 'b' ? 'b' : 'a') : tier === 4 ? (b === 'a' || b === 'b' ? b : null) : tier === 5 ? (b === 'g' || b === 'v' ? b : 'k') : tier === 6 ? (b === 'x' ? 'x' : 'v') : null);
 /** Lager-Waffe prüfen: {type, tier, branch} | null */
 function cleanWeapon(w) {
   if (!isObj(w) || !WEAPON_TYPES[w.type]) return null;

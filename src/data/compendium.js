@@ -121,6 +121,21 @@ export const BESTIARY = [
       { at: 4, kind: 'schwaeche', name: 'Magen', text: 'Betäubung oder Kopfbruch spucken den Pilz wieder aus. Ist alles Futter im Revier weg, wird er nach zwei Minuten hungrig und aggressiv. Feuer wirkt auf den Bauch, Schock auf die Beine.' },
     ],
   },
+  {
+    id: 'krachfaust', name: 'Krachfaust', where: 'Smaragdküste · Verfluchter Tempel', title: 'Tempelbrecher',
+    intro: 'Der Herr des Tempels. Seine Fäuste und sein Schädel sind mit grünem Pixelschleim überzogen, der pulsiert, bevor er platzt. Alles, was den Tempel betritt, bekommt Prügel, auch die anderen Brocken.',
+    entries: [
+      { at: 1, kind: 'angriff', name: 'Schleimfaust', text: 'Ein Hieb mit der Rechten. Trifft er, klebt der Schleim an dir; verfehlt er, bleibt er als Pfütze liegen. Beides platzt nach 2 s.' },
+      { at: 1, kind: 'verhalten', name: 'Schleim abrollen', text: 'Dunkelgrün pulsiert langsam, hellgrün schneller, weißgrün ist gleich vorbei. Eine Rolle schüttelt den Schleim vom Körper. Pfützen darf man umgehen.' },
+      { at: 2, kind: 'angriff', name: 'Trommelwirbel', text: 'Vier Schläge im Wechsel, jeder hinterlässt Schleim. Zwischen den Pfützen laufen, nicht stehen bleiben.' },
+      { at: 2, kind: 'angriff', name: 'Sprungstampfer & Kopfstoß', text: 'Er springt auf dich zu oder rammt mit dem Schädel, dahinter Schleimkleckse. Der Stampfer legt einen Ring.' },
+      { at: 3, kind: 'angriff', name: 'Schleimsalve', text: 'Drei Schleimbälle aus der Ferne: Weglaufen löst das Problem nicht, nur Rollen.' },
+      { at: 3, kind: 'verhalten', name: 'Revier', text: 'Im Tempel greift er jeden an. Wer sich mit ihm anlegen will, soll andere Brocken einlassen.' },
+      { at: 4, kind: 'verhalten', name: 'Runenwut', text: 'Unter 40 % Leben glühen die Tempelrunen grün, der Schleim zündet schneller, jeder Schlag macht eine kleine Druckwelle.' },
+      { at: 4, kind: 'angriff', name: 'Urknall', text: 'Am Ende lädt er 5 s auf. Der Boden pulsiert, das Licht flackert. Dann geht die ganze Plattform hoch: 70 % deiner Leben, außer eine hohe Säule schirmt dich ab. Sie bricht danach.' },
+      { at: 5, kind: 'schwaeche', name: 'Schock', text: 'Schock fährt durch den Schleim, Pfützen platzen früh und harmlos. Fäuste und Kopf sind die Brechstellen.' },
+    ],
+  },
 ];
 export const BESTIARY_IDS = BESTIARY.map((b) => b.id);
 
@@ -134,6 +149,8 @@ export const CONDITIONS = [
   { id: 'blend', name: 'Geblendet', who: 'du', text: 'Blendax-Blitz: 1 s Vollbild weiß, danach 1 s betäubt. Nur wer hinsieht. Wegdrehen schützt, ein Glitch-Konter dreht den Spieß um. Die Macke Blendschutz (Blendax-Set) verkürzt beides.' },
   { id: 'verwirrt', name: 'Glitch-Verwirrung', who: 'du', text: 'Mampfaffe mit Glitchpilz: Jeder Treffer dreht deine Steuerung 3 s lang um, auch die Ausweichrolle. Sprudelwasser entfernt sie, die Macke Eisenmagen verkürzt sie.' },
   { id: 'itemlock', name: 'Item-Sperre', who: 'du', text: 'Mampfaffes Stinkwolke: Solange du in der Wolke stehst (und eine Sekunde danach), geht kein Item. Essen und Buffs bleiben. Raus aus der Wolke!' },
+  { id: 'schleim', name: 'Glitch-Schleim', who: 'du', text: 'Krachfausts Schleim: pulsiert dunkelgrün, hellgrün, weißgrün, nach 2 s Explosion (28 Schaden, trifft auch Mit-Pirscher). Eine Rolle schüttelt ihn ab, Sprudelwasser auch. Die Macke Schleimhaut (Krachfaust-Set) verlängert die Zündschnur.' },
+  { id: 'blast', name: 'Sprengung', who: 'du', text: 'Sprenger-Waffen (Krachfaust-Ast, Stufe 6): Treffer laden das Teil auf, ab 100 knallt es. Eigene Explosionen werfen dich nicht um.' },
   { id: 'bruise', name: 'Prellung', who: 'du', text: 'Die Hälfte jedes Treffers ist nur geprellt (dunkelrot im Balken) und heilt mit der Zeit zurück – solange du nicht gleich wieder getroffen wirst.' },
   { id: 'glitch', name: 'Glitch-Konter & Glitch-Modus', who: 'du', text: 'Perfekt ausgewichen = Glitch-Konter: Zeitlupe, nächster Treffer +50 % und ein Drittel Glitch-Leiste. Volle Leiste: 8 s Glitch-Modus mit +30 % Schaden und dem Waffen-Glitch.' },
   { id: 'm_fed', name: 'Gefüttert', who: 'brocken', text: 'Mampfaffe: 40 s Futter-Buff, das Fell leuchtet in der Futterfarbe (Braun Kokos, Rot Feuer, Gelbgrün Gift, Neongrün Glitch). Betäubung oder Kopfbruch beenden ihn.' },
@@ -155,6 +172,7 @@ export const ELEM_NOTES = {
   gorgo: 'Eingegraben ist er unverwundbar – erst rausholen, dann draufhauen.',
   blendax: 'Schock auf dem Schirm schließt ihn kurz: er flackert wild und blitzt 6 s nicht mehr.',
   mampfaffe: 'Mit Feuerpilz im Bauch ist Feuer wirkungslos; mit Glitchpilz verträgt er keinen Schock (Kurzschluss, Teleport 5 s gesperrt); mit Kokosnuss ist der Kopf hart.',
+  krachfaust: 'Schock fährt durch den Schleim und zündet ihn zu früh: Pfützen im Umkreis platzen sofort (harmlos). Feuer perlt ab, er ist sprengfest.',
   kroll: 'In Panzerdeckung kommt von vorn kaum etwas an, egal welches Element.',
 };
 

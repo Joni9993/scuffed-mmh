@@ -18,8 +18,8 @@ const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) =>
 // Layout (fits 568x320 without scrolling to the button): left = tabs + selectable tree/grid (scrolls on its own),
 // right = big rotatable preview + pinned info (compare current vs new, costs, "Schmieden").
 const TREE = [{ tier: 1, branch: null }, { tier: 2, branch: null }, { tier: 3, branch: 'a' }, { tier: 3, branch: 'b' }, { tier: 4, branch: null },
-  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }];
-const BR_LABEL = { a: ' Jaggo', b: ' Barrotz', k: ' Kroll', g: ' Gorgo', v: ' Voltaro' };
+  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }, { tier: 6, branch: 'x' }];
+const BR_LABEL = { a: ' Jaggo', b: ' Barrotz', k: ' Kroll', g: ' Gorgo', v: ' Voltaro', x: ' Krachfaust' };
 const BRANCHED = (t) => t === 3 || t >= 5; // Stufen mit Ast
 const nodeKey = (n) => `${n.tier}${n.branch ?? ''}`;
 
@@ -27,14 +27,15 @@ export function createSchmiede(ctx) {
   let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null, wnode = null; // wnode = tree node key being looked at
   let pv = null, keepScroll = 0, host = null; // keepScroll: Scrollposition der linken Liste über Re-Render
 
-  const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k === 'rust' ? 'Rost' : k} ${v}`).join(', ') || '–';
-  const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${nxt.bluntMul ? '<span>Stumpf +30%</span>' : ''}${nxt.partDmgMul ? '<span>Teilbruch +25%</span>' : ''}${nxt.poisonMul ? '<span>Gift-Aufbau +</span>' : ''}</div>`;
+  const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k === 'rust' ? 'Rost' : k === 'blast' ? 'Sprengung' : k} ${v}`).join(', ') || '–';
+  const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${nxt.bluntMul ? '<span>Stumpf +30%</span>' : ''}${nxt.partDmgMul ? '<span>Teilbruch +25%</span>' : ''}${nxt.poisonMul ? '<span>Gift-Aufbau +</span>' : ''}${nxt.elems?.blast ? '<span>Treffer laden auf, ab 100 knallt es</span>' : ''}</div>${nxt.desc ? `<div class="note">${esc(nxt.desc)}</div>` : ''}`;
 
   /** tree node state for the selected weapon: 'cur' | 'done' | 'next' | 'far' */
   function nodeState(n, w, opts) {
     if (opts.some((o) => o.tier === n.tier && o.branch === n.branch)) return 'next';
     if (n.tier === w.tier && (!BRANCHED(n.tier) || n.branch === w.branch)) return 'cur';
-    if (n.tier === 5 && w.tier === 6) return n.branch === 'v' ? 'done' : 'far';
+    if (n.tier === 5 && w.tier === 6) return w.branch === 'x' ? 'done' : n.branch === 'v' ? 'done' : 'far'; // Ast x kommt aus jedem Stufe-5-Ast
+    if (n.tier === 6 && w.tier === 6) return 'far'; // der andere Stufe-6-Ast (Wahl ist endgültig)
     if (n.tier < w.tier && (!BRANCHED(n.tier) || (n.tier === 3 && w.tier > 3) || n.branch === w.branch)) return 'done';
     return 'far';
   }

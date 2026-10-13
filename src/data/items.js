@@ -73,6 +73,10 @@ export const ITEMS = {
   mampfaffe_knoechel: mat('mampfaffe_knoechel', 'Mampfaffe-Knöchel', 'Dick wie ein Kürbis und genauso hohl. Klopft hart.', 'bone', '#c8b088', 75),
   mampfaffe_backe: mat('mampfaffe_backe', 'Mampfaffe-Backe', 'Backentasche. Der Inhalt ist noch drin. Besser nicht nachsehen.', 'fur', '#d8a870', 80),
   mampfaffe_magenstein: mat('mampfaffe_magenstein', 'Magenstein', 'Hat sich dort gebildet, wo zu viel Pilz war. Selten.', 'gem', '#a8c030', 280),
+  krachfaust_schleim: mat('krachfaust_schleim', 'Krachfaust-Schleim', 'Pulsiert immer noch. Bitte nicht schütteln.', 'ember', '#39ff14', 85),
+  krachfaust_kruste: mat('krachfaust_kruste', 'Krachfaust-Kruste', 'Steinhaut mit Rissen. Knistert beim Anfassen, tut aber nichts. Meistens.', 'scale', '#7a7468', 80),
+  krachfaust_faustplatte: mat('krachfaust_faustplatte', 'Faustplatte', 'Von einer Faust, die zu oft angeklopft hat.', 'ore', '#9a9a8a', 100),
+  krachfaust_runenherz: mat('krachfaust_runenherz', 'Runenherz', 'Schlägt im Takt der Tempelrunen. Wird bei Aufregung heiß. Selten.', 'gem', '#39ff14', 350),
 
   // ---- consumables
   flickbrause: { id: 'flickbrause', name: 'Flickbrause', desc: '+35 HP über 1 s. Schmeckt nach Pfefferminz und Eisen.', kind: 'consumable', max: 10, time: 0.9, applyAt: 0.45, icon: { shape: 'potion', color: '#58e060' }, value: 8, effect: { type: 'heal', hp: 35, over: 1 } },
@@ -159,6 +163,10 @@ const INFO = {
   mampfaffe_knoechel: 'Material: für Smaragdküsten-Ausrüstung.',
   mampfaffe_backe: 'Material: für Smaragdküsten-Ausrüstung.',
   mampfaffe_magenstein: 'Material: sehr selten, für Smaragdküsten-Ausrüstung.',
+  krachfaust_schleim: 'Material: für Smaragdküsten-Ausrüstung.',
+  krachfaust_kruste: 'Material: für Smaragdküsten-Ausrüstung und die Sprenger-Waffen (Stufe 6).',
+  krachfaust_faustplatte: 'Material: für Smaragdküsten-Ausrüstung und die Sprenger-Waffen (Stufe 6).',
+  krachfaust_runenherz: 'Material: sehr selten, für die Sprenger-Waffen (Stufe 6).',
   tempelstein: 'Material: aus dem Verfluchten Tempel.',
   kroll_panzer: 'Material: für Rostwerke-Ausrüstung.',
   kroll_schere: 'Material: für Rostwerke-Ausrüstung.',

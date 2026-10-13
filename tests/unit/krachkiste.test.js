@@ -693,7 +693,7 @@ describe('Waffen-Daten, Schmiede, Save, Gear-Code', () => {
     expect(weaponStats('kk', 5, 'v')).toMatchObject({ power: 156, elems: { shock: 26 } });
     expect(weaponStats('kk', 6, 'v')).toMatchObject({ power: 180, elems: { shock: 36 } });
   });
-  it('Upgrade-Baum wie die anderen Waffen: 1 -> 2 -> 3a/3b -> 4 -> 5k/g/v -> 6 (nur v), Kosten analog Katana', () => {
+  it('Upgrade-Baum wie die anderen Waffen: 1 -> 2 -> 3a/3b -> 4 -> 5k/g/v -> 6v/6x, Kosten analog Katana', () => {
     expect(Object.keys(WEAPON_UPGRADES[3].kk)).toEqual(['a', 'b']);
     expect(Object.keys(WEAPON_UPGRADES[5].kk)).toEqual(['k', 'g', 'v']);
     expect(WEAPON_UPGRADES[6].kk.cost.voltaro_herz).toBe(1);
@@ -704,8 +704,8 @@ describe('Waffen-Daten, Schmiede, Save, Gear-Code', () => {
     expect(upgradeOptions('kk', 2).length).toBe(2);
     expect(upgradeOptions('kk', 3, 'a').length).toBe(1);
     expect(upgradeOptions('kk', 4).length).toBe(3);
-    expect(upgradeOptions('kk', 5, 'v').length).toBe(1);
-    expect(upgradeOptions('kk', 5, 'k').length).toBe(0);
+    expect(upgradeOptions('kk', 5, 'v').length).toBe(2); // 6v Funkenfuerst + 6x Sprenger
+    expect(upgradeOptions('kk', 5, 'k').length).toBe(1); // nur 6x Sprenger (Krachfaust)
     expect(upgradeOptions('kk', 6)).toEqual([]);
     const s = defaultSave();
     const give = (cost) => { for (const [k, v] of Object.entries(cost)) { if (k === 'schrott') s.schrott += v; else s.box[k] = (s.box[k] ?? 0) + v; } };

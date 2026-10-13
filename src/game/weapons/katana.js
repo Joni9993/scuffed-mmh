@@ -3,6 +3,7 @@ import { compileTrack, REST } from '../anim.js';
 import { lambert } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { applyMonsterHit, CRIT_MUL, HITSTOP, SHAKE } from '../combat.js';
+import { markSprenger } from '../gear/weaponLook.js'; // Sprenger-Optik (Stufe 6, Ast x)
 import { createCrackPool, createCounters, MAX_CRACKS } from './glitchfx2.js';
 
 // Katana / Ronin-Klinge (GDD 4.4, `kt`): mittleres Tempo, zweihaendig, belohnt Konter-Timing.
@@ -447,7 +448,7 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
   root.userData.hip.position.set(...SAYA.pos);
   root.userData.hip.quaternion.set(...SAYA.quat);
   root.userData.kt = { bladeG, shell, shellMat, bladeMat, mSpine, ember: ex, look, tier, branch, hip: root.userData.hip, k: 0, t: 0, level: 0, sheathed: false };
-  return root;
+  return markSprenger(root, tier, branch);
 }
 
 // Scabbard: local -Y = along the blade, mouth at the origin. Placed so that it matches the iaido pose (see SAYA below).

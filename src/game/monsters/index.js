@@ -10,6 +10,7 @@ import { mampfer, mampferbulle, mampferkalb, hoppler, schlackbock, schlackbullbo
 import { kroll } from './kroll.js'; // [Rostwerke]
 import { blendax } from './blendax.js'; // [Smaragdküste]
 import { mampfaffe } from './mampfaffe.js'; // [Smaragdküste]
+import { krachfaust } from './krachfaust.js'; // [Smaragdküste]
 
 export const monsters = {
   jaggo,
@@ -24,6 +25,7 @@ export const monsters = {
   kroll, // [Rostwerke]
   blendax, // [Smaragdküste]
   mampfaffe, // [Smaragdküste]
+  krachfaust, // [Smaragdküste]
 };
 
 export function getMonsterDef(id) {

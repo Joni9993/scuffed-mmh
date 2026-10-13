@@ -7,6 +7,7 @@ import { applyMonsterHit } from './combat.js';
 const THROW_TIME = 0.6;
 const FLASH_R = 3.6, STINK_R = 3.6, TRAP_R = 2.0, BOMB_R = 4.0;
 const BOMB_DMG = 120, BOMB_STUN = 50;
+export const BLAST_R = 2.2, SLIME_R = 3.4, SLIME_DMG = 28; // Sprengung (Waffen-Ast x) / Glitch-Schleim (Krachfaust)
 const RUST_R = 3.6, RUST_BOMB = 60, GROUND_R = 4, GROUND_SECS = 20;
 
 /** [B] gameplay effects (status, damage) are applied by the host / solo only; guests replay the visuals. */
@@ -129,6 +130,12 @@ const KINDS = {
     };
   },
 
+  // Glitch-Schleim am Pirscher ist abgelaufen (Krachfaust): Explosion r 3,4 m, trifft jeden lokalen Pirscher darin (auch Mit-Pirscher). Wird ueber spawnEffect an alle Clients gespiegelt.
+  schleimblast: (fx, p) => {
+    slimeBlast(fx.hunt, p.pos, { r: p.r ?? SLIME_R, dmg: p.dmg ?? SLIME_DMG });
+    return { update: () => false };
+  },
+
   trap: (fx, p) => {
     const h = fx.hunt;
     const mesh = new THREE.Mesh(fx.geo.disc, lambert({ color: '#d0a050' }));
@@ -185,6 +192,49 @@ function cloud(h, at, secs) {
       return t > 0;
     },
   };
+}
+
+/**
+ * Glitch-Schleim-Explosion (Krachfaust-Pfuetze oder Pirscher-Schleim): Optik in Hacker-Neongruen, Schaden nur an den LOKALEN Pirschern im Radius
+ * (jeder Client prueft seine eigenen, wie bei Nahkampf-Treffern). Rolle = i-Frames = kein Schaden, perfekte Rolle = Glitch-Konter.
+ */
+export function slimeBlast(h, at, { r = SLIME_R, dmg = SLIME_DMG, monster = null } = {}) {
+  const p0 = { x: at.x, y: (at.y ?? 0) + 0.5, z: at.z };
+  h.fx.slimeBurst?.(p0, r);
+  h.bus?.emit('sfx', { name: 'slimeSplat', pos: at });
+  for (const p of h.players ?? []) {
+    if (!p.local || !p.alive || Math.hypot(p.pos.x - at.x, p.pos.z - at.z) > r + 0.4) continue;
+    p.takeHit({ dmg: dmg * (monster?.dmgMul ?? 1) * (p._sk?.schleimDmg ?? 1), knock: 'flinch', key: `slime|${Math.round(at.x * 10)}|${Math.round(at.z * 10)}|${Math.round((h.time ?? 0) * 10)}|${p.id}`, sourcePos: at, attackId: 'krachfaust_schleim', monster });
+  }
+}
+
+/** Sprengung der Sprenger-Waffen: orange/weisse Funken und Ring (KEIN Gruen: gehoert den Brocken), Ton, kleiner Wackler. Rein optisch. */
+export function blastFx(h, at, r = BLAST_R) {
+  const p0 = { x: at.x, y: at.y + 0.2, z: at.z };
+  h.fx.spark(p0, 26, '#ffb020', 8); h.fx.spark(p0, 14, '#fff2c0', 6);
+  h.fx.ring?.({ x: at.x, y: at.y - 0.2, z: at.z }, r * 0.3, r, { color: '#ffb020', life: 0.3 });
+  h.fx.shake?.(0.14, 0.15);
+  h.bus?.emit('sfx', { name: 'heavy', pos: at });
+}
+
+/**
+ * Sprengung (Waffen-Ast x, elems.blast): jeder Treffer laedt das getroffene Teil auf (Zaehler je Angreifer und Teil), bei 100 detoniert es am Teil:
+ * Kugel r 2,2 m, fester Schaden ~ 8 % der Waffenkraft x 6, Teil-HP-Schaden x1,5. Keine Selbstverletzung. Aufruf aus Hunt.playerHit (Host, Solo und Gast).
+ * res.blastBuild kommt aus combat.resolvePlayerHit (blast x Trefferstaerke), st = Waffenwerte des Pirschers.
+ */
+export function blastBuild(h, player, monster, hp, res, st) {
+  const acc = (player._blast ??= new Map()), key = monster.id + '|' + hp.part.id;
+  const v = (acc.get(key) ?? 0) + res.blastBuild;
+  if (v < 100) { acc.set(key, v); return false; }
+  acc.set(key, v - 100);
+  const at = { x: hp.pos.x, y: hp.pos.y, z: hp.pos.z };
+  const dmg = Math.max(1, Math.round(st.power * 0.08 * 6));
+  const bres = { dmg, elemDmg: 0, elemBy: {}, crit: false, weak: false, zone: hp.part.factor, blunt: 0, stunEligible: false, wucht: 0, partId: hp.part.id, hitstop: 0, shake: 0, partDmgMul: 1.5, attackerId: player.id, blast: true };
+  applyMonsterHit(monster, bres, h);
+  blastFx(h, at, BLAST_R);
+  h.fx.number({ x: at.x, y: at.y + 1.1, z: at.z }, `PENG ${dmg}`, 'blast');
+  h.bus.emit('hit', { player, monster, part: hp.part.id, ...bres });
+  return true;
 }
 
 /** Knallgurke: 120 damage + 50 stun build-up on monsters in radius (head part carries the stun). */

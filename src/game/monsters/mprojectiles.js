@@ -45,9 +45,14 @@ export function kokosDef({ from, to, dur = 1.1, arc = 6, splash = 1.4, dmg = 16,
   return { kind: 'kokos', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.5, splash, hold: 0.2, dmg, knock: 'flinch', key };
 }
 
+/** Krachfaust-Schleimball: hoher Bogen, Aufschlag-Marker in Neongruen, Splash-Treffer; der Aufschlag hinterlaesst eine Schleim-Pfuetze (macht der Angriff selbst). */
+export function slimeDef({ from, to, dur = 1.0, arc = 5, splash = 1.4, dmg = 20, key }) {
+  return { kind: 'slime', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.5, splash, hold: 0.2, dmg, knock: 'flinch', key };
+}
+
 const geoBox = new THREE.BoxGeometry(1, 1, 1);
 const mats = {};
-const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : '#5a3e22' }));
+const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : '#5a3e22' }));
 
 export class ProjectileSet {
   constructor(ctx, owner) {
@@ -58,7 +63,7 @@ export class ProjectileSet {
   spawn(def, age = 0) {
     const pr = { def, age, hit: new Set(), mesh: null, prev: projPos(def, age) };
     if (this.ctx.scene) {
-      const s = def.kind === 'fire' ? 0.7 : def.kind === 'kokos' ? 0.95 : 0.45;
+      const s = def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' ? 0.95 : 0.45;
       pr.mesh = new THREE.Mesh(geoBox, matFor(def.kind));
       pr.mesh.scale.setScalar(s);
       this.ctx.scene.add(pr.mesh);
@@ -79,13 +84,15 @@ export class ProjectileSet {
         pr.mesh.rotation.set(pr.age * 7, pr.age * 5, 0);
         if (def.kind === 'fire') pr.mesh.scale.setScalar(0.65 + Math.sin(pr.age * 40) * 0.08);
         if (def.kind === 'kokos' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, '#c8902c', 0.8);
+        if (def.kind === 'slime' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#39ff14' : '#d8ffd0', 0.8);
       }
       if (def.kind === 'fire' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#ff8a20' : '#ffd060', 1.2);
       if (def.mode === 'impact') {
-        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' ? '#c8902c' : '#b06a20';
+        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' ? '#c8902c' : def.kind === 'slime' ? '#39ff14' : '#b06a20';
         if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, def.splash, mc, false);
         else if (!pr.landed) {
           pr.landed = true; ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, def.splash, mc, true); ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.3, z: def.to.z }, 10, '#7a5230', 4);
+          if (def.kind === 'slime') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 16, '#39ff14', 5); ctx.bus?.emit('sfx', { name: 'slimeSplat', pos: def.to }); }
           if (def.kind === 'kokos') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 14, '#f4ead0', 5); ctx.bus?.emit('sfx', { name: 'coconut', pos: def.to }); }
         }
         if (done) ctx.fx?.clearMarker?.(mk);

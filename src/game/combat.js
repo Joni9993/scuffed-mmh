@@ -34,7 +34,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
   const crit = rng() < (attacker.critChance ?? 0.05);
   let elemSum = 0;
   const elemBy = {}; // [M] per-element damage (Barrotz mud armour breaks on shock)
-  for (const [k, v] of Object.entries(attacker.elems || {})) { if (k === 'rost') continue; const e = v * ((part.elem?.[k] ?? 0) / 100); elemSum += e; elemBy[k] = Math.round(e); }
+  for (const [k, v] of Object.entries(attacker.elems || {})) { if (k === 'rost' || k === 'blast') continue; const e = v * ((part.elem?.[k] ?? 0) / 100); elemSum += e; elemBy[k] = Math.round(e); }
   const dmg = calcDamage({
     power: attacker.power, mv: hit.mv, zone, crit,
     glitch: attacker.glitch, sauber: attacker.sauber, sauberMul: hit.sauberMul,
@@ -50,6 +50,7 @@ export function resolvePlayerHit(attacker, hit, part, rng, opts = {}) {
     stunEligible: !!part.stunPart,
     wucht: hit.wucht || 0,
     partId: part.id, hitstop: HITSTOP[size], shake: SHAKE[size],
+    blastBuild: (attacker.elems?.blast ?? 0) * Math.min(3, Math.max(0.4, (hit.mv || 100) / 100)), // Sprengung (Krachfaust-Ast x): Aufbau je Treffer = blast x Trefferstaerke, kein Elementschaden (siehe hunt.js)
     rostBuild: (attacker.elems?.rost ?? 0) + (attacker.elems?.rust ?? 0), // Waffendaten nutzen 'rust', Rostspitze 'rost' // Rost-Aufbau pro Treffer (kein Elementschaden, GDD 15.3)
   };
 }

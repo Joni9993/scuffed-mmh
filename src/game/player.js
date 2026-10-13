@@ -10,6 +10,7 @@ import {
   rollPhase, rollSpeed, ROLL, VIT, HIT_REACTION,
 } from './vitals.js';
 import { protectReduction } from './combat.js';
+import { slimeBlast, SLIME_R, SLIME_DMG } from './effects.js'; // Krachfaust: Glitch-Schleim am Pirscher
 import { initGlitch, tickGlitch, activateGlitch, glitchVisual, glitchDmgMul } from './glitch.js';
 import { REST, sampleTrack, mirrorPose } from './anim.js';
 import { buildHunterRig } from './rig.js';
@@ -186,7 +187,7 @@ export class Player {
     this.lastHit = h.attackId ? { attackId: h.attackId, monsterId: h.monster?.def?.id ?? null, time: (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000 } : null; // Tod-Log
     const rp = this.state === 'roll' ? rollPhase(this.rollT, this.iframeExtend) : null;
     if (rp?.invuln) {
-      if (rp.phase === 'perfect' && !this.perfectKeys.has(h.key) && this.glitchCd <= 0) {
+      if (rp.phase === 'perfect' && !h.noPerfect && !this.perfectKeys.has(h.key) && this.glitchCd <= 0) { // noPerfect: Krachfaust-Urknall (nur Deckung hilft)
         this.perfectKeys.add(h.key);
         this.#glitchCounter();
         return 'perfect';
@@ -211,10 +212,10 @@ export class Player {
       if (!sp || Math.abs(angleDiff(this.rot, yawOf(sp.x - this.pos.x, sp.z - this.pos.z))) <= ctr.arc * D2R) return this.#counter(h, ctr);
     }
     const sa = w.superArmor();
-    let dmg = h.dmg * (1 - protectReduction(this.protect * (this.status.rost ? 0.7 : 1))) * (h.dmgMul ?? 1); // Rost: Schutz -30 %
+    let dmg = h.dmgPct ? this.v.maxHp * h.dmgPct : h.dmg * (1 - protectReduction(this.protect * (this.status.rost ? 0.7 : 1))) * (h.dmgMul ?? 1); // Rost: Schutz -30 %; dmgPct: Anteil der Max-LP (Krachfaust-Urknall: ignoriert Schutz und Block)
 
     const blk = w.blockDef();
-    if (blk && h.sourcePos) {
+    if (blk && h.sourcePos && !h.dmgPct) {
       const dx = h.sourcePos.x - this.pos.x, dz = h.sourcePos.z - this.pos.z;
       const diff = Math.abs(angleDiff(this.rot, yawOf(dx, dz)));
       if (diff <= blk.arc * D2R && this.v.exhaust <= 0) {
@@ -278,7 +279,7 @@ export class Player {
   /** type: 'mud' | 'burn' | 'poison'; opts {t, rolls}. */
   addStatus(type, opts = {}) {
     if (this.state === 'ko') return false;
-    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 }, blend: { t: 2, rollsLeft: 0 }, verwirrt: { t: 3, rollsLeft: 0 }, itemlock: { t: 1, rollsLeft: 0 } }[type];
+    const base = { mud: { t: 25, rollsLeft: 3 }, burn: { t: 10, rollsLeft: 3 }, poison: { t: 12, rollsLeft: 0 }, rost: { t: 20, rollsLeft: 0 }, blend: { t: 2, rollsLeft: 0 }, verwirrt: { t: 3, rollsLeft: 0 }, itemlock: { t: 1, rollsLeft: 0 }, schleim: { t: 2, rollsLeft: 1 } }[type];
     if (!base) return false;
     const had = !!this.status[type];
     if (type === 'blend') return this.#blind(opts, had);
@@ -293,7 +294,9 @@ export class Player {
       if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
       return true;
     }
+    if (type === 'schleim' && had) return true; // Krachfaust: laufende Zündschnur wird nicht verlängert
     this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
+    if (type === 'schleim' && this.local) { this.ctx.fx?.number?.(this.#top(), 'SCHLEIM! ROLLEN!', 'kf-pulse'); this.ctx.bus.emit('sfx', { name: 'slimeSplat', pos: this.pos }); }
     if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
     return true;
   }
@@ -316,6 +319,30 @@ export class Player {
     if (this.stars) this.stars.visible = false;
     if (this._blendPin && this.state === 'pinned') this.#enter('free');
     this._blendPin = false;
+  }
+  /** Schleim abgelaufen: Explosion r 3,4 m, ueber spawnEffect an alle Clients gespiegelt (jeder trifft seine lokalen Pirscher), sonst lokal. */
+  #slimeBoom(at) {
+    const p = { pos: at, r: SLIME_R, dmg: SLIME_DMG };
+    if (this.ctx.spawnEffect) this.ctx.spawnEffect('schleimblast', p); else slimeBlast(this.ctx, at, p);
+  }
+  /** Klötzchen-Cluster auf dem Pirscher, pulst im Takt der Zuendschnur (Farbstufen wie die Bodenpfuetzen). */
+  #tickSlime(on, left = 2, dt = 0) {
+    if (!on) { if (this.slimeGrp) this.slimeGrp.visible = false; return; }
+    if (!this.slimeGrp) {
+      this.slimeGrp = new THREE.Group();
+      this.slimeMat = new THREE.MeshBasicMaterial({ color: '#1f9d0f', fog: false });
+      const g = new THREE.BoxGeometry(0.28, 0.28, 0.28);
+      [[0.3, 1.0, 0.1], [-0.28, 0.7, 0.2], [0.1, 1.5, -0.25], [-0.2, 1.25, -0.2], [0.0, 0.5, 0.3], [0.32, 0.55, -0.15]].forEach(([x, y, z], i) => {
+        const m = new THREE.Mesh(g, this.slimeMat); m.position.set(x, y, z); m.rotation.set(i, i * 2, 0); m.scale.setScalar(0.8 + (i % 3) * 0.3); this.slimeGrp.add(m);
+      });
+      this.mesh.add(this.slimeGrp);
+    }
+    const stage = left > 1 ? 0 : left > 0.4 ? 1 : 2, hz = [2, 5, 12][stage], ph = Math.floor(left * hz * 2) % 2;
+    this.slimeGrp.visible = true;
+    this.slimeMat.color.set([['#1f9d0f', '#39ff14'], ['#39ff14', '#d8ffd0'], ['#d8ffd0', '#ffffff']][stage][ph]);
+    this.slimeGrp.scale.setScalar(1 + (ph ? 0.35 : 0) * (stage + 1) / 2);
+    const tick = Math.floor(left * hz);
+    if (this.local && tick !== this._slimeTick) { this._slimeTick = tick; this.ctx.bus.emit('sfx', { name: 'slimePulse', pos: this.pos, pitch: [1, 1.3, 1.7][stage] }); }
   }
   /** Sterne-Kranz ueber dem Kopf (4 gelbe Oktaeder), nur sichtbar waehrend Phase 2 von Geblendet. */
   #tickStars(on) {
@@ -342,23 +369,34 @@ export class Player {
       delete this.status[k];
       if (k === 'blend') this.#endBlend();
       if (k === 'verwirrt') this.ctx.fx?.clearConfuse?.();
+      if (k === 'schleim') this.#tickSlime(false);
       this.ctx.bus.emit('playerStatus', { player: this, type: k, on: false });
     }
   }
   #statusOnRoll() {
-    for (const k of ['mud', 'burn']) {
+    for (const k of ['mud', 'burn', 'schleim']) {
       const s = this.status[k];
       if (!s) continue;
-      if (--s.rollsLeft <= 0) { this.clearStatus(k); this.ctx.fx.number(this.#top(), k === 'burn' ? 'Gelöscht' : 'Abgeschüttelt', 'heal'); }
+      if (--s.rollsLeft <= 0) {
+        this.clearStatus(k);
+        this.ctx.fx.number(this.#top(), k === 'burn' ? 'Gelöscht' : 'Abgeschüttelt', 'heal');
+        if (k === 'schleim') { this.ctx.fx.spark?.({ x: this.pos.x, y: this.pos.y + 0.4, z: this.pos.z }, 22, '#39ff14', 5); this.ctx.fx.spark?.({ x: this.pos.x, y: this.pos.y + 0.4, z: this.pos.z }, 8, '#d8ffd0', 4); this.ctx.bus.emit('sfx', { name: 'slimeSplat', pos: this.pos }); } // Klatsch daneben, harmlos
+      }
     }
   }
   #tickStatus(dt) {
     const st = this.status;
     this.v.rust = st.rost ? st.rost.t : 0;
-    if (!st.mud && !st.burn && !st.poison && !st.rost && !st.blend && !st.verwirrt && !st.itemlock) return;
+    if (!st.mud && !st.burn && !st.poison && !st.rost && !st.blend && !st.verwirrt && !st.itemlock && !st.schleim) return;
     const fx = this.ctx.fx;
     if (st.verwirrt) { if ((st.verwirrt.t -= dt) <= 0) this.clearStatus('verwirrt'); else if (Math.random() < dt * 9) fx.spark({ x: this.pos.x + (Math.random() - 0.5) * 0.8, y: this.pos.y + 1.0 + Math.random() * 1.2, z: this.pos.z + (Math.random() - 0.5) * 0.8 }, 1, Math.random() < 0.5 ? '#39ff14' : '#d8ffd0', 1.2); }
     if (st.itemlock && (st.itemlock.t -= dt) <= 0) this.clearStatus('itemlock');
+    if (st.schleim) { // Krachfaust: Zuendschnur mit Puls dunkelgruen -> hellgruen -> weissgruen, am Ende Explosion am Pirscher (trifft auch Mit-Pirscher)
+      const s = st.schleim;
+      s.t -= dt;
+      if (s.t <= 0) { const at = { x: this.pos.x, y: this.pos.y, z: this.pos.z }; this.clearStatus('schleim'); this.#slimeBoom(at); }
+      else this.#tickSlime(true, s.t, dt);
+    }
     if (st.blend) {
       const b = st.blend;
       b.t -= dt;

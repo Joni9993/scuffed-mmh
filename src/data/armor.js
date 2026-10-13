@@ -17,6 +17,7 @@ export const SKILLS = {
   // Smaragdküste-Macken. Zahlen: meta/loadout.js skillEffects.blendCut, gelesen in game/loadout.js (Status blend).
   blendschutz: { id: 'blendschutz', name: 'Blendschutz', max: 3, desc: (l) => (l >= 3 ? 'Geblendet: Weiß nur 0,1 s, keine Betäubung' : `Geblendet: Weiß −${(0.3 * l).toFixed(1).replace('.', ',')} s, Betäubung −${(0.3 * l).toFixed(1).replace('.', ',')} s`) },
   eisenmagen: { id: 'eisenmagen', name: 'Eisenmagen', max: 3, desc: (l) => `Gift, Brennen, Verwirrung, Item-Sperre: Dauer −${15 * l} %` },
+  schleimhaut: { id: 'schleimhaut', name: 'Schleimhaut', max: 3, desc: (l) => `Glitch-Schleim: Zündschnur +${(0.4 * l).toFixed(1).replace('.', ',')} s, Explosion −${15 * l} % Schaden` },
   erdung: { id: 'erdung', name: 'Erdung', max: 3, desc: (l) => `Schock-Resistenz ${Math.round(100 * (1 - 0.8 ** l))} %` },
 };
 
@@ -81,8 +82,14 @@ export const ARMOR_SETS = {
     body: piece('Mampfaffe-Pelzmantel', { schrott: 2400, mampfaffe_fell: 5, mampfaffe_knoechel: 2, mampfaffe_backe: 1, feuerpilz: 2 }, { eisenmagen: 1, dickschaedel: 1 }),
     legs: piece('Mampfaffe-Knöchelhosen', { schrott: 2100, mampfaffe_fell: 3, mampfaffe_knoechel: 3, kokosnuss: 3 }, { eisenmagen: 1, dickschaedel: 1 }),
   }),
+  // Smaragdküste-Set (Prot 50, Spec 4.11): Schleimhaut gegen Krachfausts Glitch-Schleim, dazu Zähe Socke
+  krachfaust: set('krachfaust', 'Krachfaust', 50, ['schleimhaut', 'zaehe_socke'], {
+    head: piece('Krachfaust-Schleimhelm', { schrott: 2600, krachfaust_kruste: 3, krachfaust_faustplatte: 1, tempelstein: 2 }, { schleimhaut: 1, zaehe_socke: 1 }),
+    body: piece('Krachfaust-Tempelpanzer', { schrott: 3000, krachfaust_kruste: 5, krachfaust_schleim: 2, krachfaust_faustplatte: 1, tempelstein: 2 }, { schleimhaut: 1, zaehe_socke: 1 }),
+    legs: piece('Krachfaust-Trümmerstiefel', { schrott: 2600, krachfaust_kruste: 3, krachfaust_schleim: 2, tempelstein: 1 }, { schleimhaut: 1, zaehe_socke: 1 }),
+  }),
 };
-export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe'];
+export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};

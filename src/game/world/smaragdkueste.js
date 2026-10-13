@@ -176,6 +176,7 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
   };
   const nearPass = (x, z, r) => PASSES.some((p) => Math.hypot(x - p.x, z - p.z) < r);
   const taken = [];
+  const pillars = [], runeGeos = []; // Tempel: hohe Saeulen (Deckung) und Runen-Geometrie (eigenes Material)
   const spotOk = (x, z, zone, clear, extra) => {
     if (zoneAt(x, z) !== zone || !L.walkable(x, z, clear) || !L.reachable(x, z) || L.slopeAt(x, z) > 0.45) return false;
     if (!ringOk(x, z, clear)) return false;
@@ -252,7 +253,7 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
   {
     const c = TEMPLE_C, cy = hAt(c.x, c.z);
     add('lit', put(daisGeo(7), c.x, cy - 0.02, c.z));
-    add('glow', put(runeRing(9), c.x, cy + 0.14, c.z));
+    runeGeos.push(put(runeRing(9), c.x, cy + 0.14, c.z)); // Runen: eigenes Material (setRuneGlow tauscht Tuerkis gegen Hacker-Neongruen)
     // gate at the top of the stair
     add('lit', put(gateGeo(rng, 14), 65, hAt(65, -33) - 0.1, -33));
     L.addCollider({ x: 58, z: -33, r: 1.7 }); L.addCollider({ x: 72, z: -33, r: 1.7 });
@@ -261,7 +262,13 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
       const a = (i / 12) * 6.283 + 0.26, d = 29 + (rng() - 0.5) * 2, x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d;
       if (z > -36 && Math.abs(x - 65) < 9) continue; // keep the gate side open
       const h = i % 3 === 0 ? 2 + rng() * 2 : 6.5 + rng() * 3;
-      add('lit', put(templePillar(rng, h, 0.9), x, hAt(x, z), z, rng() * 6));
+      const pg = put(templePillar(rng, h, 0.9), x, hAt(x, z), z, rng() * 6);
+      if (h >= 6) { // hohe Saeulen einzeln halten: Deckung vor dem Krachfaust-Urknall, brechen danach (mesh.visible = false)
+        const mesh = new THREE.Mesh(pg, mats.lit);
+        mesh.name = `pillar-${i}`;
+        group.add(mesh);
+        pillars.push({ id: pillars.length, x, z, r: 1.15, h, broken: false, mesh });
+      } else add('lit', pg);
       L.addCollider({ x, z, r: 1.15 });
       if (i % 4 === 1) { // a fallen one next to it
         const fx = x + Math.cos(a + 1.57) * 4, fz = z + Math.sin(a + 1.57) * 4;
@@ -273,7 +280,7 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * 6.283 + 0.5, x = c.x + Math.cos(a) * 20, z = c.z + Math.sin(a) * 20, rs = runeSlab(rng);
       const yaw = Math.atan2(c.x - x, c.z - z);
-      add('lit', put(rs.stone, x, hAt(x, z), z, yaw)); add('glow', put(rs.glow, x, hAt(x, z), z, yaw));
+      add('lit', put(rs.stone, x, hAt(x, z), z, yaw)); runeGeos.push(put(rs.glow, x, hAt(x, z), z, yaw));
       L.addCollider({ x, z, r: 0.9 });
     }
     // parapet stumps along the three closed edges (the cliff blocks anyway; this only reads as wall)
@@ -293,6 +300,10 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
     cover(4, 120, (x, z) => add('lit', put(tuftGeo(rng, rng() < 0.5 ? '#3a6a34' : '#4a7a3a', 0.6 + rng() * 0.5), x, hAt(x, z) - 0.05, z, rng() * 6)));
     cover(4, 40, (x, z) => add('lit', put(fernGeo(rng, 0.9 + rng() * 0.6, true), x, hAt(x, z) - 0.05, z, rng() * 6)));
   }
+
+  // ---- Runen (Ring + Platten): ein Mesh mit eigenem Material, damit setRuneGlow die Farbe in der Wutphase wechseln kann
+  const runeMat = basic({ vertexColors: true });
+  if (runeGeos.length) { const rm = new THREE.Mesh(merge(runeGeos), runeMat); rm.name = 'temple-runes'; group.add(rm); }
 
   // ---- merge the batches into meshes
   for (const [bk, b] of batches) {
@@ -415,6 +426,7 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
     setGatherState: gather.setState,
     minimap: { size: MM, data: mmData },
     layout: L,
+    temple: { pillars, c: { ...TEMPLE_C } },
     mesh: group,
     gather,
     stats() {
@@ -430,6 +442,35 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
   const ec = ENV.map((e) => ({ bg: new THREE.Color(e.bg), amb: new THREE.Color(e.amb), sun: new THREE.Color(e.sun) }));
   const wv = [0, 0, 0, 0];
   let lastZone = 0, zoneStable = 0, t = 0, first = true, partAcc = 0;
+
+  // ---- Krachfaust-Haken (docs/SMARAGD_BROCKEN.md 4.6): Deckung hinter Saeulen, Saeulenbruch, Runenfarbe, Lichtpuls
+  /** Unzerstoerte hohe Saeule zwischen a (Brocken) und b (Pirscher)? Einfacher 2D-Check: Abstand Saeulenmitte -> Strecke a-b <= r + 0,7 (Koerperbreite). */
+  world.coverBetween = (a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+    for (const p of pillars) {
+      if (p.broken) continue;
+      const t = l2 > 1e-6 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
+      const ex = a.x + dx * t - p.x, ez = a.z + dz * t - p.z;
+      if (ex * ex + ez * ez <= (p.r + 0.7) ** 2 && t > 0.02 && t < 0.98) return p;
+    }
+    return null;
+  };
+  /** Saeule verbraucht: Mesh weg, Schutt-Block bleibt (der Collider r 1,15 bleibt als Truemmer). */
+  world.breakPillar = (p) => {
+    if (!p || p.broken) return false;
+    p.broken = true;
+    p.mesh.visible = false;
+    const rub = new THREE.Mesh(put(blockGeo(2.8, 0.9, 2.2), p.x, hAt(p.x, p.z), p.z, p.id * 1.7), mats.lit);
+    rub.name = `rubble-${p.id}`;
+    group.add(rub);
+    return true;
+  };
+  const RUNE_NEUTRAL = new THREE.Color('#ffffff');
+  /** Runenfarbe: Tint als Faktor auf die tuerkisen Vertexfarben (Wutphase '#b8ff1a' -> Hacker-Neongruen), k = Helligkeit. */
+  world.setRuneGlow = (hex = null, k = 1) => { runeMat.color.copy(hex ? tmpC.set(hex) : RUNE_NEUTRAL).multiplyScalar(k); };
+  let pulseMul = 1;
+  /** Licht-Multiplikator (Urknall-Aufladen pulst Ambient + Sonne). */
+  world.pulse = (k = 1) => { pulseMul = k; };
 
   world.update = (dt, hunt) => {
     t += dt;
@@ -458,8 +499,8 @@ export function createSmaragdkueste({ seed = 1 } = {}) {
     if (sc.background?.isColor) sc.background.copy(cur.bg); else sc.background = cur.bg.clone();
     if (sc.fog) { sc.fog.color.copy(sc.background); sc.fog.near = cur.near; sc.fog.far = cur.far; }
     if (hunt.camera && Math.abs(hunt.camera.far - (cur.far + 14)) > 1) { hunt.camera.far = cur.far + 14; hunt.camera.updateProjectionMatrix(); }
-    ambient.color.copy(cur.amb); ambient.intensity = cur.ambI;
-    sun.color.copy(cur.sun); sun.intensity = cur.sunI;
+    ambient.color.copy(cur.amb); ambient.intensity = cur.ambI * pulseMul;
+    sun.color.copy(cur.sun); sun.intensity = cur.sunI * pulseMul;
 
     const z = zoneAt(pl.pos.x, pl.pos.z);
     if (z !== lastZone) {

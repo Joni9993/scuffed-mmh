@@ -51,6 +51,9 @@ export function skillEffects(skills = {}) {
     blendCut: 0.3 * lvl('blendschutz'),
     // Macke Eisenmagen (Mampfaffe-Set): Dauer von Gift, Brennen, Verwirrung und Item-Sperre -15 % je Stufe
     eisenCut: 0.15 * lvl('eisenmagen'),
+    // Macke Schleimhaut (Krachfaust-Set): Zündschnur des Glitch-Schleims +0,4 s je Stufe, Explosionsschaden -15 % je Stufe
+    schleimFuse: 0.4 * lvl('schleimhaut'),
+    schleimDmg: 1 - 0.15 * lvl('schleimhaut'),
   };
 }
 

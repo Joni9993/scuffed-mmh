@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GearParts, gearMaterial, bar, spike, tri } from '../../render/gearfx.js';
-import { PALETTES } from './weaponLook.js';
+import { PALETTES, markSprenger } from './weaponLook.js';
 
 // Ratterbüchse (`lb`) Optik je Stufe/Ast, aus den Teilen des jeweiligen Brockens (wie bow/katana/kk/ga).
 // Weapon-lokales Koordinatensystem (wie die Klingen): Griff im Ursprung, Lauf/Schaft entlang -y (Muendung bei y ~ -0.95, Schaftende bei +0.5),
@@ -320,5 +320,5 @@ export function buildArmbrustLook(tier = 1, branch = null) {
   g.add(body);
   const muzzle = new THREE.Object3D(); muzzle.position.set(...MUZZLE); g.add(muzzle);
   g.userData = { muzzle, glow: mat, gearGlow: mat.userData.glow, glowBase: top >= 3 ? 0.9 : 0.4, fx, twoHand: { lo: -0.62, hi: -0.4 }, lb: { tier: top, key: lbLookKey(top, branch) } };
-  return g;
+  return markSprenger(g, top, branch);
 }

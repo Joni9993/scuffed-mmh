@@ -36,6 +36,34 @@ const VT = ['#b8642a', '#d88a4a', '#1a1e2a', '#2a3350', '#5ad0ff', '#fff0a0', '#
 const TOOTH = '#f0e8d0';
 export const PALETTES = { RUST, STEEL, BONE, JP, BZ, BR, KR, GG, VT, TOOTH }; // [KK] gemeinsame Brocken-Paletten fuer krachkisteLook.js
 
+/**
+ * Sprenger (Stufe 6, Ast x, Krachfaust): das Standardmodell der Waffe, aber dunkel wie Steinhaut mit orangen Glut-Rissen (jede 6. Vertexgruppe glueht)
+ * und Funken-Partikeln. KEIN Gruen (gehoert den Brocken). Faerbt Vertexfarben um; Waffen ohne Vertexfarben bekommen Emissive. Idempotent.
+ */
+export function markSprenger(root, tier, branch) {
+  if (!root || tier < 6 || branch !== 'x' || root.userData.sprenger) return root;
+  root.userData.sprenger = true;
+  const dark = new THREE.Color(), hot = new THREE.Color('#ff8a1a'), c = new THREE.Color();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const col = o.geometry?.attributes?.color;
+    if (col) {
+      o.geometry = o.geometry.clone();
+      const a = o.geometry.attributes.color;
+      for (let i = 0; i < a.count; i++) {
+        c.setRGB(a.getX(i), a.getY(i), a.getZ(i));
+        const lum = c.r * 0.3 + c.g * 0.55 + c.b * 0.15, crack = hash(Math.floor(i / 3)) > 0.82; // pro Dreieck: jedes sechste glueht
+        dark.setRGB(0.2 + lum * 0.45, 0.17 + lum * 0.38, 0.14 + lum * 0.3);
+        a.setXYZ(i, ...(crack ? hot : dark).toArray());
+      }
+    } else if (o.material?.emissive) { o.material = o.material.clone(); o.material.emissive.setRGB(0.5, 0.17, 0.0); o.material.color?.multiplyScalar(0.5); }
+  });
+  const ud = root.userData;
+  ud.fx = [...(ud.fx ?? []), { kind: 'ember', cols: ['#ffb020', '#fff2c0', '#ff8a1a'], rate: 7, at: [0, -0.45, 0] }, { kind: 'ember', cols: ['#ffb020', '#fff2c0'], rate: 4, at: [0, -0.9, 0] }];
+  ud.glowBase = Math.max(ud.glowBase ?? 0, 1);
+  return root;
+}
+
 const KEYS = ['rust', 'bone', 'jag', 'barr', 'brat', 'kroll', 'gorgo', 'volt', 'fuerst'];
 function lookKey(top, branch) {
   if (top >= 6) return 'fuerst';
@@ -280,7 +308,7 @@ function buildBlade(gs, tier, branch, flip) {
   const c = bladeCtx(P, fx, key, gs, flip);
   BLADES[key](c);
   const glowBase = top >= 4 ? 1 : top === 3 ? 0.9 : 0.5;
-  return finish(P, gs ? { twoHand: { lo: 0.2, hi: 0.5 }, fx, glowBase } : { fx, glowBase });
+  return markSprenger(finish(P, gs ? { twoHand: { lo: 0.2, hi: 0.5 }, fx, glowBase } : { fx, glowBase }), top, branch);
 }
 
 export function buildGreatswordLook(tier = 1, branch = null) { return buildBlade(true, tier, branch, 1); }
@@ -446,5 +474,5 @@ export function buildBowLook(tier = 1, branch = null) {
   const P = new GearParts(), fx = [];
   BOWS[lookKey(top, branch)](P, fx);
   if (top >= 4) for (const o of [-1, 1]) fx.push({ kind: 'poison', rate: 3, at: [0, o * (BOW_H + 0.1), -0.05] });
-  return finish(P, { fx, glowBase: top >= 3 ? 0.9 : 0.4, hand: 'L' });
+  return markSprenger(finish(P, { fx, glowBase: top >= 3 ? 0.9 : 0.4, hand: 'L' }), top, branch);
 }

@@ -3,7 +3,7 @@ import { Parts } from '../../render/vcolor.js';
 import { GearParts, gearMaterial } from '../../render/gearfx.js';
 import { lambert } from '../../render/ps1.js';
 import { tex } from '../../render/textures.js';
-import { PALETTES as PAL } from './weaponLook.js';
+import { PALETTES as PAL, markSprenger } from './weaponLook.js';
 
 // [GA] Glitchaxt-Optik (GDD 17.2): Stiel mit festem Anker-Teil + 8 Datenbloecke. Die Bloecke morphen in ~0,2 s zwischen
 // Axt-Anordnung (Klumpen am Stielende) und Schwert-Anordnung (Reihe entlang der Verlaengerung) und leuchten vom Griff aus magenta
@@ -176,7 +176,7 @@ export function buildGlitchaxtLook(tier = 1, branch = null) {
     mesh.scale.set(a[3] * big, a[4] * big, a[5] * big);
   }
   root.userData = { twoHand: { lo: 0.22, hi: 0.42 }, ga: { key, tier: top, branch, blocks, shaft, k: 0, t: 0, tilt: 0, sk, em: BASE_EM[key], c: 0 } };
-  return root;
+  return markSprenger(root, top, branch);
 }
 
 /**

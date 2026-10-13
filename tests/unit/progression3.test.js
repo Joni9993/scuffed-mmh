@@ -28,10 +28,11 @@ describe('Waffen Stufe 5/6', () => {
     for (const t of WEAPON_ORDER) {
       for (const b of ['k', 'g', 'v']) for (const id of Object.keys(WEAPON_UPGRADES[5][t][b].cost)) expect(known(id), `${t}5${b} ${id}`).toBe(true);
       for (const id of Object.keys(WEAPON_UPGRADES[6][t].cost)) expect(known(id), `${t}6 ${id}`).toBe(true);
+      for (const id of Object.keys(WEAPON_UPGRADES[6][t].x.cost)) expect(known(id), `${t}6x ${id}`).toBe(true);
     }
     for (const set of ['kroll', 'gorgo', 'voltaro']) for (const sl of SLOTS) for (const id of Object.keys(getPiece(`${set}_${sl}`).cost)) expect(known(id), `${set}_${sl} ${id}`).toBe(true);
   });
-  it('Stufe 5 (3 Aeste) und Stufe 6 (nur Voltaro) fuer alle 4 Waffen, Kraft waechst', () => {
+  it('Stufe 5 (3 Aeste) und Stufe 6 (Voltaro v, Krachfaust x) fuer alle Waffen, Kraft waechst', () => {
     for (const t of WEAPON_ORDER) {
       const p4 = weaponStats(t, 4).power;
       const opts = upgradeOptions(t, 4);
@@ -40,14 +41,19 @@ describe('Waffen Stufe 5/6', () => {
       expect(weaponStats(t, 5, 'k')).toMatchObject({ elems: { rust: expect.any(Number) }, partDmgMul: 1.25 });
       expect(weaponStats(t, 5, 'g')).toMatchObject({ crit: 0.15, elems: { fire: expect.any(Number) } });
       expect(weaponStats(t, 5, 'v').elems.shock).toBeGreaterThan(0);
-      expect(upgradeOptions(t, 5, 'k')).toEqual([]);
-      expect(upgradeOptions(t, 5, 'g')).toEqual([]);
+      // Stufe 6: Ast x (Sprenger, Krachfaust-Material) aus JEDEM Stufe-5-Ast, Ast v (Funkenfuerst) nur aus 5v
+      for (const b of ['k', 'g']) expect(upgradeOptions(t, 5, b).map((o) => o.branch)).toEqual(['x']);
       const o6 = upgradeOptions(t, 5, 'v');
-      expect(o6.length).toBe(1);
+      expect(o6.map((o) => o.branch)).toEqual(['v', 'x']);
       expect(o6[0].name).toMatch(/^Funkenfürst-/);
       expect(o6[0].cost.voltaro_herz).toBe(1);
       expect(o6[0].stats.power).toBeGreaterThan(weaponStats(t, 5, 'v').power);
-      expect(upgradeOptions(t, 6, 'v')).toEqual([]);
+      const x = o6[1], v6 = weaponStats(t, 6, 'v');
+      expect(x.name).toMatch(/-Sprenger$/);
+      expect(x.cost).toMatchObject({ krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 });
+      expect(x.stats.power).toBe(v6.power + 8); expect(x.stats.crit).toBe(v6.crit);
+      expect(x.stats.elems).toEqual({ blast: 30 }); expect(x.stats.partDmgMul).toBe(1.2);
+      expect(upgradeOptions(t, 6, 'v')).toEqual([]); expect(upgradeOptions(t, 6, 'x')).toEqual([]);
       expect(WEAPON_TYPES[t].tiers.length).toBe(6);
     }
   });
@@ -58,14 +64,18 @@ describe('Waffen Stufe 5/6', () => {
     expect(upgradeWeapon(s, 'kt', 'v').reason).toBe('mats');
     give(s, WEAPON_UPGRADES[5].kt.v.cost);
     expect(upgradeWeapon(s, 'kt', 'v')).toMatchObject({ ok: true, tier: 5, branch: 'v' });
+    expect(upgradeWeapon(s, 'kt').reason).toBe('branch'); // aus 5v gibt es v und x: Wahl noetig
     give(s, WEAPON_UPGRADES[6].kt.cost);
-    expect(upgradeWeapon(s, 'kt')).toMatchObject({ ok: true, tier: 6, branch: 'v', name: 'Funkenfürst-Katana' });
+    expect(upgradeWeapon(s, 'kt', 'v')).toMatchObject({ ok: true, tier: 6, branch: 'v', name: 'Funkenfürst-Katana' });
     expect(upgradeWeapon(s, 'kt').reason).toBe('maxed');
     s.weapons.gs = { tier: 4, branch: null };
     give(s, WEAPON_UPGRADES[5].gs.k.cost);
     expect(upgradeWeapon(s, 'gs', 'k')).toMatchObject({ ok: true, tier: 5, branch: 'k' });
+    expect(upgradeWeapon(s, 'gs').reason).toBe('mats'); // 5k -> x (Krachfaust-Material fehlt)
+    give(s, WEAPON_UPGRADES[6].gs.x.cost);
+    expect(upgradeWeapon(s, 'gs')).toMatchObject({ ok: true, tier: 6, branch: 'x', name: 'Plattmacher-Sprenger' });
     expect(upgradeWeapon(s, 'gs').reason).toBe('maxed');
-    expect(sanitize({ weapons: { gs: { tier: 5, branch: 'g' }, db: { tier: 6, branch: 'x' }, bow: { tier: 5, branch: 'zz' } } }).weapons).toMatchObject({ gs: { tier: 5, branch: 'g' }, db: { tier: 6, branch: 'v' }, bow: { tier: 5, branch: 'k' } });
+    expect(sanitize({ weapons: { gs: { tier: 5, branch: 'g' }, db: { tier: 6, branch: 'x' }, bow: { tier: 5, branch: 'zz' }, kt: { tier: 6, branch: 'q' } } }).weapons).toMatchObject({ gs: { tier: 5, branch: 'g' }, db: { tier: 6, branch: 'x' }, bow: { tier: 5, branch: 'k' }, kt: { tier: 6, branch: 'v' } });
   });
 });
 
@@ -73,7 +83,7 @@ describe('Ruestungs-Sets + Macken', () => {
   const armorOf = (set) => ({ head: `${set}_head`, body: `${set}_body`, legs: `${set}_legs` });
   it('Schutz und Macken laut GDD 15.8', () => {
     expect([ARMOR_SETS.kroll.prot, ARMOR_SETS.gorgo.prot, ARMOR_SETS.voltaro.prot]).toEqual([34, 36, 40]);
-    expect(SET_ORDER.slice(-5)).toEqual(['kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe']);
+    expect(SET_ORDER.slice(-6)).toEqual(['kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust']);
     for (const id of ['panzerhaut', 'wuehler', 'ueberladung', 'erdung']) expect(SKILLS[id].desc(2)).toBeTruthy();
     const k = skillEffects(armorSkills(armorOf('kroll')));
     expect(k.rustDurMul).toBeCloseTo(0.5); expect(k.protectMul).toBeCloseTo(1.1);

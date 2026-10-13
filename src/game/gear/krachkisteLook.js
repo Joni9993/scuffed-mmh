@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GearParts, gearMaterial, bar, spike, tri } from '../../render/gearfx.js';
 import { lambert } from '../../render/ps1.js';
-import { PALETTES } from './weaponLook.js';
+import { PALETTES, markSprenger } from './weaponLook.js';
 import { SAMPLE_HEX } from '../buffs.js';
 
 // Krachkiste (GDD 17.1): Schrott-Lautsprecher auf Rohrstiel. Jede Stufe/jeder Ast = ein Instrument aus dem Brocken:
@@ -336,7 +336,7 @@ export function buildKrachkisteLook(tier = 1, branch = null) {
     kk: { key, tier, branch, pivots, slots, mem, main, open: 0, t: 0, pump: 0, pumpCol: [1, 1, 1], eq: null },
   };
   setSlots(root.userData.kk, []);
-  return root;
+  return markSprenger(root, tier, branch);
 }
 
 /** Leiste (Array 'r'|'b'|'g', FIFO, aelteste zuerst) auf den Kragen legen. Slot i = i-tes Sample (von oben nach unten am Stiel). */

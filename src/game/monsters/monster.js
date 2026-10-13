@@ -54,6 +54,7 @@ export const routeOf = (m) => m.ctx.world.routeFor?.(m.def.id) ?? null;
  *   onDamage(m, res, ev), onAttackEnd(m, attackId), onStatus(m, type), onElement(m, type, opts) -> bool, snapExtra(m).
  *   Smaragdkueste-Hooks: wander(m, dt) -> bool (Mampfaffe frisst im Wandern; Angriffe mit `wanderAttack` laufen dort), onHitPlayer(m, player, h, res)
  *   (nach einem Treffer, nur lokaler Pirscher), hitDmgMul(m, hit), dmgFactor(m), partHpMul(m, part), glow(m) -> [r,g,b] | null (Dauerleuchten).
+ *   Hit-Felder (Krachfaust): occlude (Saeule dazwischen = kein Treffer), dmgPct (Anteil der Max-LP statt dmg), noPerfect (kein Glitch-Konter).
  * Status API (docs/PHASE2_CONTRACTS.md): applyStatus(type, opts) -> bool.
  */
 export class Monster {
@@ -909,9 +910,11 @@ export class Monster {
         const fc = h.hit.faceCheck;
         if (fc !== undefined && Math.abs(angleDiff(this.ctx.cameraYaw ?? p.rot, yawOf(this.pos.x - p.pos.x, this.pos.z - p.pos.z))) > fc * Math.PI / 180) continue;
         if (!caps.some((c) => overlap(h.shape, c))) continue;
+        // occlude (Krachfaust-Urknall): steht eine unzerstoerte hohe Saeule zwischen Brocken und Pirscher, verfaellt der Treffer (Deckung); tritt der Pirscher spaeter hervor, zaehlt er wieder
+        if (h.hit.occlude && this.ctx.world?.coverBetween?.(this.pos, p.pos)) continue;
         const res = p.takeHit({
           dmg: h.dmg * this.dmgMul * (this.def.hitDmgMul?.(this, h.hit) ?? 1), knock: h.knock, key: h.key + '|' + p.id, sourcePos: this.pos, attackId: inst.params.attackId, monster: this,
-          status: h.hit.status, push: h.hit.push,
+          status: h.hit.status, push: h.hit.push, dmgPct: h.hit.dmgPct, noPerfect: h.hit.noPerfect,
         });
         if (res === 'hit' || res === 'block' || res === 'perfect') inst.hitSet.add(k); // perfect = Glitch-Konter: der Treffer ist verbraucht
         if (res === 'hit' && h.dmg > 0) this.ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });

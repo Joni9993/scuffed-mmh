@@ -542,7 +542,44 @@ const mampfaffe = {
   },
 };
 
-const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax, mampfaffe };
+// ======================================================================= KRACHFAUST (tier 8): dunkle Steinhaut mit Rissen, Schleim-Fäuste und Rücken-Runen in Neongrün (nie Cyan/Magenta)
+const KF = ['#4a463e', '#2e2b26', '#6a665a', '#39ff14', '#d8ffd0', '#1f9d0f', '#8a8678', '#0b2a0b'];
+const krachfaust = {
+  head(c) {
+    const { head } = c.P, k = c.k;
+    head.box(0.62, 0.5, 0.62, KF[0], { y: 0.3 });
+    head.box(0.66, 0.1, 0.66, KF[1], { y: 0.58 });
+    head.box(0.5, 0.1, 0.06, KF[7], { y: 0.34, z: 0.32 }); // Sehschlitz
+    head.box(0.4, 0.03, 0.07, KF[3], { y: 0.34, z: 0.32, glow: 1 });
+    for (const o of [-1, 1]) head.box(0.14 * k, 0.4, 0.14, KF[3], { x: o * 0.34, y: 0.34, z: 0.1, glow: 0.7 }); // Schleimtropfen an den Wangen
+    head.box(0.4, 0.06, 0.05, KF[4], { y: 0.66, z: 0.2, glow: 1 }); // Riss obendrauf
+  },
+  body(c) {
+    const { torso } = c.P, k = c.k;
+    torso.box(0.9, 0.7, 0.54, KF[0], { y: 0.52 });
+    for (let i = 0; i < 4; i++) torso.box(0.92, 0.05, 0.56, KF[1], { y: 0.28 + i * 0.16 });
+    torso.box(0.3, 0.36, 0.05, KF[7], { y: 0.54, z: 0.29 }); torso.box(0.06, 0.34, 0.06, KF[3], { y: 0.54, z: 0.31, glow: 1 }); torso.box(0.26, 0.06, 0.06, KF[3], { y: 0.6, z: 0.31, glow: 1 }); // Runenherz
+    for (const o of [-1, 1]) torso.box(0.1, 0.5 * k, 0.1, KF[3], { x: o * 0.3, y: 0.95, z: -0.3, glow: 0.8 }); // Rücken-Runen
+    arms(c, (a, o) => {
+      a.box(0.42, 0.18, 0.46, KF[2], { x: o * 0.05, y: 0.12 });
+      a.box(0.46 * k, 0.12, 0.5 * k, KF[0], { x: o * 0.07, y: 0.22 });
+      for (let i = 0; i < 3; i++) a.box(0.34, 0.08, 0.36, KF[1], { y: -0.4 - i * 0.1 });
+      a.box(0.34, 0.26, 0.36, KF[5], { y: -0.8, z: 0.04, glow: 0.5 }); // Schleimfaust (kleiner Neon-Tupfer, nicht die ganze Hand)
+      a.box(0.2, 0.06, 0.2, KF[4], { y: -0.64, z: 0.04, glow: 1 });
+    });
+  },
+  legs(c) {
+    const k = c.k;
+    legs(c, (l) => {
+      for (let i = 0; i < 4; i++) { l.box(0.38, 0.12, 0.4, i % 2 ? KF[1] : KF[0], { y: -0.26 - i * 0.13 }); }
+      l.box(0.44, 0.14, 0.54, KF[2], { y: -0.78, z: 0.06 });
+      l.box(0.3, 0.05, 0.06, KF[3], { y: -0.36, z: 0.22, glow: 1 });
+      for (let i = -1; i <= 1; i++) l.box(0.1, 0.1 * k, 0.1, KF[5], { x: i * 0.12, y: -0.86, z: 0.32, glow: 0.6 });
+    });
+  },
+};
+
+const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax, mampfaffe, krachfaust };
 export const ARMOR_BUILDERS = SETS;
 export const SLOT_JOINTS = { head: ['head'], body: ['torso', 'armR', 'armL'], legs: ['legL', 'legR'] };
 

@@ -287,6 +287,13 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       j.mesh.material.color.set(color);
       j.life = j.max = life; j.op = opacity; j.mesh.visible = true;
     },
+    /** Glitch-Schleim-Explosion (Krachfaust): Funken Hacker-Neongruen/weissgruen, Boden-Ring, Wackler. Nie Cyan/Magenta. */
+    slimeBurst(p, r = 3.4) {
+      if (nofx) return;
+      fx.spark(p, 34, '#39ff14', 9); fx.spark(p, 16, '#d8ffd0', 6);
+      fx.ring({ x: p.x, y: p.y - 0.4, z: p.z }, r * 0.25, r, { color: '#39ff14', life: 0.35 });
+      fx.shake(0.25, 0.2);
+    },
     /** Sich ausbreitender Boden-Schockring (von r0 auf r1). */
     ring(p, r0, r1, { color = '#ffffff', life = 0.4 } = {}) {
       if (nofx) return;

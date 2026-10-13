@@ -80,14 +80,14 @@ registerTexture('mampfaffe_coco', (g, n, rnd) => {
  * body (Rumpf + Arme), legs (kurze Hockbeine). Pose-Schlüssel: legL/legR = ARM-Schwung (die Beine laufen gegengleich mit), wing = Brusttrommeln
  * (Arme nach innen), spread = Backen aufblasen (0..1), jaw = Kiefer. Extra: aura (additive Hülle in Futterfarbe), helmet (Kokos-Helm).
  */
-export function buildMampfaffe({ scale = SC } = {}) {
+export function buildMampfaffe({ scale = SC, skin = null } = {}) { // skin: { texturName: andereTextur } (Krachfaust nutzt das Rig mit eigener Steinhaut)
   const root = new THREE.Group();
   const g = new THREE.Group();
   g.scale.setScalar(scale);
   root.add(g);
   const partMeshes = { head: [], prankeL: [], prankeR: [], belly: [], body: [], legs: [] };
   const mats = {};
-  const mat = (part, t) => (mats[part + t] ??= lambert({ map: tex(t, { size: 16 }) }));
+  const mat = (part, t) => (mats[part + t] ??= lambert({ map: tex(skin?.[t] ?? t, { size: 16 }) }));
   const add = (part, w, h, d, m, parent, x, y, z, rx = 0, ry = 0, rz = 0) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     mesh.position.set(x, y, z);

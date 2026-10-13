@@ -1,6 +1,7 @@
 // Multi-Jagd „Revierstreit" (GDD 16.6, NEXT.md §4): zwei Brocken bekämpfen sich, bis die Pirscher zu viel Druck machen
 // oder 60 s vergangen sind - dann verbünden sie sich. Host-autoritativ: Brocken-gegen-Brocken-Treffer nur hier (Host/Solo).
 import { overlap } from './hitbox.js';
+import { onTemple } from './world/smaragdkuesteLayout.js';
 
 export const REVIER = {
   ALLY_T: 60, // s Revierkampf (läuft erst, wenn ein Pirscher in der Nähe ist), dann Bündnis
@@ -24,9 +25,14 @@ export function scaleBoss(m, f) {
 
 export class Revier {
   /** ctx = Hunt (oder Test-Ctx mit players/bus/fx); monsters = die zwei Brocken. */
-  constructor(ctx, monsters) {
+  /**
+   * opts.apex (Krachfaust, Spec 4.7): `monsters` = [Apex]. Der Apex greift alles Lebende an, was seinen Tempel betritt (auch Kleinvieh), und jeder andere
+   * Brocken im Tempel zielt auf ihn. Kein Buendnis, keine Uhr (phase bleibt 'clash'), Pirscher-Druck zaehlt nicht.
+   */
+  constructor(ctx, monsters, { apex = false } = {}) {
     this.ctx = ctx;
     this.monsters = monsters;
+    this.apex = apex;
     this.phase = 'clash'; // clash | allied
     this.clock = 0; // eigene Uhr (s), unabhängig von Brocken-Zeit
     this.t = 0; // Revierkampf-Zeit seit Pirscher-Nähe
@@ -38,6 +44,20 @@ export class Revier {
 
   /** Gegner im Revierkampf (nur solange Kampf-Phase und lebendig), sonst null. */
   rivalOf(m) {
+    if (this.apex) {
+      if (!m.alive) return null;
+      if (this.monsters.includes(m)) { // der Apex: naechster anderer lebender Brocken im Tempel
+        let best = null, bd = Infinity;
+        for (const o of this.ctx.monsters ?? []) {
+          if (o === m || !o.alive || !onTemple(o.pos.x, o.pos.z)) continue;
+          const d = (o.pos.x - m.pos.x) ** 2 + (o.pos.z - m.pos.z) ** 2;
+          if (d < bd) { bd = d; best = o; }
+        }
+        return best;
+      }
+      const a = this.monsters.find((x) => x.alive);
+      return a && onTemple(m.pos.x, m.pos.z) ? a : null; // andere Brocken im Tempel wehren sich gegen den Apex
+    }
     if (this.phase !== 'clash') return null;
     const o = this.monsters.find((x) => x !== m && x.alive);
     return o && m.alive ? o : null;
@@ -45,6 +65,7 @@ export class Revier {
 
   update(dt) {
     this.clock += dt;
+    if (this.apex) return;
     if (this.phase !== 'clash') return;
     if (!this.armed) {
       const near = REVIER.NEAR * REVIER.NEAR;
@@ -57,7 +78,7 @@ export class Revier {
 
   /** Pirscher-Schaden an einem Brocken (von Monster.applyDamage). */
   noteDamage(monster, dmg) {
-    if (this.phase !== 'clash') return;
+    if (this.apex || this.phase !== 'clash') return;
     this.armed = true;
     const l = this.log.get(monster.id) ?? this.log.set(monster.id, []).get(monster.id);
     l.push({ t: this.clock, dmg });
@@ -80,8 +101,15 @@ export class Revier {
 
   /** Hit-Formen des angreifenden Brockens gegen den Rivalen testen (nur Host/Solo). */
   resolve(att, inst, hits) {
+    if (this.apex && this.monsters.includes(att)) { // Apex: jeder lebende Brocken/Kleinvieh im Tempel kann getroffen werden
+      for (const vic of this.ctx.monsters ?? []) if (vic !== att && vic.alive && onTemple(vic.pos.x, vic.pos.z)) this.#strike(att, vic, inst, hits);
+      return;
+    }
     const vic = this.rivalOf(att);
-    if (!vic) return;
+    if (vic) this.#strike(att, vic, inst, hits);
+  }
+
+  #strike(att, vic, inst, hits) {
     for (const h of hits) {
       const k = vic.id + '|' + h.idx;
       if (inst.hitSet.has(k)) continue;
@@ -90,7 +118,7 @@ export class Revier {
       if (!best) continue;
       inst.hitSet.add(k);
       if (!(h.dmg > 0)) continue;
-      const room = vic.hp - vic.maxHp * REVIER.FLOOR;
+      const room = vic.minor ? vic.hp : vic.hp - vic.maxHp * REVIER.FLOOR; // Kleinvieh darf sterben
       if (room <= 0) continue;
       const dmg = Math.min(room, h.dmg * att.dmgMul * REVIER.DMG_K * Math.max(0.5, best.part.factor));
       const at = { x: best.pos.x, y: best.pos.y, z: best.pos.z };

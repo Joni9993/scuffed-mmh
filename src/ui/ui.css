@@ -278,3 +278,7 @@ body.glitch-mode .hud-name { text-shadow: 2px 0 #ff2bd6, -2px 0 #00ffe5; }
 .dmg.mf-feuerpilz { color: #ff5a1a; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #4a0a00, 0 0 8px #ff4a1a; z-index: 2; }
 .dmg.mf-giftkraut { color: #c8e040; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #2a3000, 0 0 8px #a8c030; z-index: 2; }
 .dmg.mf-glitchpilz { color: #39ff14; font-size: max(14px, 5.2vmin); text-shadow: 2px 2px 0 #0b2a0b, 0 0 8px #39ff14; z-index: 2; }
+/* Krachfaust: Glitch-Schleim am Pirscher (blinkt wie der Puls), Sprengung der Sprenger-Waffen (orange, KEIN Gruen), Banner */
+.hud-status .st-schleim { color: #0b2a0b; background: #39ff14; padding: 0 .6vmin; animation: monflick .14s steps(1) infinite; }
+.dmg.blast { color: #ffb020; font-size: max(14px, 5vmin); text-shadow: 2px 2px 0 #4a2200, 0 0 8px #ff8a1a; z-index: 2; }
+.dmg.kf-pulse { color: #d8ffd0; font-size: max(16px, 6vmin); text-shadow: 2px 2px 0 #0b2a0b, 0 0 10px #39ff14; z-index: 2; }

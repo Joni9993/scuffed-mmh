@@ -25,7 +25,7 @@ import * as cues from './cues.js';
 import { music, computeIntensity, IntensityTracker } from '../audio/music.js';
 // [P] meta layer: loadout, inventory, items, carving, end flow
 import { HuntMeta, resolveLoadout } from './huntmeta.js';
-import { Effects } from './effects.js';
+import { Effects, blastBuild } from './effects.js';
 import { createInteractables } from './world/interactables.js'; // Rostwerke: Ventil/Kran/Blitzableiter
 import { Projectiles } from './projectiles.js'; // [W]
 import { HuntNet } from '../net/sync.js'; // [N]
@@ -110,6 +110,7 @@ export class Hunt {
     this.mainMonster = this.quest.monster ? this.spawnMonster(this.quest.monster, { x: ms.x, z: ms.z, yaw: Math.PI, state: opts.aggro || this.training || this.quest.multi ? 'combat' : 'wander', id: this.quest.monster }) : null;
     if (this.mainMonster) { this.bosses.push(this.mainMonster); this.#applyQuestVariant(this.mainMonster); }
     if (this.quest.monsters && this.mainMonster) this.#spawnMulti(ms, sp);
+    if (this.mainMonster?.def.apex && !this.quest.multi) this.revier = new Revier(this, [this.mainMonster], { apex: true }); // Krachfaust: greift alles an, was seinen Tempel betritt
     if (this.training && this.mainMonster) this.mainMonster.rot = Math.atan2(sp.x - ms.x, sp.z - ms.z);
     // [B] ambient Jagglinge packs in zones 1 + 2 (host/solo only; guests get them through the monster snapshots)
     if (!opts.noAmbient && (!opts.net || opts.net.isHost)) this.#spawnAmbient(ms);
@@ -212,6 +213,21 @@ export class Hunt {
     if (this.quest.multi === 'revier') this.revier = new Revier(this, this.bosses);
   }
 
+  /**
+   * Apex-Revier (Krachfaust): nach 90 s taucht am Pass 3-4 ein Mampfaffe-Eindringling auf (40 % HP, zaehlt nicht fuer den Sieg) und wandert in den Tempel,
+   * damit man den Revierkampf sieht. Nur Host/Solo (Gaeste bekommen ihn per Brocken-Snapshot).
+   */
+  #intruderTick() {
+    if (this._intruder !== undefined || this.time < 90 || this.result || !this.mainMonster?.alive || this.training) return;
+    const pass = { x: 65, z: 0 }, tc = this.world.temple?.c ?? { x: 65, z: -65 };
+    if (!this.world.temple) { this._intruder = null; return; }
+    const m = this.spawnMonster('mampfaffe', { x: pass.x, z: pass.z, yaw: Math.PI, state: 'wander', id: 'eindringling' });
+    scaleBoss(m, 0.4);
+    m.wanderTo = { x: tc.x + 8, z: tc.z + 6 }; m.wanderT = 0;
+    this._intruder = m;
+    this.hud.center('Ein Eindringling im Tempel!', 2.2, true);
+  }
+
   /** [N] Brocken-HP nach Anzahl Pirscher (coopScale.js); bei Beitritt/Verlassen erneut aufrufen. */
   applyCoopScale() {
     const n = this.players.length;
@@ -273,6 +289,7 @@ export class Hunt {
     statusHitFx(this.fx, monster, at); // Gift / Rost / Betaeubung aktiv -> farbige Funken
     this.fx.number({ x: at.x, y: at.y + 0.6, z: at.z }, res.dmg, player.glitching ? 'gbig' : res.weak ? 'weak' : res.crit ? 'crit' : 'hit');
     this.fx.shake(ah.hit.shake ?? res.shake, 0.2);
+    if (res.blastBuild > 0) blastBuild(this, player, monster, hp, res, st);
     if (ah.sauber) { this.fx.flash('rgba(255,225,70,.3)', 0.2); this.fx.number({ x: at.x, y: at.y + 1.4, z: at.z }, ah.hit.sauberText ?? 'Sauber!', 'weak'); } // [KT]
     this.bus.emit('sfx', { name: res.hitstop >= 0.1 ? 'heavy' : 'hit', pos: at, kind: res.weak ? 'weak' : res.crit ? 'crit' : undefined }); // [K] kind
     player.afterHit(res, ah, { hp, monster, at }); // [KK] Waffen-Hook def.onHit bekommt Teil + Treffpunkt
@@ -432,6 +449,7 @@ export class Hunt {
     this.effects.update(dt); // [P]
     for (const p of this.players) { if (p.local) p.update(dt); else p.updateRemote(dt); } // [N]
     if (this.revier && authoritative) this.revier.update(dt);
+    if (this.revier?.apex && authoritative) this.#intruderTick();
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.reapDead(dt);
     this.projectiles.update(dt); // [W]

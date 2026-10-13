@@ -1,6 +1,6 @@
-// Pure weapon stat data (GDD 8.1). tier = 1..6 (5 = Rostwerke-Äste k/g/v, 6 = nur v). Tier 3 has two branches ('a' = Jaggo, 'b' = Barrotz);
+// Pure weapon stat data (GDD 8.1). tier = 1..6 (5 = Rostwerke-Äste k/g/v, 6 = Äste v (Funkenfürst) und x (Sprenger, Krachfaust)). Tier 3 has two branches ('a' = Jaggo, 'b' = Barrotz);
 // tiers[2] itself equals branch 'a', so the phase-1 API `weaponStats(type, tier)` keeps working.
-// Extra stat fields (optional, read by weapons/combat code if they care): bluntMul (stumpf+), poisonMul (Gift-Aufbau +), partDmgMul (Teil-HP-Schaden, Kroll-Ast).
+// Extra stat fields (optional, read by weapons/combat code if they care): bluntMul (stumpf+), poisonMul (Gift-Aufbau +), partDmgMul (Teil-HP-Schaden, Kroll-Ast); elems.blast = Sprengung (Krachfaust-Ast x: Treffer laden das Teil auf, ab 100 knallt es, siehe hunt.js).
 export const WEAPON_TYPES = {
   gs: { name: 'Plattmacher', tiers: [
     { name: 'Rostplatte', power: 80, crit: 0.05, elems: {} },
@@ -18,6 +18,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Plattmacher', power: 188, crit: 0.05, elems: { shock: 40 }, branches: [
       { id: 'v', name: 'Funkenfürst-Plattmacher', power: 188, crit: 0.05, elems: { shock: 40 } },
+      { id: 'x', name: 'Plattmacher-Sprenger', power: 196, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
   db: { name: 'Zwillingsklingen', tiers: [
@@ -35,6 +36,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Zwillinge', power: 164, crit: 0.05, elems: { shock: 34 }, branches: [
       { id: 'v', name: 'Funkenfürst-Zwillinge', power: 164, crit: 0.05, elems: { shock: 34 } },
+      { id: 'x', name: 'Zwillings-Sprenger', power: 172, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
   bow: { name: 'Spannbogen', tiers: [
@@ -52,6 +54,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Bogen', power: 178, crit: 0.05, elems: { shock: 32 }, poisonMul: 1.5, branches: [
       { id: 'v', name: 'Funkenfürst-Bogen', power: 178, crit: 0.05, elems: { shock: 32 }, poisonMul: 1.5 },
+      { id: 'x', name: 'Spann-Sprenger', power: 186, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, poisonMul: 1.5, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
   // [KT] Katana (GDD 4.4): Zweig a = Jaggo-Reißzahn (Krit 15 %), Zweig b = Barrotz-Schlickschneide (Schock 14)
@@ -70,6 +73,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Katana', power: 170, crit: 0.05, elems: { shock: 32 }, branches: [
       { id: 'v', name: 'Funkenfürst-Katana', power: 170, crit: 0.05, elems: { shock: 32 } },
+      { id: 'x', name: 'Katana-Sprenger', power: 178, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
   // [GA] Glitchaxt (GDD 17.2): Datenblöcke, Axt/Schwert-Modi. Zweig a = Jaggo-Zähne (Krit 15 %), b = Barrotz-Platten (Schock 14)
@@ -88,6 +92,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Glitchaxt', power: 174, crit: 0.05, elems: { shock: 32 }, branches: [
       { id: 'v', name: 'Funkenfürst-Glitchaxt', power: 174, crit: 0.05, elems: { shock: 32 } },
+      { id: 'x', name: 'Glitchaxt-Sprenger', power: 182, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
   // [KK] Krachkiste (GDD 17.1): Support/Sampler. Zweig a = Jaggo-Kamm (Krit 15 %), Zweig b = Barrotz-Gong (stumpf+)
@@ -106,6 +111,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Doppelspule', power: 180, crit: 0.05, elems: { shock: 36 }, branches: [
       { id: 'v', name: 'Funkenfürst-Doppelspule', power: 180, crit: 0.05, elems: { shock: 36 } },
+      { id: 'x', name: 'Krachkisten-Sprenger', power: 188, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
   // [LB] Ratterbüchse (GDD 18): leichte Armbrust. Zweig a = Jaggo-Ratter (Krit 15 %), b = Barrotz-Prellratter (Schock 12)
@@ -124,6 +130,7 @@ export const WEAPON_TYPES = {
     ] },
     { name: 'Funkenfürst-Ratter', power: 170, crit: 0.05, elems: { shock: 30 }, branches: [
       { id: 'v', name: 'Funkenfürst-Ratter', power: 170, crit: 0.05, elems: { shock: 30 } },
+      { id: 'x', name: 'Büchsen-Sprenger', power: 178, crit: 0.05, elems: { blast: 30 }, partDmgMul: 1.2, desc: 'Krachfaust-Faust, in Waffenform. Macht Peng.' },
     ] },
   ] },
 };
@@ -154,7 +161,7 @@ export const WEAPON_UPGRADES = {
     kk: { a: { cost: { schrott: 400, jaggo_schuppe: 3, jaggo_fell: 2, jaggo_kamm: 1, schrotterz: 2 } }, b: { cost: { schrott: 500, barrotz_kruste: 3, barrotz_platte: 1, barrotz_schwanzleder: 1, schrotterz: 2 } } }, // [KK]
   },
   4: { cost: { schrott: 800, brathalos_schuppe: 4, brathalos_membran: 2, glutsack: 1, glimmstein: 2 } },
-  // Stufe 5 (aus Stufe 4): Ast k = Kroll, g = Gorgo, v = Voltaro. Stufe 6 nur aus v (Voltaro-Herz).
+  // Stufe 5 (aus Stufe 4): Ast k = Kroll, g = Gorgo, v = Voltaro. Stufe 6: Ast v (Voltaro-Herz, nur aus 5v) oder Ast x = Sprenger (Krachfaust, aus jedem Stufe-5-Ast): WEAPON_UPGRADES[6][type] = Kosten von v, [6][type].x = Kosten von x.
   5: {
     gs: { k: { cost: { schrott: 1200, kroll_panzer: 5, kroll_schere: 2, kroll_auge: 1, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 5, gorgo_zahn: 2, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 1, voltaro_spule: 4, voltaro_fell: 3, funkenstein: 2 } } },
     db: { k: { cost: { schrott: 1200, kroll_panzer: 3, kroll_schere: 4, kroll_auge: 1, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 3, gorgo_zahn: 4, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 1, voltaro_spule: 3, voltaro_fell: 4, funkenstein: 2 } } },
@@ -165,13 +172,13 @@ export const WEAPON_UPGRADES = {
     kk: { k: { cost: { schrott: 1200, kroll_panzer: 4, kroll_schere: 3, kroll_auge: 2, kupferdraht: 4 } }, g: { cost: { schrott: 1200, gorgo_segment: 4, gorgo_zahn: 3, gorgo_kern: 1, schlacke: 6 } }, v: { cost: { schrott: 1500, voltaro_kamm: 1, voltaro_spule: 4, voltaro_fell: 3, funkenstein: 2 } } }, // [KK]
   },
   6: {
-    gs: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_kamm: 2, funkenstein: 3 } },
-    db: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_fell: 3, funkenstein: 3 } },
-    bow: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 } },
-    kt: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 } },
-    ga: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_kamm: 1, funkenstein: 3 } }, // [GA]
-    lb: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 } }, // [LB]
-    kk: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 } }, // [KK]
+    gs: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_kamm: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } },
+    db: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_fell: 3, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } },
+    bow: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } },
+    kt: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } },
+    ga: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_kamm: 1, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [GA]
+    lb: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [LB]
+    kk: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [KK]
   },
 };
 export const MAX_WEAPON_TIER = 6;
@@ -186,6 +193,11 @@ export function upgradeOptions(type, tier, branch = null) {
     return ['a', 'b'].map((b) => ({ tier: 3, branch: b, name: weaponStats(type, 3, b).name, cost: WEAPON_UPGRADES[3][type][b].cost, stats: weaponStats(type, 3, b) }));
   }
   if (next === 5) return TIER5_BRANCHES.map((b) => ({ tier: 5, branch: b, name: weaponStats(type, 5, b).name, cost: WEAPON_UPGRADES[5][type][b].cost, stats: weaponStats(type, 5, b) }));
-  if (next === 6) return branch === 'v' ? [{ tier: 6, branch: 'v', name: weaponStats(type, 6, 'v').name, cost: WEAPON_UPGRADES[6][type].cost, stats: weaponStats(type, 6, 'v') }] : [];
+  if (next === 6) { // v nur aus 5v (Voltaro-Herz), x (Sprenger, Krachfaust-Material) aus jedem Stufe-5-Ast
+    const out = [];
+    if (branch === 'v') out.push({ tier: 6, branch: 'v', name: weaponStats(type, 6, 'v').name, cost: WEAPON_UPGRADES[6][type].cost, stats: weaponStats(type, 6, 'v') });
+    out.push({ tier: 6, branch: 'x', name: weaponStats(type, 6, 'x').name, cost: WEAPON_UPGRADES[6][type].x.cost, stats: weaponStats(type, 6, 'x') });
+    return out;
+  }
   return [{ tier: 4, branch: null, name: weaponStats(type, 4).name, cost: WEAPON_UPGRADES[4].cost, stats: weaponStats(type, 4) }];
 }
