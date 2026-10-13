@@ -116,11 +116,13 @@ const HUNTY = (k) => k === 'hunt' || k === 'rost' || k === 'smaragd'; // Jagd-Tr
 let want = null;
 let intensity = 0, nextT = 0, step = 0, bar = 0, lastScene = null;
 const volOf = () => (settings.musicOn === false ? 0 : (settings.musicVolume ?? 0.5)) * 0.6;
-const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4, rostStep = 60 / 112 / 4;
-let smBpm = 126; // Smaragd-Tempo, ändert sich am Taktanfang
-const SM_BPM = [126, 138, 148, 156]; // Smaragd: Tempo steigt mit Kampf-Intensität (Wechsel am Taktanfang)
-const smStep = () => 60 / smBpm / 4;
-const stepOf = (k) => (k === 'hub' ? hubStep : k === 'rost' ? rostStep : k === 'smaragd' ? smStep() : huntStep);
+const hubStep = 60 / 85 / 4;
+// Jagd-Szenen: Tempo steigt mit Kampf-Intensität (Wechsel am Taktanfang); Hub bleibt fix bei 85 BPM
+const BPM_TABLE = { hunt: [105, 116, 126, 134], rost: [112, 124, 134, 142], smaragd: [126, 138, 148, 156] };
+const curBpm = { hunt: 105, rost: 112, smaragd: 126 };
+const sceneBpm = (k) => BPM_TABLE[k]?.[intensity] ?? BPM_TABLE[k]?.[0];
+const sceneStep = (k) => 60 / curBpm[k] / 4;
+const stepOf = (k) => (k === 'hub' ? hubStep : sceneStep(k in curBpm ? k : 'hunt'));
 
 function init() {
   if (ctx) return true;
@@ -243,11 +245,27 @@ function scheduleStep(k, t, s, b, sd) {
     if (intensity >= 2 && s % 2 === 0) osc('sawtooth', mtof(p.chord.r - 12), tt, sd * 0.9, L.bass, 0.15, 600); // treibender 16tel-Bass
     if (intensity >= 2 && s % 2 === 1) osc('sawtooth', mtof(p.chord.r - 12 + (s % 8 === 7 ? 7 : 0)), tt, sd * 0.7, L.bass, 0.12, 600);
   }
+  if (!hub && !sm) { // Hunt/Rost: Kampf-Eskalation im eigenen Stil
+    if (intensity >= 1 && s % 4 === 0 && !p.kick.includes(s)) hit(tt, L.drums, 'kick', 0.8); // Four-on-the-floor
+    if (intensity >= 2) {
+      if (s % 2 === 0 && !p.kick.includes(s)) hit(tt, L.drums, 'kick', 0.5);
+      if (s % 8 === 4) hit(tt, L.drums, 'snare', 0.9);
+      if (rost) { if (s === 7 || s === 15) hit(tt, L.drums, 'anvil', 0.9); if (s === 10 && bar % 2 === 1) hit(tt, L.pad, 'steam', 0.8); }
+      else if (s === 15) hit(tt, L.drums, 'tom', 1);
+      osc('sawtooth', mtof(p.chord.r - 12 + (s % 2 === 1 && s % 8 === 7 ? 7 : 0)), tt, sd * (s % 2 ? 0.7 : 0.9), rost ? L.dist : L.bass, rost ? 0.13 : 0.12, rost ? 700 : 600); // treibender 16tel-Bass
+    }
+    if (intensity >= 3) {
+      if (s % 4 === 2) hit(tt, L.drums, 'kick', 0.6);
+      if (bar % 4 === 3 && s >= 8) hit(tt, L.drums, 'snare', 0.5 + (s - 8) * 0.07); // Snare-Wirbel
+      else if (s % 2 === 1) hit(tt, L.drums, 'snare', 0.35);
+      if (rost && bar % 4 === 3 && s === 0) hit(tt, L.pad, 'steam', 1);
+    }
+  }
   if (p.anvil.includes(s) && (intensity >= 1 || s === 3)) hit(tt, L.drums, 'anvil', dv);
   if (p.steam.includes(s)) hit(tt, L.pad, 'steam', 1);
   for (const n of p.bass) if (n.s === s) osc('sawtooth', mtof(n.n), tt, sd * n.len * 0.9, rost ? L.dist : L.bass, hub ? 0.2 : rost ? 0.14 : 0.17, hub ? 380 : rost ? 700 : sm && zone >= 3 ? 420 : 520);
   if (hub || intensity >= 1) for (const n of p.arp) if (n.s === s) osc(hub || (sm && zone === 1) ? 'triangle' : rost ? 'sawtooth' : 'square', mtof(n.n), tt, sd * 1.5, L.arp, hub ? 0.07 : rost ? 0.03 : 0.04, rost ? 1300 : 1800);
-  if (!hub && (intensity >= 3 || (sm && intensity >= 2 && bar % 2 === 1))) for (const n of p.lead) if (n.s === s) osc(rost ? 'square' : 'sawtooth', mtof(n.n), tt, sd * n.len, L.lead, rost ? 0.04 : 0.05, rost ? 2000 : 2400, 0.02, 6);
+  if (!hub && (intensity >= 3 || (intensity >= 2 && bar % 2 === 1))) for (const n of p.lead) if (n.s === s) osc(rost ? 'square' : 'sawtooth', mtof(n.n), tt, sd * n.len, L.lead, rost ? 0.04 : 0.05, rost ? 2000 : 2400, 0.02, 6);
 }
 
 function tick() {
@@ -256,11 +274,11 @@ function tick() {
   if (nextT < now) nextT = now + 0.05;
   const k = want ?? lastScene;
   if (!k) return;
-  if (k === 'smaragd' && step === 0) smBpm = SM_BPM[intensity] ?? 126;
+  if (BPM_TABLE[k] && step === 0) curBpm[k] = sceneBpm(k);
   let sd = stepOf(k);
   while (nextT < now + 0.1) {
     scheduleStep(k, nextT, step, bar, sd);
-    nextT += sd; step++; if (k === 'smaragd' && step === 16) { smBpm = SM_BPM[intensity] ?? 126; sd = smStep(); }
+    nextT += sd; step++; if (BPM_TABLE[k] && step === 16) { curBpm[k] = sceneBpm(k); sd = sceneStep(k); }
     if (step >= 16) { step = 0; bar++; }
   }
 }

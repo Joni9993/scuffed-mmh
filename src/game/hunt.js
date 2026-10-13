@@ -424,7 +424,7 @@ export class Hunt {
       if (this.world.id === 'smaragdkueste' || this.opts.music === 'smaragd') { const z = this.world.zoneAt?.(lp?.pos?.x ?? 0, lp?.pos?.z ?? 0); if (z) music.setZone(z); }
       let mi = computeIntensity({ monster: this.mainMonster, player: lp?.v, glitching: !!lp?.glitching, chain: this.time - this.musicChainT < 5 });
       const mm = this.mainMonster; // Smaragd: Kampf eskaliert -> Wut oder < 40 % HP = Maximal-Energie
-      if (mi > 0 && music.scene === 'smaragd' && mm && (mm.rage || mm.state === 'enrage' || (mm.maxHp > 0 && mm.hp / mm.maxHp < 0.4))) mi = 3;
+      if (mi > 0 && mm && (mm.rage || mm.state === 'enrage' || (mm.maxHp > 0 && mm.hp / mm.maxHp < 0.4))) mi = 3;
       music.setIntensity(this.musicTr.update(mi, dt));
     }
     this.viz.begin();
