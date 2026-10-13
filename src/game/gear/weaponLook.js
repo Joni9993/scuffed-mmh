@@ -34,39 +34,32 @@ const KR = ['#9a4a26', '#7a3418', '#c8741e', '#4a4a50', '#d8d0c0', '#ffb030', '#
 const GG = ['#3a3330', '#241f1d', '#463d38', '#ff6a1a', '#ffb040', '#d8c8a8'];            // Gorgo: Schlacke, Spalt, Segment-Hi, Glut, Glut-hell, Zahn
 const VT = ['#b8642a', '#d88a4a', '#1a1e2a', '#2a3350', '#5ad0ff', '#fff0a0', '#ffd84a']; // Voltaro: Kupfer, Kupfer-hell, Navy, Navy-hell, Funke, Funke-hell, Gold
 const TOOTH = '#f0e8d0';
-export const PALETTES = { RUST, STEEL, BONE, JP, BZ, BR, KR, GG, VT, TOOTH }; // [KK] gemeinsame Brocken-Paletten fuer krachkisteLook.js
+// Sprenger (Krachfaust): Obsidian-Blau-Schwarz-Platten + gelbgruener Schleim (Vollfarbe). KEIN Cyan/Magenta (gehoert dem Jaeger-Glitch).
+const SP = ['#12162a', '#1c2440', '#2f4272', '#b6d81c', '#e4f23c', '#6f9410', '#ff9a24']; // Obsidian, Obsidian-hell, Platte, Schleim, Schleim-hell, Schleim-dunkel, Funke
+export const PALETTES = { RUST, STEEL, BONE, JP, BZ, BR, KR, GG, VT, TOOTH, SP };
+/** Schleimknolle (Vollfarbe, nur leicht selbstleuchtend) mit hellem Glanzpunkt: die kleinen Sprengknoten der Sprenger-Waffen. */
+export function slimeBlob(P, x, y, z, r, at = {}) {
+  P.sphere(r, 5, 4, SP[3], { x, y, z, glow: 0.3, ...at });
+  P.sphere(r * 0.38, 4, 3, SP[4], { x: x - r * 0.3, y: y + r * 0.3, z: z + r * 0.5, glow: 0.6 });
+  return P;
+} // [KK] gemeinsame Brocken-Paletten fuer krachkisteLook.js
 
 /**
- * Sprenger (Stufe 6, Ast x, Krachfaust): das Standardmodell der Waffe, aber dunkel wie Steinhaut mit orangen Glut-Rissen (jede 6. Vertexgruppe glueht)
- * und Funken-Partikeln. KEIN Gruen (gehoert den Brocken). Faerbt Vertexfarben um; Waffen ohne Vertexfarben bekommen Emissive. Idempotent.
+ * Sprenger (Stufe 6, Ast x, Krachfaust): jede Waffe hat ein EIGENES Modell (Obsidian-Platten + Schleim, siehe *Look-Dateien, Schluessel 'sprenger').
+ * Hier nur noch die gemeinsamen Partikel (Funken + Schleimtropfen) und Grundleuchten. Idempotent.
  */
 export function markSprenger(root, tier, branch) {
   if (!root || tier < 6 || branch !== 'x' || root.userData.sprenger) return root;
   root.userData.sprenger = true;
-  const dark = new THREE.Color(), hot = new THREE.Color('#ff8a1a'), c = new THREE.Color();
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    const col = o.geometry?.attributes?.color;
-    if (col) {
-      o.geometry = o.geometry.clone();
-      const a = o.geometry.attributes.color;
-      for (let i = 0; i < a.count; i++) {
-        c.setRGB(a.getX(i), a.getY(i), a.getZ(i));
-        const lum = c.r * 0.3 + c.g * 0.55 + c.b * 0.15, crack = hash(Math.floor(i / 3)) > 0.82; // pro Dreieck: jedes sechste glueht
-        dark.setRGB(0.2 + lum * 0.45, 0.17 + lum * 0.38, 0.14 + lum * 0.3);
-        a.setXYZ(i, ...(crack ? hot : dark).toArray());
-      }
-    } else if (o.material?.emissive) { o.material = o.material.clone(); o.material.emissive.setRGB(0.5, 0.17, 0.0); o.material.color?.multiplyScalar(0.5); }
-  });
   const ud = root.userData;
-  ud.fx = [...(ud.fx ?? []), { kind: 'ember', cols: ['#ffb020', '#fff2c0', '#ff8a1a'], rate: 7, at: [0, -0.45, 0] }, { kind: 'ember', cols: ['#ffb020', '#fff2c0'], rate: 4, at: [0, -0.9, 0] }];
-  ud.glowBase = Math.max(ud.glowBase ?? 0, 1);
+  ud.fx = [...(ud.fx ?? []), { kind: 'ember', cols: ['#ffb020', '#fff2c0', '#ff8a1a'], rate: 5, at: [0, -0.45, 0] }, { kind: 'poison', cols: ['#b6d81c', '#e4f23c'], rate: 3, at: [0, -0.9, 0] }];
+  ud.glowBase = Math.max(ud.glowBase ?? 0, 0.8);
   return root;
 }
 
-const KEYS = ['rust', 'bone', 'jag', 'barr', 'brat', 'kroll', 'gorgo', 'volt', 'fuerst'];
+const KEYS = ['rust', 'bone', 'jag', 'barr', 'brat', 'kroll', 'gorgo', 'volt', 'fuerst', 'sprenger'];
 function lookKey(top, branch) {
-  if (top >= 6) return 'fuerst';
+  if (top >= 6) return branch === 'x' ? 'sprenger' : 'fuerst';
   if (top === 5) return branch === 'g' ? 'gorgo' : branch === 'v' ? 'volt' : 'kroll';
   if (top === 4) return 'brat';
   if (top === 3) return branch === 'b' ? 'barr' : 'jag';
@@ -116,10 +109,10 @@ function sparkArc(P, a, b, n, jag, color, seed = 0, r = 0.03) {
 /** Kontext fuer Klingen (Plattmacher/Zwillingsklingen): Griff im Ursprung, Klinge ab y=-0.2 entlang -y (Tiefe d), sd = Seite (Spiegel fuer die linke Hand). */
 function bladeCtx(P, fx, key, gs, flip) {
   const i = KEYS.indexOf(key);
-  const L = (gs ? [1.55, 1.75, 1.95, 1.8, 2.1, 1.95, 2.15, 2.1, 2.3] : [0.6, 0.75, 0.88, 0.8, 1.0, 0.9, 0.95, 0.95, 1.1])[i];
-  const W = (gs ? [0.36, 0.3, 0.42, 0.42, 0.5, 0.46, 0.44, 0.44, 0.44] : [0.12, 0.13, 0.17, 0.2, 0.2, 0.2, 0.18, 0.15, 0.17])[i];
-  const th = (gs ? [0.07, 0.1, 0.09, 0.13, 0.1, 0.1, 0.1, 0.08, 0.09] : [0.04, 0.05, 0.05, 0.07, 0.04, 0.05, 0.05, 0.04, 0.045])[i];
-  const cv = gs ? 0 : [0.05, 0.35, 0.1, 0, 0.3, 0, 0.12, 0, 0][i];
+  const L = (gs ? [1.55, 1.75, 1.95, 1.8, 2.1, 1.95, 2.15, 2.1, 2.3, 1.85] : [0.6, 0.75, 0.88, 0.8, 1.0, 0.9, 0.95, 0.95, 1.1, 0.82])[i];
+  const W = (gs ? [0.36, 0.3, 0.42, 0.42, 0.5, 0.46, 0.44, 0.44, 0.44, 0.5] : [0.12, 0.13, 0.17, 0.2, 0.2, 0.2, 0.18, 0.15, 0.17, 0.2])[i];
+  const th = (gs ? [0.07, 0.1, 0.09, 0.13, 0.1, 0.1, 0.1, 0.08, 0.09, 0.13] : [0.04, 0.05, 0.05, 0.07, 0.04, 0.05, 0.05, 0.04, 0.045, 0.075])[i];
+  const cv = gs ? 0 : [0.05, 0.35, 0.1, 0, 0.3, 0, 0.12, 0, 0, 0.36][i];
   const c = { P, fx, key, gs, L, W, th, sd: flip, S: gs ? 1 : 0.42, gl: gs ? 0.74 : 0.34, gw: gs ? 0.12 : 0.075 };
   c.X = (d) => flip * cv * L * (d / L) ** 2;
   c.pt = (d, o) => [c.X(d) + flip * o, -0.2 - d];
@@ -299,6 +292,46 @@ const BLADES = {
     for (let i = 0; i < 4; i++) { const d = L * (0.4 + i * 0.16); sparkArc(P, c.p3(d, -off + W * 0.12), c.p3(d, off - W * 0.12), 4, 0.05 * (S + 0.5), i % 2 ? VT[5] : VT[4], i * 7, 0.015 + 0.015 * S); }
     c.fx.push({ kind: 'shock', rate: c.gs ? 14 : 8, at: [tips[0][0], tips[0][1], 0] }, { kind: 'shock', rate: c.gs ? 14 : 8, at: [tips[1][0], tips[1][1], 0] }, { kind: 'ember', cols: ['#ffd84a', '#fff0a0'], rate: 4, at: [0, -0.2 - g0 * 0.5, 0] });
   },
+  // Stufe 6 Sprenger (Krachfaust): Gs = Keulenklinge mit Faustkopf, Db = gekruemmte Hornklingen; Obsidian-Platten, Schleimkruste, Sprengknoten
+  sprenger(c) {
+    const { P, L, W, th, S, gs } = c;
+    const sw = (c.sd);
+    c.grip(SP[0], SP[3], gs ? 4 : 3);
+    P.sphere(0.09 * (S + 0.6), 5, 4, SP[3], { y: c.top + 0.05, glow: 0.3 }); // Schleimknauf
+    // Parier: Knöchelklotz mit zwei Hörnern und Schleimnoppen
+    P.box(0.5 * (S + 0.35), 0.1, 0.2, SP[1], { y: -0.17 });
+    P.box(0.5 * (S + 0.35), 0.03, 0.22, SP[2], { y: -0.115 });
+    for (const o of [-1, 1]) {
+      spike(P, [o * 0.2 * (S + 0.35), -0.14, 0], [o * 0.3 * (S + 0.35), 0.16 * (S + 0.6), 0], 0.045 * (S + 0.5), SP[0]);
+      slimeBlob(P, o * 0.25 * (S + 0.35), -0.17, 0.09, 0.05 * (S + 0.5));
+    }
+    if (gs) {
+      // Keulenkopf: schmaler Hals, dann klobiger Faust-Kopf mit stumpfer Spitze
+      poly(P, [c.pt(0, -W * 0.2), c.pt(0, W * 0.2), c.pt(L * 0.38, W * 0.26), c.pt(L * 0.5, W * 0.6), c.pt(L * 0.66, W * 0.68), c.pt(L * 0.94, W * 0.6), c.pt(L, W * 0.3), c.pt(L, -W * 0.3), c.pt(L * 0.94, -W * 0.6), c.pt(L * 0.66, -W * 0.68), c.pt(L * 0.5, -W * 0.6), c.pt(L * 0.38, -W * 0.26)], th, SP[1]);
+      poly(P, [c.pt(L * 0.02, -W * 0.09), c.pt(L * 0.02, W * 0.09), c.pt(L * 0.4, W * 0.12), c.pt(L * 0.4, -W * 0.12)], th * 1.5, SP[2]); // Halsplatte
+      for (let i = 0; i < 3; i++) P.box(W * 0.5, 0.05, th * 2.2, i % 2 ? SP[0] : SP[2], { x: c.X(L * (0.1 + i * 0.1)), y: -0.2 - L * (0.1 + i * 0.1) });
+      // Schleimschicht auf dem Kopf (Vollfarbe) + Rissnaht
+      poly(P, [c.pt(L * 0.62, -W * 0.5), c.pt(L * 0.58, 0), c.pt(L * 0.62, W * 0.5), c.pt(L * 0.97, W * 0.42), c.pt(L * 1.0, 0), c.pt(L * 0.97, -W * 0.42)], th * 1.5, SP[3]);
+      poly(P, [c.pt(L * 0.7, -W * 0.22), c.pt(L * 0.68, W * 0.05), c.pt(L * 0.86, W * 0.28), c.pt(L * 0.9, -W * 0.1)], th * 1.9, SP[4]);
+      // Knöchel-Buckel an den Kopfecken + Hörner nach hinten
+      for (const o of [-1, 1]) {
+        P.sphere(W * 0.24, 5, 4, SP[2], { x: c.X(L * 0.7) + sw * o * W * 0.66, y: -0.2 - L * 0.7, sz: 0.9 });
+        spike(P, c.p3(L * 0.55, o * W * 0.62), c.p3(L * 0.34, o * W * 1.0), 0.07, SP[0]);
+        slimeBlob(P, c.X(L * 0.84) + sw * o * W * 0.6, -0.2 - L * 0.84, th * 1.2, 0.07);
+      }
+      for (const [d, o, z] of [[0.62, 0.0, 1], [0.84, 0.3, -1], [0.78, -0.3, 1], [0.92, 0.0, -1]]) slimeBlob(P, c.X(L * d) + sw * o * W, -0.2 - L * d, z * th * 1.1, 0.05);
+      c.fx.push({ kind: 'ember', cols: ['#ffb020', '#fff2c0'], rate: 6, at: [c.X(L * 0.8), -0.2 - L * 0.8, 0] });
+    } else {
+      // gekruemmte Horn-Klinge: dicker Bogen, Schleim-Kern in der Mitte, Knoten am Ruecken
+      poly(P, [c.pt(0, -W * 0.4), c.pt(0, W * 0.4), c.pt(L * 0.3, W * 0.52), c.pt(L * 0.7, W * 0.36), c.pt(L, 0), c.pt(L * 0.78, -W * 0.3), c.pt(L * 0.4, -W * 0.46)], th, SP[1]);
+      poly(P, [c.pt(L * 0.05, -W * 0.12), c.pt(L * 0.05, W * 0.12), c.pt(L * 0.6, W * 0.1), c.pt(L * 0.94, 0), c.pt(L * 0.6, -W * 0.1)], th * 1.5, SP[3]); // Schleimkern
+      poly(P, [c.pt(L * 0.1, W * 0.2), c.pt(L * 0.3, W * 0.5), c.pt(L * 0.5, W * 0.4), c.pt(L * 0.3, W * 0.25)], th * 1.7, SP[2]); // Plattenschuppe
+      for (let i = 0; i < 3; i++) P.box(W * 0.9, 0.04, th * 2.2, i % 2 ? SP[0] : SP[2], { x: c.X(L * (0.18 + i * 0.22)), y: -0.2 - L * (0.18 + i * 0.22) });
+      for (let i = 0; i < 4; i++) { const d = 0.16 + i * 0.2; slimeBlob(P, c.X(L * d) - sw * W * 0.5, -0.2 - L * d, 0, 0.05 + 0.012 * (3 - i)); }
+      spike(P, c.p3(L * 0.42, W * 0.48), c.p3(L * 0.3, W * 0.98), 0.045, SP[0]); // Zweitspitze (Horn)
+    }
+    c.fx.push({ kind: 'poison', cols: ['#b6d81c', '#e4f23c'], rate: gs ? 5 : 3, at: [c.X(L * 0.9), -0.2 - L * 0.9, 0] });
+  },
 };
 
 function buildBlade(gs, tier, branch, flip) {
@@ -466,6 +499,29 @@ const BOWS = {
     P.sphere(0.12, 6, 5, VT[5], { y: 0, z: 0.38, glow: 1 });
     P.box(0.15, 0.1, 0.15, VT[6], { y: 0.16, z: 0.3 }); P.box(0.15, 0.1, 0.15, VT[6], { y: -0.16, z: 0.3 });
     fx.push({ kind: 'ember', cols: ['#ffd84a', '#fff0a0'], rate: 4, at: [0, 0, 0.4] });
+  },
+  // Stufe 6 Sprenger (Krachfaust): Klotzbogen -- kurze, dicke Obsidian-Wurfarme mit Schleimpolster, Hornspitzen und ein Schleimkapsel-Magazin am Griff
+  sprenger(P, fx) {
+    const pts = bowPts(8, 0.3);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], t = Math.abs((a[1] + b[1]) / 2) / BOW_H, r = 0.115 - 0.055 * t;
+      bar(P, a, b, r, r - 0.006, i % 2 ? SP[1] : SP[0]);
+      if (Math.abs(a[1]) > 0.1) P.box(r * 2.4, 0.07, r * 2.2, SP[2], { y: (a[1] + b[1]) / 2, z: (a[2] + b[2]) / 2 }); // Plattenring
+    }
+    for (const o of [-1, 1]) {
+      const m = [0, o * 0.4, bowZ(o * 0.4)];
+      P.sphere(0.12, 6, 5, SP[3], { y: m[1], z: m[2] + 0.02, sx: 1.15, sy: 1.0, glow: 0.3 }); // Schleimpolster
+      P.sphere(0.045, 4, 3, SP[4], { x: -0.05, y: m[1] + o * 0.03, z: m[2] + 0.13, glow: 0.6 });
+      slimeBlob(P, 0.1, o * 0.58, bowZ(o * 0.58) + 0.09, 0.055); slimeBlob(P, -0.09, o * 0.26, bowZ(o * 0.26) + 0.1, 0.05);
+      const ty = o * BOW_H;
+      spike(P, [0.03, ty, 0], [0.12, o * (BOW_H + 0.22), -0.1], 0.065, SP[0]); spike(P, [-0.03, ty, 0], [-0.12, o * (BOW_H + 0.22), -0.1], 0.065, SP[1]); // Zange
+      slimeBlob(P, 0, ty + o * 0.02, 0.06, 0.07);
+      fx.push({ kind: 'poison', cols: ['#b6d81c', '#e4f23c'], rate: 3, at: [0, o * (BOW_H + 0.12), -0.05] });
+    }
+    // Griffstueck: Obsidianblock + drei Schleimkapseln (Munition) uebereinander
+    P.box(0.17, 0.3, 0.17, SP[1], { z: 0.3 }); P.box(0.19, 0.04, 0.19, SP[2], { y: 0.14, z: 0.3 }); P.box(0.19, 0.04, 0.19, SP[2], { y: -0.14, z: 0.3 });
+    for (let k = -1; k <= 1; k++) slimeBlob(P, 0, k * 0.1, 0.44, 0.075, { sx: 1.1 });
+    P.box(0.05, 0.3, 0.04, SP[0], { x: 0.1, z: 0.4 });
   },
 };
 

@@ -4,6 +4,7 @@ import { GearParts, gearMaterial } from '../../render/gearfx.js';
 import { lambert } from '../../render/ps1.js';
 import { tex } from '../../render/textures.js';
 import { PALETTES as PAL, markSprenger } from './weaponLook.js';
+const { SP } = PAL;
 
 // [GA] Glitchaxt-Optik (GDD 17.2): Stiel mit festem Anker-Teil + 8 Datenbloecke. Die Bloecke morphen in ~0,2 s zwischen
 // Axt-Anordnung (Klumpen am Stielende) und Schwert-Anordnung (Reihe entlang der Verlaengerung) und leuchten vom Griff aus magenta
@@ -45,6 +46,12 @@ function blockGeo(key, v) {
   const P = new GearParts();
   const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH } = PAL;
   switch (key) {
+    case 'sprenger': // Krachfaust: Obsidian-Klotz, Schleimkruste oben, Knöchel-Buckel vorn, Horn + Sprengknoten
+      P.box(0.22, 0.15, 0.10, SP[0]); P.box(0.2, 0.035, 0.106, SP[2], { y: -0.06 }); P.box(0.22, 0.05, 0.108, SP[3], { y: 0.055, glow: 0.3 });
+      P.sphere(0.045, 4, 3, SP[1], { x: v ? 0.05 : -0.05, y: -0.01, z: -0.055 });
+      P.cone(0.04, 0.13, 3, SP[1], { x: v ? -0.06 : 0.06, y: 0.14, rz: v ? 0.2 : -0.2 });
+      P.sphere(0.032, 4, 3, SP[4], { x: v ? 0.07 : -0.07, y: 0.095, z: 0.02, glow: 0.5 }); P.sphere(0.024, 4, 3, SP[3], { x: v ? -0.03 : 0.03, y: 0.1, z: -0.03, glow: 0.3 });
+      break;
     case 'rust': // Rost-Wuerfel: verbeulter Blechklotz, Schrauben, Rostfleck
       P.box(0.22, 0.16, 0.10, RUST[2]); P.box(0.22, 0.04, 0.105, RUST[1], { y: -0.07 });
       for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.box(0.024, 0.024, 0.02, RUST[4], { x: x * 0.085, y: y * 0.055, z: 0.058 });
@@ -92,7 +99,7 @@ function blockGeo(key, v) {
       break;
   }
   // Fugen: duenne Magenta-Rahmen oben/unten, ragen seitlich ueber den Block -> leuchten vom Griff aus je nach Druck (glow = 1)
-  for (const y of [-1, 1]) P.box(0.24, 0.02, 0.12, SEAM, { y: y * 0.084, glow: 1 });
+  for (const y of [-1, 1]) P.box(0.24, 0.02, 0.12, key === 'sprenger' ? SP[5] : SEAM, { y: y * 0.084, glow: 1 });
   return P.merge();
 }
 
@@ -108,8 +115,8 @@ function wedge(geo) {
 function shaftGeo(key, tier) {
   const P = new Parts();
   const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH } = PAL;
-  const wood = { rust: '#5a4a38', bone: BONE[2], jag: JP[1], barr: BZ[4], brat: BR[1], kroll: KR[3], gorgo: GG[1], volt: VT[2], fuerst: VT[2] }[key];
-  const wrap = { rust: '#a08a5a', bone: '#7a4a2a', jag: JP[0], barr: BZ[3], brat: BR[5], kroll: KR[2], gorgo: GG[3], volt: VT[1], fuerst: VT[6] }[key];
+  const wood = { rust: '#5a4a38', bone: BONE[2], jag: JP[1], barr: BZ[4], brat: BR[1], kroll: KR[3], gorgo: GG[1], volt: VT[2], fuerst: VT[2], sprenger: SP[0] }[key];
+  const wrap = { rust: '#a08a5a', bone: '#7a4a2a', jag: JP[0], barr: BZ[3], brat: BR[5], kroll: KR[2], gorgo: GG[3], volt: VT[1], fuerst: VT[6], sprenger: SP[3] }[key];
   P.box(0.055, 1.8, 0.055, '#2a2438', { y: -0.52 }); // Kern (zwischen den Bloecken sichtbar)
   P.box(0.075, 0.74, 0.075, wood, { y: 0.0 }); // Griffholz
   for (let i = 0; i < 6; i++) P.box(0.095, 0.04, 0.095, wrap, { y: -0.13 + i * 0.1, ry: i % 2 ? 0.3 : -0.3 }); // Wicklung
@@ -125,22 +132,23 @@ function shaftGeo(key, tier) {
     case 'kroll': P.box(0.16, 0.05, 0.16, KR[3], { y: ay }); P.box(0.17, 0.02, 0.02, KR[5], { y: ay + 0.05 }); P.box(0.02, 0.02, 0.17, KR[5], { y: ay + 0.05 }); P.cyl(0.02, 0.02, 0.1, 5, KR[6], { y: ay + 0.1 }); break;
     case 'gorgo': for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; P.cone(0.03, 0.12, 3, GG[5], { x: Math.cos(a) * 0.1, y: ay, z: Math.sin(a) * 0.1, rz: -Math.cos(a) * 1.2, rx: Math.sin(a) * 1.2 }); } P.box(0.13, 0.05, 0.13, GG[3], { y: ay }); break;
     case 'volt': for (let i = 0; i < 4; i++) P.cyl(0.085, 0.085, 0.022, 6, i % 2 ? VT[1] : VT[0], { y: ay + i * 0.035 }); P.cone(0.025, 0.14, 4, VT[4], { y: ay + 0.2 }); break;
+    case 'sprenger': P.box(0.2, 0.1, 0.2, SP[1], { y: ay }); P.box(0.22, 0.03, 0.22, SP[3], { y: ay + 0.065, glow: 0.3 }); for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) P.sphere(0.05, 4, 3, SP[2], { x: x * 0.1, y: ay, z: z * 0.1 }); for (const o of [-1, 1]) P.cone(0.04, 0.2, 4, SP[0], { x: o * 0.13, y: ay + 0.1, rz: -o * 0.7 }); P.sphere(0.04, 4, 3, SP[4], { y: ay + 0.1, z: -0.1, glow: 0.5 }); break;
     default: for (let i = 0; i < 4; i++) P.cyl(0.095, 0.095, 0.022, 6, i % 2 ? VT[2] : VT[6], { y: ay + i * 0.035 }); P.box(0.04, 0.04, 0.04, VT[5], { y: ay + 0.17 }); for (const o of [-1, 1]) P.cone(0.025, 0.14, 4, VT[4], { x: o * 0.12, y: ay + 0.05, rz: -o * 1.0 }); break;
   }
-  if (tier >= 6) P.box(0.04, 0.04, 0.04, VT[5], { y: 0.5 });
+  if (tier >= 6) P.box(0.04, 0.04, 0.04, key === 'sprenger' ? SP[4] : VT[5], { y: 0.5 });
   return P.merge();
 }
 
 export function gaLookKey(tier, branch) {
-  if (tier >= 6) return 'fuerst';
+  if (tier >= 6) return branch === 'x' ? 'sprenger' : 'fuerst';
   if (tier === 5) return branch === 'g' ? 'gorgo' : branch === 'v' ? 'volt' : 'kroll';
   if (tier === 4) return 'brat';
   if (tier === 3) return branch === 'b' ? 'barr' : 'jag';
   return tier === 2 ? 'bone' : 'rust';
 }
 /** Wie schief die Bloecke sitzen: niedrige Stufe = schief + ruckelig, hohe = sauber. */
-const SKEW = { rust: 0.14, bone: 0.1, jag: 0.07, barr: 0.07, brat: 0.05, kroll: 0.03, gorgo: 0.03, volt: 0.02, fuerst: 0 };
-const BASE_EM = { rust: [0, 0, 0], bone: [0, 0, 0], jag: [0.04, 0.0, 0.1], barr: [0, 0.05, 0.06], brat: [0.1, 0.02, 0], kroll: [0, 0, 0], gorgo: [0.03, 0.01, 0], volt: [0, 0.06, 0.16], fuerst: [0.16, 0.14, 0.04] };
+const SKEW = { rust: 0.14, bone: 0.1, jag: 0.07, barr: 0.07, brat: 0.05, kroll: 0.03, gorgo: 0.03, volt: 0.02, fuerst: 0, sprenger: 0.03 };
+const BASE_EM = { rust: [0, 0, 0], bone: [0, 0, 0], jag: [0.04, 0.0, 0.1], barr: [0, 0.05, 0.06], brat: [0.1, 0.02, 0], kroll: [0, 0, 0], gorgo: [0.03, 0.01, 0], volt: [0, 0.06, 0.16], fuerst: [0.16, 0.14, 0.04], sprenger: [0.02, 0.05, 0] };
 
 const _e = new THREE.Euler(), _qb = new THREE.Quaternion(), _q = new THREE.Quaternion();
 const slotQ = (s, skew, i, out) => out.setFromEuler(_e.set(s[6] + (hash(i * 3 + 1) - 0.5) * 2 * skew, s[7] + (hash(i * 3 + 2) - 0.5) * 2 * skew * 0.8, s[8] + (hash(i * 3 + 3) - 0.5) * 2 * skew, 'YXZ'));

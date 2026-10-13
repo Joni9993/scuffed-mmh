@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 import { GearParts, gearMaterial, bar, spike, tri } from '../../render/gearfx.js';
-import { PALETTES, markSprenger } from './weaponLook.js';
+import { PALETTES, markSprenger, slimeBlob } from './weaponLook.js';
 
 // Ratterbüchse (`lb`) Optik je Stufe/Ast, aus den Teilen des jeweiligen Brockens (wie bow/katana/kk/ga).
 // Weapon-lokales Koordinatensystem (wie die Klingen): Griff im Ursprung, Lauf/Schaft entlang -y (Muendung bei y ~ -0.95, Schaftende bei +0.5),
 // +z = oben (Magazin), Wurfarme laufen entlang x. Zweihand-Griff ueber userData.twoHand (linke Hand unter dem Vorderschaft).
-const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH } = PALETTES;
+const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH, SP } = PALETTES;
 const PI = Math.PI;
 const hash = (i) => { const s = Math.sin(i * 91.7 + 17.3) * 43758.5453; return s - Math.floor(s); };
 export const LB_LEN = { butt: 0.5, muzzle: -0.95, limbY: -0.62, span: 0.56 };
 const KEYS = ['rust', 'bone', 'jag', 'barr', 'brat', 'kroll', 'gorgo', 'volt', 'fuerst'];
 export function lbLookKey(top, branch) {
-  if (top >= 6) return 'fuerst';
+  if (top >= 6) return branch === 'x' ? 'sprenger' : 'fuerst';
   if (top === 5) return branch === 'g' ? 'gorgo' : branch === 'v' ? 'volt' : 'kroll';
   if (top === 4) return 'brat';
   if (top === 3) return branch === 'b' ? 'barr' : 'jag';
@@ -216,6 +216,28 @@ const LOOKS = {
     }
     string(P, LB_LEN.limbY - 0.2, 0.6, VT[5], 0.018);
     fx.push({ kind: 'ember', cols: ['#ffd84a', '#fff0a0'], rate: 4, at: [0, -0.3, 0.3] });
+  },
+  // Stufe 6x Sprenger (Krachfaust): Schleimkapsel-Werfer -- Klotzschaft, klobige Obsidian-Wurfarme mit Schleimpolster, Kapsel-Magazin und Hornmuendung mit Schleimblase
+  sprenger(P, fx) {
+    skeleton(P, { stock: SP[0], stock2: SP[1], metal: SP[2], grip: SP[0], mag: SP[1], magTop: SP[2] });
+    P.box(0.09, 0.62, 0.06, SP[3], { y: -0.42, z: 0.075, glow: 0.3 }); // Schleimschiene
+    for (let k = 0; k < 4; k++) slimeBlob(P, 0, -0.14 - k * 0.11, 0.27, 0.068 - k * 0.004); // Kapselmagazin (sichtbare Munition)
+    P.box(0.05, 0.4, 0.04, SP[2], { x: 0.085, y: -0.3, z: 0.26 }); P.box(0.05, 0.4, 0.04, SP[2], { x: -0.085, y: -0.3, z: 0.26 });
+    for (const s of [-1, 1]) {
+      const pts = limbPts(s, 4, 0.52, 0.18);
+      limbBars(P, pts, 0.075, 0.045, [SP[0], SP[1]]);
+      P.sphere(0.11, 6, 5, SP[3], { x: pts[2][0], y: pts[2][1], z: pts[2][2] + 0.02, glow: 0.3 }); // Schleimpolster
+      slimeBlob(P, pts[3][0], pts[3][1], pts[3][2] + 0.07, 0.045);
+      const t = pts[4];
+      spike(P, [t[0], t[1], t[2]], [t[0] + s * 0.1, t[1] - 0.2, t[2] - 0.04], 0.05, SP[0]);
+      slimeBlob(P, t[0], t[1], t[2], 0.06);
+      fx.push({ kind: 'poison', cols: ['#b6d81c', '#e4f23c'], rate: 3, at: [t[0], t[1] - 0.1, 0.05] });
+    }
+    string(P, LB_LEN.limbY - 0.18, 0.52, '#d8e060', 0.016);
+    const my = LB_LEN.muzzle; // Muendung: Hornkranz um eine Schleimblase
+    slimeBlob(P, 0, my + 0.02, 0.06, 0.1);
+    for (let k = 0; k < 5; k++) { const a = k / 5 * PI * 2; spike(P, [Math.cos(a) * 0.08, my + 0.12, 0.06 + Math.sin(a) * 0.08], [Math.cos(a) * 0.13, my - 0.1, 0.06 + Math.sin(a) * 0.13], 0.03, SP[0]); }
+    fx.push({ kind: 'ember', rate: 4, at: [0, my, 0.08] });
   },
 };
 

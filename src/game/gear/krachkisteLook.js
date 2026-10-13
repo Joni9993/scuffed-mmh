@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GearParts, gearMaterial, bar, spike, tri } from '../../render/gearfx.js';
 import { lambert } from '../../render/ps1.js';
-import { PALETTES, markSprenger } from './weaponLook.js';
+import { PALETTES, markSprenger, slimeBlob } from './weaponLook.js';
 import { SAMPLE_HEX } from '../buffs.js';
 
 // Krachkiste (GDD 17.1): Schrott-Lautsprecher auf Rohrstiel. Jede Stufe/jeder Ast = ein Instrument aus dem Brocken:
@@ -15,13 +15,13 @@ import { SAMPLE_HEX } from '../buffs.js';
 // Entfalten: Teile des Instruments haengen an Pivot-Gruppen (je 1 Mesh), updateMesh() (weapons/krachkiste.js) dreht/skaliert sie.
 // Draw Calls: 1 Koerper + 1 Membran + 0-3 Pivots + 3 Kragen-Wuerfel.
 
-const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH, STEEL } = PALETTES;
+const { RUST, BONE, JP, BZ, BR, KR, GG, VT, TOOTH, STEEL, SP } = PALETTES;
 const PI = Math.PI;
 export const HY = -1.2; // Kopf-Mitte (y) im Waffen-Frame
 export const KK_KEYS = ['rust', 'bone', 'jag', 'barr', 'brat', 'kroll', 'gorgo', 'volt', 'fuerst'];
 export function kkLookKey(tier, branch) {
   const t = Math.min(6, Math.max(1, tier | 0));
-  if (t >= 6) return 'fuerst';
+  if (t >= 6) return branch === 'x' ? 'sprenger' : 'fuerst';
   if (t === 5) return branch === 'g' ? 'gorgo' : branch === 'v' ? 'volt' : 'kroll';
   if (t === 4) return 'brat';
   if (t === 3) return branch === 'b' ? 'barr' : 'jag';
@@ -299,6 +299,31 @@ const LOOKS = {
     c.mem = { y: 0, z: -0.19, rad: 0.15, base: '#2a2418', cap: '#6a5a2a' };
     c.rim = { color: VT[5] };
     c.fx.push({ kind: 'shock', rate: 9, at: [0, HY - 0.6, 0] }, { kind: 'ember', cols: ['#ffd84a', '#fff0a0'], rate: 4, at: [0, HY, 0.25] });
+  },
+  // Stufe 6x Sprenger (Krachfaust): Faust-Kiste -- Obsidian-Klotz mit vier Knöchel-Buckeln vor der Membran, Schleimdecke mit Sprengknoten, Hornkamm; Panzertueren klappen auf
+  sprenger(c) {
+    const { P, B, piv } = c;
+    c.stickCol = { wrap: SP[3], stick: SP[0], pommel: SP[3], flange: SP[2] };
+    B(0.54, 0.44, 0.36, SP[0]);
+    B(0.58, 0.06, 0.4, SP[2], 0, -0.2, 0);
+    B(0.46, 0.34, 0.02, SP[1], 0, 0, -0.185);
+    B(0.52, 0.07, 0.38, SP[3], 0, 0.235, 0, { glow: 0.3 }); // Schleimdecke
+    for (const x of [-1, 1]) for (const y of [-1, 1]) {
+      P.sphere(0.09, 5, 4, SP[1], { x: x * 0.22, y: HY + y * 0.16, z: -0.2 }); // Knöchel-Buckel
+      slimeBlob(P, x * 0.22, HY + y * 0.16, -0.27, 0.04);
+    }
+    for (const k of [-1, 0, 1]) spike(P, [k * 0.16, HY + 0.26, 0.0], [k * 0.22, HY + 0.52 - Math.abs(k) * 0.1, 0.06], 0.065, SP[0]); // Hornkamm
+    for (const k of [-2, -1, 0, 1, 2]) slimeBlob(P, k * 0.1, HY + 0.29, 0.12 - Math.abs(k) * 0.03, 0.05 + (k % 2 ? 0 : 0.012));
+    B(0.22, 0.24, 0.14, SP[1], 0, 0, 0.25); B(0.26, 0.04, 0.16, SP[2], 0, 0.12, 0.25);
+    slimeBlob(P, 0, HY, 0.34, 0.08);
+    for (const x of [-1, 1]) piv({ at: [x * 0.285, HY, -0.18], axis: 'y', rest: 0, max: x * 1.15, wob: 0.06, ph: x, build: (Q) => { // Panzertuer mit Schleimfutter
+      Q.box(0.03, 0.42, 0.24, SP[2], { x: x * 0.015, z: 0.12 }); Q.box(0.035, 0.3, 0.12, SP[3], { x: -x * 0.012, z: 0.13, glow: 0.3 });
+      spike(Q, [x * 0.02, 0.18, 0.2], [x * 0.14, 0.3, 0.26], 0.04, SP[0]);
+      slimeBlob(Q, -x * 0.03, -0.1, 0.13, 0.04);
+    } });
+    c.mem = { y: 0, z: -0.2, rad: 0.15, base: '#3a4a0c', cap: '#d8f030' };
+    c.rim = { color: SP[3] };
+    c.fx.push({ kind: 'poison', cols: ['#b6d81c', '#e4f23c'], rate: 4, at: [0, HY + 0.35, 0] }, { kind: 'ember', rate: 3, at: [0, HY, -0.3] });
   },
 };
 

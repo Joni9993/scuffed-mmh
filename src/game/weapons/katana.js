@@ -229,6 +229,12 @@ registerTexture('kt_apex', (g, n, rnd) => { // Funkenfuerst: helles Stahlweiss m
   g.fillStyle = '#3ac0ff'; for (let y = 2; y < n; y += 5) { g.fillRect(0, y, n, 1); g.fillRect((rnd() * n) | 0, y, 1, 3); }
 });
 
+registerTexture('kt_obsid', (g, n, rnd) => { // Sprenger: Obsidian-Blau-Schwarz mit Schleimflecken
+  g.fillStyle = '#161c36'; g.fillRect(0, 0, n, n);
+  for (let i = 0; i < n * 2; i++) { g.fillStyle = rnd() < 0.5 ? '#26335c' : '#0e1226'; g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 1, 1); }
+  g.fillStyle = '#b6d81c'; for (let i = 0; i < 4; i++) g.fillRect((rnd() * n) | 0, (rnd() * n) | 0, 2, 1);
+});
+
 // Per-tier look. len = blade length (m), w = blade width, curve = sori, tipW = kissaki width factor.
 const LOOKS = {
   1: { id: 'rust', tex: 'kt_rust', len: 0.9, w: 0.12, curve: 0.04, thick: 0.04, spineW: 0.04, spineD: 0.025, tip: 'broken', tipTaper: 0.55, tsuka: '#5a4a3a', wrap: '#4a3a2a', tsuba: '#6a6a70', saya: '#4a3a2a', cord: '#a89870' },
@@ -239,11 +245,12 @@ const LOOKS = {
   '5k': { id: 'kroll', emb: [0, 0, 0], tex: 'kt_kessel', len: 1.18, w: 0.26, curve: 0.02, thick: 0.085, spineW: 0.07, spineD: 0.04, tip: 'flat', tipTaper: 0.85, tsuka: '#3a3e44', wrap: '#6a4a2a', tsuba: '#9aa4aa', saya: '#3a4650', cord: '#d89a50' },
   '5g': { id: 'gorgo', emb: [0.25, 0.06, 0], tex: 'kt_slag', len: 1.3, w: 0.2, curve: 0.09, thick: 0.06, spineW: 0.045, spineD: 0.03, tip: 'kissaki', tipTaper: 0.6, gap: 0.12, stagger: 0.012, wt: 0.25, tsuka: '#1a1512', wrap: '#5a2412', tsuba: '#3a3430', saya: '#241f1c', cord: '#ff6a1a' },
   '5v': { id: 'volt', emb: [0, 0.06, 0.2], tex: 'kt_copper', len: 1.25, w: 0.15, curve: 0.05, thick: 0.045, spineW: 0.035, spineD: 0.02, tip: 'fork', tipTaper: 0.8, tsuka: '#1a1e2a', wrap: '#2a3a5a', tsuba: '#b8642a', saya: '#1a1e2a', cord: '#5ad0ff' },
+  x: { id: 'sprenger', emb: [0.3, 0.4, 0], tex: 'kt_obsid', len: 1.3, w: 0.23, curve: 0.03, thick: 0.085, spineW: 0.07, spineD: 0.05, tip: 'flat', tipTaper: 0.92, tsuka: '#12162a', wrap: '#b6d81c', tsuba: '#1c2440', saya: '#12162a', cord: '#b6d81c' },
   6: { id: 'apex', emb: [0.2, 0.6, 1], tex: 'kt_apex', len: 1.5, w: 0.19, curve: 0.07, thick: 0.05, spineW: 0.04, spineD: 0.022, tip: 'fork', tipTaper: 0.8, tsuka: '#10141e', wrap: '#5ad0ff', tsuba: '#e89a50', saya: '#10141e', cord: '#fff0a0' },
 };
 /** Stufe 5/6 -> Ast-Key ('k' Kroll, 'g' Gorgo, 'v' Voltaro; Stufe 6 immer Voltaro-Funkenfuerst). */
 export const katanaRwBranch = (tier, branch) => (tier >= 6 ? 'v' : branch === 'g' || branch === 'v' ? branch : 'k');
-const lookFor = (tier, branch) => LOOKS[tier >= 6 ? 6 : tier === 5 ? `5${katanaRwBranch(5, branch)}` : tier >= 4 ? 4 : tier === 3 ? (branch === 'b' ? 3.2 : 3.1) : tier] ?? LOOKS[1];
+const lookFor = (tier, branch) => LOOKS[tier >= 6 && branch === 'x' ? 'x' : tier >= 6 ? 6 : tier === 5 ? `5${katanaRwBranch(5, branch)}` : tier >= 4 ? 4 : tier === 3 ? (branch === 'b' ? 3.2 : 3.1) : tier] ?? LOOKS[1];
 
 const box = (w, h, d, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; };
 const cone = (r, h, seg, mat, x, y, z, rx = 0, rz = 0) => { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat); m.position.set(x, y, z); m.rotation.set(rx, 0, rz); return m; };
@@ -281,7 +288,7 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
   hilt.add(box(0.07, 0.5, 0.07, mTsuka, 0, 0.12, 0));
   const guard = box(0.2, 0.035, 0.2, mTsuba, 0, -0.15, 0);
   hilt.add(guard);
-  const wrapN = lk === 'volt' || lk === 'apex' || lk === 'rust' ? 0 : 5;
+  const wrapN = lk === 'volt' || lk === 'apex' || lk === 'rust' || lk === 'sprenger' ? 0 : 5;
   for (let i = 0; i < wrapN; i++) hilt.add(box(0.085, 0.04, 0.085, mWrap, 0, -0.06 + i * 0.1, 0));
   if (wrapN) hilt.add(box(0.1, 0.05, 0.1, mTsuba, 0, 0.38, 0)); // kashira (pommel)
 
@@ -404,6 +411,20 @@ export function buildKatanaMesh({ tier = 1, branch = null } = {}) {
     hilt.add(cone(0.06, 0.18, 4, glow, 0, 0.5, 0));
     addHalo('#ff5a10', 0.2);
     ex.push(glow, hot);
+  } else if (lk === 'sprenger') { // Stufe 6x Sprenger: Keulen-Katana -- dicke Obsidianklinge, Schleimschneide, Schleim-Faustkolben an der Spitze, Knoten am Ruecken, Knöchel-Tsuba
+    const slime = L('#b6d81c'), slimeH = L('#e4f23c'), slimeD = L('#6f9410'), plate = L('#2f4272'), horn = L('#0a0d1c');
+    const ball = (r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 6, 5), mat); m.position.set(x, y, z); return m; };
+    for (const e of edges) { const v = box(th + 0.014, sl(e.len), e.sw * 0.34, slime, 0, e.mid.y, e.mid.z - e.sw * 0.34); v.rotation.x = e.rx; bladeG.add(v); } // Schleimschneide (Vollfarbe)
+    for (let i = 0; i < 4; i++) { const f = bladeFrame(look, 0.14 + i * 0.2); bladeG.add(box(th + 0.03, 0.045, look.w * 0.95, i % 2 ? horn : plate, 0, f.y, f.z)); } // Plattenringe
+    for (let i = 0; i < 6; i++) { const f = bladeFrame(look, 0.08 + i * 0.15); bladeG.add(ball(0.045 + (i % 2) * 0.012, i % 3 ? slime : slimeD, 0, f.y, f.z + look.w * 0.58)); } // Sprengknoten am Ruecken
+    { const f = bladeFrame(look, 1); bladeG.add(ball(0.12, slime, 0, f.y - 0.02, f.z - 0.01), ball(0.05, slimeH, -0.03, f.y + 0.02, f.z - 0.07)); } // Schleim-Faustkolben an der Spitze
+    for (const sx of [-1, 1]) { const f = bladeFrame(look, 0.82); bladeG.add(cone(0.05, 0.2, 4, horn, sx * (th / 2 + 0.05), f.y + 0.06, f.z + look.w * 0.3, 0.2, -sx * 0.7)); } // kleine Hoerner
+    guard.scale.set(1.7, 1.5, 1.7);
+    for (const [x, z] of [[0.13, 0.13], [-0.13, 0.13], [0.13, -0.13], [-0.13, -0.13]]) hilt.add(ball(0.045, slime, x, -0.15, z)); // Knöchelnoppen
+    for (const sx of [-1, 1]) hilt.add(cone(0.06, 0.26, 4, horn, sx * 0.17, -0.02, 0, 0, -sx * 0.9)); // Hoerner an der Tsuba
+    for (let i = 0; i < 5; i++) hilt.add(box(0.088, 0.05, 0.088, i % 2 ? slime : slimeD, 0, -0.04 + i * 0.1, 0)); // Schleimwicklung (Vollfarbe)
+    hilt.add(ball(0.085, slime, 0, 0.42, 0), ball(0.035, slimeH, -0.03, 0.46, 0.05));
+    addHalo('#b6d81c', 0.22);
   } else { // Stufe 5v/6: Kupferklinge, Spulen, Antennen, Funken (6 = Funkenfuerst: groesser, helle Klinge, mehr Spulen)
     const apex = tier >= 6;
     const cop = L(apex ? '#ffd8a0' : '#d8782c'), spark = em(apex ? '#aef0ff' : '#7ae0ff'), hot = em('#fff0a0');
