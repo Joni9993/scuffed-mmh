@@ -124,7 +124,7 @@ export class Hunt {
     sfx.attach(this); // [K] bus 'sfx' -> positional/panned WebAudio, jingles
     this._detachCues = cues.attach(this); // Lesbarkeit: Windup-Ton, Farbcue, Auto-Framing, Tod-Log
     this.musicTr = new IntensityTracker(4); this.musicChainT = -99; this.musicWon = false;
-    music.setScene(opts.music ?? (this.world.id === 'rostwerke' ? 'rost' : 'hunt')); // Rostwerke: eigener Industrial-Stil (?music=rost zum Vorhören)
+    music.setScene(opts.music ?? (this.world.id === 'rostwerke' ? 'rost' : this.world.id === 'smaragdkueste' ? 'smaragd' : 'hunt')); // Rostwerke: eigener Industrial-Stil (?music=rost zum Vorhören)
     this.bus.on('glitchCounter', () => { this.musicChainT = this.time; });
     this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
     this.bus.on('playerDown', () => this.#onPlayerDown());
@@ -421,6 +421,7 @@ export class Hunt {
     this.time += dt;
     if (!this.musicWon) {
       const lp = this.player;
+      if (this.world.id === 'smaragdkueste' || this.opts.music === 'smaragd') { const z = this.world.zoneAt?.(lp?.pos?.x ?? 0, lp?.pos?.z ?? 0); if (z) music.setZone(z); }
       music.setIntensity(this.musicTr.update(computeIntensity({ monster: this.mainMonster, player: lp?.v, glitching: !!lp?.glitching, chain: this.time - this.musicChainT < 5 }), dt));
     }
     this.viz.begin();

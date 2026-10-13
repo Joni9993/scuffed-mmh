@@ -37,19 +37,33 @@ export function rng32(seed) {
 const mtof = (n) => 440 * Math.pow(2, (n - 69) / 12);
 const HUB_CHORDS = [{ r: 45, t: [0, 3, 7] }, { r: 41, t: [0, 4, 7] }, { r: 48, t: [0, 4, 7] }, { r: 43, t: [0, 4, 7] }]; // Am F C G
 const ROST_CHORDS = [{ r: 40, t: [0, 3, 7] }, { r: 41, t: [0, 4, 7] }, { r: 43, t: [0, 4, 7] }, { r: 41, t: [0, 4, 7] }]; // Em F G F (phrygisch, Rostwerke)
+const SMARAGD_CHORDS = [{ r: 45, t: [0, 3, 7] }, { r: 41, t: [0, 4, 7] }, { r: 43, t: [0, 4, 7] }, { r: 40, t: [0, 3, 7] }]; // Am F G Em (tropisch-moll, Smaragdküste)
 const HUNT_CHORDS = [{ r: 38, t: [0, 3, 7] }, { r: 34, t: [0, 4, 7] }, { r: 41, t: [0, 4, 7] }, { r: 36, t: [0, 4, 7] }]; // Dm Bb F C
 export const HUB_SECTIONS = ['A', 'B', 'A', 'BREAK']; // je 8 Takte = 32 Takte Zyklus
 export const sectionOf = (bar) => HUB_SECTIONS[Math.floor(bar / 8) % 4];
 
 /** Deterministisches Pattern für einen Takt (16 Steps). */
-export function genBar(track, bar, seed = 1337) {
-  const hub = track === 'hub', rost = track === 'rost';
-  const chords = hub ? HUB_CHORDS : rost ? ROST_CHORDS : HUNT_CHORDS;
+export function genBar(track, bar, seed = 1337, zone = 2) {
+  const hub = track === 'hub', rost = track === 'rost', sm = track === 'smaragd';
+  const chords = hub ? HUB_CHORDS : rost ? ROST_CHORDS : sm ? SMARAGD_CHORDS : HUNT_CHORDS;
   const ch = chords[Math.floor(bar / 2) % 4];
-  const r = rng32(seed + bar * 977 + (hub ? 1 : rost ? 13 : 7));
+  const r = rng32(seed + bar * 977 + (hub ? 1 : rost ? 13 : sm ? 29 : 7));
   const sec = hub ? sectionOf(bar) : 'A';
   const last = bar % 8 === 7;
-  const kick = [], snare = [], hat = [], ghost = [], bass = [], arp = [], lead = [], anvil = [], steam = [];
+  const kick = [], snare = [], hat = [], ghost = [], bass = [], arp = [], lead = [], anvil = [], steam = [], perc = [];
+  if (sm) {
+    // Smaragdkueste: Zone 1 Strand (hell, luftig, leichte Percussion), 2 Dschungel (Congas/Bongos, Tresillo), 3 Tempel (dunkel, schwere Toms)
+    const beach = zone === 1, temple = zone >= 3;
+    if (beach) { kick.push(0, 8); if (r() < 0.5) kick.push(12); snare.push(12); for (let i = 2; i < 16; i += 4) hat.push(i); perc.push({ s: 3, k: 'bongo' }, { s: 6, k: 'bongo' }, { s: 11, k: 'conga' }); }
+    else if (temple) { kick.push(0, 6, 10); if (r() < 0.5) kick.push(14); snare.push(4, 12); for (let i = 0; i < 16; i += 2) hat.push(i); for (const s of [0, 3, 8, 11, 14]) perc.push({ s, k: 'tom' }); }
+    else { for (const s of [0, 4, 8, 12]) kick.push(s); snare.push(12); for (let i = 0; i < 16; i++) if (i % 2 === 0 || r() < 0.3) hat.push(i); for (const s of [0, 3, 6, 10, 12]) perc.push({ s, k: s % 2 ? 'bongo' : 'conga' }); if (r() < 0.5) perc.push({ s: 14, k: 'bongo' }); }
+    const oct = temple ? 24 : 12;
+    for (let i = 0; i < 16; i += 2) bass.push({ s: i, n: ch.r - oct + (i === 6 || i === 14 ? 7 : 0) + (temple && i === 10 && r() < 0.5 ? 1 : 0), len: 2 });
+    for (let i = 0; i < 16; i++) arp.push({ s: i, n: ch.r + (beach ? 24 : 12) + ch.t[(i * 2 + (i >> 2)) % 3] + (i % 8 >= 4 ? 12 : 0) });
+    const mel = beach ? [0, 4, 7, 12, 9, 7, 4, 2] : temple ? [0, 1, 3, 7, 6, 3, 1, 0] : [0, 3, 7, 10, 7, 12, 10, 7];
+    for (let i = 0; i < 4; i++) lead.push({ s: i * 4 + (r() < 0.3 ? 2 : 0), n: ch.r + 24 + mel[(i + bar * 2) % 8], len: 3 });
+    return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, perc, sec, newChord: bar % 2 === 0 };
+  }
   if (rost) {
     // Rostwerke: Industrial-Synthwave – stampfender Kick, Amboss-Schläge, Dampfzischen, verzerrter Achtel-Bass
     for (const s of [0, 4, 8, 12]) kick.push(s); if (r() < 0.5) kick.push(14);
@@ -61,7 +75,7 @@ export function genBar(track, bar, seed = 1337) {
     for (let i = 0; i < 16; i++) arp.push({ s: i, n: ch.r + 12 + [0, 7, 12, ch.t[1], 7, 0][(i + bar) % 6] });
     const mel = [0, 1, 3, 7, 5, 3, 1, 0];
     for (let i = 0; i < 4; i++) lead.push({ s: i * 4, n: ch.r + 24 + mel[(i + bar * 2) % 8], len: i === 3 ? 4 : 3 });
-    return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, sec, newChord: bar % 2 === 0 };
+    return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, perc, sec, newChord: bar % 2 === 0 };
   }
   if (hub) {
     if (sec !== 'BREAK') {
@@ -83,7 +97,7 @@ export function genBar(track, bar, seed = 1337) {
     const mel = [0, 7, 3, 10, 7, 12, 10, 7];
     for (let i = 0; i < 4; i++) lead.push({ s: i * 4 + (r() < 0.3 ? 2 : 0), n: ch.r + 24 + mel[(i + bar * 2) % 8], len: 3 });
   }
-  return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, sec, newChord: bar % 2 === 0 };
+  return { chord: ch, kick, snare, hat, ghost, bass, arp, lead, anvil, steam, perc, sec, newChord: bar % 2 === 0 };
 }
 
 /** Ziel-Pegel je Hunt-Intensität. */
@@ -96,13 +110,14 @@ export const HUNT_LAYERS = [
 
 // ------------------------------------------------------------------ Engine
 let ctx = null, out = null, duckG = null, noise = null, timer = null, retry = null;
-const tr = { hub: null, hunt: null, rost: null };
-const HUNTY = (k) => k === 'hunt' || k === 'rost'; // Jagd-Tracks mit Intensitäts-Layern
+const tr = { hub: null, hunt: null, rost: null, smaragd: null };
+let zone = 2; // Smaragdküste: 1 Strand, 2 Dschungel, 3 Tempel
+const HUNTY = (k) => k === 'hunt' || k === 'rost' || k === 'smaragd'; // Jagd-Tracks mit Intensitäts-Layern
 let want = null;
 let intensity = 0, nextT = 0, step = 0, bar = 0, lastScene = null;
 const volOf = () => (settings.musicOn === false ? 0 : (settings.musicVolume ?? 0.5)) * 0.6;
-const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4, rostStep = 60 / 112 / 4;
-const stepOf = (k) => (k === 'hub' ? hubStep : k === 'rost' ? rostStep : huntStep);
+const hubStep = 60 / 85 / 4, huntStep = 60 / 105 / 4, rostStep = 60 / 112 / 4, smStep = 60 / 126 / 4;
+const stepOf = (k) => (k === 'hub' ? hubStep : k === 'rost' ? rostStep : k === 'smaragd' ? smStep : huntStep);
 
 function init() {
   if (ctx) return true;
@@ -115,7 +130,7 @@ function init() {
   noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noise.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  for (const k of ['hub', 'hunt', 'rost']) {
+  for (const k of ['hub', 'hunt', 'rost', 'smaragd']) {
     const g = ctx.createGain(); g.gain.value = 0; g.connect(out);
     const L = {};
     for (const l of ['pad', 'bass', 'drums', 'arp', 'lead']) { L[l] = ctx.createGain(); L[l].gain.value = k === 'hub' ? 1 : 0; }
@@ -160,6 +175,17 @@ function hit(t, dest, kind, vol) {
     o.connect(g).connect(dest); o.start(t); o.stop(t + 0.25);
     return;
   }
+  if (kind === 'conga' || kind === 'bongo' || kind === 'tom') { // Fell-Trommel: Sinus mit schnellem Pitch-Drop + kurzer Rauschimpuls
+    const f0 = kind === 'bongo' ? 330 : kind === 'conga' ? 215 : 110, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = kind === 'tom' ? 'sine' : 'triangle';
+    o.frequency.setValueAtTime(f0 * 1.5, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.04);
+    g.gain.setValueAtTime(vol * (kind === 'tom' ? 0.9 : 0.6), t); g.gain.exponentialRampToValueAtTime(0.001, t + (kind === 'tom' ? 0.3 : 0.16));
+    o.connect(g).connect(dest); o.start(t); o.stop(t + 0.35);
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), ng = ctx.createGain();
+    s.buffer = noise; f.type = 'bandpass'; f.frequency.value = f0 * 6; ng.gain.setValueAtTime(vol * 0.25, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    s.connect(f).connect(ng).connect(dest); s.start(t, Math.random() * 0.5, 0.05);
+    return;
+  }
   if (kind === 'anvil') { // Amboss: zwei unharmonische Rechtecke durch Bandpass, kurzes Abklingen
     const bp = ctx.createBiquadFilter(), g = ctx.createGain();
     bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 3;
@@ -182,12 +208,12 @@ function hit(t, dest, kind, vol) {
 }
 
 function scheduleStep(k, t, s, b, sd) {
-  const T = tr[k], L = T.L, p = genBar(k, b), hub = k === 'hub', rost = k === 'rost';
+  const T = tr[k], L = T.L, p = genBar(k, b, 1337, zone), hub = k === 'hub', rost = k === 'rost', sm = k === 'smaragd';
   const dv = hub ? (p.sec === 'BREAK' ? 0.5 : 0.7) : 1;
   const tt = t + (hub && s % 2 === 1 ? sd * 0.28 : 0); // Swing
   if (s === 0 && p.newChord) { // Pad: 2 Takte, detunte Saws
     const c = p.chord;
-    for (const iv of c.t.concat([12])) for (const dt of [-9, 9]) osc(rost ? 'square' : 'sawtooth', mtof(c.r + 12 + iv), t, sd * 32, T.pin, rost ? 0.022 : 0.03, 0, 0.5, dt);
+    for (const iv of c.t.concat([12])) for (const dt of [-9, 9]) osc(rost || (sm && zone >= 3) ? 'square' : 'sawtooth', mtof(c.r + 12 + iv), t, sd * 32, T.pin, rost ? 0.022 : 0.03, 0, 0.5, dt);
   }
   if (p.kick.includes(s)) {
     hit(tt, L.drums, 'kick', 0.9 * dv);
@@ -195,11 +221,16 @@ function scheduleStep(k, t, s, b, sd) {
   }
   if (p.snare.includes(s)) hit(tt, L.drums, 'snare', dv);
   if (p.ghost.includes(s)) hit(tt, L.drums, 'ghost', dv);
-  if (p.hat.includes(s)) hit(tt, L.drums, 'hat', dv);
+  if (p.hat.includes(s) || (sm && intensity >= 2 && s % 2 === 1)) hit(tt, L.drums, 'hat', dv);
+  if (sm) {
+    for (const q of p.perc) if (q.s === s) hit(tt, L.drums, q.k, dv * (intensity >= 1 ? 1 : 0.7));
+    if (intensity >= 2 && (s === 2 || s === 7 || s === 15)) hit(tt, L.drums, s === 15 ? 'tom' : 'bongo', 0.8); // Action: zusätzliche Fills
+    if (intensity >= 3 && s % 4 === 2) hit(tt, L.drums, 'kick', 0.6); // Double-Time-Druck
+  }
   if (p.anvil.includes(s) && (intensity >= 1 || s === 3)) hit(tt, L.drums, 'anvil', dv);
   if (p.steam.includes(s)) hit(tt, L.pad, 'steam', 1);
-  for (const n of p.bass) if (n.s === s) osc('sawtooth', mtof(n.n), tt, sd * n.len * 0.9, rost ? L.dist : L.bass, hub ? 0.2 : rost ? 0.14 : 0.17, hub ? 380 : rost ? 700 : 520);
-  if (hub || intensity >= 1) for (const n of p.arp) if (n.s === s) osc(hub ? 'triangle' : rost ? 'sawtooth' : 'square', mtof(n.n), tt, sd * 1.5, L.arp, hub ? 0.07 : rost ? 0.03 : 0.04, rost ? 1300 : 1800);
+  for (const n of p.bass) if (n.s === s) osc('sawtooth', mtof(n.n), tt, sd * n.len * 0.9, rost ? L.dist : L.bass, hub ? 0.2 : rost ? 0.14 : 0.17, hub ? 380 : rost ? 700 : sm && zone >= 3 ? 420 : 520);
+  if (hub || intensity >= 1) for (const n of p.arp) if (n.s === s) osc(hub || (sm && zone === 1) ? 'triangle' : rost ? 'sawtooth' : 'square', mtof(n.n), tt, sd * 1.5, L.arp, hub ? 0.07 : rost ? 0.03 : 0.04, rost ? 1300 : 1800);
   if (!hub && intensity >= 3) for (const n of p.lead) if (n.s === s) osc(rost ? 'square' : 'sawtooth', mtof(n.n), tt, sd * n.len, L.lead, rost ? 0.04 : 0.05, rost ? 2000 : 2400, 0.02, 6);
 }
 
@@ -234,11 +265,13 @@ export const music = {
       return;
     }
     const now = ctx.currentTime;
-    for (const k of ['hub', 'hunt', 'rost']) tr[k].g.gain.setTargetAtTime(k === name ? 1 : 0, now, 0.5);
+    for (const k of ['hub', 'hunt', 'rost', 'smaragd']) tr[k].g.gain.setTargetAtTime(k === name ? 1 : 0, now, 0.5);
     if (name) { step = 0; bar = 0; nextT = now + 0.1; intensity = 0; if (HUNTY(name)) applyLayers(); }
     if (!timer) timer = setInterval(tick, 25);
     if (!name) setTimeout(() => { if (!want && timer) { clearInterval(timer); timer = null; } }, 2500);
   },
+  /** Smaragdküste: Zone des Spielers (1 Strand, 2 Dschungel, 3 Tempel) – wechselt Percussion/Klangfarbe. */
+  setZone(z) { zone = z >= 1 && z <= 3 ? z | 0 : 2; },
   setIntensity(i) { i = Math.max(0, Math.min(3, i | 0)); if (i === intensity) return; intensity = i; if (HUNTY(want)) applyLayers(); },
   get intensity() { return intensity; },
   /** kurzer Sieges-Stinger */
