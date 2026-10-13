@@ -271,7 +271,7 @@ export const music = {
     if (!name) setTimeout(() => { if (!want && timer) { clearInterval(timer); timer = null; } }, 2500);
   },
   /** Smaragdküste: Zone des Spielers (1 Strand, 2 Dschungel, 3 Tempel) – wechselt Percussion/Klangfarbe. */
-  setZone(z) { zone = z >= 1 && z <= 3 ? z | 0 : 2; },
+  setZone(z) { zone = z === 1 ? 1 : z >= 4 ? 3 : 2; }, // Karten-Zonen 1 Strand, 2+3 Dschungel, 4 Tempel -> Musik 1/2/3
   setIntensity(i) { i = Math.max(0, Math.min(3, i | 0)); if (i === intensity) return; intensity = i; if (HUNTY(want)) applyLayers(); },
   get intensity() { return intensity; },
   /** kurzer Sieges-Stinger */
