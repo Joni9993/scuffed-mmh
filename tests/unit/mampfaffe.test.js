@@ -64,7 +64,9 @@ describe('Mampfaffe: Definition', () => {
       expect(a.cue.color, a.id).toSatisfy((c) => NEON_OK.test(c) || FOOD_COLORS.includes(c));
       expect(a.telegraph).toBeGreaterThanOrEqual(MIN_TELEGRAPH);
       if (a.hits?.length) expect(a.audit?.length, a.id).toBeGreaterThan(0);
-      if (a.marker?.color) expect(a.marker.color, a.id).toSatisfy((c) => c === '#39ff14' || FOOD_COLORS.includes(c));
+      // Schadensbereiche sind rot (aus den Trefferformen) oder explizit rot gesetzt; kein grüner Marker
+      if (a.hits?.some((h) => h.dmg > 0 || h.knock === 'pin')) expect(a.markerFromHits, a.id).toBe(true);
+      if (a.marker?.color) expect(a.marker.color, a.id).toBe('#ff2a2a');
     }
     for (const [from, list] of Object.entries(mampfaffe.chains)) {
       expect(mampfaffe.attacks[from], from).toBeTruthy();

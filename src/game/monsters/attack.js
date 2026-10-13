@@ -89,12 +89,56 @@ export class AttackInstance {
     return out;
   }
 
+  /**
+   * Bodenmarker-Grundflächen ALLER schädlichen Treffer (dmg > 0 oder Festhalten), direkt aus den echten Trefferformen abgeleitet.
+   * x/z/r = Bereich, in dem der Pirscher (Kapsel r 0,4, Höhe 1,7) die Form berührt -> Marker und Hitbox können nicht auseinanderlaufen.
+   * Bewegte Formen (Rolle) werden entlang des Wegs in mehrere Scheiben zerlegt. Ergebnis ist pro Instanz fest (prepare/motion sind deterministisch).
+   */
+  footprints() {
+    if (this._fp) return this._fp;
+    const out = [], hits = this.def.hits ?? [];
+    for (let i = 0; i < hits.length; i++) {
+      const h = hits[i];
+      if (!(h.dmg > 0 || h.knock === 'pin')) continue;
+      const pts = [];
+      const samples = h.shape === 'capsule' ? 10 : 3;
+      for (let k = 0; k < samples; k++) {
+        const s = this.sample(this.wall(h.t0 + (h.t1 - h.t0) * (k / (samples - 1))));
+        const base = { x: s.x, y: this.origin.y + s.air, z: s.z };
+        if (h.shape === 'capsule') {
+          const a = h.from, b = h.to, len = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(1, Math.ceil(len / Math.max(0.5, h.radius * 0.8)));
+          for (let j = 0; j <= n; j++) { const f = j / n; pts.push(localToWorld({}, base, s.yaw, a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f)); }
+        } else pts.push(localToWorld({}, base, s.yaw, h.at[0], h.at[1], h.at[2]));
+      }
+      const kept = [];
+      for (const c of pts) {
+        const r = groundReach(h.radius, c.y - this.origin.y);
+        if (r <= 0) continue;
+        if (kept.every((q) => Math.hypot(q.x - c.x, q.z - c.z) > (h.shape === 'capsule' ? Math.max(0.8, r * 1.1) : 0.35))) kept.push({ x: c.x, z: c.z, r });
+      }
+      if (kept.length > 12) { // Schwenk um den Brocken (Schwanzfeger): eine Außenkante um ihn statt Dutzender Scheiben
+        const mid = this.sample(this.wall((h.t0 + h.t1) / 2)), R = Math.max(...pts.map((c) => Math.hypot(c.x - mid.x, c.z - mid.z)));
+        kept.length = 0; kept.push({ x: mid.x, z: mid.z, r: R + h.radius + HURT_R });
+      }
+      kept.forEach((q, n) => out.push({ idx: i, n, x: q.x, z: q.z, r: q.r, t0: h.t0, t1: h.t1 }));
+    }
+    return (this._fp = out);
+  }
+
   /** Wall time of the first possible hit (telegraph length as the player experiences it). */
   firstHitTime() {
     let m = Infinity;
     for (const h of this.def.hits ?? []) m = Math.min(m, h.t0);
     return this.tgWall + (m - this.def.telegraph) / this.speed;
   }
+}
+
+// Pirscher-Hurtbox (hitbox.js playerCapsule): Radius 0,4, senkrechte Strecke y 0,4..1,3 über dem Boden
+export const HURT_R = 0.4, HURT_Y0 = 0.4, HURT_Y1 = 1.3;
+/** Horizontale Reichweite (Mittelpunkt des Pirschers) einer Kugel r in Höhe y über dem Boden gegen die Pirscher-Kapsel. */
+export function groundReach(r, y) {
+  const dy = y < HURT_Y0 ? HURT_Y0 - y : y > HURT_Y1 ? y - HURT_Y1 : 0, R = r + HURT_R;
+  return R * R > dy * dy ? Math.sqrt(R * R - dy * dy) : 0;
 }
 
 export const lerp3 = (a, b, k) => ({ x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k });

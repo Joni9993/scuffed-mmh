@@ -18,7 +18,8 @@ const SC = 1.8;
 const R = Math.PI / 180;
 const NEON = '#39ff14', NEON_HI = '#7dff3a', NEON_PEAK = '#d8ffd0';
 const cue = (tone, color = NEON) => ({ color, tone, noShift: true });
-const ring = (radius, color = NEON, peak = NEON_PEAK) => ({ at: 'self', radius, color, peak });
+// Gefahrenzonen sind ROT (wie bei Jaggo/Voltaro) und werden aus den echten Trefferformen gezeichnet (markerFromHits, attack.js footprints()); Neongrün bleibt Deko am Affen
+const DANGER = '#ff2a2a', DANGER_HI = '#ff6a4a';
 
 /** Futtersorten: Fellfarbe (Leuchten, rgb 0..1), Aura/Funken-Farbe, Banner-Text. */
 export const FOODS = {
@@ -291,7 +292,7 @@ const TEMPO = 1.3;
 const faeuste = {
   id: 'mampfaffe_faeuste', range: [0, 6.5], weight: 4, cooldown: 2.5, telegraph: 0.55, flashParts: ['prankeL', 'prankeR'], duration: 2.2, tempo: TEMPO,
   cue: cue('klick', NEON_HI), audit: [2.5, 4.5], stam: 8,
-  marker: ring(7), markerUntil: 0.75,
+  markerFromHits: true,
   hits: [
     { t0: 0.72, t1: 0.86, shape: 'sphere', at: [1.0, 1.5, 3.6], radius: 2.0, dmg: 38, knock: 'flinch', side: 'L' },
     { t0: 1.02, t1: 1.16, shape: 'sphere', at: [-1.0, 1.5, 3.6], radius: 2.0, dmg: 38, knock: 'flinch', side: 'R' },
@@ -314,7 +315,7 @@ const faeuste = {
 const grabbel = {
   id: 'mampfaffe_grabbel', range: [0, 5.5], weight: (m) => (m.extra.hungry ? 7 : 3), cooldown: 3, telegraph: 0.5, flashParts: ['prankeL'], duration: 1.3, tempo: TEMPO,
   cue: cue('zisch', NEON_PEAK), audit: [2, 3.8], stam: 6,
-  marker: ring(5), markerUntil: 0.65,
+  markerFromHits: true,
   hits: [{ t0: 0.55, t1: 0.67, shape: 'sphere', at: [0, 1.4, 3.2], radius: 1.9, dmg: 20, knock: 'flinch', steal: true }],
   pose: mTrack([
     [0, { ...Z }], [0.3, { legL: -60, bodyPitch: -5, bodyRoll: 8, head: -8, jaw: 12 }], [0.5, { legL: -65, bodyRoll: 10 }],
@@ -326,7 +327,7 @@ const grabbel = {
 const stampfer = {
   id: 'mampfaffe_stampfer', range: [0, 9], weight: 3, cooldown: 5, telegraph: 0.55, flashParts: ['legs'], duration: 2.2, tempo: TEMPO,
   cue: cue('brumm'), audit: [3, 5], stam: 10,
-  marker: ring(6.6), markerUntil: 1.45,
+  markerFromHits: true,
   hits: [
     { t0: 1.3, t1: 1.43, shape: 'sphere', at: [0, 0.5, 0], radius: 6.5, dmg: 42, knock: 'down' },
     { t0: 1.37, t1: 1.48, shape: 'sphere', at: [0, 0.5, 0], radius: 9.5, dmg: 22, knock: 'flinch' },
@@ -346,7 +347,7 @@ const stampfer = {
 const erdschlag = {
   id: 'mampfaffe_erdschlag', range: [0, 6], weight: 3, cooldown: 4, telegraph: 0.55, flashParts: ['prankeL', 'prankeR'], duration: 1.9, tempo: TEMPO,
   cue: cue('brumm', NEON_PEAK), audit: [2.5, 5], stam: 10,
-  marker: ring(8.2), markerUntil: 1.0,
+  markerFromHits: true,
   hits: [
     { t0: 0.8, t1: 0.92, shape: 'sphere', at: [0, 0.6, 3.2], radius: 3.4, dmg: 44, knock: 'down' },
     { t0: 0.86, t1: 0.98, shape: 'sphere', at: [0, 0.5, 0], radius: 8, dmg: 26, knock: 'flinch' },
@@ -370,7 +371,7 @@ const erdschlag = {
 const rundum = {
   id: 'mampfaffe_rundum', range: [0, 8], weight: 4, cooldown: 5, telegraph: 0.55, flashParts: ['prankeL', 'prankeR', 'body'], duration: 2.1, tempo: TEMPO,
   cue: cue('droehn', NEON_HI), audit: [3, 6], stam: 12,
-  marker: ring(6.4), markerUntil: 1.2,
+  markerFromHits: true,
   hits: [
     { t0: 0.8, t1: 0.9, shape: 'sphere', at: [0, 1.2, 0], radius: 6, dmg: 36, knock: 'flinch' },
     { t0: 0.88, t1: 0.98, shape: 'sphere', at: [0, 1.2, 0], radius: 6.3, dmg: 44, knock: 'down' },
@@ -389,7 +390,7 @@ const rundum = {
 const sprungschlag = {
   id: 'mampfaffe_sprungschlag', range: [8, 26], weight: 5, cooldown: 5, telegraph: 0.6, flashParts: ['legs'], duration: 2.0, tempo: TEMPO,
   cue: cue('schrill', NEON), audit: [10, 20], stam: 12,
-  marker: { at: 'landing', radius: 4.6, color: NEON, peak: NEON_PEAK }, markerUntil: 1.25,
+  markerFromHits: true,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1, len = Math.min(26, d);
     a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
@@ -424,7 +425,7 @@ const ROLL_LEN = 14;
 const rolle = {
   id: 'mampfaffe_rolle', range: [5, 18], weight: 3, cooldown: 7, telegraph: 0.6, flashParts: ['body'], duration: 2.6, tempo: TEMPO,
   cue: cue('droehn', NEON), audit: [9, 14], stam: 12,
-  marker: { at: 'self', radius: 3.4, color: NEON, peak: NEON_PEAK }, markerUntil: 0.9,
+  markerFromHits: true,
   hits: [{ t0: 0.85, t1: 1.7, shape: 'capsule', from: [0, 1.5, -0.8], to: [0, 1.5, 2.0], radius: 2.5, dmg: 40, knock: 'down' }],
   motion(tau, a) {
     const f = ROLL_LEN * smooth(clamp01((tau - 0.8) / 0.9));
@@ -442,7 +443,7 @@ const brust = {
   id: 'mampfaffe_brust', range: [0, 30], weight: 2, cooldown: 14, telegraph: 0.8, flashParts: ['body', 'belly'], duration: 2.4, tempo: TEMPO,
   cue: cue('droehn', NEON_PEAK), audit: [3, 7], stam: 10,
   cond: (m) => !!m.target && Math.hypot(m.target.pos.x - m.pos.x, m.target.pos.z - m.pos.z) < MAMPFAFFE.SAFE_DIST,
-  marker: ring(8), markerUntil: 1.15,
+  markerFromHits: true,
   hits: [{ t0: 1.0, t1: 1.1, shape: 'sphere', at: [0, 0.8, 0], radius: 8, dmg: 0, knock: 'pin' }],
   events: drumEvents,
   calls: {
@@ -526,7 +527,7 @@ const feuerruelpser = {
   id: 'mampfaffe_feuerruelpser', range: [1.5, 10], weight: 6, cooldown: 6, telegraph: 0.75, flashParts: ['belly'], duration: 2.6, tempo: TEMPO, stam: 10,
   cue: cue('droehn', FOODS.feuerpilz.color), audit: [3.5, 6],
   cond: (m) => hasBuff(m, 'feuerpilz'),
-  marker: { at: 'self', radius: 8.4, color: FOODS.feuerpilz.color, peak: FOODS.feuerpilz.hi }, markerUntil: 1.2,
+  markerFromHits: true,
   hits: [[2.5, 1.6, 1.0], [5.0, 2.2, 1.2], [7.5, 2.8, 1.4]].map(([z, r, t0]) => ({ t0, t1: t0 + 0.12, shape: 'sphere', at: [0, 1.5, z], radius: r + 0.6, dmg: 26, knock: 'flinch', status: { type: 'burn' } })),
   events: [{ t: 0.95, call: 'rulps', all: true }],
   calls: {
@@ -547,7 +548,7 @@ const stinkwolke = {
   id: 'mampfaffe_stinkwolke', range: [3, 16], weight: 6, cooldown: 8, telegraph: 0.8, flashParts: ['belly'], duration: 2.4, tempo: TEMPO, stam: 8,
   cue: cue('zisch', FOODS.giftkraut.color),
   cond: (m) => hasBuff(m, 'giftkraut'),
-  marker: { at: 'landing', radius: MAMPFAFFE.CLOUD_R, color: FOODS.giftkraut.color, peak: '#e8ff70' }, markerUntil: 1.4,
+  marker: { at: 'landing', radius: MAMPFAFFE.CLOUD_R, color: DANGER, peak: DANGER_HI }, markerUntil: 1.4,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
     const len = Math.min(16, Math.max(3, d));
@@ -576,7 +577,7 @@ const flimmersprung = {
   id: 'mampfaffe_flimmersprung', range: [3, 16], weight: 6, cooldown: 6, telegraph: 0.5, flashParts: ['legs'], duration: 2.0, tempo: TEMPO, stam: 8,
   cue: cue('schrill', NEON), audit: [4, 8],
   cond: (m) => hasBuff(m, 'glitchpilz') && !(m.extra.tpLock > 0),
-  marker: { at: 'landing', radius: 3.6, color: NEON, peak: NEON_PEAK }, markerUntil: 1.0,
+  markerFromHits: true,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
     const side = a.r(0) < 0.5 ? 1 : -1;
@@ -628,6 +629,9 @@ function makeCloudMesh() {
   const disc = new THREE.Mesh(discGeo, discMat());
   disc.rotation.x = -Math.PI / 2; disc.scale.setScalar(MAMPFAFFE.CLOUD_R); disc.position.y = 0.12;
   grp.add(disc);
+  const edge = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 40), basic({ color: DANGER, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide, fog: false })); // roter Rand = hier wirkt das Gift (Wirkradius CLOUD_R)
+  edge.rotation.x = -Math.PI / 2; edge.scale.setScalar(MAMPFAFFE.CLOUD_R); edge.position.y = 0.14;
+  grp.add(edge);
   const m = cloudMat();
   grp.userData.puffs = [];
   for (let i = 0; i < 11; i++) {
@@ -637,7 +641,7 @@ function makeCloudMesh() {
     p.userData.s = 1.0 + (i % 3) * 0.45; p.userData.ph = i * 1.3;
     grp.add(p); grp.userData.puffs.push(p);
   }
-  grp.userData.mat = m; grp.userData.disc = disc;
+  grp.userData.mat = m; grp.userData.disc = disc; grp.userData.edge = edge;
   return grp;
 }
 
@@ -681,12 +685,6 @@ function visuals(m, dt) {
   }
   m.mesh.visible = !tpFlick || Math.floor(t * 24) % 2 === 0;
   e.tpFlick = tpFlick;
-  // ---- Rolle: Bahn als vier Neon-Ringe am Boden, solange sie droht
-  if (m.attack?.id === 'mampfaffe_rolle' && m.attack.inst.sample(m.attack.t).tau < 1.75) {
-    const inst = m.attack.inst, c = Math.floor(t * 10) % 2 ? NEON_PEAK : NEON;
-    for (let i = 0; i < 4; i++) { const x = inst.origin.x + inst.dir.x * (3 + 3 * i), z = inst.origin.z + inst.dir.z * (3 + 3 * i); ctx.fx.marker?.(`${m.id}:lane${i}`, { x, y: ctx.world.heightAt(x, z), z }, 1.9, c, false); }
-    e.lane = true;
-  } else if (e.lane) { e.lane = false; for (let i = 0; i < 4; i++) ctx.fx.clearMarker?.(`${m.id}:lane${i}`); }
   // ---- Feuerrülpser: Kegelstrahl + Funken, solange er rülpst
   if (e.burpUntil > t && m.alive) {
     const mp = mouthOf(m), dx = Math.sin(m.rot), dz = Math.cos(m.rot);
@@ -705,7 +703,7 @@ function visuals(m, dt) {
     const age = t - q.t0, left = q.t1 - t;
     if (q.mesh) {
       const grow = Math.min(1, age / 0.5), fade = Math.min(1, left / 1.0);
-      q.mesh.userData.mat.opacity = 0.38 * fade; q.mesh.userData.disc.material.opacity = 0.22 * fade;
+      q.mesh.userData.mat.opacity = 0.38 * fade; q.mesh.userData.disc.material.opacity = 0.22 * fade; q.mesh.userData.edge.material.opacity = 0.8 * fade;
       q.mesh.userData.puffs.forEach((p, k) => { const s = p.userData.s * grow * (1 + 0.12 * Math.sin(t * 2.2 + p.userData.ph)); p.scale.setScalar(s); p.rotation.y = t * 0.4 + k; p.position.y = 0.7 + (k % 4) * 0.7 + 0.2 * Math.sin(t * 1.5 + p.userData.ph); });
     }
     if (age >= 0.3 && left > 0.2) for (const p of ctx.players) {

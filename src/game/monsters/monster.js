@@ -1256,6 +1256,7 @@ export class Monster {
     const target = this._tgt;
     for (const k in MREST) target[k] = MREST[k];
     let tele = null;
+    if (!this.attack && this._fpKeys?.size) { for (const k of this._fpKeys) this.ctx.fx.clearMarker?.(k); this._fpKeys.clear(); }
     const spd = Math.hypot(this.vel.x, this.vel.z);
     if (!this.authority && !this.attack) this.air = Math.max(0, this.pos.y - this.ctx.world.heightAt(this.pos.x, this.pos.z));
     if (this.state === 'dead') {
@@ -1265,7 +1266,18 @@ export class Monster {
       if (a.inst.def.pose) sampleTrack(a.inst.def.pose, s.tau, target);
       if (s.phase === 'telegraph') tele = a.inst.def.flashParts ?? [];
       const mk = a.inst.def.marker;
-      if (mk && s.tau < (a.inst.def.markerUntil ?? a.inst.def.telegraph + 0.7)) {
+      if (a.inst.def.markerFromHits) { // rote Gefahrenzonen direkt aus den Trefferformen (Position + Radius = echte Hitbox), je Treffer bis kurz nach seinem Ende
+        const fps = a.inst.footprints(), keys = (this._fpKeys ??= new Set()), now = new Set();
+        const flash = s.phase === 'telegraph' && Math.floor(this.time * 10) % 2 === 0;
+        for (const f of fps) {
+          const key = `${this.id}:f${f.idx}.${f.n}`;
+          if (s.tau > f.t1 + 0.12) continue;
+          now.add(key);
+          this.ctx.fx.marker(key, { x: f.x, y: this.ctx.world.heightAt(f.x, f.z), z: f.z }, f.r, flash ? '#ff6a4a' : '#ff1a1a', s.tau >= f.t0);
+        }
+        for (const k of keys) if (!now.has(k)) this.ctx.fx.clearMarker?.(k);
+        this._fpKeys = now;
+      } else if (mk && s.tau < (a.inst.def.markerUntil ?? a.inst.def.telegraph + 0.7)) {
         let at = this.pos;
         if (mk.at === 'landing' && a.inst.landing) at = a.inst.landing;
         else if (mk.at === 'target') at = a.inst.target;

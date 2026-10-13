@@ -54,7 +54,9 @@ describe('Blendax: Definition', () => {
       expect(a.cue.color, a.id).toMatch(/^#(39ff14|7dff3a|d8ffd0)$/); // nie Cyan/Magenta
       expect(a.telegraph).toBeGreaterThanOrEqual(MIN_TELEGRAPH);
       if (a.hits?.length) expect(a.audit?.length, a.id).toBeGreaterThan(0);
-      if (a.marker) expect(a.marker.color, a.id).toBe('#39ff14');
+      // Schadensbereiche rot und aus den Trefferformen abgeleitet (nie grün); nur die Blitz-Warnung (kein Schaden) ist gelb
+      if (a.hits?.some((h) => h.dmg > 0)) { expect(a.markerFromHits, a.id).toBe(true); expect(a.marker, a.id).toBeUndefined(); }
+      if (a.marker) expect(a.marker.color, a.id).not.toMatch(/^#(39ff14|7dff3a|d8ffd0)$/);
     }
     for (const [from, list] of Object.entries(blendax.chains)) {
       expect(blendax.attacks[from], from).toBeTruthy();
@@ -68,19 +70,19 @@ describe('Blendax: Definition', () => {
   });
   it('Klone sind tiefe Kopien: Jaggo bleibt unverändert, Blendax ist härter und schneller', () => {
     expect(blendax.attacks.blendax_bissreihe.hits).not.toBe(jaggo.attacks.jaggo_bissreihe.hits);
-    expect(blendax.attacks.blendax_bissreihe.hits[0].dmg).toBe(20); // 17 +20 %
+    expect(blendax.attacks.blendax_bissreihe.hits[0].dmg).toBe(31); // 17 x1,8
     expect(jaggo.attacks.jaggo_bissreihe.hits[0].dmg).toBe(12);
     expect(blendax.attacks.blendax_bissreihe.tempo).toBeGreaterThan(jaggo.attacks.jaggo_bissreihe.tempo);
     const c = retune(jaggo.attacks.jaggo_huepfer, { id: 'x', dmg: 5, range: [1, 2] });
     expect(c.hits[0].dmg).toBe(5); expect(c.id).toBe('x'); expect(c.range).toEqual([1, 2]);
     expect(jaggo.attacks.jaggo_huepfer.range).toEqual([3.5, 10]);
   });
-  it('Schaden: alle Treffer +20 % gegenüber den alten Werten (Blitz bleibt 0)', () => {
-    const A = blendax.attacks, dmgs = (id) => A[id].hits.map((h) => h.dmg);
-    expect(BLENDAX.DMG_MUL).toBe(1.2);
-    expect(dmgs('blendax_bissreihe')).toEqual([20, 20, 20]); expect(dmgs('blendax_huepfer')).toEqual([38]); expect(dmgs('blendax_schwanz')).toEqual([29]);
-    expect(dmgs('blendax_rueckhuepfer')).toEqual([29]); expect(dmgs('blendax_zickzack')).toEqual([18, 18, 18, 24]); expect(dmgs('blendax_hetzjagd')).toEqual([36, 29]);
-    expect([A.blendax_sprung, A.blendax_sprung2, A.blendax_sprung3].map((a) => a.hits[0].dmg)).toEqual([34, 34, 41]);
+  it('Schaden: alle Treffer x1,8 gegenüber den Basiswerten (Blitz bleibt 0)', () => {
+    const A = blendax.attacks, dmgs = (id) => A[id].hits.map((h) => h.dmg), x = (a) => a.map((d) => Math.round(d * 1.8));
+    expect(BLENDAX.DMG_MUL).toBe(1.8);
+    expect(dmgs('blendax_bissreihe')).toEqual(x([17, 17, 17])); expect(dmgs('blendax_huepfer')).toEqual(x([32])); expect(dmgs('blendax_schwanz')).toEqual(x([24]));
+    expect(dmgs('blendax_rueckhuepfer')).toEqual(x([24])); expect(dmgs('blendax_zickzack')).toEqual(x([15, 15, 15, 20])); expect(dmgs('blendax_hetzjagd')).toEqual(x([30, 24]));
+    expect([A.blendax_sprung, A.blendax_sprung2, A.blendax_sprung3].map((a) => a.hits[0].dmg)).toEqual(x([30, 30, 36]));
     expect(dmgs('blendax_blitz')).toEqual([0]);
   });
   it('Körper gelbgrün: Haut- und Bauchfarbe im Gelbgrün-Bereich (Hue 70-100 Grad), Schirm bleibt Neongrün', () => {
@@ -109,9 +111,10 @@ describe('Blendax: Blitz trifft nur, wer hinsieht', () => {
     expect(p.state).not.toBe('pinned'); // Phase 1: steuerbar
     run(m, ctx, 1.0);
     expect(p.status.blend?.stunned).toBe(true);
+    expect(p.status.blend.stun).toBe(2); // Blendax: 2 s Betäubung nach dem Weißbild
     expect(p.state).toBe('pinned');
     expect(p.stars?.visible).toBe(true);
-    m.recover = 99; run(m, ctx, 1.1);
+    m.recover = 99; run(m, ctx, 2.1);
     expect(p.status.blend).toBeUndefined();
     expect(p.stars.visible).toBe(false);
     expect(p.state).toBe('free');
@@ -177,9 +180,10 @@ describe('Blendax: Schirm, Schock, Nebel', () => {
     expect(blendax.detectFor(m)).toBe(40);
   });
   it('Kette: Blitz -> Sprung -> Sprung2 -> Sprung3 (3 Folgeglieder erlaubt), letzter Sprung wirft um', () => {
-    expect(blendax.chainMax).toBe(3);
+    expect(blendax.chainMax).toBe(4);
     expect(blendax.attacks.blendax_sprung3.hits[0].knock).toBe('down');
-    expect(blendax.attacks.blendax_sprung.hits[0].dmg).toBe(34); // 28 +20 %
+    expect(blendax.attacks.blendax_sprung.hits[0].dmg).toBe(54); // 30 x1,8
+    expect(blendax.chains.blendax_sprung3.some((o) => o.atk === 'blendax_schwanz')).toBe(true); // Kombo geht weiter
   });
 });
 

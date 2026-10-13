@@ -88,10 +88,11 @@ export class ProjectileSet {
       }
       if (def.kind === 'fire' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#ff8a20' : '#ffd060', 1.2);
       if (def.mode === 'impact') {
-        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' ? '#c8902c' : def.kind === 'slime' ? '#39ff14' : '#b06a20';
-        if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, def.splash, mc, false);
+        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' ? '#ff2a2a' : def.kind === 'slime' ? '#39ff14' : '#b06a20';
+        const mr = def.kind === 'kokos' ? def.splash + 0.4 : def.splash; // Kokos: Marker = echte Reichweite (Splash + Pirscher-Radius 0,4)
+        if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, false);
         else if (!pr.landed) {
-          pr.landed = true; ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, def.splash, mc, true); ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.3, z: def.to.z }, 10, '#7a5230', 4);
+          pr.landed = true; ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, true); ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.3, z: def.to.z }, 10, '#7a5230', 4);
           if (def.kind === 'slime') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 16, '#39ff14', 5); ctx.bus?.emit('sfx', { name: 'slimeSplat', pos: def.to }); }
           if (def.kind === 'kokos') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 14, '#f4ead0', 5); ctx.bus?.emit('sfx', { name: 'coconut', pos: def.to }); }
         }

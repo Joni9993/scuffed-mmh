@@ -56,7 +56,7 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
         const r = player.resist;
         if (type === 'blend') { // Macke Blendschutz: -0,3 s Weiss und -0,3 s Betaeubung je Stufe (Stufe 3: Weiss 0,1 s, keine Betaeubung)
           const cut = player._sk.blendCut ?? 0;
-          return addStatus(type, { ...opts, white: Math.max(0.1, 1 - cut), stun: 1 - cut < 0.15 ? 0 : 1 - cut });
+          return addStatus(type, { ...opts, white: Math.max(0.1, 1 - cut), stun: 1 - cut < 0.15 ? 0 : Math.max(0.2, (opts.stun ?? 1) - cut) }); // opts.stun: Blendax 2 s Betäubung
         }
         if (type === 'schleim' && player._sk.schleimFuse > 0) opts = { ...opts, t: (opts.t ?? 2) + player._sk.schleimFuse }; // Schleimhaut: Zündschnur länger
         if (player._sk.eisenCut > 0 && EISEN_T[type]) opts = { ...opts, t: (opts.t ?? EISEN_T[type]) * (1 - player._sk.eisenCut) }; // Eisenmagen: Dauer -15 % je Stufe
