@@ -499,6 +499,7 @@ export class Player {
     else if (lp) { const dx = this.pos.x - lp.x, dz = this.pos.z - lp.z, l = Math.hypot(dx, dz) || 1; dir = { x: dx / l, z: dz / l }; }
     else dir = { x: -Math.sin(this.rot), z: -Math.cos(this.rot) };
     this.rollCfg = this.def.rollOverride?.(this.weapon) ?? null; // [W] Rausch dash {duration, dist}
+    this.rollGroundMul = this.ctx.world.groundType?.(this.pos.x, this.pos.z) === 'frost' ? 1.08 : 1;
     this.rollDir = dir;
     this.rollStart = { x: this.pos.x, y: this.pos.y, z: this.pos.z };
     this.rot = yawOf(dir.x, dir.z);
@@ -602,7 +603,8 @@ export class Player {
     const busy = w.busy;
     let speedTarget = 0, wantYaw = null;
     this.sprinting = false;
-    const mud = this.ctx.world.groundType?.(this.pos.x, this.pos.z) === 'mud'; // [K] Schlammsenke: -30 % speed, no sprint
+    const ground = this.ctx.world.groundType?.(this.pos.x, this.pos.z);
+    const mud = ground === 'mud'; // [K] Schlammsenke: -30 % speed, no sprint
     if (d) {
       const full = Math.hypot(input.move.x, input.move.y) >= 0.97;
       this.fullPushT = full ? this.fullPushT + dt : 0;
@@ -617,6 +619,7 @@ export class Player {
       if (busy) speedTarget = WALK * w.moveSpeedMul() * (d.mag > 0.7 ? 1.4 : 1);
       speedTarget *= (this.def.speedMul?.(w) ?? 1) * buffSpeed(this); // [W] Rausch +15 % // [KK] Tempo-Buff Grün
       if (this.status.mud || mud) speedTarget *= 0.7; // [M] mud status / [K] mud ground (not stacked)
+      if (ground === 'frost' && !busy) speedTarget *= 1.06; // crisp footing; no attack-lunge or timing change
       wantYaw = yawOf(d.x, d.z);
     } else this.fullPushT = 0;
 
@@ -658,7 +661,7 @@ export class Player {
     this.rollT += dt;
     this.weapon.feed(dt, inp);
     const rc = this.rollCfg; // [W]
-    const s = rc ? ((2 * rc.dist) / rc.duration) * Math.max(0, 1 - this.rollT / rc.duration) : rollSpeed(this.rollT);
+    const s = (rc ? ((2 * rc.dist) / rc.duration) * Math.max(0, 1 - this.rollT / rc.duration) : rollSpeed(this.rollT)) * (this.rollGroundMul ?? 1);
     this.vel.x = this.rollDir.x * s; this.vel.z = this.rollDir.z * s;
     if (this.rollT >= (rc?.duration ?? ROLL.duration)) { this.#enter('free'); this.sinceRoll = 0; this.rollDir = { x: 0, z: 0 }; }
   }

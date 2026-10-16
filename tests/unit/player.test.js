@@ -33,6 +33,42 @@ function make() {
 }
 beforeEach(() => time.reset());
 
+describe('Glitchgrat frost footing', () => {
+  function traverse(ground, roll = false) {
+    const result = make();
+    result.ctx.world.groundType = () => ground;
+    result.ctx.input.setStick(0, 0.8, 'test');
+    if (roll) result.ctx.input.press('roll', 30);
+    result.step(roll ? 34 : 120);
+    return result.p;
+  }
+
+  it('runs 6% faster on frost, with the same movement controls', () => {
+    const rock = traverse('rock'), frost = traverse('frost');
+    expect(frost.speed / rock.speed).toBeCloseTo(1.06, 3);
+    expect(frost.sprinting).toBe(rock.sprinting);
+  });
+
+  it('rolls 8% farther without extending the roll or changing stamina cost', () => {
+    const rock = traverse('rock', true), frost = traverse('frost', true);
+    expect(frost.pos.z / rock.pos.z).toBeCloseTo(1.08, 3);
+    expect(frost.state).toBe(rock.state);
+    expect(frost.rollT).toBe(rock.rollT);
+    expect(frost.stamina).toBeCloseTo(rock.stamina, 5);
+  });
+
+  it('keeps the perfect-dodge and vulnerable recovery timing on frost', () => {
+    const { ctx, p, step } = make();
+    ctx.world.groundType = () => 'frost';
+    ctx.input.press('roll', 30);
+    step(1);
+    p.rollT = 0.1;
+    expect(p.takeHit({ dmg: 10, key: 'frost-perfect' })).toBe('perfect');
+    p.rollT = 0.31;
+    expect(p.takeHit({ dmg: 10, key: 'frost-recovery' })).toBe('hit');
+  });
+});
+
 describe('player: roll, stamina, perfect dodge', () => {
   it('roll costs 22 Puste and starts the roll state', () => {
     const { ctx, p, step } = make();

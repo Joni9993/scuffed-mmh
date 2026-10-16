@@ -124,12 +124,19 @@ Object.assign(quests, {
     monsters: [{ id: 'blendax', hpMul: 0.65 }, { id: 'mampfaffe', hpMul: 0.65 }, { id: 'krachfaust', hpMul: 0.65 }], multi: 'revier',
     desc: 'Blendax, Mampfaffe und Krachfaust streiten ums Revier. Nutzt den Kampf: nach einer Minute oder bei zu viel Druck jagen sie euch gemeinsam.',
   },
+  // Glitchgrat: Sammelausflug in luftige Höhen
+  gratausflug: {
+    id: 'gratausflug', name: 'Gratausflug', type: 'gather', monster: null, world: 'glitchgrat', timeLimit: 15 * 60, reward: 1200, rp: 60, jr: 10,
+    gather: { id: 'glitchgrat_erz', n: 8 },
+    desc: 'Erkunde den windigen Glitchgrat und bringe 8 Brocken Grat-Erz zurück. Kein Brocken.',
+  },
 });
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
 export const QUEST_ORDER = ['kraeuterlauf', 'jaggo', 'barrotz', 'brathalos', 'jaggo_rotglut', 'barrotz_rotglut', 'brathalos_rotglut'];
 
-QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'mampfaffe', 'krachfaust', 'blendax_rotglut', 'mampfaffe_rotglut', 'krachfaust_rotglut', 'revierstreit_smaragd'); // Reihenfolge nach Spec 0.2: Schlüssel-Aufträge, dann alle Rotglut, zuletzt der Revierstreit
+QUEST_ORDER.push('rostiger_ausflug', 'kroll', 'gorgo', 'voltaro', 'kroll_rotglut', 'gorgo_rotglut', 'voltaro_rotglut', 'inselausflug', 'blendax', 'mampfaffe', 'krachfaust', 'blendax_rotglut', 'mampfaffe_rotglut', 'krachfaust_rotglut', 'revierstreit_smaragd', 'gratausflug'); // Reihenfolge nach Spec 0.2: Schlüssel-Aufträge, dann alle Rotglut, zuletzt der Revierstreit
+
 
 export function getQuest(id) {
   const q = quests[id];

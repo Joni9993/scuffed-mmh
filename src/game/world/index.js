@@ -4,6 +4,7 @@ import { createTestArena } from './testArena.js';
 import { createSchotterklamm } from './schotterklamm.js';
 import { createRostwerke } from './rostwerke.js';
 import { createSmaragdkueste } from './smaragdkueste.js';
+import { createGlitchgrat } from './glitchgrat.js';
 
 export const worlds = {
   test: createTestArena,
@@ -11,6 +12,7 @@ export const worlds = {
   schotterklamm: createSchotterklamm,
   rostwerke: createRostwerke,
   smaragdkueste: createSmaragdkueste,
+  glitchgrat: createGlitchgrat,
 };
 
 /** Fill in the phase 2 interface for simple worlds (the test arena) so callers never have to special-case. */
