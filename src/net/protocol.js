@@ -112,6 +112,7 @@ export function encodeAtk(monsterId, params, T) {
   if (params.tgMul !== undefined && params.tgMul !== 1) o.k = r3(params.tgMul);
   if (params.chainIdx) o.c = params.chainIdx;
   if (params.teach) o.e = 1;
+  if (params.tempoMul !== undefined && params.tempoMul !== 1) o.v = r3(params.tempoMul);
   return o;
 }
 export function decodeAtk(o) {
@@ -119,6 +120,7 @@ export function decodeAtk(o) {
   if (o.k !== undefined) params.tgMul = o.k;
   if (o.c) params.chainIdx = o.c;
   if (o.e) params.teach = true;
+  if (o.v !== undefined) params.tempoMul = o.v;
   return { T: o.T / 1000, monsterId: o.m, params };
 }
 

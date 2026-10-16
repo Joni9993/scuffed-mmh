@@ -137,6 +137,9 @@ export const hubScene = {
       onCopy: () => { try { navigator.clipboard?.writeText?.(session.code ?? ''); } catch { /* no clipboard */ } this.toast('Code kopiert'); },
     });
     this.syncProfile();
+    if (['pyrostur', 'felsengroll', 'voltiris'].every((id) => save.clears[id]) && !save.clears.gockelok) {
+      this.toast('EIL-DEKRET: Auf dem Weltenkamm erwacht etwas Uraltes. Der letzte Auftrag wartet am Brett!', 8500);
+    }
 
     // ---- flow
     const wasEntered = townState.entered;

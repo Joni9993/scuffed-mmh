@@ -682,7 +682,7 @@ describe('Waffen-Glitch: Feedback-Schleife (GDD 17.1)', () => {
 describe('Waffen-Daten, Schmiede, Save, Gear-Code', () => {
   it('Stufenwerte (Kraft) laut GDD 17.1', () => {
     expect(WEAPON_ORDER).toContain('kk');
-    expect(WEAPON_TYPES.kk.tiers.map((t) => t.name)).toEqual(['Blechkiste', 'Schädel-Box', 'Jaggo-Equalizer', 'Brathalos-Schalltrichter', 'Kroll-Dampforgel', 'Funkenfürst-Doppelspule']);
+    expect(WEAPON_TYPES.kk.tiers.slice(0, 6).map((t) => t.name)).toEqual(['Blechkiste', 'Schädel-Box', 'Jaggo-Equalizer', 'Brathalos-Schalltrichter', 'Kroll-Dampforgel', 'Funkenfürst-Doppelspule']);
     expect(weaponStats('kk', 1).power).toBe(76);
     expect(weaponStats('kk', 2).power).toBe(95);
     expect(weaponStats('kk', 3, 'a')).toMatchObject({ power: 112, crit: 0.15 });
@@ -706,7 +706,7 @@ describe('Waffen-Daten, Schmiede, Save, Gear-Code', () => {
     expect(upgradeOptions('kk', 4).length).toBe(3);
     expect(upgradeOptions('kk', 5, 'v').length).toBe(2); // 6v Funkenfuerst + 6x Sprenger
     expect(upgradeOptions('kk', 5, 'k').length).toBe(1); // nur 6x Sprenger (Krachfaust)
-    expect(upgradeOptions('kk', 6)).toEqual([]);
+    expect(upgradeOptions('kk', 7)).toEqual([]);
     const s = defaultSave();
     const give = (cost) => { for (const [k, v] of Object.entries(cost)) { if (k === 'schrott') s.schrott += v; else s.box[k] = (s.box[k] ?? 0) + v; } };
     give(WEAPON_UPGRADES[2].cost);
@@ -723,7 +723,7 @@ describe('Waffen-Daten, Schmiede, Save, Gear-Code', () => {
     expect(s.weapons.kk).toEqual({ tier: 1, branch: null }); // Migration: Start-Waffe
     expect(s.weapons.gs).toEqual({ tier: 3, branch: 'a' }); // Bestehendes bleibt
     expect(sanitize({ ...old, loadout: { weapon: 'kk' } }).loadout.weapon).toBe('kk');
-    expect(sanitize({ weapons: { kk: { tier: 9, branch: 'b' } } }).weapons.kk).toEqual({ tier: 6, branch: 'v' });
+    expect(sanitize({ weapons: { kk: { tier: 9, branch: 'b' } } }).weapons.kk).toEqual({ tier: 7, branch: null });
     expect(sanitize({ weapons: { kk: { tier: 3, branch: 'zz' } } }).weapons.kk).toEqual({ tier: 3, branch: 'a' });
     const arm = sanitize({ armory: [{ type: 'kk', tier: 5, branch: 'g' }, { type: 'kx', tier: 1 }] });
     expect(arm.armory).toEqual([{ type: 'kk', tier: 5, branch: 'g' }]);

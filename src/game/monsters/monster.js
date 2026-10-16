@@ -807,7 +807,7 @@ export class Monster {
 
   _combat(dt) {
     if (this.attack) { this._runAttack(dt); return; }
-    if (!this.minor && !this.fleeUsed && this.hp <= this.maxHp * FLEE_HP) { this._startFlee(); return; }
+    if (!this.minor && !this.def.noFlee && !this.fleeUsed && this.hp <= this.maxHp * FLEE_HP) { this._startFlee(); return; }
     this._combatT += dt;
     if (this.chainNext && !this.target?.alive) this.chainNext = null;
     this.retargetT -= dt;
@@ -873,9 +873,9 @@ export class Monster {
     a.t += dt;
     const s = inst.sample(a.t);
     this.pos.x = s.x; this.pos.z = s.z; this.rot = s.yaw;
-    this.ctx.world.collide(this.pos, this.bodyRadius * 0.5);
+    if (!inst.def.ignoreTerrain) this.ctx.world.collide(this.pos, this.bodyRadius * 0.5);
     this.air = s.air;
-    this.pos.y = ctx.world.heightAt(this.pos.x, this.pos.z) + s.air;
+    this.pos.y = (s.groundY ?? ctx.world.heightAt(this.pos.x, this.pos.z)) + s.air;
     this.vel.set(0, 0, 0);
     // timeline events: `all` events run on every client (projectiles), the others on the authority only (spawns etc.)
     for (const e of inst.def.events ?? []) {
@@ -1058,6 +1058,7 @@ export class Monster {
   }
 
   _flee(dt) {
+    if (this.def.flee?.(this, dt)) return;
     const nest = nestOf(this);
     const dx = nest.x - this.pos.x, dz = nest.z - this.pos.z, d = Math.hypot(dx, dz);
     this.fleeT = (this.fleeT ?? 0) + dt;
@@ -1095,6 +1096,9 @@ export class Monster {
   }
   _fly(dt) {
     if (this.attack) { this._runAttack(dt); return; }
+    if (this.def.apexZones) { // an interrupted migration lands safely instead of entering orbit AI
+      this.air = 0; this._landOnGround(); this.setState('combat'); this.recover = 1.5; return;
+    }
     const f = this.def.fly;
     let tgt = this.target;
     if (!tgt || !tgt.alive) { this._pickTarget(); tgt = this.target; }
@@ -1271,7 +1275,7 @@ export class Monster {
         const flash = s.phase === 'telegraph' && Math.floor(this.time * 10) % 2 === 0;
         for (const f of fps) {
           const key = `${this.id}:f${f.idx}.${f.n}`;
-          if (s.tau > f.t1 + 0.12) continue;
+          if (s.tau > f.t1 + 0.12 || s.tau < f.t0 - (a.inst.def.markerLead ?? Infinity)) continue;
           now.add(key);
           this.ctx.fx.marker(key, { x: f.x, y: this.ctx.world.heightAt(f.x, f.z), z: f.z }, f.r, flash ? '#ff6a4a' : '#ff1a1a', s.tau >= f.t0);
         }

@@ -10,8 +10,8 @@ const hunt = (s, q, result = 'win', rpMul = 1) => applyHuntResult(s, q, buildRew
 
 describe('Rang-Punkte', () => {
   it('RANKS-Schwellen und Schlüssel', () => {
-    expect(RANKS.map((r) => [r.jr, r.keys, r.rp])).toEqual([[2, ['jaggo'], 0], [3, ['barrotz'], 100], [4, ['brathalos'], 250], [5, ['revierstreit'], 450], [6, ['kroll', 'gorgo'], 800], [7, ['voltaro'], 1200], [8, ['blendax'], 1700], [9, ['mampfaffe'], 2300], [10, ['krachfaust'], 3000]]);
-    expect(MAX_JR).toBe(10); // 8 Blendax, 9 Mampfaffe, 10 Krachfaust
+    expect(RANKS.map((r) => [r.jr, r.keys, r.rp])).toEqual([[2, ['jaggo'], 0], [3, ['barrotz'], 100], [4, ['brathalos'], 250], [5, ['revierstreit'], 450], [6, ['kroll', 'gorgo'], 800], [7, ['voltaro'], 1200], [8, ['blendax'], 1700], [9, ['mampfaffe'], 2300], [10, ['krachfaust'], 3000], [11, ['pyrostur'], 3000], [12, ['felsengroll'], 3350], [13, ['voltiris'], 3750], [14, ['gockelok'], 4200]]);
+    expect(MAX_JR).toBe(14);
     for (const r of RANKS) for (const k of r.keys) expect(quests[k].jrUp).toBe(r.jr);
   });
   it('Sieg gibt Basis-RP, Niederlage 0, Training 0', () => {
@@ -77,6 +77,6 @@ describe('Smaragd-Raenge', () => {
     const { RANK_RP } = await import('../../src/data/quests.js');
     expect(RANK_RP[8]).toBeGreaterThan(RANK_RP[7]); expect(RANK_RP[10]).toBeGreaterThan(RANK_RP[9]);
     const { sanitize } = await import('../../src/meta/save.js');
-    expect(sanitize({ jr: 10 }).jr).toBe(10); expect(sanitize({ jr: 99 }).jr).toBe(10);
+    expect(sanitize({ jr: 10 }).jr).toBe(10); expect(sanitize({ jr: 99 }).jr).toBe(14);
   });
 });

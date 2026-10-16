@@ -80,6 +80,7 @@ export const ITEMS = {
 
   // ---- Glitchgrat: gathered materials
   glitchgrat_erz: mat('glitchgrat_erz', 'Grat-Erz', 'Massives Eisenerz aus dem Hochgebirge. Von feinen Datenadern durchzogen.', 'ore', '#7088b0', 12),
+  drachen_herz: mat('drachen_herz', 'Apex-Herz', 'Ein Drachenherz mit hörbarem Lüfter. Die Garantie ist längst abgelaufen.', 'gem', '#caa0ff', 500),
   frostgras: mat('frostgras', 'Frostgras', 'Überdauert jeden Gebirgssturm. Eisig kalt beim Pflücken.', 'leaf', '#8ae0ff', 10),
   kristallsplitter: mat('kristallsplitter', 'Kristallsplitter', 'Ein scharfkantiger Glitch-Kristall. Bricht das Licht in Regenbogenfarben.', 'gem', '#00f0ff', 18),
   sternensplitter: mat('sternensplitter', 'Sternensplitter', 'Aus dem Himmel gefallen. Glüht in tiefem Violett. Sehr selten.', 'gem', '#b5179e', 50),

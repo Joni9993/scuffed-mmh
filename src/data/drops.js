@@ -106,6 +106,34 @@ export const DROPS = {
   },
 };
 
+// Apex loot: each clear guarantees useful progression materials; rare trophies remain optional.
+Object.assign(DROPS, {
+  pyrostur: {
+    carve: [{ id: 'pyrostur_schuppe', w: 45 }, { id: 'pyrostur_kesselsack', w: 30 }, { id: 'pyrostur_fluegel', w: 20 }, { id: 'pyrostur_rubin', w: 5 }],
+    tail: [],
+    breaks: { chest: [{ id: 'pyrostur_kesselsack', n: 2, chance: 1 }], valve: [{ id: 'pyrostur_kesselsack', n: 1, chance: 1 }], wing: [{ id: 'pyrostur_fluegel', n: 1, chance: 1 }] },
+    reward: [{ id: 'pyrostur_schuppe', n: [2, 3], chance: 1 }, { id: 'pyrostur_kesselsack', n: 1, chance: 1 }, { id: 'drachen_herz', n: 1, chance: 1 }, { id: 'pyrostur_rubin', n: 1, chance: .12 }],
+  },
+  felsengroll: {
+    carve: [{ id: 'felsengroll_panzer', w: 45 }, { id: 'felsengroll_schlacke', w: 30 }, { id: 'felsengroll_schweif', w: 20 }, { id: 'felsengroll_kern', w: 5 }],
+    tail: [],
+    breaks: { shoulder: [{ id: 'felsengroll_panzer', n: 2, chance: 1 }], club: [{ id: 'felsengroll_schweif', n: 1, chance: 1 }] },
+    reward: [{ id: 'felsengroll_panzer', n: [2, 3], chance: 1 }, { id: 'felsengroll_schlacke', n: 1, chance: 1 }, { id: 'drachen_herz', n: 1, chance: 1 }, { id: 'felsengroll_kern', n: 1, chance: .12 }],
+  },
+  voltiris: {
+    carve: [{ id: 'voltiris_flimmerfeder', w: 45 }, { id: 'voltiris_horn', w: 30 }, { id: 'voltiris_antenne', w: 20 }, { id: 'voltiris_kristall', w: 5 }],
+    tail: [],
+    breaks: { antenna: [{ id: 'voltiris_antenne', n: 2, chance: 1 }], wing: [{ id: 'voltiris_flimmerfeder', n: 2, chance: 1 }] },
+    reward: [{ id: 'voltiris_flimmerfeder', n: [2, 3], chance: 1 }, { id: 'voltiris_horn', n: 1, chance: 1 }, { id: 'drachen_herz', n: 1, chance: 1 }, { id: 'voltiris_kristall', n: 1, chance: .12 }],
+  },
+  gockelok: {
+    carve: [{ id: 'gockel_feder', w: 45 }, { id: 'gockel_sporn', w: 30 }, { id: 'gockel_kamm', w: 20 }, { id: 'ur_gockelei', w: 5 }],
+    tail: [],
+    breaks: { comb: [{ id: 'gockel_kamm', n: 1, chance: 1 }], spur: [{ id: 'gockel_sporn', n: 2, chance: 1 }] },
+    reward: [{ id: 'gockel_feder', n: [2, 3], chance: 1 }, { id: 'gockel_sporn', n: 2, chance: 1 }, { id: 'ur_gockelei', n: 1, chance: 1 }],
+  },
+});
+
 /** Break tag of a monster part id ('head', 'wingL', 'kopfplatte', 'tail' ...). */
 export function partTag(partId = '') {
   const s = String(partId).toLowerCase();

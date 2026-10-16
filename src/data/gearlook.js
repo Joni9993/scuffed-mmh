@@ -1,6 +1,6 @@
 // [G] Gear look data (GDD 8.6): visual tier per armor set + compact gear codes for the network. Pure (no THREE).
 import { DEFAULT_ARMOR, SLOTS, getPiece } from './armor.js';
-import { WEAPON_TYPES } from './weapons.js';
+import { WEAPON_TYPES, MAX_WEAPON_TIER } from './weapons.js';
 
 /** Order of the code letters (a..f). Append only (wire format). */
 export const GEAR_SETS = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust'];
@@ -29,7 +29,7 @@ export function armorSets(armor = DEFAULT_ARMOR) {
 export function makeGear({ weapon, armor, color } = {}) {
   const w = weapon ?? {};
   const type = WEAPON_TYPES[w.type] ? w.type : 'gs';
-  const tier = Math.min(6, Math.max(1, Math.round(w.tier ?? 1)));
+  const tier = Math.min(MAX_WEAPON_TIER, Math.max(1, Math.round(w.tier ?? 1)));
   const a = {};
   for (const s of SLOTS) a[s] = getPiece(armor?.[s])?.slot === s ? armor[s] : DEFAULT_ARMOR[s];
   return { weapon: { type, tier, branch: gearBranch(tier, w.branch) }, armor: a, color: color ?? '#3f8a4a' };
@@ -46,7 +46,7 @@ export function encodeGear(g, colorIdx = 0) {
 export function decodeGear(code) {
   if (typeof code !== 'string' || code.length < 6) return null;
   const type = WTYPE[code[0]], tier = Number(code[1]);
-  if (!type || !(tier >= 1 && tier <= 6)) return null;
+  if (!type || !(tier >= 1 && tier <= MAX_WEAPON_TIER) || !Number.isInteger(tier)) return null;
   const armor = {};
   for (let i = 0; i < 3; i++) {
     const set = GEAR_SETS[code.charCodeAt(3 + i) - 97];

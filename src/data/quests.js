@@ -130,6 +130,26 @@ Object.assign(quests, {
     gather: { id: 'glitchgrat_erz', n: 8 },
     desc: 'Erkunde den windigen Glitchgrat und bringe 8 Brocken Grat-Erz zurück. Kein Brocken.',
   },
+  pyrostur: {
+    id: 'pyrostur', name: 'Der Glutsturm', type: 'hunt', monster: 'pyrostur', world: 'glitchgrat',
+    timeLimit: 25 * 60, reward: 6000, rp: 350, jr: 10, jrUp: 11,
+    desc: 'Der Kesseldrache herrscht über den Weltenkamm. Lies seinen Druck, umspiele die Ablässe und brich sein Ventil.',
+  },
+  felsengroll: {
+    id: 'felsengroll', name: 'Groll der Berge', type: 'hunt', monster: 'felsengroll', world: 'glitchgrat',
+    timeLimit: 25 * 60, reward: 6500, rp: 400, jr: 11, jrUp: 12,
+    desc: 'Auf dem Erzplateau grollt es. Halte die Schlackebahnen frei; Schulter und Schweifkeule bestimmen seine sicheren Flanken.',
+  },
+  voltiris: {
+    id: 'voltiris', name: 'Gewitter am Abgrund', type: 'hunt', monster: 'voltiris', world: 'glitchgrat',
+    timeLimit: 25 * 60, reward: 7000, rp: 450, jr: 12, jrUp: 13,
+    desc: 'Eine Prismawyvern zerlegt die Blitzschlucht in leuchtende Bahnen. Der echte Körper hat Augen. Seine Nachbilder nicht.',
+  },
+  gockelok: {
+    id: 'gockelok', name: 'Das Kikeriki des Untergangs', type: 'hunt', monster: 'gockelok', world: 'glitchgrat',
+    timeLimit: 30 * 60, reward: 12000, rp: 600, jr: 13, jrUp: 14,
+    desc: 'EIL-DEKRET: Etwas Uraltes ist auf dem Weltenkamm erwacht. Der letzte Auftrag. Bring Mut. Und vielleicht Paniermehl.',
+  },
 });
 // Feste Mutatoren eines Auftrags liefern seinen Beute-Faktor (progression.js liest quest.matMul).
 for (const q of Object.values(quests)) if (q.mutators?.length) q.matMul = (q.matMul ?? 1) * resolveMods(q.mutators).reward;
@@ -154,10 +174,11 @@ quests.revierstreit = {
   desc: 'Barrotz und Jaggo streiten ums Revier. Nutzt den Kampf - nach einer Minute oder bei zu viel Druck jagen sie euch gemeinsam.',
 };
 QUEST_ORDER.push('revierstreit');
+QUEST_ORDER.push('pyrostur', 'felsengroll', 'voltiris', 'gockelok');
 /** Wochen-Feldstudie (meta/fieldstudy.js) meldet sich hier an; nicht in QUEST_ORDER (das Brett zeigt sie separat oben). */
 export function setFieldStudyQuest(q) { quests.feldstudie = q; }
 
 /** Basis-RP je Brocken (Feldstudie-Berechnung). */
-export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200, mampfaffe: 220, krachfaust: 300 };
+export const MONSTER_RP = { jaggo: 40, barrotz: 60, brathalos: 80, kroll: 130, gorgo: 130, voltaro: 180, blendax: 200, mampfaffe: 220, krachfaust: 300, pyrostur: 350, felsengroll: 400, voltiris: 450, gockelok: 600 };
 /** RP-Schwelle je Zielrang (Schlüssel-Auftrag). progression.js baut daraus RANKS. */
-export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200, 8: 1700, 9: 2300, 10: 3000 };
+export const RANK_RP = { 2: 0, 3: 100, 4: 250, 5: 450, 6: 800, 7: 1200, 8: 1700, 9: 2300, 10: 3000, 11: 3000, 12: 3350, 13: 3750, 14: 4200 };

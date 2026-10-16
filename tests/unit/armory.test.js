@@ -34,7 +34,7 @@ describe('Waffenlager', () => {
   });
   it('Spielstand: Lager wird geprüft und bleibt erhalten', () => {
     const s = sanitize({ armory: [{ type: 'kt', tier: 5, branch: 'g' }, { type: 'xx', tier: 1 }, { type: 'gs', tier: 9 }] });
-    expect(s.armory).toEqual([{ type: 'kt', tier: 5, branch: 'g' }, { type: 'gs', tier: 6, branch: 'v' }]);
+    expect(s.armory).toEqual([{ type: 'kt', tier: 5, branch: 'g' }, { type: 'gs', tier: 7, branch: null }]);
     expect(sanitize({}).armory).toEqual([]);
   });
   it('Camp-Truhe: Lager-Waffe wählen, nach der Jagd ist sie aktiv', () => {

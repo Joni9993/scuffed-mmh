@@ -546,7 +546,7 @@ describe('Krachfaust: Daten', () => {
     for (const x of quests.revierstreit_smaragd.monsters) expect(monsters[x.id]).toBeTruthy();
     expect(QUEST_ORDER.slice(QUEST_ORDER.indexOf('inselausflug'), QUEST_ORDER.indexOf('inselausflug') + 8)).toEqual(['inselausflug', 'blendax', 'mampfaffe', 'krachfaust', 'blendax_rotglut', 'mampfaffe_rotglut', 'krachfaust_rotglut', 'revierstreit_smaragd']);
     expect(MONSTER_RP.krachfaust).toBe(300);
-    expect(RANKS.at(-1)).toEqual({ jr: 10, keys: ['krachfaust'], rp: RANK_RP[10] });
+    expect(RANKS.find((r) => r.jr === 10)).toEqual({ jr: 10, keys: ['krachfaust'], rp: RANK_RP[10] });
     expect(RANK_RP[10]).toBe(3000);
   });
   it('Freischaltung: Krachfaust braucht Rang 9 (also Mampfaffe-Sieg), gibt Rang 10 mit genug RP; Rotglut/Revierstreit ab Rang 10', () => {

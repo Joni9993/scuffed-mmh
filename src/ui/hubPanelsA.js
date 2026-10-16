@@ -18,9 +18,9 @@ const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) =>
 // Layout (fits 568x320 without scrolling to the button): left = tabs + selectable tree/grid (scrolls on its own),
 // right = big rotatable preview + pinned info (compare current vs new, costs, "Schmieden").
 const TREE = [{ tier: 1, branch: null }, { tier: 2, branch: null }, { tier: 3, branch: 'a' }, { tier: 3, branch: 'b' }, { tier: 4, branch: null },
-  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }, { tier: 6, branch: 'x' }];
+  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }, { tier: 6, branch: 'x' }, { tier: 7, branch: null }];
 const BR_LABEL = { a: ' Jaggo', b: ' Barrotz', k: ' Kroll', g: ' Gorgo', v: ' Voltaro', x: ' Krachfaust' };
-const BRANCHED = (t) => t === 3 || t >= 5; // Stufen mit Ast
+const BRANCHED = (t) => t === 3 || t === 5 || t === 6; // Stufe7 führt beide finalen Äste zusammen.
 const nodeKey = (n) => `${n.tier}${n.branch ?? ''}`;
 
 export function createSchmiede(ctx) {
@@ -34,6 +34,7 @@ export function createSchmiede(ctx) {
   function nodeState(n, w, opts) {
     if (opts.some((o) => o.tier === n.tier && o.branch === n.branch)) return 'next';
     if (n.tier === w.tier && (!BRANCHED(n.tier) || n.branch === w.branch)) return 'cur';
+    if (w.tier === 7 && n.tier < 7) return 'done';
     if (n.tier === 5 && w.tier === 6) return w.branch === 'x' ? 'done' : n.branch === 'v' ? 'done' : 'far'; // Ast x kommt aus jedem Stufe-5-Ast
     if (n.tier === 6 && w.tier === 6) return 'far'; // der andere Stufe-6-Ast (Wahl ist endgültig)
     if (n.tier < w.tier && (!BRANCHED(n.tier) || (n.tier === 3 && w.tier > 3) || n.branch === w.branch)) return 'done';

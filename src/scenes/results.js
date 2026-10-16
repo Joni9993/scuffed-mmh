@@ -48,6 +48,8 @@ export const resultsScene = {
         ${sum?.keyOpen?.length ? `<div class="rs-jr">Rang-Auftrag freigeschaltet: ${sum.keyOpen.map((id) => esc(questById(id).name)).join(', ')}!</div>` : ''}
         ${sum?.book?.length ? `<div class="rs-jr">Kompendium (Spiegel): ${sum.book.map((b) => `${esc(b.monster)} – ${esc(b.name)}`).join(', ')}</div>` : ''}
         ${sum?.jrUp ? `<div class="rs-jr">Jägerrang ${sum.jrUp}! (vorher ${jrBefore}) Neue Aufträge am Brett.</div>` : ''}
+        ${win && sum?.firstClear && quest?.id === 'voltiris' ? '<div class="rs-sec"><div class="sub">EIL-DEKRET AUS DEM ROSTNEST</div><div class="note">Die drei Herrscher sind gefallen. Auf dem Weltenkamm erwacht etwas viel Älteres. Das Auftragsbrett ruft zur letzten Jagd: Das Kikeriki des Untergangs.</div></div>' : ''}
+        ${win && quest?.id === 'gockelok' ? '<div class="rs-sec"><div class="sub">ENDE GUT. HAHN KAPUTT.</div><div class="note">Ihr habt den Ursprung des Glitches besiegt. Das Rostnest schläft wieder. Irgendwo kräht ein sehr viel kleinerer Hahn. In der Schmiede wartet die Glitch-Transzendenz – für alle sieben Waffen.</div></div>' : ''}
         ${!Object.keys(rewards?.items ?? {}).length && !rewards?.schrott ? '<div class="note">Mit leeren Händen. Mindestens sauber.</div>' : ''}
       </div><div class="rs-foot"><button class="btn red" data-a="hub">Weiter</button> <!-- [T] --></div></div>`;
     el.addEventListener('click', (e) => { if (e.target.closest('[data-a="hub"]')) { sfx.play('ui'); app.goto('hub'); } });

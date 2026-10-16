@@ -70,7 +70,7 @@ export class AttackInstance {
   hitsAt(t) {
     const s = this.sample(t);
     const out = [];
-    const base = { x: s.x, y: this.origin.y + s.air, z: s.z };
+    const base = { x: s.x, y: (s.groundY ?? this.origin.y) + s.air, z: s.z };
     const hits = this.def.hits ?? [];
     for (let i = 0; i < hits.length; i++) {
       const h = hits[i];
@@ -104,7 +104,7 @@ export class AttackInstance {
       const samples = h.shape === 'capsule' ? 10 : 3;
       for (let k = 0; k < samples; k++) {
         const s = this.sample(this.wall(h.t0 + (h.t1 - h.t0) * (k / (samples - 1))));
-        const base = { x: s.x, y: this.origin.y + s.air, z: s.z };
+        const base = { x: s.x, y: (s.groundY ?? this.origin.y) + s.air, z: s.z };
         if (h.shape === 'capsule') {
           const a = h.from, b = h.to, len = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(1, Math.ceil(len / Math.max(0.5, h.radius * 0.8)));
           for (let j = 0; j <= n; j++) { const f = j / n; pts.push(localToWorld({}, base, s.yaw, a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f)); }
@@ -112,7 +112,8 @@ export class AttackInstance {
       }
       const kept = [];
       for (const c of pts) {
-        const r = groundReach(h.radius, c.y - this.origin.y);
+        const groundY = this.sample(this.wall((h.t0 + h.t1) / 2)).groundY ?? this.origin.y;
+        const r = groundReach(h.radius, c.y - groundY);
         if (r <= 0) continue;
         if (kept.every((q) => Math.hypot(q.x - c.x, q.z - c.z) > (h.shape === 'capsule' ? Math.max(0.8, r * 1.1) : 0.35))) kept.push({ x: c.x, z: c.z, r });
       }

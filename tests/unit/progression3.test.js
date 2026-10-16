@@ -53,8 +53,9 @@ describe('Waffen Stufe 5/6', () => {
       expect(x.cost).toMatchObject({ krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 });
       expect(x.stats.power).toBe(v6.power + 8); expect(x.stats.crit).toBe(v6.crit);
       expect(x.stats.elems).toEqual({ blast: 30 }); expect(x.stats.partDmgMul).toBe(1.2);
-      expect(upgradeOptions(t, 6, 'v')).toEqual([]); expect(upgradeOptions(t, 6, 'x')).toEqual([]);
-      expect(WEAPON_TYPES[t].tiers.length).toBe(6);
+      expect(upgradeOptions(t, 6, 'v')[0].tier).toBe(7); expect(upgradeOptions(t, 6, 'x')[0].tier).toBe(7);
+      expect(upgradeOptions(t, 7)).toEqual([]);
+      expect(WEAPON_TYPES[t].tiers.length).toBe(7);
     }
   });
   it('Schmiede: 4 -> 5 Voltaro -> 6; Kroll-Ast endet bei 5; Save-Sanitize', () => {
@@ -67,14 +68,14 @@ describe('Waffen Stufe 5/6', () => {
     expect(upgradeWeapon(s, 'kt').reason).toBe('branch'); // aus 5v gibt es v und x: Wahl noetig
     give(s, WEAPON_UPGRADES[6].kt.cost);
     expect(upgradeWeapon(s, 'kt', 'v')).toMatchObject({ ok: true, tier: 6, branch: 'v', name: 'Funkenfürst-Katana' });
-    expect(upgradeWeapon(s, 'kt').reason).toBe('maxed');
+    expect(upgradeWeapon(s, 'kt').reason).toBe('mats'); // Stufe 7 braucht Finale-Material
     s.weapons.gs = { tier: 4, branch: null };
     give(s, WEAPON_UPGRADES[5].gs.k.cost);
     expect(upgradeWeapon(s, 'gs', 'k')).toMatchObject({ ok: true, tier: 5, branch: 'k' });
     expect(upgradeWeapon(s, 'gs').reason).toBe('mats'); // 5k -> x (Krachfaust-Material fehlt)
     give(s, WEAPON_UPGRADES[6].gs.x.cost);
     expect(upgradeWeapon(s, 'gs')).toMatchObject({ ok: true, tier: 6, branch: 'x', name: 'Plattmacher-Sprenger' });
-    expect(upgradeWeapon(s, 'gs').reason).toBe('maxed');
+    expect(upgradeWeapon(s, 'gs').reason).toBe('mats');
     expect(sanitize({ weapons: { gs: { tier: 5, branch: 'g' }, db: { tier: 6, branch: 'x' }, bow: { tier: 5, branch: 'zz' }, kt: { tier: 6, branch: 'q' } } }).weapons).toMatchObject({ gs: { tier: 5, branch: 'g' }, db: { tier: 6, branch: 'x' }, bow: { tier: 5, branch: 'k' }, kt: { tier: 6, branch: 'v' } });
   });
 });
@@ -170,7 +171,7 @@ describe('Quests + JR-Gating', () => {
     expect(q.jaggo_rotglut.jr).toBe(4); // bestehende Rotglut bleibt
   });
   it('JR: Revierstreit -> 5, Kroll/Gorgo -> 6, Voltaro -> 7, nie zurueck', () => {
-    expect(MAX_JR).toBe(10); // 8-10 Smaragdkueste, RANKS folgt mit den Schluessel-Auftraegen
+    expect(MAX_JR).toBe(14);
     const s = defaultSave();
     const win = (qu) => applyHuntResult(s, qu, buildRewards({ quest: qu, result: 'win', rng: createRng(1) }), { time: 100 });
     s.jr = 4; s.rp = 450;
@@ -188,6 +189,6 @@ describe('Quests + JR-Gating', () => {
     expect(questUnlocked(s, quests.voltaro_rotglut)).toBe(true);
     expect(win(quests.jaggo).jrUp).toBeNull();
     expect(s.jr).toBe(7);
-    expect(sanitize({ jr: 99 }).jr).toBe(10);
+    expect(sanitize({ jr: 99 }).jr).toBe(14);
   });
 });
