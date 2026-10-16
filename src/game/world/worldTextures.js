@@ -45,6 +45,7 @@ export function registerWorldTextures() {
   registerTexture('path', noise(['#7a6244', '#6a5238', '#8a7050', '#5a4430']));
   registerRostwerkeTextures();
   registerSmaragdTextures();
+  registerGlitchgratTextures();
 }
 
 // ---- Rostwerke: rust, slag, steel plates, toxic sludge
@@ -107,4 +108,44 @@ function registerSmaragdTextures() {
   });
   // sea: turquoise with white glints
   registerTexture('seawater', (g, n, r) => { noise(['#2cc4c0', '#38d0cc', '#24b4b4', '#5ce0d8'])(g, n, r); dots(g, n, r, ['#e8fffc', '#a8f4ee'], 14, 3, 1); });
+}
+
+// ---- Glitchgrat: cold mountain slate, frost crust, ore veins, digital core, jagged cliffs
+function registerGlitchgratTextures() {
+  // Zone 1: cold mountain slate with subtle neon flecks
+  registerTexture('ridge_rock', (g, n, r) => {
+    noise(['#667184', '#626d80', '#6c778a', '#5d687b'], 0.22)(g, n, r);
+    dots(g, n, r, ['#586376', '#78869a'], 7, 2, 1);
+    dots(g, n, r, ['#669aab'], 1, 1, 1); // sparse corruption; damage markers own the strong colors
+  });
+  // Zone 2: electric ore crust, dark purple-grey with glowing cyan/violet crystals
+  registerTexture('ridge_ore', (g, n, r) => {
+    noise(['#55516a', '#504c65', '#5b5670', '#4b475f'], 0.22)(g, n, r);
+    dots(g, n, r, ['#8976ac', '#75a0ae'], 4, 1, 1);
+    g.fillStyle = '#3e3a52';
+    for (let i = 0; i < 4; i++) g.fillRect((r() * n) | 0, (r() * n) | 0, 4, 1);
+  });
+  // Zone 3: windswept frost crust, pale blue-grey ice
+  registerTexture('ridge_frost', (g, n, r) => {
+    noise(['#8fa3b9', '#889cb2', '#97abc1', '#8195ab'], 0.2)(g, n, r);
+    dots(g, n, r, ['#b5c9de', '#a5bfd6'], 8, 2, 1);
+  });
+  // Zone 4: digital obsidian flagstones with cyber neon lines
+  registerTexture('glitch_core', (g, n, r) => {
+    noise(['#50536a', '#4c4f66', '#55586f', '#474a61'], 0.18)(g, n, r);
+    g.fillStyle = '#3e4258';
+    g.fillRect(0, 0, n, 1); g.fillRect(0, n >> 1, n, 1); g.fillRect(0, 0, 1, n); g.fillRect(n >> 1, 0, 1, n);
+    // neon circuit lines
+    g.fillStyle = '#7b6e99'; g.fillRect(n >> 1, 3, 1, (n >> 1) - 6);
+    g.fillStyle = '#6b91a4'; g.fillRect(3, n >> 1, (n >> 1) - 6, 1);
+  });
+  // Cliff rock: layered dark mountain crags with vertical strata and glitch noise
+  registerTexture('ridge_cliff', (g, n, r) => {
+    noise(['#404654', '#343a46', '#4e5564', '#2a2f38'])(g, n, r);
+    for (let y = 3; y < n; y += 7) { g.fillStyle = '#1c2028'; g.fillRect(0, y, n, 1); }
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle = r() < 0.5 ? '#00f0ff' : '#ff007f';
+      g.fillRect((r() * n) | 0, (r() * n) | 0, 2, 1);
+    }
+  });
 }

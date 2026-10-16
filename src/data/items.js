@@ -78,6 +78,34 @@ export const ITEMS = {
   krachfaust_faustplatte: mat('krachfaust_faustplatte', 'Faustplatte', 'Von einer Faust, die zu oft angeklopft hat.', 'ore', '#9a9a8a', 100),
   krachfaust_runenherz: mat('krachfaust_runenherz', 'Runenherz', 'Schlägt im Takt der Tempelrunen. Wird bei Aufregung heiß. Selten.', 'gem', '#39ff14', 350),
 
+  // ---- Glitchgrat: gathered materials
+  glitchgrat_erz: mat('glitchgrat_erz', 'Grat-Erz', 'Massives Eisenerz aus dem Hochgebirge. Von feinen Datenadern durchzogen.', 'ore', '#7088b0', 12),
+  frostgras: mat('frostgras', 'Frostgras', 'Überdauert jeden Gebirgssturm. Eisig kalt beim Pflücken.', 'leaf', '#8ae0ff', 10),
+  kristallsplitter: mat('kristallsplitter', 'Kristallsplitter', 'Ein scharfkantiger Glitch-Kristall. Bricht das Licht in Regenbogenfarben.', 'gem', '#00f0ff', 18),
+  sternensplitter: mat('sternensplitter', 'Sternensplitter', 'Aus dem Himmel gefallen. Glüht in tiefem Violett. Sehr selten.', 'gem', '#b5179e', 50),
+
+  // ---- Glitchgrat: Apex-Drachen & Gockelok materials
+  pyrostur_schuppe: mat('pyrostur_schuppe', 'Pyrostur-Schuppe', 'Dampft leise. Schuppen hart wie Kesselstahl.', 'scale', '#ff5a22', 90),
+  pyrostur_kesselsack: mat('pyrostur_kesselsack', 'Kesselsack', 'Hält gewaltigem Dampfdruck stand. Riecht nach Schwefel.', 'ember', '#ff8a30', 110),
+  pyrostur_fluegel: mat('pyrostur_fluegel', 'Pyrostur-Flügelhaut', 'Gewaltige Spannweite für den Höhenflug.', 'fur', '#d83a1a', 120),
+  pyrostur_rubin: mat('pyrostur_rubin', 'Pyrostur-Kern', 'Brennt mit ewiger Flamme. Extrem selten.', 'gem', '#ff1030', 400),
+
+  felsengroll_panzer: mat('felsengroll_panzer', 'Groll-Panzer', 'Schlackeverkrusteter Felsdrachen-Panzer.', 'scale', '#5a544c', 95),
+  felsengroll_schlacke: mat('felsengroll_schlacke', 'Erdschlacke', 'Detoniert bei Erschütterung. Höchste Vorsicht.', 'ore', '#8a6040', 105),
+  felsengroll_schweif: mat('felsengroll_schweif', 'Groll-Schweifkeule', 'Schwer genug, um Bergkämme einzuebnen.', 'bone', '#a09080', 130),
+  felsengroll_kern: mat('felsengroll_kern', 'Erdbeben-Herz', 'Grollt dumpf in der Hand. Extrem selten.', 'gem', '#d08030', 400),
+
+  voltiris_horn: mat('voltiris_horn', 'Flimmerhorn', 'Bricht Licht wie ein Prisma und knistert elektrisch.', 'crest', '#00f0ff', 100),
+  voltiris_flimmerfeder: mat('voltiris_flimmerfeder', 'Flimmerfeder', 'Hinterlässt Stroboskop-Schleier in der Luft.', 'fur', '#70e0ff', 110),
+  voltiris_antenne: mat('voltiris_antenne', 'Voltiris-Antenne', 'Empfängt Daten aus dem Himmel.', 'ore', '#b5179e', 125),
+  voltiris_kristall: mat('voltiris_kristall', 'Strobekristall', 'Blendend helles Glitch-Plasma. Extrem selten.', 'gem', '#f72585', 400),
+
+  gockel_kamm: mat('gockel_kamm', 'Ur-Hahnenkamm', 'Wackelt stolz im Wind. Ein Witz von einem Kamm, aber zäh.', 'crest', '#ff0040', 150),
+  gockel_sporn: mat('gockel_sporn', 'Mörser-Sporn', 'Hinterkralle von furchterregender Schärfe.', 'bone', '#ffe066', 160),
+  gockel_feder: mat('gockel_feder', 'Glitch-Daune', 'Schillert in allen Regenbogen-Pixeln. Fliegt ewig.', 'fur', '#ff99c8', 140),
+  ur_gockelei: mat('ur_gockelei', 'Ur-Ei des Untergangs', 'Tickt leise. Das ultimative Artefakt. Unbezahlbar.', 'gem', '#ffd166', 600),
+
+
   // ---- consumables
   flickbrause: { id: 'flickbrause', name: 'Flickbrause', desc: '+35 HP über 1 s. Schmeckt nach Pfefferminz und Eisen.', kind: 'consumable', max: 10, time: 0.9, applyAt: 0.45, icon: { shape: 'potion', color: '#58e060' }, value: 8, effect: { type: 'heal', hp: 35, over: 1 } },
   dicke_flickbrause: { id: 'dicke_flickbrause', name: 'Dicke Flickbrause', desc: '+80 HP über 1 s, heilt die Prellung komplett.', kind: 'consumable', max: 5, time: 1.1, applyAt: 0.45, icon: { shape: 'potion', color: '#20c0a0' }, value: 20, effect: { type: 'heal', hp: 80, over: 1, bruise: true } },

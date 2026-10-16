@@ -5,7 +5,7 @@ import { createBus } from '../../src/core/events.js';
 import { GATHER_KINDS, GATHER_TIME, rollGather, dropTable } from '../../src/data/gather.js';
 import { createHazards } from '../../src/game/world/hazards.js';
 
-const ITEM_IDS = new Set('knisterkraut blaublatt wabbelpilz stinkmorchel schrotterz glimmstein altknochen grossknochen brummkaefer blitzkaefer glutbrocken sprudelwasser kupferdraht schlacke rostkaefer giftschlamm funkenstein muschel kokosnuss dschungelkraut gluehpilz feuerpilz giftkraut glitchpilz tempelstein'.split(' '));
+const ITEM_IDS = new Set('knisterkraut blaublatt wabbelpilz stinkmorchel schrotterz glimmstein altknochen grossknochen brummkaefer blitzkaefer glutbrocken sprudelwasser kupferdraht schlacke rostkaefer giftschlamm funkenstein muschel kokosnuss dschungelkraut gluehpilz feuerpilz giftkraut glitchpilz tempelstein glitchgrat_erz frostgras kristallsplitter sternensplitter'.split(' '));
 
 describe('gather data', () => {
   it('drop tables only use contract item ids and positive weights', () => {

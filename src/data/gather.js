@@ -88,6 +88,23 @@ export const GATHER_KINDS = {
     name: 'Tempelstein', world: 'smaragdkueste', zones: { 4: 4 }, uses: [1, 2], sparkle: '#58ffd0',
     drops: [{ id: 'tempelstein', w: 100, n: [1, 1] }],
   },
+  // ---- Glitchgrat (world: 'glitchgrat')
+  graterz: {
+    name: 'Grat-Erzader', world: 'glitchgrat', zones: { 2: 5, 3: 6 }, uses: [1, 3], sparkle: '#7088b0',
+    drops: [{ id: 'glitchgrat_erz', w: 100, n: [1, 2] }],
+  },
+  frostkraut: {
+    name: 'Frostkraut', world: 'glitchgrat', zones: { 1: 5, 2: 4 }, uses: [1, 3], sparkle: '#8ae0ff',
+    drops: [{ id: 'frostgras', w: 100, n: [1, 2] }],
+  },
+  glitchkristall: {
+    name: 'Glitch-Kristall', world: 'glitchgrat', zones: { 2: 4, 4: 6 }, uses: [1, 2], sparkle: '#00f0ff',
+    drops: [{ id: 'kristallsplitter', w: 100, n: [1, 1] }],
+  },
+  sternenstein: {
+    name: 'Sternenstein', world: 'glitchgrat', zones: { 3: 3, 4: 4 }, uses: [1, 2], sparkle: '#b5179e',
+    drops: [{ id: 'sternensplitter', w: 100, n: [1, 1] }],
+  },
 };
 
 /** German display names of the gatherable materials (for floating pickup text). */
@@ -97,6 +114,7 @@ export const GATHER_ITEM_NAMES = {
   brummkaefer: 'Brummkäfer', blitzkaefer: 'Blitzkäfer', glutbrocken: 'Glutbrocken', sprudelwasser: 'Sprudelwasser',
   kupferdraht: 'Kupferdraht', schlacke: 'Schlacke', rostkaefer: 'Rostkäfer', giftschlamm: 'Giftschlamm', funkenstein: 'Funkenstein',
   muschel: 'Muschel', kokosnuss: 'Kokosnuss', dschungelkraut: 'Dschungelkraut', gluehpilz: 'Glühpilz', feuerpilz: 'Feuerpilz', giftkraut: 'Giftkraut', glitchpilz: 'Glitchpilz', tempelstein: 'Tempelstein',
+  glitchgrat_erz: 'Grat-Erz', frostgras: 'Frostgras', kristallsplitter: 'Kristallsplitter', sternensplitter: 'Sternensplitter',
 };
 
 export const GATHER_TIME = 0.8; // seconds of holding the context button

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<title>Glitchgrat – Kartenprüfung</title>
+<style>
+  body { margin: 20px; background: #171c30; color: #e3e8f2; font: 14px monospace; }
+  nav { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  button, select { padding: 10px; font: inherit; }
+  iframe { border: 1px solid #697a98; display: block; }
+  output { display: block; margin-top: 12px; }
+</style>
+<p>Lokale Kartenprüfung · Vite starten, dann /tools/glitchgrat-review.html öffnen.</p>
+<nav>
+  <button data-view="camp">Lager</button>
+  <button data-view="summit">Gipfel</button>
+  <button data-view="south">Tal: Schotterklamm</button>
+  <button data-view="west">Tal: Rostwerke</button>
+  <button data-view="east">Tal: Smaragdküste</button>
+  <select aria-label="Displaygröße">
+    <option>844×390</option><option>740×360</option><option>568×320</option>
+  </select>
+</nav>
+<iframe title="Glitch Hunter Kartenprüfung" width="844" height="390" src="../?scene=hunt&amp;quest=gratausflug&amp;god=1&amp;res=640&amp;noambient=1"></iframe>
+<output>Spiel lädt …</output>
+<script type="module">
+  const frame = document.querySelector('iframe'), output = document.querySelector('output');
+  const views = {
+    camp: [-69, -68, 0.35, 0.42], summit: [65, -77, 0, 0.65],
+    south: [-65, -102, Math.PI, 0.65], west: [-102, -65, -Math.PI / 2, 0.65],
+    east: [102, 50, Math.PI / 2, 0.65],
+  };
+  let active = 'camp';
+  function view(name) {
+    const sh = frame.contentWindow.__SH;
+    if (!sh?.hunt) return;
+    active = name;
+    sh.pause(true);
+    sh.input.reset();
+    const h = sh.hunt, p = h.player, [x, z, yaw, pitch] = views[name];
+    p.spawnAt(x, z, yaw);
+    h.rig.snap(p.pos, yaw);
+    h.rig.pitch = pitch;
+    // Same fixed-step loop, world, camera, player and HUD as the actual hunt.
+    sh.step(90);
+    h.hud.update(h, 4); // settle zone labels / expire transient toasts in the static preview
+    const info = sh.app.renderer.renderer.info;
+    output.textContent = `${name} · ${frame.width}×${frame.height} · ${info.render.calls} Draw Calls · ${info.render.triangles} Dreiecke · Bodenhöhe ${p.pos.y.toFixed(2)} m`;
+  }
+  document.querySelectorAll('[data-view]').forEach((button) => {
+    button.onclick = () => view(button.dataset.view);
+  });
+  document.querySelector('select').onchange = (event) => {
+    [frame.width, frame.height] = event.target.value.split('×');
+    frame.contentWindow.dispatchEvent(new Event('resize'));
+    view(active);
+  };
+  const ready = setInterval(() => {
+    if (!frame.contentWindow.__SH?.hunt) return;
+    clearInterval(ready);
+    frame.contentDocument.querySelector('.ob .go')?.click();
+    view(active);
+  }, 200);
+</script>
+</html>
