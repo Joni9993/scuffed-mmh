@@ -137,6 +137,48 @@ export const BESTIARY = [
     ],
   },
 ];
+BESTIARY.push(
+  {
+    id: 'pyrostur', name: 'Pyrostur', where: 'Glitchgrat · Weltenkamm', title: 'Kessel ohne TÜV',
+    intro: 'Ein Drache wie ein schlecht gewarteter Dampfkessel. Seine Brust und das schiefe Ventil verraten den Druck. Wer nur hinter ihm steht, lernt den Schweif kennen.',
+    entries: [
+      { at: 1, kind: 'verhalten', name: 'Druck lesen', text: 'Die Nadel steigt, die Brust schwillt an. Überdruck entlädt sich um ihn herum; nahe an der abgesenkten Brust bleibt eine sichere Tasche.' },
+      { at: 1, kind: 'schwaeche', name: 'Notabschaltung von Hand', text: 'Triff beim sichtbaren Aufladen den Brustbalg mehrfach. Genug Schaden unterbricht den Überdruck und öffnet ein langes, sicheres Angriffsfenster.' },
+      { at: 2, kind: 'schwaeche', name: 'Ventilbruch', text: 'Ein gebrochenes Ventil verändert die Dampfablässe. Die zerstörte Brust bleibt weich, die angeschlagenen Flügel bremsen seine Verfolgung.' },
+      { at: 3, kind: 'angriff', name: 'Feuerregen', text: 'Die Feuerfelder treffen versetzt in festen Bahnen. Wechsle die Seite oder gehe zur entlüfteten Brust, statt geradeaus vor ihm wegzurennen.' },
+    ],
+  },
+  {
+    id: 'felsengroll', name: 'Felsengroll', where: 'Glitchgrat · Eisenerz-Plateau', title: 'Beweglicher Bergschaden',
+    intro: 'Breite Schulterplatten, ein Schlackebauch und eine Keule mit eigener Postleitzahl. Seine Angriffe bestimmen, welche Bodenbahnen offen bleiben.',
+    entries: [
+      { at: 1, kind: 'angriff', name: 'Versetzte Erdbeben', text: 'Seine Wellen laufen zeitversetzt über den Boden. Die roten Bahnen zeigen den echten Treffbereich; offene Zwischenräume sind kein Zufall.' },
+      { at: 1, kind: 'schwaeche', name: 'Schulter öffnen', text: 'Brich die Schulterplatten, um eine weichere Flanke zu schaffen. Das ändert den Kampf stärker als ein paar zusätzliche Treffer auf den harten Kopf.' },
+      { at: 2, kind: 'schwaeche', name: 'Keule kürzen', text: 'Eine gebrochene Schweifkeule nimmt dem Feger seinen äußeren Nachschlag. Der Stumpf ist noch gefährlich, aber sein sicherer Raum wächst.' },
+      { at: 3, kind: 'verhalten', name: 'Einschlag', text: 'Beim Zonenwechsel steigt er über die Felsen. Der wandernde Schatten zeigt seinen Weg; verlasse den Zielkreis vor der Landung.' },
+    ],
+  },
+  {
+    id: 'voltiris', name: 'Voltiris', where: 'Glitchgrat · Blitzschlucht', title: 'Gebrochene Frequenz',
+    intro: 'Asymmetrische Prismaflügel, Antennen und zu viele Konturen. Der echte Drache hat einen festen Körper und helle Augen; Drahtgitter-Geister sind Ablenkung.',
+    entries: [
+      { at: 1, kind: 'angriff', name: 'Blitzraster', text: 'Beobachte die angekündigten Blitzbahnen. Positioniere dich zwischen ihnen und greife nach der Entladung an, statt auf die hellste Kontur zu schlagen.' },
+      { at: 1, kind: 'schwaeche', name: 'Antennenkrone', text: 'Ein Bruch der Krone entfernt eine Blitzbahn. Ein gebrochener Prismaflügel verkürzt die Nachbildserie und macht den echten Körper leichter lesbar.' },
+      { at: 2, kind: 'verhalten', name: 'Glitch gegen Glitch', text: 'Ein perfekter Konter auf seine Blitz-Signaturen unterbricht die Folge. Nutze die Öffnung für eine starke Attacke oder um einen Freund zu entlasten.' },
+    ],
+  },
+  {
+    id: 'gockelok', name: 'Gockelok', where: 'Glitchgrat · Weltenkamm', title: 'Ur-Hahn',
+    intro: 'Man erwartete das Ende der Welt. Man fand ein Huhn. Und dann starb man. Sein Blick ist dumm; seine Angriffswinkel sind es nicht.',
+    entries: [
+      { at: 1, kind: 'angriff', name: 'Maschinengewehr-Picken', text: 'Fünf Hiebe nach vorn. Seitlich aus der Pickbahn laufen, statt jeden einzelnen Schnabelkontakt wegrollen zu wollen.' },
+      { at: 1, kind: 'angriff', name: 'Kikeriki', text: 'Der Hals bläht sich auf, dann nimmt der Schrei Leben und Puste. Rechtzeitig herauslaufen oder die Schockwelle präzise kontern.' },
+      { at: 2, kind: 'schwaeche', name: 'Kamm und Sporn', text: 'Kammbruch schwächt den Schrei, Spornbruch verkürzt den Wirbel. Der stolze Hahn sieht mit jedem Bruch noch beleidigter aus.' },
+      { at: 2, kind: 'angriff', name: 'Kopfloser Sprint', text: 'Die Wendepunkte sind fest, sobald er losrennt. Nach der letzten Wende stolpert er: Das ist dein großes Angriffsfenster.' },
+      { at: 3, kind: 'angriff', name: 'Glitch-Eier', text: 'Die Eier fliegen in Bögen und zerplatzen in Splitter. Ziehe sie aus der Arenamitte und verlasse die markierten Einschlagflächen.' },
+    ],
+  },
+);
 export const BESTIARY_IDS = BESTIARY.map((b) => b.id);
 
 /** Zustände – immer lesbar. who: 'du' (trifft den Pirscher) | 'brocken'. */

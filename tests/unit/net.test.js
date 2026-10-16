@@ -83,6 +83,19 @@ describe('protocol roundtrips', () => {
     const a = decodeAtk(encodeAtk('m', { attackId: 'x', t0: 1, origin: { x: 0, z: 0 }, dir: { x: 1, z: 0 }, seed: 1 }, 0));
     expect(a.params.yaw).toBeCloseTo(Math.PI / 2, 3);
   });
+  it('keeps phase tempo identical for host and guest hit/telegraph timing', () => {
+    const def = jaggo.attacks.jaggo_huepfer;
+    const params = { attackId: def.id, t0: 10, origin: { x: 0, y: 0, z: 0 }, yaw: 0,
+      targetPos: { x: 0, y: 0, z: 8 }, seed: 9, tempoMul: 1.175, tgMul: 1.12, rage: true };
+    const replay = decodeAtk(JSON.parse(JSON.stringify(encodeAtk('m', params, 1)))).params;
+    const host = new AttackInstance(def, params), guest = new AttackInstance(def, replay);
+    expect(guest.tgWall).toBeCloseTo(host.tgWall, 8);
+    expect(guest.duration).toBeCloseTo(host.duration, 8);
+    for (let t = 0; t < host.duration; t += .05) {
+      expect(guest.sample(t)).toEqual(host.sample(t));
+      expect(guest.hitsAt(t)).toEqual(host.hitsAt(t));
+    }
+  });
   it('hit roundtrip', () => {
     const d = decodeHit(JSON.parse(JSON.stringify(encodeHit('jaggo', { partId: 'head', dmg: 103.6, elemDmg: 4, blunt: 30, crit: true, weak: true }, 'p2', 7))));
     expect(d).toEqual({ id: 7, monsterId: 'jaggo', res: { partId: 'head', dmg: 104, elemDmg: 4, blunt: 30, crit: true, weak: true, attackerId: 'p2' } });

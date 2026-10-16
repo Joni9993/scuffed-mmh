@@ -6,15 +6,16 @@ import { katana } from './katana.js'; // [KT]
 import { glitchaxt } from './glitchaxt.js'; // [GA]
 import { krachkiste } from './krachkiste.js'; // [KK]
 import { armbrust } from './armbrust.js'; // [LB]
+import { withTranscendence } from '../gear/transcendence.js';
 
 export const weapons = {
-  gs: greatsword,
-  db: dualblades, // [W]
-  bow, // [W]
-  kt: katana, // [KT]
-  ga: glitchaxt, // [GA]
-  kk: krachkiste, // [KK]
-  lb: armbrust, // [LB]
+  gs: withTranscendence(greatsword, 'gs'),
+  db: withTranscendence(dualblades, 'db'),
+  bow: withTranscendence(bow, 'bow'),
+  kt: withTranscendence(katana, 'kt'),
+  ga: withTranscendence(glitchaxt, 'ga'),
+  kk: withTranscendence(krachkiste, 'kk'),
+  lb: withTranscendence(armbrust, 'lb'),
 };
 
 export function getWeapon(id) {

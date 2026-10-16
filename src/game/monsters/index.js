@@ -11,6 +11,16 @@ import { kroll } from './kroll.js'; // [Rostwerke]
 import { blendax } from './blendax.js'; // [Smaragdküste]
 import { mampfaffe } from './mampfaffe.js'; // [Smaragdküste]
 import { krachfaust } from './krachfaust.js'; // [Smaragdküste]
+import { pyrostur } from './pyrostur.js';
+import { felsengroll } from './felsengroll.js';
+import { voltiris } from './voltiris.js';
+import { gockelok } from './gockelok.js';
+import { withApexFlight } from './apexFlight.js';
+
+withApexFlight(pyrostur, [4, 3, 2]);
+withApexFlight(felsengroll, [3, 2, 1]);
+withApexFlight(voltiris, [2, 1, 4]);
+gockelok.noFlee = true; // the final duel stays on the summit
 
 export const monsters = {
   jaggo,
@@ -26,6 +36,7 @@ export const monsters = {
   blendax, // [Smaragdküste]
   mampfaffe, // [Smaragdküste]
   krachfaust, // [Smaragdküste]
+  pyrostur, felsengroll, voltiris, gockelok,
 };
 
 export function getMonsterDef(id) {

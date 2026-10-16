@@ -37,10 +37,10 @@ describe('save: versioning, migration, export/import', () => {
   });
   it('sanitizes invalid / hostile values', () => {
     const s = sanitize({ version: 1, name: '<b>Böse</b>', jr: 99, schrott: -5, box: { flickbrause: 500, nope: 3, altknochen: -1 }, weapons: { gs: { tier: 9, branch: 'x' } }, loadout: { weapon: 'axe', armor: { head: 'brathalos_head' }, items: [{ id: 'altknochen', n: 3 }, { id: 'flickbrause', n: 99 }] }, meal: 'gift' });
-    expect(s.jr).toBe(10);
+    expect(s.jr).toBe(14);
     expect(s.schrott).toBe(0);
     expect(s.box).toEqual({ flickbrause: 99 });
-    expect(s.weapons.gs.tier).toBe(6);
+    expect(s.weapons.gs.tier).toBe(7);
     expect(s.loadout.weapon).toBe('gs');
     expect(s.loadout.armor.head).toBe('lumpen_head'); // not owned
     expect(s.loadout.items).toEqual([{ id: 'flickbrause', n: 10 }]);
@@ -178,7 +178,7 @@ describe('crafting', () => {
     expect(weaponStats('db', 3, 'a').crit).toBe(0.15);
     expect(weaponStats('bow', 4).poisonMul).toBe(1.5);
     expect(weaponStats('gs', 4).elems.fire).toBe(25);
-    expect(upgradeOptions('bow', 4).length).toBe(3); expect(upgradeOptions('bow', 6)).toEqual([]);
+    expect(upgradeOptions('bow', 4).length).toBe(3); expect(upgradeOptions('bow', 7)).toEqual([]);
   });
   it('armor crafting, ownership and equipping', () => {
     const s = defaultSave();

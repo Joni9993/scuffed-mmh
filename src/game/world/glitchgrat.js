@@ -55,7 +55,7 @@ const ROUTE_ZONES = {
   pyrostur: [4, 3, 2],
   felsengroll: [3, 2, 1],
   voltiris: [2, 1, 4],
-  gockelok: [4, 3, 2, 1],
+  gockelok: [4], // the Ur-Hahn guards the summit rather than wandering through the excursion
 };
 const PASS_OF = { '1-2': 0, '2-3': 1, '3-4': 2, '1-4': 3 };
 const ZONE_BOXES = {

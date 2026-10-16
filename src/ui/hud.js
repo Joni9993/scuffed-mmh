@@ -24,7 +24,7 @@ const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Mat
 /** Minimap-Symbol eines entdeckten Grossmonsters: burrow (Gorgo eingegraben, auch auf Gaesten per Snapshot) oder dot. */
 const escName = (n) => String(n ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`); // Mitspieler-Namen kommen übers Netz
 
-export const minimapIcon = (m) => (m?.burrowed ? 'burrow' : 'dot');
+export const minimapIcon = (m) => (m?.burrowed ? 'burrow' : m?.def?.apexZones && m.state === 'fly' ? 'flight' : 'dot');
 
 export function createHud(root) {
   const el = document.createElement('div');
@@ -286,6 +286,18 @@ export function createHud(root) {
       if (d < 30 || m.discovered || (m.state && m.state !== 'wander' && m.state !== 'sleep')) mm.seen.add(m);
       if (mm.seen.has(m)) {
         if (m.minor) { if (d < 45 || m.discovered) { g.fillStyle = m.def.neutral ? '#9ae06a' : '#ff9a3a'; g.fillRect(sx(m.pos.x) - 1, sz(m.pos.z) - 1, px - 1, px - 1); } continue; }
+        if (minimapIcon(m) === 'flight') {
+          const x = sx(m.pos.x), y = sz(m.pos.z), wing = big ? 6 : 4;
+          g.fillStyle = '#0a0d18'; g.beginPath(); g.arc(x, y, wing, 0, 6.3); g.fill();
+          g.strokeStyle = '#d4eaff'; g.lineWidth = big ? 2 : 1;
+          g.beginPath(); g.moveTo(x - wing, y - 2); g.lineTo(x, y + 1); g.lineTo(x + wing, y - 2); g.stroke();
+          const a = m.attack;
+          if (a?.id === 'apex_migration' && a.inst.sample(a.t).tau >= 3.85) {
+            const to = a.inst.target;
+            g.strokeStyle = '#ff4a35'; g.beginPath(); g.arc(sx(to.x), sz(to.z), Math.max(2, 7 / span * S), 0, 6.3); g.stroke();
+          }
+          continue;
+        }
         if (minimapIcon(m) === 'burrow') { // Gorgo eingegraben: pulsierende orange Welle statt Brocken-Punkt
           const ph = (performance.now() / 900) % 1, cx = sx(m.pos.x), cy = sz(m.pos.z), rr = px + 1 + ph * (big ? 7 : 5);
           g.strokeStyle = `rgba(255,150,40,${(1 - ph).toFixed(2)})`; g.lineWidth = big ? 2 : 1;

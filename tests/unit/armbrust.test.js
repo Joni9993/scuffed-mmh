@@ -37,7 +37,7 @@ describe('Ratterbüchse', () => {
   it('registriert, Stufen, Save, Gear-Code', () => {
     expect(weapons.lb).toBe(armbrust);
     expect(WEAPON_ORDER).toContain('lb');
-    expect(WEAPON_TYPES.lb.tiers).toHaveLength(6);
+    expect(WEAPON_TYPES.lb.tiers).toHaveLength(7);
     expect(weaponStats('lb', 1).power).toBe(70);
     expect(defaultSave().weapons.lb.tier).toBe(1);
     expect(decodeGear(encodeGear({ weapon: { type: 'lb', tier: 3, branch: 'b' } })).weapon).toEqual({ type: 'lb', tier: 3, branch: 'b' });

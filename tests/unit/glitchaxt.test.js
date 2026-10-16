@@ -83,7 +83,7 @@ describe('Glitchaxt: Registrierung und Daten', () => {
   });
   it('Kraft je Stufe/Ast laut GDD 17.2', () => {
     expect(WEAPON_ORDER).toEqual(['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb']);
-    expect(WEAPON_TYPES.ga.tiers.length).toBe(6);
+    expect(WEAPON_TYPES.ga.tiers.length).toBe(7);
     expect(weaponStats('ga', 1).power).toBe(78);
     expect(weaponStats('ga', 2).power).toBe(97);
     expect(weaponStats('ga', 3, 'a')).toMatchObject({ power: 114, crit: 0.15 });
@@ -119,7 +119,7 @@ describe('Glitchaxt: Registrierung und Daten', () => {
     expect(s.weapons.ga).toEqual({ tier: 1, branch: null });
     expect(s.weapons.kt).toEqual({ tier: 4, branch: null });
     expect(sanitize({ ...old, loadout: { weapon: 'ga' } }).loadout.weapon).toBe('ga');
-    expect(sanitize({ weapons: { ga: { tier: 9, branch: 'b' } } }).weapons.ga).toEqual({ tier: 6, branch: 'v' });
+    expect(sanitize({ weapons: { ga: { tier: 9, branch: 'b' } } }).weapons.ga).toEqual({ tier: 7, branch: null });
     expect(sanitize({ armory: [{ type: 'ga', tier: 5, branch: 'g' }] }).armory).toEqual([{ type: 'ga', tier: 5, branch: 'g' }]);
   });
   it('Gear-Code Roundtrip fuer alle Stufen/Aeste', () => {

@@ -1,6 +1,6 @@
 # Glitchgrat: Das Finale von Glitch Hunter (Design-Spezifikation)
 
-> Status: **In Entwicklung (Okt 2026)**.
+> Status: **Finale implementiert; Geräte- und Spielzeitabnahme offen (16. Oktober 2026)**.
 > Vierte und finale Karte des Spiels, 3 Apex-Drachen (Die Herrscher des Gebirges) + geheimer finaler Boss (Der Ur-Hahn / Gockelok).
 
 ## Verbindlicher Qualitätsmaßstab (Owner, 16. Oktober 2026)
@@ -10,9 +10,41 @@ anspruchsvollere und abwechslungsreichere Kämpfe. Der billige PS1-Abklatsch mit
 Glitches und schnellem Spaß mit Freunden bleibt die Identität. Keine sterile Hochglanz-Optik.
 Bestehende Gegner werden erst nach einem spielbaren, getesteten Apex als Vergleich überarbeitet.
 
-**Aktueller Bauabschnitt:** Glitchgrat als Kampfbühne stabilisieren. Die Karte und der Gratausflug
-sind vorhanden; die vier Gegner, Flugwechsel, JR 11–14 und Stufe 7 sind noch nicht implementiert.
-Die folgenden Vorgaben sind Bau- und Abnahmekriterien, keine Behauptung fertiger Features.
+**Aktueller Bauabschnitt:** Alle vier Gegner mit eigenen Rigs, drei Kampfzuständen,
+Teilbruch-Folgen, deterministischen Angriffen, Drops und Aufträgen sind implementiert.
+Die drei Apex wechseln per synchronisiertem Flug die Zone; Gockelok bleibt am Weltenkamm.
+Die Auftragskette führt von JR 10 bis JR 14, alle sieben Waffen erhalten Stufe 7.
+Die nachstehenden Qualitätsziele bleiben Abnahmekriterien; insbesondere Jagddauer und
+Leistung auf echten Mobilgeräten sind noch nicht durch Spieltests belegt.
+
+### Implementierungs- und Prüfstand
+
+- **Pyrostur:** zehn Angriffe, sichtbarer Kesseldruck, Feuerregen, Ventil-/Brust-/Flügelbruch.
+  240 Brustschaden im Überdruck erzeugen ein 3,2-s-Kontersignal mit Taumeln.
+- **Felsengroll:** zehn Angriffe, versetzte Beben, sichtbare Schlackefelder, Meteor und
+  verzweigter finaler Bodenbruch. Schulterbruch öffnet die Flanke; Keulenbruch entfernt Außenhits.
+- **Voltiris:** dreizehn Angriffe einschließlich Teilbruchvarianten, asymmetrische Prismaflügel,
+  augenlose Drahtgitter-Nachbilder und vorbereitete Blitzbahnen. Antennen und Flügel verändern Serien.
+- **Gockelok:** elf Angriffe einschließlich Varianten, fünf Pickhiebe, Pusteschrei,
+  drei Eier mit je drei Splittern, Spornwirbel und dreiteiliger Sprint mit Stolperfenster.
+  Der Kopf sinkt beim Picken und Stolpern in Nahkampfreichweite. Der Wirbel verwendet hohen
+  Schaden; ein zusätzlicher Blutungsstatus wird nicht eingeführt.
+- **Flug:** frühestens nach 65 s Bodenkampf, 8,6 s Flugereignis, 25 m Flughöhe,
+  3 s Zielkreis vor dem Einschlag, danach 1,8 s Erholung. Host überträgt Ziel, Seed und Tempo;
+  die Höheninterpolation ist auch zwischen unterschiedlich hohen Plateaus deterministisch.
+- **Progression:** jeder Teilbruch liefert verwendbares Material. Stufe 7 vereint die beiden
+  Stufe-6-Äste; Schmuck baut auf den bestehenden Waffen auf und bewahrt Griffe, Sockets und Morphs.
+- **Automatisiert:** echte Spielerwaffen und Projektile gegen Pyrostur, alle vier Phasenverläufe,
+  90-s-Kampfsimulationen, Positionsdruck bei 3/6/12 m, Teilbrüche, Rezepte, Save-Grenzen und
+  Host/Gast-Angriffs-/Teilbruch-/Tod-/Flug-Replay über die echten HuntNet-Handler.
+- **Browser:** Modell-, Signatur-, Phasen- und Teilbruchansichten sowie Flug/Landung mit der
+  echten Welt und Touch-Oberfläche geprüft; Layouts 568×320, 740×360 und 844×390.
+  Reproduzierbare Entwickleransicht: `tools/glitchgrat-combat-review.html` (nur lokal über Vite).
+- **Noch offen:** Android Chrome und iPhone Safari auf echten Geräten, reale WebRTC-Verbindung
+  zwischen mehreren Geräten sowie gemessene vollständige Solo-/Koop-Jagddauern. Die
+  Drucksimulation beweist keine pauschale Überlegenheit gegenüber jedem bisherigen Boss;
+  insbesondere alte Dauerschadensangriffe sind in dieser Metrik sehr stark. Alte Gegner
+  werden deshalb erst nach menschlichen Vergleichsjagden auf den neuen Maßstab angepasst.
 
 ### Kampfregeln für alle vier neuen Gegner
 
@@ -146,5 +178,6 @@ Beim Zonenwechsel läuft der Drache nicht:
 | **14** | **Das Kikeriki des Untergangs** | Finale | Gockelok | 12 000 | 600 |
 
 - **MAX_JR:** Steigt auf **14**.
-- **Neues Material:** `glitchgrat_erz`, `drachen_herz`, `gockel_sporn`, `ur_feder`.
+- **Material:** `glitchgrat_erz`, `drachen_herz`, `gockel_sporn`, `gockel_feder`, `ur_gockelei`
+  sowie die artspezifischen Apex-Materialien (siehe `src/data/items.js` und `src/data/drops.js`).
 - **Waffen Stufe 7 („Glitch-Transzendenz“):** Höchste Stufe aller 7 Waffenarten, ultimative Werte und einzigartige Glitch-Verzerrungen.

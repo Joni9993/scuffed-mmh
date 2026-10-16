@@ -1,4 +1,4 @@
-// Pure weapon stat data (GDD 8.1). tier = 1..6 (5 = Rostwerke-Äste k/g/v, 6 = Äste v (Funkenfürst) und x (Sprenger, Krachfaust)). Tier 3 has two branches ('a' = Jaggo, 'b' = Barrotz);
+// Pure weapon stat data (GDD 8.1). tier = 1..7 (7 = Glitch-Transzendenz, final convergence of both tier-6 branches). Tier 3 has two branches ('a' = Jaggo, 'b' = Barrotz);
 // tiers[2] itself equals branch 'a', so the phase-1 API `weaponStats(type, tier)` keeps working.
 // Extra stat fields (optional, read by weapons/combat code if they care): bluntMul (stumpf+), poisonMul (Gift-Aufbau +), partDmgMul (Teil-HP-Schaden, Kroll-Ast); elems.blast = Sprengung (Krachfaust-Ast x: Treffer laden das Teil auf, ab 100 knallt es, siehe hunt.js).
 export const WEAPON_TYPES = {
@@ -136,6 +136,18 @@ export const WEAPON_TYPES = {
 };
 export const WEAPON_ORDER = ['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb'];
 
+// Final rewards retain each weapon's role; no new damage channel or mandatory ultimate action.
+const TRANSCENDENT = {
+  gs: ['Ur-Hack: Glitch-Transzendenz', 228], db: ['Pixelsporne: Glitch-Transzendenz', 200],
+  bow: ['Weltensehne: Glitch-Transzendenz', 216], kt: ['Kammspalter: Glitch-Transzendenz', 208],
+  ga: ['Nullzeiger: Glitch-Transzendenz', 212], kk: ['Kikerikiste: Glitch-Transzendenz', 220],
+  lb: ['Ur-Ratter: Glitch-Transzendenz', 208],
+};
+for (const [type, [name, power]] of Object.entries(TRANSCENDENT)) {
+  WEAPON_TYPES[type].tiers.push({ name, power, crit: .15, elems: { shock: 40, blast: 32 }, partDmgMul: 1.25,
+    ...(type === 'bow' ? { poisonMul: 1.5 } : {}), desc: 'Drei Drachen und ein Huhn. Der Quellcode hat aufgegeben.' });
+}
+
 /** Stats of (type, tier, branch). branch only matters at tier 3 (default 'a'). */
 export function weaponStats(type, tier = 1, branch = null) {
   const t = WEAPON_TYPES[type];
@@ -180,14 +192,16 @@ export const WEAPON_UPGRADES = {
     lb: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [LB]
     kk: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [KK]
   },
+  7: { cost: { schrott: 6000, glitchgrat_erz: 8, pyrostur_schuppe: 3, felsengroll_panzer: 3, voltiris_horn: 3, gockel_sporn: 2, gockel_feder: 3, ur_gockelei: 1 } },
 };
-export const MAX_WEAPON_TIER = 6;
+export const MAX_WEAPON_TIER = 7;
 export const TIER5_BRANCHES = ['k', 'g', 'v'];
 
 /** What can this weapon become next? -> [{tier, branch, name, cost, stats}] (0 entries when maxed). */
 export function upgradeOptions(type, tier, branch = null) {
-  if (tier >= 6) return [];
+  if (tier >= MAX_WEAPON_TIER) return [];
   const next = tier + 1;
+  if (next === 7) return [{ tier: 7, branch: null, name: weaponStats(type, 7).name, cost: WEAPON_UPGRADES[7].cost, stats: weaponStats(type, 7) }];
   if (next === 2) return [{ tier: 2, branch: null, name: weaponStats(type, 2).name, cost: WEAPON_UPGRADES[2].cost, stats: weaponStats(type, 2) }];
   if (next === 3) {
     return ['a', 'b'].map((b) => ({ tier: 3, branch: b, name: weaponStats(type, 3, b).name, cost: WEAPON_UPGRADES[3][type][b].cost, stats: weaponStats(type, 3, b) }));

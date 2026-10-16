@@ -360,7 +360,7 @@ describe('Mondsichel (Finisher)', () => {
 describe('Daten: Stats, Baum, Kosten, Save', () => {
   it('Kraft laut GDD, Zweige in Stufe 3', () => {
     expect(WEAPON_ORDER).toContain('kt');
-    expect(WEAPON_TYPES.kt.tiers.map((t) => t.name)).toEqual(['Rostkatana', 'Knochenkatana', 'Jaggo-Reißzahn', 'Brathalos-Glutkatana', 'Panzerschnitt', 'Funkenfürst-Katana']);
+    expect(WEAPON_TYPES.kt.tiers.slice(0, 6).map((t) => t.name)).toEqual(['Rostkatana', 'Knochenkatana', 'Jaggo-Reißzahn', 'Brathalos-Glutkatana', 'Panzerschnitt', 'Funkenfürst-Katana']);
     expect(weaponStats('kt', 1).power).toBe(78);
     expect(weaponStats('kt', 2).power).toBe(96);
     expect(weaponStats('kt', 3, 'a')).toMatchObject({ name: 'Jaggo-Reißzahn', power: 112, crit: 0.15 });
@@ -393,7 +393,7 @@ describe('Daten: Stats, Baum, Kosten, Save', () => {
     expect(s.weapons.kt).toEqual({ tier: 1, branch: null });
     expect(s.weapons.gs).toEqual({ tier: 3, branch: 'b' });
     expect(sanitize({ ...old, loadout: { weapon: 'kt' } }).loadout.weapon).toBe('kt');
-    expect(sanitize({ weapons: { kt: { tier: 9, branch: 'b' } } }).weapons.kt).toEqual({ tier: 6, branch: 'v' });
+    expect(sanitize({ weapons: { kt: { tier: 9, branch: 'b' } } }).weapons.kt).toEqual({ tier: 7, branch: null });
   });
 });
 

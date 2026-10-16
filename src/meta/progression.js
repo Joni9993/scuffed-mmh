@@ -5,7 +5,7 @@ import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
 import { BESTIARY } from '../data/compendium.js';
 import { applyChestResult } from './huntChest.js';
 
-export const MAX_JR = 10; // 2 Jaggo, 3 Barrotz, 4 Brathalos, 5 Revierstreit, 6 Kroll/Gorgo, 7 Voltaro, 8 Blendax, 9 Mampfaffe, 10 Krachfaust
+export const MAX_JR = 14;
 
 /** Jägerrang-Stufen: Schlüssel-Aufträge (quest.jrUp = Rang) + Rang-Punkte-Schwelle (save.rp). */
 export const RANKS = [
@@ -18,6 +18,10 @@ export const RANKS = [
   { jr: 8, keys: ['blendax'], rp: RANK_RP[8] },
   { jr: 9, keys: ['mampfaffe'], rp: RANK_RP[9] },
   { jr: 10, keys: ['krachfaust'], rp: RANK_RP[10] },
+  { jr: 11, keys: ['pyrostur'], rp: RANK_RP[11] },
+  { jr: 12, keys: ['felsengroll'], rp: RANK_RP[12] },
+  { jr: 13, keys: ['voltiris'], rp: RANK_RP[13] },
+  { jr: 14, keys: ['gockelok'], rp: RANK_RP[14] },
 ];
 export const isKeyQuest = (quest, save) => !!quest.jrUp && (!save || quest.jrUp > save.jr);
 
