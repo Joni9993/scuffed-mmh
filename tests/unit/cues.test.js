@@ -47,4 +47,17 @@ describe('cues', () => {
     expect(out).toContain('eye');
     off();
   });
+  it('an elder can signal through its pressure organs without washing out the whole sculpt', () => {
+    const bus = createBus(), rig = { update() {}, frame() {} };
+    const chest = new THREE.MeshLambertMaterial(), head = new THREE.MeshLambertMaterial();
+    const monster = { pos: { x: 3, z: 0 }, def: { cueParts: ['chest'], cueIntensity: .35 },
+      parts: [{ id: 'chest', mats: [chest] }, { id: 'head', mats: [head] }] };
+    const off = attach({ bus, rig, player: { pos: { x: 0, z: 0 } } });
+    bus.emit('attackStart', { monster, attackId: 'horn', cue: { color: '#ff9900' }, inst: { tgWall: 1, def: {} } });
+    rig.update(1 / 60, {});
+    expect(chest.emissive.r).toBeGreaterThan(0);
+    expect(chest.emissive.r).toBeLessThan(.35);
+    expect(head.emissive.getHex()).toBe(0);
+    off(); chest.dispose(); head.dispose();
+  });
 });

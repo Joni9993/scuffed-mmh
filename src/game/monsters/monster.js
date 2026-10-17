@@ -11,7 +11,10 @@ import { predationTick, eatTick, endEating } from './predation.js'; // [L]
 import { StatusFx } from './statusfx.js';
 
 // wing/spread/jaw: only used by models that have them (Brathalos); harmless for the others
-export const MREST = { bodyY: 0, bodyPitch: 0, bodyRoll: 0, neck: 0, head: 0, headYaw: 0, tailYaw: 0, tailPitch: 0, legL: 0, legR: 0, wing: 0, spread: 0, jaw: 0 };
+export const MREST = { bodyY: 0, bodyPitch: 0, bodyRoll: 0, neck: 0, head: 0, headYaw: 0, tailYaw: 0, tailPitch: 0, legL: 0, legR: 0, wing: 0, spread: 0, jaw: 0,
+  // Optional elder-rig channels. Defaults keep old rigs and network pose interpolation unchanged.
+  bodyYaw: 0, wingL: 0, wingR: 0, elbowL: 0, elbowR: 0, wristL: 0, wristR: 0,
+  tailCurl: 0, neckYaw: 0, headReach: 0, foreL: 0, foreR: 0, hindL: 0, hindR: 0, boiler: 0 };
 export const mTrack = (frames) => compileTrack(frames, MREST);
 
 const RAGE_DURATION = 45, RAGE_HP = 0.6, RAGE_BURST_PCT = 0.075 /* of max HP within the window; was a flat 300 when Jaggo had 1800 HP */, RAGE_BURST_WINDOW = 20, RAGE_COOLDOWN = 20;
@@ -158,7 +161,7 @@ export class Monster {
     this.state = s;
     this.stateT = 0;
     if (this.attack?.inst.def.wanderAttack && s !== 'wander') this._interrupt(); // Angriff, der nur im Wandern laeuft (Mampfaffe frisst): Zustandswechsel bricht ab
-    if (s === 'notice' || s === 'enrage') this.ctx.bus.emit('sfx', { name: 'roar', pos: this.pos });
+    if (s === 'notice' || s === 'enrage') this.ctx.bus.emit('sfx', { name: this.def.id === 'pyrostur' ? 'pyroRoar' : 'roar', pos: this.pos });
     this.ctx.bus.emit('monsterState', { monster: this, state: s, prev });
   }
 
@@ -905,7 +908,9 @@ export class Monster {
       if (!p.local || !p.alive) continue;
       const caps = p.hitCapsules();
       for (const h of hits) {
-        const k = p.id + '|' + h.idx;
+        // Composite jaws/horns/body may describe one impact with several shapes.
+        // Shared groups prevent overlapping shapes from multiplying damage through super armor.
+        const k = p.id + '|' + (h.hit.group ?? h.idx);
         if (inst.hitSet.has(k)) continue;
         this.ctx.debugShape?.(h.shape, '#ff3030');
         // faceCheck (Blendax-Blitz): zaehlt nur, wenn die Kamera des lokalen Pirschers zum Brocken zeigt (Bildschirm = was er sieht); weggedreht = kein Treffer

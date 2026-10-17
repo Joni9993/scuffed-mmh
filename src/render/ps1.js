@@ -16,7 +16,7 @@ function applySnap() { ps1Globals.uSnap.value.set(base.x / snapScale, base.y / s
 export function setGlobalJitter(v) { ps1Globals.uGJit.value = v; }
 
 const HASH = `
-uniform vec2 uSnap; uniform float uTime; uniform float uGJit; uniform float uJit;
+uniform vec2 uSnap; uniform float uTime; uniform float uGJit; uniform float uJit; uniform float uSnapDetail;
 vec3 shHash(vec3 p){ p=fract(p*vec3(.1031,.1030,.0973)); p+=dot(p,p.yxz+33.33); return fract((p.xxy+p.yxx)*p.zyx)-.5; }
 `;
 
@@ -26,14 +26,15 @@ vec3 shHash(vec3 p){ p=fract(p*vec3(.1031,.1030,.0973)); p+=dot(p,p.yxz+33.33); 
  */
 export function ps1(mat) {
   const uJit = { value: 0 };
-  mat.userData.ps1 = { uJit };
+  const uSnapDetail = { value: 1 };
+  mat.userData.ps1 = { uJit, uSnapDetail };
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, ps1Globals, { uJit });
+    Object.assign(sh.uniforms, ps1Globals, { uJit, uSnapDetail });
     sh.vertexShader = HASH + sh.vertexShader
       .replace('#include <begin_vertex>',
         '#include <begin_vertex>\n transformed += shHash(position*13.0 + floor(uTime*14.0)) * (uJit + uGJit);')
       .replace('#include <project_vertex>',
-        '#include <project_vertex>\n vec4 sp = gl_Position; sp.xyz /= sp.w; sp.xy = floor(sp.xy * uSnap + .5) / uSnap; sp.xyz *= sp.w; gl_Position = sp;');
+        '#include <project_vertex>\n vec4 sp = gl_Position; sp.xyz /= sp.w; vec2 grid = uSnap * uSnapDetail; sp.xy = floor(sp.xy * grid + .5) / grid; sp.xyz *= sp.w; gl_Position = sp;');
   };
   mat.customProgramCacheKey = () => 'ps1';
   return mat;

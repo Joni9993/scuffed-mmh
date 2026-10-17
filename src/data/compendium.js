@@ -140,11 +140,13 @@ export const BESTIARY = [
 BESTIARY.push(
   {
     id: 'pyrostur', name: 'Pyrostur', where: 'Glitchgrat · Weltenkamm', title: 'Kessel ohne TÜV',
-    intro: 'Ein Drache wie ein schlecht gewarteter Dampfkessel. Seine Brust und das schiefe Ventil verraten den Druck. Wer nur hinter ihm steht, lernt den Schweif kennen.',
+    intro: 'Hornpanzer, Flügelklauen und ein glühender Brustkessel. Dieser alte Drache geht seitlich auf Pirsch, bevor er die Lücke mit einem Satz schließt. Sein Sicherheitszertifikat ist längst verbrannt.',
     entries: [
       { at: 1, kind: 'verhalten', name: 'Druck lesen', text: 'Die Nadel steigt, die Brust schwillt an. Überdruck entlädt sich um ihn herum; nahe an der abgesenkten Brust bleibt eine sichere Tasche.' },
-      { at: 1, kind: 'schwaeche', name: 'Notabschaltung von Hand', text: 'Triff beim sichtbaren Aufladen den Brustbalg mehrfach. Genug Schaden unterbricht den Überdruck und öffnet ein langes, sicheres Angriffsfenster.' },
+      { at: 1, kind: 'schwaeche', name: 'Notabschaltung von Hand', text: 'Wird die abgesenkte Brust beim Aufladen hell, kann gebündelter Schaden den Überdruck unterbrechen. Das Fenster schließt vor der Explosion. Nach einer Abschaltung braucht der Trick eine Pause; die innere Brusttasche bleibt eine Ausweichmöglichkeit.' },
+      { at: 1, kind: 'angriff', name: 'Pirsch und Hornbrecher', text: 'Der seitliche Satz kündigt die Sprungrichtung an. Verlasse die Anflugbahn. Nach der Landung kann ein Hornhieb folgen; im Kernbruch jagt er auch zur Gegenseite weiter. Ein niedriger Kopf kündigt den Aufwärtshieb an.' },
       { at: 2, kind: 'schwaeche', name: 'Ventilbruch', text: 'Ein gebrochenes Ventil verändert die Dampfablässe. Die zerstörte Brust bleibt weich, die angeschlagenen Flügel bremsen seine Verfolgung.' },
+      { at: 2, kind: 'angriff', name: 'Schweifhammer und Bremsramme', text: 'Ein hochgestellter Schweif fällt zweimal; der zweite Schlag reicht weiter. Bremst die Ramme mit ausgebreiteten Flügeln, folgt ein eigener Feuerstoß. Erst nach dem Abschluss sind Kopf und Brust lange offen.' },
       { at: 3, kind: 'angriff', name: 'Feuerregen', text: 'Die Feuerfelder treffen versetzt in festen Bahnen. Wechsle die Seite oder gehe zur entlüfteten Brust, statt geradeaus vor ihm wegzurennen.' },
     ],
   },

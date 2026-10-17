@@ -3,6 +3,7 @@ import { pyrostur, buildPyrostur, PYRO } from '../../src/game/monsters/pyrostur.
 import { AttackInstance } from '../../src/game/monsters/attack.js';
 import { make } from './p3helpers.js';
 import { time } from '../../src/core/time.js';
+import { overlap } from '../../src/game/hitbox.js';
 
 beforeEach(() => time.reset());
 const params = (id, seed = 6) => ({ attackId: id, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 12 }, seed, t0: 0 });
@@ -11,7 +12,8 @@ describe('Pyrostur boiler apex', () => {
   it('has a complete grounded, batched rig and aligned accessible counter targets', () => {
     const rig = buildPyrostur(); rig.root.updateMatrixWorld(true);
     const meshes = []; rig.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
-    expect(meshes.length).toBeLessThan(40);
+    expect(meshes.length).toBeLessThanOrEqual(45); // articulated forearms, knees and hocks remain batched
+    expect(meshes.reduce((n, mesh) => n + mesh.geometry.attributes.position.count / 3, 0)).toBeLessThan(5000);
     const { m } = make(pyrostur);
     for (const id of ['chest', 'valve']) {
       const part = m.hurtParts().find((h) => h.part.id === id);
@@ -20,9 +22,9 @@ describe('Pyrostur boiler apex', () => {
     }
     for (const part of pyrostur.parts) for (const sp of part.spheres) expect(rig.nodes[sp.node]).toBeTruthy();
   });
-  it('has ten attacks, three chain families and no hit without deterministic ground markers/audit', () => {
+  it('has sixteen attacks, multiple chain families and no hit without deterministic ground markers/audit', () => {
     const moves = Object.values(pyrostur.attacks).filter((a) => a.id.startsWith('pyrostur_'));
-    expect(moves).toHaveLength(10);
+    expect(moves).toHaveLength(16);
     expect(Object.keys(pyrostur.chains).length).toBeGreaterThanOrEqual(3);
     for (const a of moves) {
       expect(a.markerFromHits).toBe(true); expect(a.audit.length).toBeGreaterThan(0);
@@ -33,7 +35,7 @@ describe('Pyrostur boiler apex', () => {
       expect(rage.firstHitTime()).toBeGreaterThanOrEqual(.5);
       const recovery = (a.duration - Math.max(...a.hits.map((h) => h.t1))) / rage.speed;
       expect(recovery).toBeGreaterThanOrEqual(.7);
-      expect(recovery + pyrostur.recoverAfter()).toBeGreaterThanOrEqual(1.7);
+      expect(recovery + pyrostur.recoverAfter()).toBeGreaterThanOrEqual(1.5);
     }
   });
   it('transitions through the two planned HP states', () => {
@@ -41,6 +43,19 @@ describe('Pyrostur boiler apex', () => {
     expect(m.phase).toBe(1); expect(m.phaseSpecial).toBe('pyrostur_feuerregen');
     m.hp = m.maxHp * .29; m._b2Tick(1 / 60);
     expect(m.phase).toBe(2); expect(m.phaseSpecial).toBe('pyrostur_ueberdruck');
+  });
+  it('overlapping horn and head shapes count as one impact even through super armor', () => {
+    const { m, p, ctx } = make(pyrostur);
+    const inst = m.beginAttack('pyrostur_hornbrecher', { teach: false });
+    const t = inst.wall(1.2), sample = inst.sample(t);
+    p.spawnAt(sample.x + .7, sample.z + 4.6); p.v.hp = p.v.maxHp = 1000;
+    p.weapon.superArmor = () => 'all';
+    const shapes = inst.hitsAt(t).filter(h => p.hitCapsules().some(c => overlap(h.shape, c)));
+    expect(shapes.length).toBeGreaterThanOrEqual(2);
+    let hits = 0; ctx.bus.on('playerHit', () => hits++);
+    m._attackHits(inst, t); m._attackHits(inst, t + .01);
+    expect(hits).toBe(1);
+    expect(p.state).toBe('free');
   });
   it('breaking the valve replaces bilateral steam with a single weaker lateral leak', () => {
     const { m } = make(pyrostur); m._breakPart(m.partById.valve);
@@ -56,6 +71,18 @@ describe('Pyrostur boiler apex', () => {
     pyrostur.onDamage(m, { partId: 'chest', dmg: PYRO.COUNTER_DAMAGE - 1 }); expect(m.attack).toBeTruthy();
     pyrostur.onDamage(m, { partId: 'chest', dmg: 1 }); expect(m.attack).toBeNull(); expect(m.stagT).toBe(PYRO.COUNTER_TIME); expect(m.pressure).toBe(0);
     m.partById.chest.broken = true; m.stagT = 0; m.beginAttack('pyrostur_ueberdruck', { teach: false }); m.attack.t = 1.2;
+    pyrostur.onDamage(m, { partId: 'chest', dmg: PYRO.COUNTER_DAMAGE }); expect(m.attack).not.toBeNull(); // cooldown prevents a stagger loop
+    pyrostur.tick(m, 18.1); m.attack.t = 1.2;
+    pyrostur.onDamage(m, { partId: 'chest', dmg: PYRO.COUNTER_DAMAGE }); expect(m.attack).toBeNull();
+  });
+  it('accepts pressure counters only during the visible opening, and scales the requirement in coop', () => {
+    const { m } = make(pyrostur); m.maxHp *= 2; m.beginAttack('pyrostur_ueberdruck');
+    for (const tau of [.5, 3.0]) {
+      m.attack.t = m.attack.inst.wall(tau); pyrostur.onDamage(m, { partId: 'chest', dmg: 5000 });
+      expect(m.attack).not.toBeNull(); expect(m.boilerCounter).toBe(0);
+    }
+    m.attack.t = m.attack.inst.wall(1.5);
+    pyrostur.onDamage(m, { partId: 'chest', dmg: PYRO.COUNTER_DAMAGE }); expect(m.attack).not.toBeNull();
     pyrostur.onDamage(m, { partId: 'chest', dmg: PYRO.COUNTER_DAMAGE }); expect(m.attack).toBeNull();
   });
   it('chest and wings change vulnerability, pressure and movement after real breaks', () => {

@@ -19,8 +19,11 @@ Leistung auf echten Mobilgeräten sind noch nicht durch Spieltests belegt.
 
 ### Implementierungs- und Prüfstand
 
-- **Pyrostur:** zehn Angriffe, sichtbarer Kesseldruck, Feuerregen, Ventil-/Brust-/Flügelbruch.
-  240 Brustschaden im Überdruck erzeugen ein 3,2-s-Kontersignal mit Taumeln.
+- **Pyrostur:** nach Owner-Kritik einzeln als Elder überarbeitet: skulptierte Horn-/Flügelarm-
+  Silhouette, 16 Angriffe mit Pirschsprüngen, echte Flammen-/Dampfeffekte, aggressivere
+  spätere Ketten und deutlich höherer Trefferschaden bei weiterhin 22.000 HP.
+  420 Brustschaden im begrenzten Überdruckfenster erzeugen 3,2 s Taumeln, mit 18 s Konterpause.
+  Details und offene menschliche Abnahme: [Pyrostur-Umbau](PYROSTUR_ELDER_REWORK.md).
 - **Felsengroll:** zehn Angriffe, versetzte Beben, sichtbare Schlackefelder, Meteor und
   verzweigter finaler Bodenbruch. Schulterbruch öffnet die Flanke; Keulenbruch entfernt Außenhits.
 - **Voltiris:** dreizehn Angriffe einschließlich Teilbruchvarianten, asymmetrische Prismaflügel,
