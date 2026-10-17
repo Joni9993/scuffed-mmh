@@ -469,9 +469,11 @@ export class Monster {
       if (this._stamOn && attackId !== this.def.tiredAttack) this.stamina = Math.max(0, this.stamina - (ad.stam ?? 8) * ((extra.chainIdx ?? 0) > 0 ? 1.5 : 1) * (this.rage ? 0.7 : 1));
       if (tgt && (this._b2 || this.ctx.revier)) { const ag = (this.ctx._aggro ??= new Map()); ag.set(tgt.id, { t: this._clock(), id: this.id }); }
     }
+    // def.aimTarget(m, def, target) -> { pos, yaw? } (Autoritaet): Vorhalten auf die Laufrichtung (Pyrostur). Ergebnis reist als Startparameter mit, Gaeste bleiben deterministisch.
+    const aim = tgt && this.authority ? this.def.aimTarget?.(this, ad, tgt) : null;
     return this.startAttack({
       attackId, t0: this.time, origin: { x: this.pos.x, y: this.pos.y - this.air, z: this.pos.z },
-      yaw: this.rot, targetPos: tgt ? { x: tgt.pos.x, y: tgt.pos.y, z: tgt.pos.z } : undefined, seed: Math.floor(this.rng() * 1e9), ...extra,
+      yaw: aim?.yaw ?? this.rot, targetPos: aim?.pos ?? (tgt ? { x: tgt.pos.x, y: tgt.pos.y, z: tgt.pos.z } : undefined), seed: Math.floor(this.rng() * 1e9), ...extra,
     });
   }
 

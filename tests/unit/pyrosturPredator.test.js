@@ -4,6 +4,8 @@ import { addScorch, addRing, ringRadius, SCORCH } from '../../src/game/monsters/
 import { time } from '../../src/core/time.js';
 import { overlap as overlapShape } from '../../src/game/hitbox.js';
 import { make, DT } from './p3helpers.js';
+import { Hunt } from '../../src/game/hunt.js';
+import { Projectiles } from '../../src/game/projectiles.js';
 
 beforeEach(() => time.reset());
 
@@ -30,7 +32,7 @@ const quant = (arr, q) => { if (!arr.length) return 0; const s = [...arr].sort((
 // ---------------------------------------------------------------------------
 describe('Pyrostur predator: tempo and aggression', () => {
   // Measured (see report) then thresholds set ~15 % below.
-  const FLOOR = { 0: { rate: 17.5, med: .6 }, 2: { rate: 15.8, med: .3 } };
+  const FLOOR = { 0: { rate: 17.5, med: .6 }, 2: { rate: 15.8, med: .4 } };
   it('keeps a high attack tempo and phase 2 is faster than phase 0', () => {
     const rows = [], agg = { 0: { rate: [], med: [] }, 2: { rate: [], med: [] } };
     for (const phase of [0, 2]) for (const seed of [11, 37]) {
@@ -301,4 +303,39 @@ describe('Pyrostur predator: fairness and readability', () => {
       expect(r.ratio, JSON.stringify(r)).toBeLessThanOrEqual(.25);
     }
   }, 120000);
+});
+
+// Owner feedback: kiting with ranged weapons was free damage. A crossbow bot that circles
+// at 12-16 m and never dodges must now take real, sustained pressure.
+describe('Pyrostur hunts ranged kiters', () => {
+  it('a circling crossbow/bow bot takes sustained damage and the elder leads its aim', () => {
+    const rows = [];
+    for (const weapon of ['lb', 'bow']) {
+      time.reset();
+      const { m, p, ctx } = make(pyrostur, 'combat', 0, 16, 11);
+      p.god = false; p.protect = 150; p.v.hp = p.v.maxHp = 1e6; p.setWeapon(weapon, 7, null);
+      m.maxHp *= 50; m.hp = m.maxHp; m.fleeUsed = true; p.lock = { monster: m, idx: 0 };
+      ctx.projectiles = new Projectiles(ctx, { visual: false });
+      ctx.mods = { player: {} }; ctx.glitchSys = {}; ctx.stats = { damage: 0, hits: 0 };
+      ctx.playerHit = Hunt.prototype.playerHit.bind(ctx);
+      let dmg = 0, led = 0, starts = 0;
+      ctx.bus.on('playerHit', (e) => { dmg += e.dmg; });
+      ctx.bus.on('monsterAttack', (e) => { starts++; if (e.targetPos && Math.hypot(e.targetPos.x - p.pos.x, e.targetPos.z - p.pos.z) > 1) led++; });
+      const SECS = 45;
+      for (let t = 0; t < SECS; t += DT) {
+        const dx = m.pos.x - p.pos.x, dz = m.pos.z - p.pos.z, d = Math.hypot(dx, dz) || 1;
+        let sx = -dz / d * -.9, sy = dx / d * .9; // circle around the elder
+        if (d > 16) { sx += -dx / d; sy += dz / d; } else if (d < 12) { sx += dx / d; sy -= dz / d; }
+        const L = Math.hypot(sx, sy); ctx.input.setStick(sx / L, sy / L, 'bot');
+        ctx.input.set('attack', Math.floor(t / DT) % (weapon === 'bow' ? 21 : 15) < 3, 'bot');
+        ctx.time = t; ctx.input.poll(DT); p.update(DT); ctx.projectiles.update(DT); m.update(DT);
+      }
+      rows.push({ weapon, dmgPerMin: Math.round(dmg / SECS * 60), dealtPerMin: Math.round(ctx.stats.damage / SECS * 60), led, starts });
+    }
+    if (process.env.PYRO_QA_VERBOSE) console.log('Ranged kiter pressure:', JSON.stringify(rows));
+    for (const r of rows) {
+      expect(r.dmgPerMin, JSON.stringify(r)).toBeGreaterThanOrEqual(450);
+      expect(r.led, JSON.stringify(r)).toBeGreaterThan(0);
+    }
+  }, 60000);
 });

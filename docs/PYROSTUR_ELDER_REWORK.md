@@ -57,6 +57,16 @@ nicht konterbar, längste Öffnung des Kampfes). Zustandswechsel: 72 % → Komet
 | Ø Ansage / kürzeste | 1,28 / 0,85 s | 1,03 / 0,55 s | | |
 | Ø Erholung nach letztem Treffer | 2,0 s | 1,4 s | | |
 
+**Nachtrag Fernkampf (Owner-Test):** Aus der Distanz konnte man fast gefahrlos dauerhaft
+schießen. Gemessen: Armbrust-Bot, der seitlich kreist, nahm 0–46 Schaden/min bei 5.100
+eigenem Schaden/min. Ursache: Alle Angriffe zielten auf den Standpunkt beim Ansagestart.
+Neu: *Vorhalten* (`def.aimTarget`, Framework): Sprung, Ramme, Strahl, Pirsch, Salve und
+Sturz zielen auf die geglättete Laufrichtung × Einschlagzeit (max. 8 m) und drehen bis
+0,6 rad mit; Richtungswechsel entkommt weiterhin. *Scharfschützen-Gedächtnis*: Schaden aus
+> 8,5 m erhöht Lückenschließer und Projektile bis ×3. Neuer Angriff *Glutlanzen*: drei
+schnelle Feuerlanzen (30 m/s) auf Laufweg und beide Ausweichseiten. Ergebnis: Armbrust-
+Kiter ~940, Bogen ~1.360 Schaden/min (Nahkampf ~1.600), eigener Schaden 3.200–3.300/min.
+
 Fairness-Regeln (Tests): jede Ansage auch in Wut + Glutrausch ≥ 0,5 s; jeder Angriff
 setzt sichtbar zurück (≥ 0,4 s); Signaturen ≥ 1,5 s Strafzeit; Bodenmarker kommen aus
 den echten Trefferformen; Gefahrenflächen und Ringe entstehen nur aus replizierten

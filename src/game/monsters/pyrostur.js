@@ -9,6 +9,7 @@ import { buildPyrostur } from './pyrosturRig.js';
 import { updatePyrosturFx } from './pyrosturFx.js';
 import { posePyrosturPresence } from './pyrosturMotion.js';
 import { addScorch, addRing, tickHazards, GLUTBRAND, SCALD } from './pyrosturHazards.js';
+import { fireballDef } from './mprojectiles.js';
 export { buildPyrostur } from './pyrosturRig.js';
 
 const SC = 1.65;
@@ -39,6 +40,8 @@ const lateral = (m) => { const p = localTarget(m); return Math.abs(p.x) > p.d * 
 const behind = (m) => localTarget(m).z < 0;
 const front = (m) => !behind(m) && !lateral(m);
 const hot = (m) => (m?.overheat ?? 0) > 0;
+// Ranged damage from afar makes the elder hunt the shooter: up to 3x weight on gap closers and projectiles.
+const snipe = (m) => 1 + Math.min(2, (m._snipeT ?? 0) / 3);
 // Replicated: tempoMul > 1 is only ever sent while overheated, so guests know it too.
 const hotInst = (inst) => (inst.params.tempoMul ?? 1) > 1.05;
 const hit = (t, at, radius, dmg, knock = 'down', extra) => ({ t0: t, t1: t + .13, shape: 'sphere', at, radius, dmg, knock, ...extra });
@@ -87,14 +90,14 @@ const attack = (name, config) => {
 
 // ---------------------------------------------------------------- quick predator strikes
 const bite = attack('zange', {
-  range: [0, 7], weight: 7, cond: front, cooldown: 2.5, telegraph: .62, duration: 1.55, audit: [3, 6], vfx: 'charge',
+  lead: .35, aimYaw: true, range: [0, 7], weight: 7, cond: front, cooldown: 2.5, telegraph: .62, duration: 1.55, audit: [3, 6], vfx: 'charge',
   prepare: prepareAdvance(3.5), motion(t, a) { return advance(t, a, .48, .2); },
   // A light, fast jaw snap only flinches: the follow-up is the real threat.
   hits: [line(.66, [-1.05, 1.3, 3.5], [1.05, 1.3, 4.6], 1.15, 115, .8, { knock: 'flinch' })],
   pose: track([[0, {}], [.4, { ...CROUCH, head: -20, jaw: 72, neck: -.2, headReach: -.25 }], [.6, { ...CROUCH, head: -20, jaw: 78, neck: -.2 }], [.7, { bodyPitch: 12, head: 28, neck: .3, jaw: 0, headReach: .7, foreL: -30, foreR: -30 }], [.95, { bodyPitch: 6, head: 12, jaw: 14 }], [1.55, {}]]),
 });
 const uppercut = attack('hornbrecher', {
-  range: [0, 6.5], weight: 5, cond: front, cooldown: 4, telegraph: .78, duration: 1.95, audit: [3, 6], vfx: 'charge',
+  lead: .4, aimYaw: true, range: [0, 6.5], weight: 5, cond: front, cooldown: 4, telegraph: .78, duration: 1.95, audit: [3, 6], vfx: 'charge',
   prepare: prepareAdvance(3), motion(t, a) { return advance(t, a, .7, .25); },
   hits: [line(.8, [-.6, 1.2, 3.3], [-.6, 2.6, 5.9], 1, 180), line(.8, [.6, 1.2, 3.3], [.6, 2.6, 5.9], 1, 180), line(.8, [0, 1, 3], [0, 2.5, 4.5], 1.1, 150)],
   pose: track([[0, {}], [.55, { ...CROUCH, bodyY: -.38, head: 26, neck: .15, headReach: -.15, bodyPitch: 13 }], [.77, { ...CROUCH, bodyY: -.38, head: 26, neck: .15, bodyPitch: 13 }], [.9, { bodyY: .25, bodyPitch: -10, head: -12, neck: -.05, headReach: .5, foreL: -35, foreR: -35, jaw: 25 }], [1.3, { ...EXPOSE, bodyY: -.25 }], [1.95, {}]]),
@@ -108,8 +111,8 @@ const scythe = attack('sichelschweif', {
 });
 // Nargacuga-style hunting leap. Chains into itself and re-aims on every hop.
 const leap = attack('glutsprung', {
-  range: [4, 20], weight: (m, d) => (d > 7 ? 9 : 5) * (1 + m.phase * .3), cooldown: 3, telegraph: .6, duration: 1.9, audit: [6, 12, 18], vfx: 'charge', stam: 6,
-  prepare: prepareAdvance(15, 2.2, 2),
+  lead: 1, aimYaw: true, range: [4, 24], weight: (m, d) => (d > 7 ? 9 : 5) * (1 + m.phase * .3) * snipe(m), cooldown: 3, telegraph: .6, duration: 1.9, audit: [6, 12, 18], vfx: 'charge', stam: 6,
+  prepare: prepareAdvance(18, 2.2, 2),
   motion(t, a) {
     const k = smooth(clamp01((t - .6) / .45)), sway = -.45 * Math.sin(clamp01(t / .6) * Math.PI);
     const fwd = a.len * k + sway;
@@ -122,7 +125,7 @@ const leap = attack('glutsprung', {
 });
 // Sidestep to cut the angle, re-aim at the hunter and bite from the flank.
 const flank = attack('flankensatz', {
-  range: [1.5, 9], weight: (m) => 4 + m.phase * 2, cond: front, cooldown: 4, telegraph: .55, duration: 1.75, audit: [3, 6, 8], vfx: 'charge',
+  lead: .5, range: [1.5, 9], weight: (m) => 4 + m.phase * 2, cond: front, cooldown: 4, telegraph: .55, duration: 1.75, audit: [3, 6, 8], vfx: 'charge',
   prepare(a) {
     a.side = a.r(0) < .5 ? -1 : 1;
     a.p1 = { x: a.origin.x + a.dir.z * a.side * 5 + a.dir.x * .8, z: a.origin.z - a.dir.x * a.side * 5 + a.dir.z * .8 };
@@ -173,7 +176,7 @@ const leak = attack('leckablass', {
   hits: [line(.95, [2, .9, 0], [6.2, .9, 0], 1.15, 105, 1.12, { status: SCALD })], pose: vent.pose,
 });
 const breath = attack('ofenschneise', {
-  range: [6, 22], weight: (m, d) => d > 11 ? 6 : 3, cooldown: 6, duration: 2.75, audit: [8, 15, 20], telegraph: 1, vfx: 'breath',
+  lead: 1.1, aimYaw: true, range: [6, 24], weight: (m, d) => (d > 11 ? 6 : 3) * snipe(m), cooldown: 6, duration: 2.75, audit: [8, 15, 20], telegraph: 1, vfx: 'breath',
   hits: [line(1.05, [0, 1.1, 4.1], [0, .7, 21], 1.55, 195, 1.55, FIRE)],
   events: [{ t: 1.05, call: 'impact', all: true }, { t: 1.2, call: 'scorch', all: true }],
   calls: { scorch: scorchCall(1.2, [[0, 8], [0, 13], [0, 18]], { r: 2, secs: 7 }) },
@@ -189,7 +192,7 @@ const whip = attack('flammenpeitsche', {
   pose: track([[0, {}], [.7, { ...CROUCH, head: -18, jaw: 70, neck: -.14, boiler: 1, bodyRoll: -8, headYaw: -18 }], [.98, { bodyPitch: -10, head: -20, jaw: 82, boiler: 1, headYaw: -20 }], [1.08, { bodyPitch: 10, head: 18, neck: .16, headReach: .3, jaw: 75, headYaw: -10, wing: 20 }], [1.5, { bodyPitch: 10, head: 18, jaw: 78, headYaw: 6, bodyRoll: 6, wing: 25 }], [1.9, { bodyPitch: 10, head: 18, jaw: 72, headYaw: 16, bodyRoll: 10 }], [2.3, EXPOSE], [2.95, {}]]),
 });
 const charge = attack('kesselramme', {
-  range: [7, 24], weight: (m, d) => (d > 12 ? 9 : 4) * (1 + (m._farT ?? 0) / 3), cooldown: 5, telegraph: .95, duration: 2.6, flashParts: ['head', 'chest'], audit: [8, 15, 21], vfx: 'charge',
+  lead: 1.25, aimYaw: true, range: [7, 26], weight: (m, d) => (d > 12 ? 9 : 4) * (1 + (m._farT ?? 0) / 3) * snipe(m), cooldown: 5, telegraph: .95, duration: 2.6, flashParts: ['head', 'chest'], audit: [8, 15, 21], vfx: 'charge',
   prepare: prepareAdvance(19, 1.5), motion(t, a) { return advance(t, a, .94, .72); },
   hits: [line(1, [-1.1, 1, 2.1], [1.1, 1, 4], 1.35, 200, 1.68), line(1, [-.8, 1.1, 4.3], [.8, 1.1, 6], 1.05, 200, 1.68)],
   // Overheated, the furnace leaves a burning wake along the whole charge path.
@@ -198,7 +201,7 @@ const charge = attack('kesselramme', {
   pose: track([[0, {}], [.65, { ...CROUCH, head: 35, neck: .2, wing: -30, jaw: 10, tailPitch: 15 }], [.93, { ...CROUCH, head: 35, neck: .2, tailPitch: 18 }], [1.05, { bodyPitch: 16, head: 32, neck: .25, wing: 15, foreL: -45, foreR: -45, hindL: -40, hindR: -40 }], [1.35, { bodyPitch: 8, head: 30, wing: 5, foreL: 40, foreR: 40, hindL: 35, hindR: 35 }], [1.72, { ...EXPOSE, bodyPitch: 18, wing: 45, foreL: 55, foreR: 55 }], [2.6, {}]]),
 });
 const pounces = [-1, 1].map((side) => attack(side < 0 ? 'glutpirsch_links' : 'glutpirsch_rechts', {
-  range: [4, 19], weight: (m, d) => (d > 7 ? 6 : 3) * (m.phase > 0 ? 1.3 : 1), cooldown: 6, telegraph: .8, duration: 2.5, audit: [5, 10, 16], vfx: 'charge',
+  lead: 1, aimYaw: true, range: [4, 19], weight: (m, d) => (d > 7 ? 6 : 3) * (m.phase > 0 ? 1.3 : 1), cooldown: 6, telegraph: .8, duration: 2.5, audit: [5, 10, 16], vfx: 'charge',
   prepare(a) { a.len = Math.max(1.5, Math.min(15, Math.hypot(a.target.x - a.origin.x, a.target.z - a.origin.z) - 2.8)); },
   motion(t, a) {
     const wind = smooth(clamp01(t / .6)), jump = smooth(clamp01((t - .8) / .5));
@@ -214,7 +217,7 @@ const doubleTail = attack('ambossschweif', {
   pose: track([[0, {}], [.72, { bodyPitch: 8, tailPitch: 65, tailCurl: -20, wing: 30, foreL: 40, foreR: 40 }], [.94, { bodyPitch: 8, tailPitch: 70, wing: 30 }], [1.05, { bodyPitch: -9, tailPitch: -8, wing: -15 }], [1.6, { bodyPitch: 10, tailPitch: 75, wing: 45, tailCurl: -20 }], [1.92, { bodyPitch: -12, tailPitch: 5, bodyY: -.3, wing: -25 }], [2.5, EXPOSE], [3.2, {}]]),
 });
 const brake = attack('schlackenbremse', {
-  range: [6, 22], weight: 5, cooldown: 9, phase: 1, telegraph: 1, duration: 3.6, audit: [8, 14, 20], flashParts: ['head', 'chest'], vfx: 'breath',
+  lead: 1.1, aimYaw: true, range: [6, 22], weight: 5, cooldown: 9, phase: 1, telegraph: 1, duration: 3.6, audit: [8, 14, 20], flashParts: ['head', 'chest'], vfx: 'breath',
   prepare: prepareAdvance(14, 6), motion(t, a) { return advance(t, a, .98, .55); },
   hits: [line(1.05, [-1, 1, 2], [1, 1, 3.8], 1.25, 175, 1.5), line(2.15, [-5, .7, 5.3], [5, .7, 5.3], 1.5, 210, 2.28, FIRE)],
   pose: track([[0, {}], [.75, { ...CROUCH, head: 35, tailPitch: 20 }], [.99, { ...CROUCH, head: 35, tailPitch: 20 }], [1.15, { bodyPitch: 15, head: 30, foreL: -40, foreR: -40, hindL: -40, hindR: -40 }], [1.55, { bodyPitch: -12, wing: 65, head: -20, jaw: 75, foreL: 65, foreR: 65, boiler: 1 }], [2.02, { bodyPitch: -12, head: -20, jaw: 80, wing: 45, boiler: 1 }], [2.2, { bodyPitch: 14, head: 25, jaw: 80, wing: -15 }], [2.8, EXPOSE], [3.6, {}]]),
@@ -233,7 +236,7 @@ const stomp = attack('notabschaltung', {
 // Anti-camping: magma bombs on the hunter's spot and the escape lanes around it.
 const BOMBS = 5;
 const salvo = attack('schlackensalve', {
-  range: [8, 32], weight: (m, d) => (d > 14 ? 7 : 3) * (1 + (m._farT ?? 0) / 2.5), cooldown: 8, telegraph: .95, duration: 2.6, audit: [10, 18, 26], vfx: 'breath', stam: 7,
+  lead: 1.3, range: [8, 34], weight: (m, d) => (d > 12 ? 7 : 3) * (1 + (m._farT ?? 0) / 2.5) * snipe(m), cooldown: 8, telegraph: .95, duration: 2.6, audit: [10, 18, 26], vfx: 'breath', stam: 7,
   hits: [],
   events: [{ t: .95, call: 'spit', all: true }],
   calls: {
@@ -252,6 +255,27 @@ const salvo = attack('schlackensalve', {
   pose: track([[0, {}], [.65, { bodyPitch: -18, head: -40, neck: -.25, jaw: 70, wing: 35, boiler: 1, foreL: -14, foreR: -14 }], [.93, { bodyPitch: -20, head: -45, jaw: 82, boiler: 1, wing: 40 }], [1.02, { bodyPitch: 6, head: 10, neck: .12, jaw: 75, headReach: .35, wing: -12 }], [1.4, { bodyPitch: -10, head: -25, jaw: 70, boiler: .6 }], [1.9, EXPOSE], [2.6, {}]]),
 });
 
+// Anti-sniper: three fast flame lances at the hunter's predicted path and both sidesteps.
+const LANCES = [[0, 0], [-2.6, .14], [2.6, .28]];
+const lances = attack('glutlanzen', {
+  lead: .9, range: [8, 42], weight: (m, d) => (d > 10 ? 6 : 2) * snipe(m) * snipe(m), cooldown: 5, telegraph: .72, duration: 1.85, audit: [10, 20, 32], vfx: 'breath', stam: 5,
+  hits: [],
+  events: [{ t: .72, call: 'fire', all: true }],
+  calls: {
+    fire(m, ctx, inst, age) {
+      const from = worldAt(inst, .72, 0, 3.6), y = (inst.origin.y ?? 0) + 2.4;
+      const dx = inst.target.x - from.x, dz = inst.target.z - from.z, l = Math.hypot(dx, dz) || 1;
+      for (const [side, delay] of LANCES) {
+        const aim = { x: inst.target.x + dz / l * side, y: (inst.target.y ?? 0) + 1, z: inst.target.z - dx / l * side };
+        const def = fireballDef({ from: { x: from.x, y, z: from.z }, aim, speed: 30, extra: 12, radius: .9, dmg: 125, key: `${inst.key}:l${side}`, status: GLUTBRAND });
+        m.projectiles.spawn({ ...def, attackId: inst.params.attackId }, age - delay);
+      }
+      ctx.bus.emit('sfx', { name: 'pyroFlame', pos: m.pos });
+    },
+  },
+  pose: track([[0, {}], [.5, { bodyPitch: -10, head: -24, neck: -.16, jaw: 70, boiler: 1, wing: 20, foreL: -12, foreR: -12 }], [.7, { bodyPitch: -12, head: -26, jaw: 82, boiler: 1 }], [.78, { bodyPitch: 8, head: 16, neck: .14, jaw: 75, headReach: .35 }], [.92, { bodyPitch: -4, head: -6, jaw: 60, headYaw: -10 }], [1.06, { bodyPitch: 8, head: 16, jaw: 75, headYaw: 10 }], [1.35, { ...EXPOSE, bodyY: -.25 }], [1.85, {}]]),
+});
+
 // ---------------------------------------------------------------- signatures: big threat, earned opening
 const rain = attack('feuerregen', {
   range: [3, 17], weight: 4, cooldown: 20, phase: 1, telegraph: 1.3, duration: 4.7, stam: 12, flashParts: ['chest', 'wingL', 'wingR'], audit: [6, 11], punishWindow: 1.8, vfx: 'rain',
@@ -266,7 +290,7 @@ const rain = attack('feuerregen', {
 // who fled far instead of staying close for the landing opening.
 const DIVE = 2.3;
 const comet = attack('kometensturz', {
-  range: [0, 34], weight: (m, d) => (d > 12 ? 4 : 1.5) * (1 + (m._farT ?? 0) / 3), cooldown: 24, phase: 1, telegraph: DIVE, duration: 5, stam: 12, flashParts: ['chest', 'wingL', 'wingR'], audit: [0, 8, 16], punishWindow: 2.4, vfx: 'dive', noFace: true,
+  lead: .8, range: [0, 36], weight: (m, d) => (d > 12 ? 4 : 1.5) * (1 + (m._farT ?? 0) / 3) * snipe(m), cooldown: 24, phase: 1, telegraph: DIVE, duration: 5, stam: 12, flashParts: ['chest', 'wingL', 'wingR'], audit: [0, 8, 16], punishWindow: 2.4, vfx: 'dive', noFace: true,
   motion(t, a) {
     const k = smooth(clamp01((t - .55) / 1.55));
     const air = t < 2.05 ? 10 * smooth(clamp01((t - .3) / .9)) : 10 * (1 - smooth(clamp01((t - 2.05) / (DIVE - 2.05))));
@@ -319,7 +343,7 @@ const nova = attack('sonnenbruch', {
 
 // ---------------------------------------------------------------- AI glue
 const SIGNATURES = [pressure.id, rain.id, stomp.id, brake.id, doubleTail.id, fan.id, comet.id, nova.id];
-const VENTING = new Set([pressure.id, nova.id, rain.id, vent.id, leak.id, breath.id, fan.id, brake.id, whip.id, salvo.id, backhop.id]);
+const VENTING = new Set([pressure.id, nova.id, rain.id, vent.id, leak.id, breath.id, fan.id, brake.id, whip.id, salvo.id, lances.id, backhop.id]);
 const EXPOSED = [rain.id, pressure.id, stomp.id, brake.id, comet.id, nova.id];
 // Chain option builder: base weight, more in later states and while overheated.
 const press = (atk, w, cond) => [
@@ -337,6 +361,19 @@ export const pyrostur = {
   build: buildPyrostur, stamina: true, flinchDmg: 1800, chainMax: 3, teachAttack: leap.id,
   recoverAfter: (m) => (hot(m) ? .12 : [.5, .32, .2][m?.phase ?? 0] ?? .2),
   attackTempo: (m) => (hot(m) ? PYRO.OVERHEAT_TEMPO : 1),
+  // Predator aim: lead the hunter's running line by the move's impact time (capped),
+  // and turn directional moves toward that point. Reversing direction still escapes.
+  aimTarget(m, def, tgt) {
+    const lead = def.lead ?? 0, v = m._tv;
+    if (!lead || !v) return null;
+    let ox = v.x * lead, oz = v.z * lead;
+    const l = Math.hypot(ox, oz), cap = 8;
+    if (l > cap) { ox *= cap / l; oz *= cap / l; }
+    const pos = { x: tgt.pos.x + ox, y: tgt.pos.y, z: tgt.pos.z + oz };
+    if (!def.aimYaw) return { pos };
+    const turn = Math.max(-.6, Math.min(.6, angleDiff(m.rot, yawOf(pos.x - m.pos.x, pos.z - m.pos.z))));
+    return { pos, yaw: m.rot + turn };
+  },
   parts: [
     { id: 'head', label: 'Ofenschnauze', factor: 1.05, stunPart: true, elem: elements, spheres: [{ node: 'head', offset: [0, 0, .55], r: .68 }, { node: 'head', offset: [.57, .55, -.75], r: .38 }, { node: 'head', offset: [-.57, .55, -.75], r: .38 }] },
     { id: 'chest', label: 'Brustbalg', factor: .65, breakHp: 1800, elem: elements, spheres: [{ node: 'chest', offset: [0, 0, .25], r: .8 }] },
@@ -360,9 +397,10 @@ export const pyrostur = {
     [pounces[1].id]: [...press(uppercut.id, 3, ahead), ...press(pounces[0].id, 3), ...press(leap.id, 2), { atk: null, w: 6 }],
     [wing.id]: [...press(vent.id, 2), ...press(leak.id, 2), ...press(flank.id, 2, ahead), ...press(scythe.id, 2), { atk: null, w: 6 }],
     [tail.id]: [...press(scythe.id, 2), ...press(backhop.id, 2, ahead), { atk: null, w: 6 }],
-    [breath.id]: [...press(leap.id, 3), ...press(charge.id, 2), { atk: null, w: 6 }],
+    [breath.id]: [...press(leap.id, 3), ...press(charge.id, 2), ...press(lances.id, 2), { atk: null, w: 6 }],
     [whip.id]: [...press(leap.id, 3), { atk: null, w: 6 }],
-    [salvo.id]: [...press(charge.id, 3), ...press(leap.id, 3), { atk: null, w: 6 }],
+    [salvo.id]: [...press(charge.id, 3), ...press(leap.id, 3), ...press(lances.id, 2), { atk: null, w: 6 }],
+    [lances.id]: [...press(leap.id, 4), ...press(charge.id, 3), ...press(lances.id, 1), { atk: null, w: 5 }],
   },
   phases: [
     { at: .72, name: 'JAGDDRUCK — Der Kessel erhebt sich', cue: cue(), special: comet.id, enter(m) { m.pressure = Math.max(m.pressure ?? 0, 75); } },
@@ -395,8 +433,17 @@ export const pyrostur = {
     if (m.state !== 'combat') return;
     // Position memory for the hunting AI: campers draw salvos/dives, huggers draw backhops.
     const d = m.target ? Math.hypot(m.target.pos.x - m.pos.x, m.target.pos.z - m.pos.z) : 0;
-    m._farT = d > 13 ? (m._farT ?? 0) + dt : Math.max(0, (m._farT ?? 0) - dt * 2);
+    m._farT = d > 10 ? (m._farT ?? 0) + dt : Math.max(0, (m._farT ?? 0) - dt * 2);
     m._hugT = d < 4.5 ? (m._hugT ?? 0) + dt : Math.max(0, (m._hugT ?? 0) - dt * 2);
+    m._snipeT = Math.max(0, (m._snipeT ?? 0) - dt * .5);
+    // Smoothed hunter velocity for leading the aim (respawns/teleports are clamped out).
+    const tp = m.target?.pos, tv = (m._tv ??= { x: 0, z: 0 });
+    if (tp && m._tp && m._tpId === m.target.id && dt > 0) {
+      let vx = (tp.x - m._tp.x) / dt, vz = (tp.z - m._tp.z) / dt;
+      const sp = Math.hypot(vx, vz); if (sp > 14) { vx = vz = 0; }
+      const k = 1 - Math.exp(-dt * 6); tv.x += (vx - tv.x) * k; tv.z += (vz - tv.z) * k;
+    }
+    if (tp) { m._tp = { x: tp.x, z: tp.z }; m._tpId = m.target.id; }
     if (hot(m)) {
       m.pressure = 100;
       m.overheat = Math.max(0, m.overheat - dt);
@@ -440,6 +487,10 @@ export const pyrostur = {
   },
   onRage(m, on) { if (on && m.authority) m.pressure = Math.min(100, (m.pressure ?? 0) + 35); },
   onDamage(m, res) {
+    if (m.authority && res.dmg > 0) {
+      const shooter = m.ctx.players.find((p) => p.id === res.attackerId) ?? m.target;
+      if (shooter && Math.hypot(shooter.pos.x - m.pos.x, shooter.pos.z - m.pos.z) > 8.5) m._snipeT = Math.min(9, (m._snipeT ?? 0) + res.dmg / 120);
+    }
     if (!m.authority || res.partId !== 'chest' || m.attack?.id !== pressure.id || m._pyroCounterCd > 0) return;
     const tau = m.attack.inst.sample(m.attack.t).tau;
     if (tau < PYRO.COUNTER_OPEN || tau >= PYRO.COUNTER_CLOSE) return;
