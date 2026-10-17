@@ -19,7 +19,7 @@ Leistung auf echten Mobilgeräten sind noch nicht durch Spieltests belegt.
 
 ### Implementierungs- und Prüfstand
 
-- **Pyrostur:** nach Owner-Kritik einzeln als Elder überarbeitet: skulptierte Horn-/Flügelarm-
+- **Pyrostur:** nach Owner-Kritik einzeln als Elder überarbeitet: sechsarmige Crimson-/Obsidian-
   Silhouette, 16 Angriffe mit Pirschsprüngen, echte Flammen-/Dampfeffekte, aggressivere
   spätere Ketten und deutlich höherer Trefferschaden bei weiterhin 22.000 HP.
   420 Brustschaden im begrenzten Überdruckfenster erzeugen 3,2 s Taumeln, mit 18 s Konterpause.

@@ -4,12 +4,14 @@ import { basic } from '../../render/ps1.js';
 // Two bounded dynamic batches. Flames use the very same committed positions and
 // times as AttackInstance; they never create damage, timers or network decisions.
 const CAPACITY = 6144, FIRE = [1, .29, .035], CORE = [1, .87, .43], ASH = [.48, .42, .36], STEAM = [.75, .83, .86];
+const COAL = [.55, .075, .025], HOT = [1, .42, .09];
 function batch(name) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CAPACITY * 3), 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(CAPACITY * 3), 3).setUsage(THREE.DynamicDrawUsage));
   geo.setDrawRange(0, 0);
   const mesh = new THREE.Mesh(geo, basic({ vertexColors: true, side: THREE.DoubleSide, depthWrite: true }));
+  geo.addEventListener('dispose', () => mesh.material.dispose());
   mesh.name = name; mesh.frustumCulled = false; mesh.visible = false;
   let n = 0;
   return {
@@ -60,8 +62,83 @@ function eruption(b, at, radius, age, time, color, seed = 0) {
 
 export function createPyrosturFx(root) {
   const flame = batch('pyrostur-fire-volume'), debris = batch('pyrostur-impact-trails');
-  root.add(flame.mesh, debris.mesh);
-  return { flame, debris, attack: null, sounded: false, warned: false };
+  // Four feet share one instanced, soft contact-shadow draw. A tiny data texture
+  // works in headless checks too and adds no realtime shadow-map pass.
+  const pixels = new Uint8Array(32 * 32 * 4);
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+    const r = Math.hypot((x - 15.5) / 15.5, (y - 15.5) / 15.5);
+    pixels[(y * 32 + x) * 4 + 3] = Math.max(0, 1 - r) ** 2 * 170;
+  }
+  const shadowMap = new THREE.DataTexture(pixels, 32, 32); shadowMap.needsUpdate = true;
+  const footShadows = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: shadowMap, transparent: true, depthWrite: false, fog: true }), 4);
+  footShadows.geometry.addEventListener('dispose', () => { shadowMap.dispose(); footShadows.material.dispose(); });
+  footShadows.name = 'pyrostur-foot-contact'; footShadows.frustumCulled = false; footShadows.renderOrder = 1;
+  root.add(flame.mesh, debris.mesh, footShadows);
+  return { flame, debris, attack: null, sounded: false, warned: false,
+    footShadows, shadowTransform: new THREE.Object3D(),
+    inverse: new THREE.Matrix4(), anchorPosition: new THREE.Vector3() };
+}
+
+function groundContacts(m, fx) {
+  const ids = ['ankleForeL', 'ankleForeR', 'ankleL', 'ankleR'];
+  fx.footShadows.visible = !!m.alive;
+  if (!m.alive) return;
+  m.mesh.updateWorldMatrix(true, false); fx.inverse.copy(m.mesh.matrixWorld).invert();
+  const transform = fx.shadowTransform;
+  for (let i = 0; i < 4; i++) {
+    const node = m.nodes[ids[i]];
+    if (!node) { transform.scale.setScalar(0); transform.updateMatrix(); fx.footShadows.setMatrixAt(i, transform.matrix); continue; }
+    node.updateWorldMatrix(true, false);
+    const p = fx.anchorPosition.set(0, -.14, .3).applyMatrix4(node.matrixWorld);
+    const ground = m.ctx.world?.heightAt(p.x, p.z) ?? 0;
+    const contact = Math.max(0, 1 - Math.max(0, p.y - ground) / .7);
+    p.y = ground + .045; p.applyMatrix4(fx.inverse);
+    transform.position.copy(p); transform.rotation.set(-Math.PI / 2, 0, 0);
+    transform.scale.set(1.45 * contact, 1.65 * contact, 1); transform.updateMatrix();
+    fx.footShadows.setMatrixAt(i, transform.matrix);
+  }
+  fx.footShadows.instanceMatrix.needsUpdate = true;
+}
+
+// Cosmetic only: anatomical vents breathe even between attacks. Small opaque
+// ribbons and sparks leave the armour and silhouette readable on a phone. Their
+// clock is the monster clock; there are no particle lifetimes or random pools.
+function furnacePresence(m, fx) {
+  const anchors = m.extra.ventAnchors;
+  if (!anchors?.length) return;
+  const heat = Math.max(0, Math.min(1, (m.pressure ?? 0) / 100));
+  const intensity = Math.min(1.35, .22 + heat * .72 + (m.rage ? .28 : 0));
+  const time = m.time ?? 0;
+  m.mesh.updateWorldMatrix(true, false);
+  fx.inverse.copy(m.mesh.matrixWorld).invert();
+  for (let i = 0; i < anchors.length; i++) {
+    const anchor = anchors[i];
+    anchor.updateWorldMatrix(true, false);
+    const p = fx.anchorPosition.setFromMatrixPosition(anchor.matrixWorld).applyMatrix4(fx.inverse);
+    const x = p.x, y = p.y, z = p.z;
+    const phase = time * (1.4 + heat * 1.6) + i * 1.9;
+    const pulse = .72 + .28 * Math.sin(phase);
+    const height = (.16 + intensity * .48) * pulse;
+    const width = .025 + intensity * .045;
+    const drift = Math.sin(phase * .7) * .09;
+    // Thin hot fissure above each vent, never a full-body emissive wash.
+    fx.debris.tri([x - width, y, z], [x + width, y, z],
+      [x + drift, y + height, z - .08], COAL, HOT);
+    fx.debris.tri([x, y, z - width], [x, y, z + width],
+      [x - drift, y + height * .8, z + .07], COAL, FIRE);
+    // Four deterministic rising cinders per vent. Near the top they shrink to
+    // zero instead of popping through a second transparent rendering pass.
+    for (let j = 0; j < 4; j++) {
+      const age = ((time * (.35 + intensity * .3) + i * .173 + j * .25) % 1 + 1) % 1;
+      const spread = age * (.12 + intensity * .34), angle = i * 2.4 + j * 1.7;
+      const px = x + Math.sin(angle + age) * spread;
+      const py = y + .1 + age * (.6 + intensity * 1.3);
+      const pz = z + Math.cos(angle) * spread - age * .15;
+      const size = (.018 + intensity * .022) * Math.sin(age * Math.PI);
+      fx.debris.tri([px - size, py, pz], [px + size, py, pz],
+        [px, py + size * 3, pz + size], FIRE, HOT);
+    }
+  }
 }
 
 export function updatePyrosturFx(m) {
@@ -69,6 +146,8 @@ export function updatePyrosturFx(m) {
   if (!m.ctx.scene) return;
   const fx = m.extra.pyroFx ??= createPyrosturFx(m.mesh);
   fx.flame.reset(); fx.debris.reset();
+  groundContacts(m, fx);
+  if (m.alive) furnacePresence(m, fx);
   const a = m.attack, kind = a?.inst.def.vfx;
   if (a?.inst !== fx.attack) { fx.attack = a?.inst; fx.sounded = false; fx.warned = false; }
   if (m.alive && a && kind) {

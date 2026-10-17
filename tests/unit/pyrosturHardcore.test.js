@@ -156,9 +156,9 @@ describe('Pyrostur endgame behavior regression', () => {
   }, 120000);
 
   for (const strategy of [
-    { weapon: 'gs', x: -1.5, z: 2.5, pre: 0, prepared: false },
+    { weapon: 'gs', x: -4, z: 4, pre: 0, prepared: false },
     { weapon: 'bow', x: 10, z: 17, pre: 0, prepared: true },
-    { weapon: 'lb', x: 12, z: 2.5, pre: 0, prepared: true },
+    { weapon: 'lb', x: 12, z: 7, pre: 0, prepared: true },
   ]) it(`${strategy.weapon}: a prepared real weapon strategy reaches the exposed chest and counters pressure`, () => {
     const { m, p, ctx } = hunt({ seed: 11 });
     p.spawnAt(strategy.x, strategy.z, Math.PI);
