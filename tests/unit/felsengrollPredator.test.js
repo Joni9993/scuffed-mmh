@@ -59,7 +59,11 @@ describe('Felsengroll: fortress tempo', () => {
   it('is territorial: at range he answers with quakes, boulders or a roll instead of walking in', () => {
     const h = hunt({ distance: 22, enduring: true });
     const { m } = h;
-    for (let i = 0; i < 40 * 60; i++) tick(h);
+    // The hunter keeps backing off to 22 m between attacks (a real ranged player).
+    for (let i = 0; i < 40 * 60; i++) {
+      if (!m.attack && h.p.state === 'free') { const dx = h.p.pos.x - m.pos.x, dz = h.p.pos.z - m.pos.z, d = Math.hypot(dx, dz) || 1; if (d < 22) h.p.pos.set(m.pos.x + dx / d * 22, 0, m.pos.z + dz / d * 22); }
+      tick(h);
+    }
     const far = ['rollangriff', 'stampfer', 'beben', 'felswurf', 'schlackespucke', 'sprungstampf', 'ramme', 'saeulenbruch'].map(ID);
     const nFar = h.attacks.filter((a) => far.includes(a.id)).length;
     log('Territory:', { starts: h.attacks.length, nFar, first: h.attacks[0]?.id });

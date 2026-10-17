@@ -24,9 +24,9 @@ describe('Felsengroll: armoured fortress', () => {
     for (const part of felsengroll.parts) for (const sp of part.spheres) expect(m.nodes[sp.node], sp.node).toBeTruthy();
   });
 
-  it('transitions at 65% (Meteor) and 30% (Weltenbruch) and refills the armour', () => {
+  it('transitions at 65% and 30% (both Weltenbruch) and refills the armour', () => {
     const { m } = make(felsengroll); m.recover = 99; m.armor = 10; m.hp = m.maxHp * .64; m._b2Tick(1 / 60);
-    expect(m.phase).toBe(1); expect(m.phaseSpecial).toBe('felsengroll_meteor'); expect(m.armor).toBe(100);
+    expect(m.phase).toBe(1); expect(m.phaseSpecial).toBe('felsengroll_weltenbruch'); expect(m.armor).toBe(100);
     m.hp = m.maxHp * .29; m._b2Tick(1 / 60);
     expect(m.phase).toBe(2); expect(m.phaseSpecial).toBe('felsengroll_weltenbruch');
   });

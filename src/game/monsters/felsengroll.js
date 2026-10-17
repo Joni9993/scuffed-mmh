@@ -13,6 +13,7 @@ import { addPillar, smashPillars, smashAlong, breakPillar, pillarsTouching, cove
 export { buildFelsengroll, FELS_SCALE } from './felsengrollRig.js';
 
 export const FEL = {
+  WORLD_CD: 80, // Weltenbruch repeats ~every 80 s from the second state on (2-3 per hunt)
   ARMOR_MAX: 100, ARMOR_REGEN: 3, ARMOR_REGEN_LAVA: 6, ARMOR_OPEN: 30, ARMOR_FACTOR: .55,
   CRASH_TIME: 3.5, CRASH_ARMOR: 60, EXPOSED_SECS: 8, EXPOSED_FACTOR: 1.6, BODY: 2.9,
 };
@@ -268,7 +269,7 @@ const hurl = attack('felswurf', {
 // Pillars break through the ground in an arc, leaving a centre lane open: cover and crash targets.
 const PILLARS = [[-62, 1.0], [-24, 1.22], [24, 1.44], [62, 1.66]].map(([deg, t]) => ({ lx: Math.sin(deg * Math.PI / 180) * 10.5, lz: Math.cos(deg * Math.PI / 180) * 10.5, t }));
 const pillarsMove = attack('saeulenbruch', {
-  range: [5, 22], weight: (m, d) => (m.extra.pillars?.filter((p) => !p.dead).length ?? 0) < 3 ? (d > 8 ? 6 : 3) : .8, cooldown: 12, telegraph: 1.0, duration: 3.6, audit: [6, 12], vfx: 'pillar', noFace: true,
+  range: [0, 30], weight: (m, d) => (m.extra.pillars?.filter((p) => !p.dead).length ?? 0) < 3 ? (d > 8 ? 6 : 4) : .8, cooldown: 12, telegraph: 1.0, duration: 3.6, audit: [6, 12], vfx: 'pillar', noFace: true,
   prepare: aim(), motion(t, a) { return { yaw: aimYaw(t, a, .7) }; },
   hits: PILLARS.map((p) => hit(p.t, [p.lx, .6, p.lz], 2.3, 150)),
   events: PILLARS.flatMap((p, i) => [{ t: p.t, call: 'impact', all: true }, { t: p.t + .01, call: 'raise' + i, all: true }]),
@@ -329,7 +330,7 @@ for (const [lap, base, off] of [[0, LAP1, 0], [1, LAP2, Math.PI / SPOKES]]) for 
   spokeDef.push({ ang, t, a: [Math.sin(ang) * 6.5, Math.cos(ang) * 6.5], b: [Math.sin(ang) * 28, Math.cos(ang) * 28], lap });
 }
 const worldBreak = attack('weltenbruch', {
-  range: [0, 40], weight: 0, cooldown: 45, phase: 2, telegraph: LAP1, duration: 13.2, stam: 16, flashParts: [], audit: [0, 3], punishWindow: 3.4, vfx: 'welt', noFace: true,
+  range: [0, 40], weight: 0, cooldown: FEL.WORLD_CD, phase: 1, telegraph: LAP1, duration: 13.2, stam: 16, flashParts: [], audit: [0, 3], punishWindow: 3.4, vfx: 'welt', noFace: true,
   hits: spokeDef.map((s) => line(s.t, [s.a[0], .6, s.a[1]], [s.b[0], .6, s.b[1]], 3.2, 230, s.t + .2, { fpSamples: 2 })).concat([hit(COLLAPSE, [0, .8, 0], 6.2, 300, 'down', { t1: COLLAPSE + .15 })]),
   events: [{ t: .4, call: 'dig', all: true }, ...spokeDef.flatMap((s, i) => [{ t: s.t, call: 'impact', all: true }, { t: s.t + .02, call: 'smash' + i, all: true }]), { t: COLLAPSE, call: 'collapse', all: true }, { t: COLLAPSE + .05, call: 'crown', all: true }],
   calls: {
@@ -413,10 +414,11 @@ export const felsengroll = {
     [fault.id]: [...press(roll.id, 3), { atk: null, w: 16 }],
     [spit.id]: [...press(roll.id, 3), ...press(hurl.id, 2), ...press(rift.id, 2), { atk: null, w: 16 }],
     [hurl.id]: [...press(roll.id, 3), ...press(stomper.id, 2), { atk: null, w: 16 }],
-    [pillarsMove.id]: [...press(roll.id, 4), ...press(stomper.id, 2), { atk: null, w: 10 }],
+    // Fresh pillars are bait and cover at once: he follows up with a roll or a quake ring at the shooter.
+    [pillarsMove.id]: [...press(roll.id, 4), ...press(stomper.id, 2), { atk: stomper.id, w: 6, cond: (m, d) => d > 9 }, { atk: null, w: 8 }],
   },
   phases: [
-    { at: .65, name: 'FLÜSSIGER BERG — Der Fels erwacht', cue: cue(), special: meteor.id, enter(m) { m.armor = FEL.ARMOR_MAX; } },
+    { at: .65, name: 'FLÜSSIGER BERG — Der Fels erwacht', cue: cue(), special: worldBreak.id, enter(m) { m.armor = FEL.ARMOR_MAX; m.cds[meteor.id] = 0; } },
     { at: .3, name: 'LAVAADER — Der letzte Erdrutsch', cue: cue(), special: worldBreak.id, enter(m) { m.armor = FEL.ARMOR_MAX; m.cds[meteor.id] = 0; } },
   ],
   init(m) {
@@ -450,6 +452,12 @@ export const felsengroll = {
     const d = m.target ? Math.hypot(m.target.pos.x - m.pos.x, m.target.pos.z - m.pos.z) : 0;
     m._farT = d > 12 ? (m._farT ?? 0) + dt : Math.max(0, (m._farT ?? 0) - dt * 2);
     m._hugT = d < 5 ? (m._hugT ?? 0) + dt : Math.max(0, (m._hugT ?? 0) - dt * 2);
+    // The fortress fight needs its terrain: pillars are guaranteed, never left to the dice.
+    // Weltenbruch is his signature: both state changes plus a timed repeat (2-3 per hunt).
+    if (a || m.queued || m.chainNext || m.phaseSpecial || m.phaseT > 0 || m.tired) return;
+    const live = m.extra.pillars?.filter((p) => !p.dead).length ?? 0;
+    if (m.phase >= 1 && (m.cds[worldBreak.id] ?? 0) <= 0) m.queued = worldBreak.id;
+    else if (live < 2 && (m.cds[pillarsMove.id] ?? 0) <= 0 && (m._combatT ?? 0) > 3) m.queued = pillarsMove.id;
   },
   poseHook(m, p) {
     for (const key of Object.keys(REST)) if (!Number.isFinite(p[key])) p[key] = REST[key];
