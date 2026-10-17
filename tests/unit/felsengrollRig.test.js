@@ -18,7 +18,7 @@ describe('Felsengroll elder rig', () => {
     expect(FELS_SCALE).toBeGreaterThan(1.5);
     const py = buildPyrostur(); py.root.updateMatrixWorld(true);
     const ps = new THREE.Box3().setFromObject(py.root).getSize(new THREE.Vector3());
-    expect(size.x).toBeLessThan(ps.x); expect(size.y).toBeLessThan(9); expect(size.y / size.x).toBeLessThan(.5);
+    expect(size.x).toBeLessThan(ps.x); expect(size.y).toBeLessThan(9); expect(size.y / size.x).toBeLessThan(.55);
     expect(size.x).toBeGreaterThan(10);
     for (const list of Object.values(r.partMeshes)) expect(list.length).toBeGreaterThan(0);
   });

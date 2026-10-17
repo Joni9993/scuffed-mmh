@@ -7,9 +7,9 @@ export const FELS_SCALE = 1.85;
 const BODY_Y = 1.3;
 const D = Math.PI / 180;
 const SIDES = [[1, 'L'], [-1, 'R']];
-const C = { hide: '#5c534d', muscle: '#74553f', armor: '#34333c', edge: '#8a7765', bone: '#cdbb9b', membrane: '#352a29', panel: '#4b372d', hot: '#ff7a1c', core: '#ffd264' };
-const HOT_DIM = new THREE.Color('#9a3a0c'), HOT_BRIGHT = new THREE.Color('#ffa535');
-const CORE_DIM = new THREE.Color('#d98f35'), CORE_BRIGHT = new THREE.Color('#fff0a8');
+const C = { hide: '#4e4641', muscle: '#664a38', armor: '#2a2930', edge: '#8a7765', bone: '#cdbb9b', membrane: '#352a29', panel: '#4b372d', hot: '#ff7a1c', core: '#ffd264' };
+const HOT_DIM = new THREE.Color('#c4500f'), HOT_BRIGHT = new THREE.Color('#ffa535');
+const CORE_DIM = new THREE.Color('#e8a040'), CORE_BRIGHT = new THREE.Color('#fff0a8');
 
 /** Erdbeben- & Schlacke-Elder: low, heavy basalt quadruped. Same articulation contract as buildPyrostur. */
 export function buildFelsengroll() {
@@ -70,7 +70,7 @@ export function buildFelsengroll() {
       const z = 1.05 - i * .45, w = 1.5 - Math.abs(i - 2) * .06;
       col('body', body, C.armor, [s * w, .42 - i * .02, z], [.38, .5, .27], [0, s * .2, s * 1.1 + .15]);
       col('body', body, C.edge, [s * (w + .2), .12 - i * .02, z + .02], [.2, .32, .2], [0, s * .1, s * 1.2]);
-      bone('body', body, C.hot, [s * (w + .05), .62, z - .22], [s * (w + .28), -.18, z - .22], .045, .03, 4);
+      bone('body', body, C.hot, [s * (w + .05), .75, z - .22], [s * (w + .3), -.3, z - .22], .09, .06, 4);
     }
   }
   // Back: broad plated saddle with glowing cracks between the slabs.
@@ -78,11 +78,11 @@ export function buildFelsengroll() {
     const z = 1.2 - i * .38, wx = .95 - Math.abs(i - 3) * .05;
     col('body', body, C.armor, [0, .95 - i * .02, z], [wx, .2 + (i % 2) * .05, .17], [0, .1 * (i % 3 - 1), 0]);
     col('body', body, C.edge, [0, 1.13 - i * .02, z + .02], [wx * .55, .09, .12]);
-    bone('body', body, C.hot, [-wx * .9, 1.05 - i * .02, z - .2], [wx * .9, 1.05 - i * .02, z - .2], .035, .035, 4);
+    bone('body', body, C.hot, [-wx * 1.0, 1.06 - i * .02, z - .19], [wx * 1.0, 1.06 - i * .02, z - .19], .08, .08, 4);
     plate('body', body, C.armor, [0, 1.32 - i * .03, z], [.16, .26, .2]);
   }
   // Left shoulder: modest basalt cap so the right side reads as the broken-off heavy part.
-  for (let i = 0; i < 3; i++) col('body', body, C.armor, [1.35 + i * .06, .88 + i * .17, .55 - i * .1], [.55 - i * .1, .24, .5 - i * .08], [0, .3 * i, .25]);
+  for (let i = 0; i < 2; i++) col('body', body, C.armor, [1.35 + i * .06, .88 + i * .17, .55 - i * .1], [.55 - i * .1, .24, .5 - i * .08], [0, .3 * i, .25]);
 
   const chest = joint('chest', body, 0, -.3, 1.2);
   loft('chest', chest, C.hide, [[0, -.05, -.2, .82, .6], [0, .02, .25, .88, .64], [0, 0, .55, .55, .5]]);
@@ -117,8 +117,8 @@ export function buildFelsengroll() {
   col('shoulder', shoulder, C.hide, [-.4, .78, -.18], [.62, .27, .52], [-.1, .2, -.78]);
   col('shoulder', shoulder, C.armor, [-.55, 1.06, -.3], [.46, .24, .4], [.12, -.6, -.95]);
   col('shoulder', shoulder, C.edge, [-.62, 1.28, -.34], [.26, .13, .24], [0, .1, -1.0]);
-  for (const [y, w, r] of [[.28, .86, .3], [.62, .76, .25], [.92, .56, .2]]) bone('shoulder', shoulder, C.hot, [-.05 - w * .35, y, .52 - r], [-.1 + w * .32, y - .02, .52 - r - .08], .06, .04, 4);
-  bone('shoulder', shoulder, C.hot, [-.8, .1, -.05], [-.95, .55, -.35], .05, .03, 4);
+  for (const [y, w, r] of [[.28, .86, .3], [.62, .76, .25], [.92, .56, .2]]) bone('shoulder', shoulder, C.hot, [-.05 - w * .35, y, .52 - r], [-.1 + w * .32, y - .02, .52 - r - .08], .1, .07, 4);
+  bone('shoulder', shoulder, C.hot, [-.8, .1, -.05], [-.95, .55, -.35], .09, .06, 4);
   horn('shoulder', shoulder, [C.armor, C.edge], [[-.75, .5, 0], [-1.25, .9, .1], [-1.7, 1.55, .12]], .3);
   horn('shoulder', shoulder, C.armor, [[-.2, 1.0, -.4], [-.35, 1.65, -.55], [-.3, 2.15, -.7]], .22);
   plate('shoulder', shoulder, C.armor, [-.9, .3, -.5], [.4, .5, .35], [0, 0, .5]);
@@ -128,9 +128,8 @@ export function buildFelsengroll() {
   loft('body', neck, C.muscle, [[0, .0, -.2, .85, .72], [0, .22, .25, .75, .68], [0, .32, .8, .66, .58], [0, .25, 1.3, .6, .5]]);
   for (let i = 0; i < 4; i++) {
     const z = i * .3;
-    col('body', neck, C.armor, [0, .8 - i * .06, z], [.6 - i * .05, .2, .15]);
+    if (i % 2 === 0) col('body', neck, C.armor, [0, .8 - i * .06, z], [.6 - i * .05, .2, .15]);
     bone('body', neck, C.hot, [-.4, .7 - i * .06, z - .13], [.4, .7 - i * .06, z - .13], .03, .03, 4);
-    for (const [s] of SIDES) col('body', neck, C.edge, [s * (.7 - i * .02), .15, z], [.16, .4, .16], [0, s * .2, s * 1.3]);
   }
   const head = joint('head', neck, 0, .3, 1.2);
   loft('head', head, C.muscle, [[0, 0, -.5, .65, .55], [0, .05, 0, .88, .62], [0, -.03, .6, .72, .46], [0, -.1, 1.1, .6, .34], [0, -.16, 1.42, .5, .27]]);
@@ -140,18 +139,16 @@ export function buildFelsengroll() {
   bone('head', head, C.hot, [-.4, .5, .0], [.4, .5, .0], .04, .04, 4);
   for (const [s] of SIDES) {
     // Crown horns sweep out and curl DOWN past the cheeks.
-    horn('head', head, [C.edge, C.armor, C.armor, C.edge], [[s * .6, .38, -.15], [s * 1.1, .52, -.45], [s * 1.5, .22, -.8], [s * 1.5, -.35, -.9], [s * 1.28, -.78, -.7]], .3);
-    horn('head', head, C.armor, [[s * .55, .15, -.4], [s * .95, -.05, -.9], [s * .98, -.45, -1.25]], .2);
-    col('head', head, C.armor, [s * .72, .22, .35], [.22, .3, .5], [0, s * .2, s * .3]);
+    horn('head', head, [C.edge, C.armor, C.armor, C.edge], [[s * .6, .38, -.15], [s * 1.15, .55, -.4], [s * 1.6, .25, -.7], [s * 1.62, -.4, -.7], [s * 1.35, -.95, -.45]], .34);
     plate('head', head, C.edge, [s * .66, .42, .5], [.25, .12, .45], [0, s * .15, 0]);
-    plate('head', head, C.hot, [s * .64, .32, .78], [.05, .05, .2], [0, s * .2, 0]);
-    plate('head', head, C.core, [s * .66, .32, .86], [.025, .03, .08], [0, s * .2, 0]);
+    plate('head', head, C.hot, [s * .6, .3, .74], [.09, .08, .3], [0, s * .2, 0]);
+    plate('head', head, C.core, [s * .64, .3, .86], [.045, .05, .13], [0, s * .2, 0]);
     for (let i = 0; i < 5; i++) bone('head', head, C.bone, [s * (.45 - i * .035), -.22, .35 + i * .22], [s * (.43 - i * .03), -.42, .38 + i * .22], .05, .006, 5);
     bone('head', head, C.hot, [s * .62, .05, .6], [s * .5, .0, 1.2], .035, .02, 4); // slag seam along snout
   }
   const jaw = joint('jaw', head, 0, -.28, -.02);
-  loft('head', jaw, C.armor, [[0, 0, -.3, .55, .17], [0, -.1, .4, .68, .22], [0, -.16, 1.05, .56, .2], [0, -.12, 1.45, .44, .14]]);
-  col('head', jaw, C.edge, [0, -.34, 1.38], [.52, .26, .3], [0.2, 0, 0]); // heavy chin ram
+  loft('head', jaw, C.edge, [[0, 0, -.3, .55, .17], [0, -.1, .4, .68, .22], [0, -.16, 1.05, .56, .2], [0, -.12, 1.45, .44, .14]]);
+  col('head', jaw, C.bone, [0, -.34, 1.38], [.55, .28, .32], [0.2, 0, 0]); // heavy chin ram
   for (const [s] of SIDES) {
     horn('head', jaw, C.edge, [[s * .45, -.3, 1.4], [s * .55, -.7, 1.55], [s * .52, -.98, 1.5]], .13);
     for (let i = 0; i < 5; i++) bone('head', jaw, C.bone, [s * (.5 - i * .04), .0, .35 + i * .24], [s * (.47 - i * .035), .17, .35 + i * .24], .05, .006, 5);
@@ -238,11 +235,12 @@ export function buildFelsengroll() {
   for (const [x, y, z, len] of spikes) {
     const d = new THREE.Vector3(x, y, z + .9).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
     const e = new THREE.Euler().setFromQuaternion(q);
-    plate('club', club, C.hot, [x * .6, y * .6, z * .7 - .2], [.2, len * .75, .2], [e.x, e.y, e.z]);
+    plate('club', club, C.hot, [x * .6, y * .6, z * .7 - .2], [.26, len * .85, .26], [e.x, e.y, e.z]);
     plate('club', club, C.armor, [x * .55, y * .55, z * .7 - .2], [.27, len * .5, .27], [e.x, e.y, e.z]);
   }
   plate('club', club, C.core, [0, .1, -.95], [.32, .5, .32]);
-  bone('club', club, C.hot, [0, 0, -.1], [0, 0, -.5], .22, .3, 6);
+  bone('club', club, C.hot, [0, 0, -.1], [0, 0, -.5], .3, .38, 6);
+  club.scale.setScalar(1.3);
 
   for (const b of batches.values()) { const mesh = new THREE.Mesh(mergeGeometries(b.list), b.mat); b.parent.add(mesh); partMeshes[b.part].push(mesh); for (const g of b.list) g.dispose(); }
   const seamMats = [...materials].filter(([k]) => k.endsWith(`/${C.hot}/true`)).map(([, m]) => m);
