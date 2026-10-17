@@ -12,8 +12,8 @@ describe('Pyrostur boiler apex', () => {
   it('has a complete grounded, batched rig and aligned accessible counter targets', () => {
     const rig = buildPyrostur(); rig.root.updateMatrixWorld(true);
     const meshes = []; rig.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
-    expect(meshes.length).toBeLessThanOrEqual(45); // articulated forearms, knees and hocks remain batched
-    expect(meshes.reduce((n, mesh) => n + mesh.geometry.attributes.position.count / 3, 0)).toBeLessThan(5000);
+    expect(meshes.length).toBeLessThanOrEqual(75); // six independent limbs, vertex-colour batched armor and sail panels
+    expect(meshes.reduce((n, mesh) => n + mesh.geometry.attributes.position.count / 3, 0)).toBeLessThanOrEqual(15000);
     const { m } = make(pyrostur);
     for (const id of ['chest', 'valve']) {
       const part = m.hurtParts().find((h) => h.part.id === id);

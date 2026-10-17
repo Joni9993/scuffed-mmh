@@ -4,6 +4,21 @@ import { pyrostur } from '../../src/game/monsters/pyrostur.js';
 import { updatePyrosturFx } from '../../src/game/monsters/pyrosturFx.js';
 
 describe('Pyrostur visible attack effects', () => {
+  it('keeps anatomical heat and four terrain contacts bounded between attacks and clears them at death', () => {
+    const { m, ctx } = make(pyrostur); ctx.scene = {};
+    updatePyrosturFx(m);
+    const fx = m.extra.pyroFx, matrix = fx.footShadows.instanceMatrix.array;
+    expect(fx.debris.mesh.geometry.drawRange.count).toBeGreaterThan(0);
+    expect(fx.footShadows.count).toBe(4);
+    expect(fx.footShadows.visible).toBe(true);
+    for (let i = 0; i < 90; i++) { m.time += 1 / 60; updatePyrosturFx(m); }
+    expect(fx.footShadows.instanceMatrix.array).toBe(matrix);
+    expect([...matrix].every(Number.isFinite)).toBe(true);
+    expect(fx.debris.mesh.geometry.drawRange.count).toBeLessThanOrEqual(6144);
+    m._die(); updatePyrosturFx(m);
+    expect(fx.footShadows.visible).toBe(false);
+    expect(fx.debris.mesh.visible).toBe(false);
+  });
   it('shows the committed flame lane only when firing, and removes it on interruption', () => {
     const { m, ctx } = make(pyrostur); ctx.scene = {};
     const inst = m.beginAttack('pyrostur_ofenschneise', { teach: false });

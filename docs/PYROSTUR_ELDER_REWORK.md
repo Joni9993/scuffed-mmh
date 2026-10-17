@@ -11,9 +11,10 @@ Der absichtlich kantige PS1-/Glitch-Look bleibt, die Animation muss trotzdem pr�
 
 ## Umsetzung
 
-- Skulptierter Basaltpanzer, schwere Schulterpartie, zwei große vorgezogene Hörner,
-  leuchtender Brustkessel, gelenkige Flügelarme mit Krallen und gegliederter Klingenschweif.
-  41 Modell-Meshes, rund 3.000 Dreiecke; dekorative Geometrie pro Gelenk/Material gebündelt.
+- Crimson-/Obsidian-Panzer, schwere Schulterpartie, zurückgezogene dunkle Kronenhörner,
+  S-Hals, glühende Brustfissuren, vier separate Lastbeine und zwei große Flugorgane.
+  Rund 68 Modell-Meshes und 7.300 Dreiecke; Farben als Vertexdaten, Geometrie pro Gelenk/Oberfläche gebündelt.
+  Rund 21 m Spannweite. Innere Flügelsegel reichen bis zum beweglichen Torsoanschluss.
 - Zusätzliche Schulter-, Ellbogen-, Handgelenk-, Nacken- und Schweifkanäle.
   Vorderklauen und gegliederte Hinterläufe erhalten eine begrenzte Korrektur gegen Bodenpenetration, unabhängig von
   der Kartenhöhe. Horn-, Flügel- und Schweifposen wurden anhand ihrer transformierten
@@ -64,3 +65,32 @@ Offen bleiben Owner-/Freundesjagden für Lesbarkeit, Spaß, gewünschte Gesamtda
 die subjektive Qualität des neuen Looks sowie echte Android-/iPhone-Geräte. Die anderen
 drei Finale-Gegner wurden noch nicht auf diesen Stand gebracht. „Premium“ ist deshalb
 keine allein aus Tests abgeleitete Abnahmebehauptung.
+
+## Visueller Neustart vom 17. Oktober
+
+Der erste Elder-Umbau erfüllte den gewünschten Standard aus Sicht des Owners nicht.
+Das neue Vorbild ist Safi'jiiva. Die Silhouette ersetzt den bisherigen Flügelarm-Körper
+vollständig. Vier Beine tragen einen distanzgetriebenen Gang: beim Schreiten mindestens
+drei, beim Joggen mindestens zwei bodennahe Füße. Flügel atmen unabhängig vom Schritt;
+Kopf und Hals richten sich zum Ziel aus. Die Augen liegen vor dem Wangenpanzer.
+Ein eigener Shader gibt nur Pyrosturs Haut und Segeln Schuppen-/Lederdetails.
+
+Die Krone hat passende rückwärtige Hurtshapes; die alten unsichtbaren vorderen Stoßhörner
+sind entfernt. Der frühere Flügelhammer nutzt jetzt die Vorderklauen mit passender
+Bodentrefferform. Beim Überdruck hebt sich die Krone vom Brustkern weg. Der tatsächlich
+überlappte Kern hat im Konterfenster Faktor 1,2, damit breite Waffen ihn gegenüber
+angrenzender Rüstung priorisieren. Echte Konterstrategien sind erneut geprüft: GS seitlich
+bei (-4,4), Armbrust bei (12,7), Bogen wie zuvor bei (10,17), relativ zum Boss.
+
+Dauerhafte Ventilglut und Funken zeigen Druck zwischen Angriffen. Vier weiche Fußkontakte
+teilen sich einen Instancing-Draw; keine Shadow-Map oder zusätzlichen Lichter.
+
+`tools/pyrostur-design-review.html` zeigt das **produktive Rig** unter neutralem Licht,
+mit Profil/Kopf/Front, Atmung, vierbeinigem Gang, Drohen und echter Ofenschneisen-Pose.
+Die Laufzyklen laufen dort auf der Stelle. Das ist eine lokale Modellstudie, kein Nachweis
+für Jagdqualität. Die echte Kartenbeleuchtung bleibt über die Kampfprüfansicht kontrollierbar.
+
+Dieser Abschnitt überarbeitet Erscheinung und körperliche Präsenz. Ein systematischer
+Umbau der Verfolgung gegen langsam kreisende Jäger und kürzere, zusammenhängende
+Kampfsequenzen bleiben als nächster Kampfabschnitt offen. Tests gegen stillstehende Jäger
+dürfen nicht als Nachweis ausgegeben werden, dass Kreisen bereits bestraft wird.

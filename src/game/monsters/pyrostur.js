@@ -4,18 +4,21 @@ import { MREST } from './monster.js';
 import { smooth, clamp01 } from './common.js';
 import { buildPyrostur } from './pyrosturRig.js';
 import { updatePyrosturFx } from './pyrosturFx.js';
+import { posePyrosturPresence } from './pyrosturMotion.js';
 export { buildPyrostur } from './pyrosturRig.js';
 
 const SC = 1.65;
 export const PYRO = { COUNTER_DAMAGE: 420, COUNTER_TIME: 3.2, COUNTER_OPEN: .9, COUNTER_CLOSE: 2.9, ERUPTION: 3.2, PRESSURE_MAX: 100 };
-const REST = { ...MREST, bodyYaw: 0, wingL: 0, wingR: 0, elbowL: 0, elbowR: 0, wristL: 0, wristR: 0, tailCurl: 0, neckYaw: 0, headReach: 0, foreL: 0, foreR: 0, hindL: 0, hindR: 0, boiler: 0 };
+const REST = { ...MREST, bodyYaw: 0, wingL: 0, wingR: 0, elbowL: 0, elbowR: 0, wristL: 0, wristR: 0, tailCurl: 0, neckYaw: 0, headReach: 0, foreL: 0, foreR: 0, hindL: 0, hindR: 0, boiler: 0,
+  foreKneeL: 0, foreKneeR: 0, foreAnkleL: 0, foreAnkleR: 0, kneeL: 0, kneeR: 0, ankleL: 0, ankleR: 0 };
 // Every key exists from frame zero; empty recovery frames genuinely return to rest.
 const track = (frames) => compileTrack(frames.map(([t, pose, mode]) => {
   const p = { ...REST, ...pose };
-  // Forward hooked horns must scrape above the ground, never disappear under it.
-  // Pitch limits apply to the complete neck chain, not just the skull joint.
+  // Limit the complete neck chain: the crown clears the floor and an upward
+  // roar extends the neck without folding the skull backwards through its spine.
   const maxPitch = p.bodyY < -.1 ? 14 : 22;
-  p.head = Math.min(p.head, maxPitch - p.bodyPitch - p.neck * 180 / Math.PI);
+  const chainPitch = p.bodyPitch + p.neck * 180 / Math.PI;
+  p.head = Math.max(-60 - chainPitch, Math.min(p.head, maxPitch - chainPitch));
   return [t, p, mode];
 }), REST);
 const cue = (tone = 'brumm') => ({ color: '#ffad62', tone });
@@ -33,6 +36,8 @@ const prepareAdvance = (max, stop = 3.6) => (a) => { a.len = Math.max(0, Math.mi
 const advance = (t, a, start, span, side = 0) => { const k = smooth(clamp01((t - start) / span)); return { x: a.origin.x + (a.dir.x * a.len + a.dir.z * side) * k, z: a.origin.z + (a.dir.z * a.len - a.dir.x * side) * k }; };
 const CROUCH = { bodyY: -.45, bodyPitch: 9, head: 26, neck: .12, wing: 15, elbowL: 10, elbowR: 10, foreL: 0, foreR: 0, hindL: 25, hindR: 25, tailPitch: -10 };
 const EXPOSE = { bodyY: -.5, bodyPitch: 6, head: 10, neck: 0, jaw: 35, wing: 12, elbowL: 12, elbowR: 12, foreL: -5, foreR: -5, hindL: 18, hindR: 18 };
+// The crown lifts away from the furnace rather than covering the counter target.
+const PRESSURE_OPEN = { bodyY: -.3, bodyPitch: -8, head: -18, neck: -.18, jaw: 70, foreL: -10, foreR: -10, wing: 55, boiler: 1 };
 const moves = [];
 const attack = (name, config) => {
   const id = 'pyrostur_' + name, baseWeight = config.weight ?? 4;
@@ -59,8 +64,10 @@ const bite = attack('zange', {
 });
 const wing = attack('kesselfluegel', {
   range: [0, 5], weight: 6, cooldown: 7, telegraph: 1.05, duration: 2.9, flashParts: ['wingL', 'wingR'], audit: [2, 4],
-  hits: [line(1.16, [-5.5, .8, 2.5], [5.5, .8, 2.5], 1.2, 165)],
-  pose: track([[0, {}], [.78, { bodyY: .18, bodyPitch: -14, wing: 60, spread: 1, elbowL: -50, elbowR: -50, foreL: -55, foreR: -55 }], [1.04, { bodyY: .22, wing: 75, bodyPitch: -18, elbowL: -55, elbowR: -55 }], [1.16, { bodyY: -.15, bodyPitch: 8, wing: 0, elbowL: 20, elbowR: 20 }], [1.65, EXPOSE], [2.4, EXPOSE], [2.9, {}]]),
+  // The new elder has separate forelegs: claws drive the ground impact while
+  // the wings flare overhead, rather than invisible wing hands striking below.
+  hits: [line(1.16, [-2.7, .65, 2.5], [2.7, .65, 2.5], 1.2, 165)],
+  pose: track([[0, {}], [.78, { bodyY: .18, bodyPitch: -14, wing: 30, spread: 1, elbowL: -15, elbowR: -15, foreL: -55, foreR: -55 }], [1.04, { bodyY: .22, wing: 35, bodyPitch: -18, foreL: -60, foreR: -60 }], [1.16, { bodyY: -.15, bodyPitch: 8, wing: 12, foreL: 12, foreR: 12 }], [1.65, EXPOSE], [2.4, EXPOSE], [2.9, {}]]),
 });
 const tail = attack('schlackenschweif', {
   range: [0, 8], weight: 9, noFace: true, cond: behind, duration: 3.6, telegraph: 1.1, flashParts: ['tail'], audit: [0],
@@ -85,7 +92,7 @@ const breath = attack('ofenschneise', {
 const charge = attack('kesselramme', {
   range: [5, 23], weight: (m, d) => d > 9 ? 11 : 5, cooldown: 8, telegraph: 1.25, duration: 3.3, flashParts: ['head', 'chest'], audit: [8, 15, 21], vfx: 'charge',
   prepare: prepareAdvance(19, 1.5), motion(t, a) { return advance(t, a, 1.24, .82); },
-  hits: [line(1.3, [-1.1, 1, 2.1], [1.1, 1, 4], 1.35, 210, 2.08), line(1.3, [-1.6, 1.1, 5], [1.6, 1.1, 7.1], 1.05, 210, 2.08)],
+  hits: [line(1.3, [-1.1, 1, 2.1], [1.1, 1, 4], 1.35, 210, 2.08), line(1.3, [-.8, 1.1, 4.3], [.8, 1.1, 6], 1.05, 210, 2.08)],
   pose: track([[0, {}], [.9, { ...CROUCH, head: 35, neck: .2, wing: -30, jaw: 10, tailPitch: 15 }], [1.23, { ...CROUCH, head: 35, neck: .2, tailPitch: 18 }], [1.36, { bodyPitch: 16, head: 32, neck: .25, wing: 15, foreL: -45, foreR: -45, hindL: -40, hindR: -40 }], [1.75, { bodyPitch: 8, head: 30, wing: 5, foreL: 40, foreR: 40, hindL: 35, hindR: 35 }], [2.14, { ...EXPOSE, bodyPitch: 18, wing: 45, foreL: 55, foreR: 55 }], [2.85, EXPOSE], [3.3, {}]]),
 });
 const rain = attack('feuerregen', {
@@ -98,7 +105,7 @@ const pressure = attack('ueberdruck', {
   hits: Array.from({ length: 6 }, (_, i) => hit(PYRO.ERUPTION, [Math.sin(i * Math.PI / 3) * 6.3, .7, Math.cos(i * Math.PI / 3) * 6.3], 2.45, 260)),
   events: [{ t: 1.8, call: 'hiss', all: true }, { t: PYRO.ERUPTION, call: 'impact', all: true }],
   calls: { hiss: (m, ctx) => ctx.bus.emit('sfx', { name: 'pyroRoar', pos: m.pos }) },
-  pose: track([[0, {}], [.85, { ...CROUCH, wing: 35, boiler: .4, jaw: 30 }], [1.8, { ...EXPOSE, wing: 55, boiler: 1, jaw: 70, elbowL: -20, elbowR: -20 }], [3.1, { ...EXPOSE, wing: 60, boiler: 1, jaw: 80 }], [3.27, { bodyY: .15, bodyPitch: -14, wing: -35, head: -35, jaw: 80, foreL: -40, foreR: -40 }], [3.65, { ...EXPOSE, jaw: 60 }], [5.85, EXPOSE], [6.45, {}]]),
+  pose: track([[0, {}], [.85, { ...PRESSURE_OPEN, wing: 35, boiler: .4, jaw: 30 }], [1.8, { ...PRESSURE_OPEN, elbowL: -20, elbowR: -20 }], [3.1, { ...PRESSURE_OPEN, wing: 60, jaw: 80 }], [3.27, { bodyY: .15, bodyPitch: -14, wing: -35, head: -35, jaw: 80, foreL: -40, foreR: -40 }], [3.65, { ...EXPOSE, jaw: 60 }], [5.85, EXPOSE], [6.45, {}]]),
 });
 const stomp = attack('notabschaltung', {
   range: [0, 9], weight: 6, cooldown: 11, phase: 2, telegraph: 1.4, duration: 4.7, audit: [4, 7], flashParts: ['chest', 'body'], vfx: 'slam',
@@ -108,8 +115,8 @@ const stomp = attack('notabschaltung', {
 const uppercut = attack('hornbrecher', {
   range: [0, 7], weight: 6, cooldown: 8, telegraph: 1.15, duration: 2.9, audit: [3, 6], flashParts: ['head'], vfx: 'charge',
   prepare: prepareAdvance(2.5), motion(t, a) { return advance(t, a, 1.08, .3); },
-  hits: [line(1.17, [-1.6, 1, 4.4], [-1.6, 3.5, 7.3], 1, 195), line(1.17, [1.6, 1, 4.4], [1.6, 3.5, 7.3], 1, 195), line(1.17, [0, 1, 3], [0, 2.5, 4.5], 1.1, 160)],
-  pose: track([[0, {}], [.85, { ...CROUCH, bodyY: -.35, head: 25, neck: .15, headReach: -.15, bodyPitch: 12 }], [1.14, { ...CROUCH, bodyY: -.35, head: 25, neck: .15, bodyPitch: 12 }], [1.3, { bodyY: .25, bodyPitch: -20, head: -45, neck: -.25, headReach: .5, foreL: -35, foreR: -35, jaw: 25 }], [1.7, EXPOSE], [2.4, EXPOSE], [2.9, {}]]),
+  hits: [line(1.17, [-.6, 1.2, 3.3], [-.6, 2.6, 5.9], 1, 195), line(1.17, [.6, 1.2, 3.3], [.6, 2.6, 5.9], 1, 195), line(1.17, [0, 1, 3], [0, 2.5, 4.5], 1.1, 160)],
+  pose: track([[0, {}], [.85, { ...CROUCH, bodyY: -.35, head: 25, neck: .15, headReach: -.15, bodyPitch: 12 }], [1.14, { ...CROUCH, bodyY: -.35, head: 25, neck: .15, bodyPitch: 12 }], [1.3, { bodyY: .25, bodyPitch: -10, head: -12, neck: -.05, headReach: .5, foreL: -35, foreR: -35, jaw: 25 }], [1.7, EXPOSE], [2.4, EXPOSE], [2.9, {}]]),
 });
 const pounces = [-1, 1].map((side) => attack(side < 0 ? 'glutpirsch_links' : 'glutpirsch_rechts', {
   range: [3, 19], weight: (m, d) => (d > 6 ? 9 : 4) * (m.phase > 0 ? 1.4 : 1), cooldown: 10, telegraph: 1.15, duration: 3.7, audit: [5, 10, 16], vfx: 'charge',
@@ -146,16 +153,17 @@ export const pyrostur = {
   cueParts: ['chest', 'valve'], cueIntensity: .35,
   walk: 4.4, run: 8.2, turn: 1.5, detect: 34, prefer: 3.5,
   drops: ['pyrostur_schuppe', 'pyrostur_kesselsack', 'pyrostur_fluegel', 'pyrostur_rubin'],
+  poseDefaults: REST, locomotionPose: posePyrosturPresence,
   build: buildPyrostur, stamina: true, flinchDmg: 1800, chainMax: 2, teachAttack: uppercut.id,
   recoverAfter: () => .6,
   parts: [
-    { id: 'head', label: 'Ofenschnauze', factor: 1.05, stunPart: true, elem: elements, spheres: [{ node: 'head', offset: [0, 0, .55], r: .8 }, { node: 'head', offset: [.9, .38, 1.75], r: .36 }, { node: 'head', offset: [-.9, .38, 1.75], r: .36 }] },
+    { id: 'head', label: 'Ofenschnauze', factor: 1.05, stunPart: true, elem: elements, spheres: [{ node: 'head', offset: [0, 0, .55], r: .68 }, { node: 'head', offset: [.57, .55, -.75], r: .38 }, { node: 'head', offset: [-.57, .55, -.75], r: .38 }] },
     { id: 'chest', label: 'Brustbalg', factor: .65, breakHp: 1800, elem: elements, spheres: [{ node: 'chest', offset: [0, 0, .25], r: .8 }] },
     { id: 'valve', label: 'Überdruckventil', factor: .8, breakHp: 1000, elem: elements, spheres: [{ node: 'valve', offset: [.3, .1, 0], r: .5 }] },
     { id: 'wingL', label: 'Kesselflügel links', factor: .55, breakHp: 1400, elem: elements, spheres: [{ node: 'wingL', offset: [.45, -.12, .3], r: .6 }, { node: 'elbowL', offset: [.5, -.18, .3], r: .5 }, { node: 'wristL', offset: [0, -.35, .1], r: .5 }] },
     { id: 'wingR', label: 'Kesselflügel rechts', factor: .55, breakHp: 1400, elem: elements, spheres: [{ node: 'wingR', offset: [-.45, -.12, .3], r: .6 }, { node: 'elbowR', offset: [-.5, -.18, .3], r: .5 }, { node: 'wristR', offset: [0, -.35, .1], r: .5 }] },
     { id: 'tail', label: 'Schlackenschweif', factor: .55, elem: elements, spheres: [{ node: 'tail', offset: [0, -.05, -.7], r: .5 }, { node: 'tailMid', offset: [0, -.04, -.7], r: .4 }, { node: 'tailTip', offset: [0, .04, -.6], r: .5 }] },
-    { id: 'body', label: 'Kesselrumpf', factor: .42, elem: elements, spheres: [{ node: 'body', offset: [0, 0, -.5], r: .9 }, { node: 'legL', offset: [0, -.6, 0], r: .5 }, { node: 'legR', offset: [0, -.6, 0], r: .5 }] },
+    { id: 'body', label: 'Kesselrumpf', factor: .42, elem: elements, spheres: [{ node: 'body', offset: [0, 0, -.5], r: .9 }, { node: 'forelegL', offset: [0, -.45, .1], r: .5 }, { node: 'forelegR', offset: [0, -.45, .1], r: .5 }, { node: 'legL', offset: [0, -.6, 0], r: .5 }, { node: 'legR', offset: [0, -.6, 0], r: .5 }] },
   ],
   attacks: Object.fromEntries(moves.map((a) => [a.id, a])),
   chains: {
@@ -183,7 +191,9 @@ export const pyrostur = {
     if (m.extra.pipe) m.extra.pipe.visible = !m.partById.valve.broken;
     const chest = m.partById.chest;
     const recovering = a && [rain.id, pressure.id, stomp.id, brake.id].includes(a.id) && tau > Math.max(...a.inst.def.hits.map((h) => h.t1)) + .1;
-    chest.factor = (chest.broken || counter || recovering ? 1.05 : chest.baseFactor) + (m._fb ?? 0);
+    // An actually overlapping exposed core takes priority over neighbouring
+    // crown/foreleg armour in wide weapon sweeps and the bow's clustered volley.
+    chest.factor = (counter ? 1.2 : chest.broken || recovering ? 1.05 : chest.baseFactor) + (m._fb ?? 0);
     if (m.nodes.core) m.nodes.core.scale.x = chest.broken ? 1.65 : 1;
     for (const id of ['wingL', 'wingR']) if (m.extra.wings?.[id]) m.extra.wings[id].scale.x = m.partById[id].broken ? .64 : 1;
     if (!m.authority) return;
@@ -194,13 +204,14 @@ export const pyrostur = {
   poseHook(m, p) {
     for (const key of Object.keys(REST)) if (!Number.isFinite(p[key])) p[key] = REST[key];
     if (!m.attack) {
-      p.boiler = .1 + (m.pressure ?? 0) / 160 + Math.sin(m.time * 2.8) * .05;
-      const speed = Math.min(1, Math.hypot(m.vel.x, m.vel.z) / 8);
-      const gait = Math.sin(m.gait * 4);
-      p.foreL = gait * 27 * speed; p.foreR = -gait * 27 * speed;
-      p.hindL = -gait * 32 * speed; p.hindR = gait * 32 * speed;
-      p.elbowL = 12 + speed * 12; p.elbowR = 12 + speed * 12;
-      if (m.stagT > 0 || m.tired) { p.bodyY = -.5; p.head = 10; p.neck = 0; p.foreL = p.foreR = -5; p.wing = 12; p.elbowL = p.elbowR = 12; }
+      if (m.state === 'dead' || m.sleeping || m.stunT > 0 || m.trapped || m.blind) return;
+      if (m.state === 'notice' || m.state === 'enrage') {
+        const rise = Math.sin(Math.min(1, m.stateT / 1.4) * Math.PI);
+        p.wing = 12 + rise * 24; p.elbowL = p.elbowR = -rise * 12;
+        p.jaw = rise * 65; p.boiler = rise; p.foreL = p.foreR = -rise * 15;
+        return;
+      }
+      if (m.stagT > 0 || m.tired) { p.bodyY = -.5; p.head = 10; p.neck = 0; p.foreL = p.foreR = -5; p.wing = 8; return; }
     }
   },
   onDamage(m, res) {

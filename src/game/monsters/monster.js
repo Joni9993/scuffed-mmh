@@ -1263,7 +1263,8 @@ export class Monster {
     if (this.minor && this._cullMinor()) return;
     const p = this.pose;
     const target = this._tgt;
-    for (const k in MREST) target[k] = MREST[k];
+    const defaults = this.def.poseDefaults ?? MREST;
+    for (const k in defaults) target[k] = defaults[k];
     let tele = null;
     if (!this.attack && this._fpKeys?.size) { for (const k of this._fpKeys) this.ctx.fx.clearMarker?.(k); this._fpKeys.clear(); }
     const spd = Math.hypot(this.vel.x, this.vel.z);
@@ -1341,6 +1342,9 @@ export class Monster {
       target.bodyY = -Math.abs(Math.cos(g4)) * 0.08 * s + Math.sin(this.time * 2) * 0.02;
       target.tailYaw = Math.sin(g4) * 8 * s + Math.sin(this.time * 1.3) * 3;
       target.head = Math.sin(this.time * 1.7) * 3;
+      // A species may supply its base gait; shared injuries/status reactions
+      // still layer on top, and feeding/death/CC keep their dedicated branches.
+      this.def.locomotionPose?.(this, target);
       if (this.limping) {
         // hobbling: one side weak, body sags, head hangs low, drool
         target.bodyPitch = 6; target.head += 14; target.neck += 0.1;
