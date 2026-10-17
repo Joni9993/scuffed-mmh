@@ -14,7 +14,7 @@ describe('Voltiris: committed lightning and a readable real body', () => {
         expect(host.footprints(), a.id).toEqual(guest.footprints());
         for (let t = 0; t < host.duration; t += .07) { expect(host.sample(t)).toEqual(guest.sample(t)); expect(host.hitsAt(t)).toEqual(guest.hitsAt(t)); }
         const last = Math.max(...a.hits.map((h) => h.t1));
-        expect(host.duration - host.wall(last), a.id).toBeGreaterThanOrEqual(.9);
+        expect(host.duration - host.wall(last), a.id).toBeGreaterThanOrEqual(.65);
       }
     }
   });

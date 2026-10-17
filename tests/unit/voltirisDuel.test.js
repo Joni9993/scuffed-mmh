@@ -42,7 +42,7 @@ describe('Voltiris: structure and fairness', () => {
   const params = { attackId: 'x', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: .6, targetPos: { x: 4, y: 0, z: 12 }, seed: 99 };
   it('has at least 20 attacks across fast, mobility, control and signature roles, with a pure blink', () => {
     expect(moves.length).toBeGreaterThanOrEqual(20);
-    for (const n of ['prismenbiss', 'fluegelkante', 'rueckkopplung', 'antennenstoss', 'doppelblitz', 'blinkhieb', 'phasenstich', 'rueckzugsblink', 'blitzraster', 'zickzacklaser', 'kettenblitz', 'bahnsprint', 'prismensturm', 'nachbildserie', 'statiknova', 'kernbruch', 'gewitterkaefig']) expect(voltiris.attacks[ID(n)], n).toBeTruthy();
+    for (const n of ['prismenbiss', 'fluegelkante', 'rueckkopplung', 'antennenstoss', 'doppelblitz', 'blinkhieb', 'phasenstich', 'rueckzugsblink', 'blitzraster', 'zickzacklaser', 'kettenblitz', 'blitzsalve', 'bahnsprint', 'prismensturm', 'nachbildserie', 'statiknova', 'kernbruch', 'gewitterkaefig']) expect(voltiris.attacks[ID(n)], n).toBeTruthy();
     expect(voltiris.attacks[ID('blink')].internal).toBe(true);
     expect(voltiris.hp).toBe(23000);
     expect(voltiris.phases.map((p) => p.at)).toEqual([.68, .3]);
@@ -50,7 +50,7 @@ describe('Voltiris: structure and fairness', () => {
   it('every damaging strike is audited; telegraph >= 0.5 s under rage and tempo; recovery >= 0.4 s, signatures >= 1.5 s', () => {
     for (const a of moves) {
       if (a.hits?.some((h) => h.dmg > 0)) expect(a.audit?.length, a.id).toBeGreaterThan(0);
-      for (const rage of [false, true]) for (const tempoMul of [1, 1.08]) {
+      for (const rage of [false, true]) for (const tempoMul of [1, 1.08, 1.16]) {
         const inst = new AttackInstance(a, { ...params, attackId: a.id, rage, tempoMul });
         if (a.hits?.length) expect(inst.firstHitTime(), `${a.id} rage=${rage} tempo=${tempoMul}`).toBeGreaterThanOrEqual(.5 - 1e-9);
         expect(inst.tgWall, a.id).toBeGreaterThanOrEqual(.5 - 1e-9);
@@ -83,7 +83,7 @@ describe('Voltiris: structure and fairness', () => {
 
 // ---------------------------------------------------------------------------
 describe('Voltiris: salvo tempo and distance keeping', () => {
-  it('starts roughly 13-19 attacks per minute in every state', () => {
+  it('starts roughly 21-25 attacks per minute in the opening state and at least 16 in the later ones', () => {
     const rows = [];
     for (const phase of [0, 1, 2]) for (const seed of [11, 37]) {
       const h = hunt({ phase, seed, god: true });
@@ -91,7 +91,7 @@ describe('Voltiris: salvo tempo and distance keeping', () => {
       rows.push({ phase, seed, perMin: +(h.attacks.length / (h.m.time / 60)).toFixed(1) });
     }
     log('Tempo:', rows);
-    for (const r of rows) { expect(r.perMin, JSON.stringify(r)).toBeGreaterThanOrEqual(13); expect(r.perMin, JSON.stringify(r)).toBeLessThanOrEqual(19); }
+    for (const r of rows) { expect(r.perMin, JSON.stringify(r)).toBeGreaterThanOrEqual(r.phase === 0 ? 21 : 16); expect(r.perMin, JSON.stringify(r)).toBeLessThanOrEqual(r.phase === 0 ? 25 : 28); }
   }, 120000);
 
   it('blinks to 14-20 m after salvos and keeps a median distance of at least 10 m to a standing hunter', () => {
@@ -145,7 +145,7 @@ describe('Voltiris: salvo tempo and distance keeping', () => {
     }
     log('Klebe:', { nova, blinkAfter });
     expect(nova, 'statiknova happened').not.toBeNull();
-    expect(nova.r).toBe(5); expect(nova.tg).toBeGreaterThanOrEqual(.58);
+    expect(nova.r).toBe(5); expect(nova.tg).toBeGreaterThanOrEqual(.55);
     expect(blinkAfter, 'blink away follows').not.toBeNull();
   }, 60000);
 
@@ -320,7 +320,7 @@ describe('Voltiris: echoes', () => {
     expect(php - p.v.hp).toBeGreaterThan(0); expect(php - p.v.hp).toBeLessThan(40);
     expect(m.hurtParts().some((q) => q.part.id === 'echo0')).toBe(false);
   });
-  it('echo bolts hit for 0.45 of a full bolt, load the hunter and are readable (marker before the shot)', () => {
+  it('echo bolts hit for half of a full bolt, load the hunter and are readable (marker before the shot)', () => {
     const full = voltiris.attacks[ID('doppelblitz')];
     const h = quiet({ god: false, hp: 5000, distance: 12 }); const { m, p, ctx } = h;
     state(m).aim = { x: p.pos.x, z: p.pos.z };
@@ -331,8 +331,8 @@ describe('Voltiris: echoes', () => {
     for (let f = 0; f < 5 * 60 && first === null; f++) { p.pos.set(state(m).aim.x, 0, state(m).aim.z); tick(h); }
     expect(marks.some((k) => k.startsWith('e-bolt:aim'))).toBe(true);
     expect(first, 'echo bolt reached the hunter').not.toBeNull();
-    expect(first.dmg).toBeLessThan(155 * .45 * (1 - 150 / 230) + 1); // weak: well below a full bolt
-    expect(VOLT.ECHO_MUL).toBe(.45); expect(Math.round(VOLT.ECHO_BOLT * VOLT.ECHO_MUL)).toBeLessThan(155 * .45 + 1); // never above 0.45 of the quick bolt
+    expect(first.dmg).toBeLessThan(155 * .5 * (1 - 150 / 230) + 1); // weak: well below a full bolt
+    expect(VOLT.ECHO_MUL).toBe(.5); expect(Math.round(VOLT.ECHO_BOLT * VOLT.ECHO_MUL)).toBeLessThan(155 * .5 + 1); // never above half of the quick bolt
     expect(charge(p).n).toBe(1);
   });
   it('echoes appear only from replicated events: a guest replay spawns the same ones', () => {
@@ -433,7 +433,7 @@ describe('Voltiris: Gewitterkäfig', () => {
       tick(inside);
     }
     expect(wallHits, 'standing on the rim as it shrinks is punished').toBeGreaterThanOrEqual(3);
-    expect(charge(outside.p).n).toBeGreaterThanOrEqual(1);
+    expect(charge(outside.p).n + outside.lethal.length, 'loaded (or already discharged)').toBeGreaterThanOrEqual(1);
     const beamHit = outside.hits.some((e) => e.key.includes('|beam'));
     expect(typeof beamHit).toBe('boolean');
   }, 60000);
@@ -503,8 +503,9 @@ describe('Voltiris: host and guest determinism', () => {
     if (id === ID('nachbildserie')) expect(host.seen.echoes.length).toBeGreaterThanOrEqual(3);
     if (id === ID('gewitterkaefig')) expect(host.seen.cage).toBeTruthy();
     if (def.blink) expect(host.seen.echoes.length).toBeGreaterThanOrEqual(1);
-    if (id === ID('doppelblitz')) expect(host.spawns).toBe(2);
-    if (id === ID('faecherblitz')) expect(host.spawns).toBe(3);
+    if (id === ID('doppelblitz')) expect(host.spawns).toBe(3);
+    if (id === ID('faecherblitz')) expect(host.spawns).toBe(5);
+    if (id === ID('blitzsalve')) expect(host.spawns).toBe(6);
     if (id === ID('gewitterschlag')) expect(host.spawns).toBe(3);
   }, 60000);
   it('lanes honour their ignition delay and lifetime', () => {
@@ -580,19 +581,19 @@ describe('Voltiris: pressure and counterplay', () => {
     expect(rows.some((r) => r.idleLethal > 0), 'an idle hunter is discharged at least once').toBe(true);
   }, 240000);
 
-  it('an idle hunter at melee, mid and bow range is KOed within 90 s (no safe camping)', () => {
+  it('an idle hunter at melee, mid and bow range is KOed within 15 s (no safe camping)', () => {
     const rows = [];
     for (const seed of [11, 37]) for (const distance of [3, 8, 16]) {
       const h = make(voltiris, 'combat', 0, distance, seed);
       h.p.god = false; h.p.protect = 150; h.p.v.hp = h.p.v.maxHp = 190; h.m.fleeUsed = true; h.m.apexClock = -999;
-      let elapsed = 0; while (elapsed < 90 && h.p.state !== 'ko') { tick(h); elapsed += DT; }
+      let elapsed = 0; while (elapsed < 15 && h.p.state !== 'ko') { tick(h); elapsed += DT; }
       rows.push({ seed, distance, ko: h.p.state === 'ko', seconds: +elapsed.toFixed(1) });
     }
     log('Idle camping:', rows);
     for (const r of rows) expect(r.ko, JSON.stringify(r)).toBe(true);
   }, 240000);
 
-  it('a circling crossbow/bow kiter at 12-16 m takes sustained damage (>= 450 per minute) and the same shots reach the real body', () => {
+  it('a circling crossbow/bow kiter at 12-16 m takes sustained damage (>= 600 per minute) and the same shots reach the real body', () => {
     const rows = [];
     for (const weapon of ['lb', 'bow']) {
       time.reset();
@@ -619,7 +620,7 @@ describe('Voltiris: pressure and counterplay', () => {
       rows.push({ weapon, dmgPerMin: Math.round(dmg / SECS * 60), dealtPerMin: Math.round(ctx.stats.damage / SECS * 60), starts });
     }
     log('Ranged kiter pressure:', rows);
-    for (const r of rows) { expect(r.dmgPerMin, JSON.stringify(r)).toBeGreaterThanOrEqual(450); expect(r.dealtPerMin, JSON.stringify(r)).toBeGreaterThan(0); }
+    for (const r of rows) { expect(r.dmgPerMin, JSON.stringify(r)).toBeGreaterThanOrEqual(600); expect(r.dealtPerMin, JSON.stringify(r)).toBeGreaterThan(0); }
   }, 120000);
 
   it('every weapon can reach a damaging part of the grounded duelist', () => {
@@ -643,6 +644,95 @@ describe('Voltiris: pressure and counterplay', () => {
       log('Melee reach:', { weapon, parts: [...hitParts] });
     }
   }, 120000);
+});
+
+// ---------------------------------------------------------------------------
+describe('Voltiris: chase pressure', () => {
+  it('a melee hunter who never stops chasing takes at least 1000 damage per minute (previous design: about 770)', () => {
+    const rows = [];
+    for (const phase of [0, 2]) for (const seed of [11, 37, 5]) {
+      const h = hunt({ phase, seed, god: false, hp: 1e6, distance: 10 }); const { m, p, ctx } = h;
+      for (let f = 0; f < 60 * 60; f++) {
+        const dx = m.pos.x - p.pos.x, dz = m.pos.z - p.pos.z, d = Math.hypot(dx, dz) || 1;
+        ctx.cameraYaw = Math.atan2(dx, dz);
+        if (p.state === 'free') ctx.input.setStick(0, d > 2.4 ? 1 : 0, 'bot');
+        tick(h);
+      }
+      rows.push({ phase, seed, perMin: Math.round(sum(h.hits) / (m.time / 60)) });
+    }
+    log('Chaser damage:', rows);
+    const avg = rows.reduce((n, r) => n + r.perMin, 0) / rows.length;
+    expect(avg, JSON.stringify(rows)).toBeGreaterThanOrEqual(1000);
+  }, 120000);
+});
+
+// ---------------------------------------------------------------------------
+describe('Voltiris: animation', () => {
+  const attacks = Object.values(voltiris.attacks).filter((a) => a.id.startsWith('voltiris_'));
+  const params = { t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: .6, targetPos: { x: 7, y: 0, z: 14 }, seed: 99 };
+  const range = (a, key) => { const v = a.pose.map((f) => f.pose[key]); return Math.max(...v) - Math.min(...v); };
+  const sweep = (a) => { const inst = new AttackInstance(a, { ...params, attackId: a.id }); const out = []; for (let t = 0; t <= inst.duration + 1e-9; t += .02) out.push({ t, ...inst.sample(t) }); return { inst, out }; };
+  it('every attack blends in and out of the idle pose and swings with big amplitudes (tens of degrees)', () => {
+    for (const a of attacks) {
+      const first = a.pose[0].pose, last = a.pose.at(-1).pose, rest = voltiris.poseDefaults;
+      for (const k of ['bodyY', 'bodyPitch', 'wing', 'jaw', 'head', 'tailPitch', 'headReach']) { expect(first[k], `${a.id} start ${k}`).toBeCloseTo(rest[k], 5); expect(last[k], `${a.id} end ${k}`).toBeCloseTo(rest[k], 5); }
+      expect(a.pose.length, `${a.id} keyframes`).toBeGreaterThanOrEqual(6);
+      expect(range(a, 'bodyPitch'), `${a.id} bodyPitch`).toBeGreaterThanOrEqual(24);
+      expect(range(a, 'wing'), `${a.id} wing`).toBeGreaterThanOrEqual(60);
+      expect(range(a, 'jaw'), `${a.id} jaw`).toBeGreaterThanOrEqual(45);
+      expect(range(a, 'bodyY'), `${a.id} bodyY`).toBeGreaterThanOrEqual(.45);
+    }
+  });
+  it('bolt casts snap the head and kick the body once per bolt', () => {
+    for (const [id, shots] of [['doppelblitz', 3], ['faecherblitz', 5], ['blitzsalve', 6]]) {
+      const a = voltiris.attacks[ID(id)];
+      expect(a.pose.filter((f) => f.pose.headReach >= .7 && f.pose.jaw <= 10).length, `${id} snap frames`).toBeGreaterThanOrEqual(shots);
+      expect(a.pose.filter((f) => f.pose.jaw >= 80).length, `${id} open-mouth frames`).toBeGreaterThanOrEqual(shots);
+    }
+    const s = voltiris.attacks[ID('blitzsalve')];
+    expect(Math.min(...s.pose.filter((f) => f.pose.headReach >= .7).map((f) => f.t))).toBeGreaterThanOrEqual(s.telegraph - .1);
+  });
+  it('strikes lunge 2-4 m and recoil; casts strafe, hover 1-3 m with a bob and kick back per bolt; all land again', () => {
+    for (const id of ['prismenbiss', 'fluegelkante', 'antennenstoss']) {
+      const { out, inst } = sweep(voltiris.attacks[ID(id)]);
+      const reach = Math.max(...out.map((s) => Math.hypot(s.x - inst.origin.x, s.z - inst.origin.z)));
+      expect(reach, `${id} lunge`).toBeGreaterThanOrEqual(1.8); expect(reach, `${id} lunge`).toBeLessThanOrEqual(4.2);
+      const end = out.at(-1), peak = Math.max(...out.map((s) => Math.hypot(s.x - inst.origin.x, s.z - inst.origin.z)));
+      expect(Math.hypot(end.x - inst.origin.x, end.z - inst.origin.z), `${id} recoil`).toBeLessThan(peak - .8);
+      expect(Math.max(...out.map((s) => s.air)), `${id} hop`).toBeGreaterThan(.25); expect(end.air).toBeCloseTo(0, 6);
+    }
+    for (const id of ['doppelblitz', 'faecherblitz', 'blitzsalve', 'nachbildserie', 'kettenblitz', 'gewitterschlag']) {
+      const { out, inst } = sweep(voltiris.attacks[ID(id)]);
+      const lateral = Math.max(...out.map((s) => Math.abs((s.x - inst.origin.x) * inst.dir.z - (s.z - inst.origin.z) * inst.dir.x)));
+      const air = out.map((s) => s.air);
+      expect(lateral, `${id} strafe`).toBeGreaterThanOrEqual(1.8);
+      expect(Math.max(...air), `${id} hover`).toBeGreaterThanOrEqual(1); expect(Math.max(...air), `${id} hover`).toBeLessThanOrEqual(3);
+      expect(air.at(-1), `${id} landed`).toBeCloseTo(0, 6);
+      // the wing-beat bob: the height is not monotone while he rises
+      let turns = 0; for (let i = 2; i < air.length; i++) if ((air[i] - air[i - 1]) * (air[i - 1] - air[i - 2]) < -1e-9) turns++;
+      expect(turns, `${id} bob`).toBeGreaterThanOrEqual(2);
+    }
+  });
+  it('a blink crouches, springs up and vanishes, reappears in the air and drops into a landing crouch', () => {
+    for (const id of ['blink', 'blinkhieb', 'phasenstich', 'rueckzugsblink']) {
+      const a = voltiris.attacks[ID(id)], [tv, ta] = a.blinkGap;
+      const { out } = sweep(a);
+      const at = (t) => out.reduce((best, s) => (Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best));
+      expect(at(tv).air, `${id} up at vanish`).toBeGreaterThan(1);
+      expect(at(ta + .01).air, `${id} reappears high`).toBeGreaterThan(1);
+      expect(at(ta + .4).air, `${id} lands`).toBeLessThan(.01);
+      const pose = (t) => a.pose.reduce((best, f) => (Math.abs(f.t - t) < Math.abs(best.t - t) ? f : best)).pose;
+      expect(pose(tv * .45).bodyY, `${id} crouch`).toBeLessThan(-.6);
+      expect(pose(ta + .12).bodyY, `${id} landing crouch`).toBeLessThan(-.4);
+    }
+  });
+  it('a hover cast keeps air above 1 m through the Kurzschluss window with a visible wing-beat bob', () => {
+    for (const id of ['blitzraster', 'zickzacklaser', 'prismensturm']) {
+      const a = voltiris.attacks[ID(id)], inst = new AttackInstance(a, { ...params, attackId: a.id });
+      const air = []; for (let t = a.shortWindow[0] + .3; t <= a.shortWindow[0] + .6; t += .02) air.push(inst.sample(inst.wall(t)).air);
+      expect(Math.min(...air), id).toBeGreaterThan(1); expect(Math.max(...air) - Math.min(...air), id).toBeGreaterThan(.1);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
