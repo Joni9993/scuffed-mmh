@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Felsengroll · Elderstudie</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10100f;color:#ece4df;font:14px system-ui,sans-serif}header{padding:12px 28px;border-bottom:1px solid #49332d;display:flex;align-items:center;justify-content:space-between;gap:20px}small{color:#ee956d;letter-spacing:.2em;font-size:10px}h1{font-size:25px;margin:4px 0}header p{margin:0;color:#a5a0a1;font-size:12px}nav{display:flex;gap:7px;flex-wrap:wrap;padding:6px 28px}button,a{border:1px solid #584039;background:#181b23;color:#f6e6da;padding:10px 15px;cursor:pointer;font:inherit;text-decoration:none;border-radius:3px}button:hover,button[aria-pressed=true]{background:#633023;border-color:#d2835e}canvas{display:block;width:100%;height:calc(100vh - 230px);min-height:300px}footer{padding:8px 28px;color:#aca4a0;font-size:12px;display:flex;justify-content:space-between;gap:16px}output{color:#ee956d} @media(max-width:650px){header{padding:12px 16px}header p{display:none}nav{padding:8px 16px}button,a{padding:8px}canvas{height:calc(100vh - 210px)}footer{padding:8px 16px}}
+</style>
+<header><div><small>GLITCH HUNTER / DRACHENSTUDIE</small><h1>FELSENGROLL <span style="font-weight:300;color:#ca7957">// Erdbeben &amp; Schlacke</span></h1><p>Produktives Modell und Animation · neutrale Studiobeleuchtung · kein Kampfbenchmark</p></div><a href="./glitchgrat-combat-review.html">Im Spiel prüfen ↗</a></header>
+<nav id="camera"><button data-view="three" aria-pressed="true">Dreiviertel</button><button data-view="side">Seite</button><button data-view="front">Front</button><button data-view="head">Kopf</button><button data-view="back">Rücken</button></nav>
+<nav id="pose"><button data-pose="idle" aria-pressed="true">Atmung</button><button data-pose="walk">Schreiten</button><button data-pose="run">Jagdgang</button><button data-pose="roar">Drohen</button><button id="pause">Pause</button><label style="display:flex;align-items:center;gap:8px">Zeit <input aria-label="Animationszeit" id="scrub" type="range" min="0" max="6" step="0.05" value="0" style="width:100px"></label></nav>
+<canvas aria-label="Interaktive Felsengroll-Modellvorschau"></canvas>
+<footer><span>Vier Lastbeine · zwei Flügel · sichtbare Druckorgane. Laufzyklen auf der Stelle.</span><output></output></footer>
+<script type="module">
+import * as THREE from 'three';
+import { buildFelsengroll } from '../src/game/monsters/felsengrollRig.js';
+import { poseFelsengrollPresence } from '../src/game/monsters/felsengrollMotion.js';
+import { setSnapGrid, ps1Globals } from '../src/render/ps1.js';
+const canvas=document.querySelector('canvas'),renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();scene.background=new THREE.Color('#10100f');scene.fog=new THREE.Fog('#10100f',45,95);
+scene.add(new THREE.HemisphereLight('#bbc6dd','#6b3030',2));
+const key=new THREE.DirectionalLight('#ffe0c0',2.7);key.position.set(7,12,10);scene.add(key);
+const rim=new THREE.DirectionalLight('#eb7847',2.2);rim.position.set(-10,6,-8);scene.add(rim);
+const fill=new THREE.DirectionalLight('#5b8dcc',1);fill.position.set(-10,4,8);scene.add(fill);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(150,150),new THREE.MeshLambertMaterial({color:'#121924'}));ground.rotation.x=-Math.PI/2;ground.position.y=-.06;scene.add(ground);
+const grid=new THREE.GridHelper(100,50,'#3f3230','#202832');grid.position.y=-.045;scene.add(grid);
+const rig=buildFelsengroll();scene.add(rig.root);const camera=new THREE.PerspectiveCamera(38,1,.1,150);
+const views={three:[[10,5.5,14],[0,2.2,-1]],side:[[17,3.5,0],[0,2.4,-1]],front:[[0,4,17],[0,2.4,0]],head:[[5,3.5,9],[0,2.6,3.5]],back:[[-18,9,-24],[0,2,-1]]};
+let active='idle',view='three',paused=false,t=0,last=performance.now();
+const model={alive:true,mesh:rig.root,time:0,vel:{x:0,z:0},pos:new THREE.Vector3(),rot:0,gait:0,quake:65,phase:1,state:'combat',nodes:rig.nodes,extra:rig.extra,ctx:{scene,bus:{emit(){}}},target:{pos:{x:0,z:20}}};
+let fire=null;
+function setView(){const [position,target]=views[view];camera.position.fromArray(position);camera.lookAt(...target);}
+setView();
+document.querySelector('#camera').onclick=e=>{if(!e.target.dataset.view)return;view=e.target.dataset.view;setView();for(const b of document.querySelectorAll('[data-view]'))b.setAttribute('aria-pressed',b===e.target);render();};
+document.querySelector('#pose').onclick=e=>{if(e.target.id==='pause'){paused=!paused;e.target.textContent=paused?'Weiter':'Pause';return;}if(!e.target.dataset.pose)return;active=e.target.dataset.pose;t=0;fire=null;for(const b of document.querySelectorAll('[data-pose]'))b.setAttribute('aria-pressed',b===e.target);updatePose();render();};
+document.querySelector('#scrub').oninput=e=>{t=Number(e.target.value);paused=true;document.querySelector('#pause').textContent='Weiter';updatePose();render();};
+function updatePose(){const p={};model.time=t;model.vel.z=active==='walk'?3.4:active==='run'?7.5:0;model.gait=t*model.vel.z*.8/(1.85*.6);poseFelsengrollPresence(model,p);model.attack=null;
+if(active==='roar'){const rise=Math.pow(Math.max(0,Math.sin(t*.9)),2);p.wing=6+rise*34;p.spread=rise*40;p.bodyY=-rise*.2;p.neck=-rise*.32;p.head=-rise*22;p.jaw=rise*65;p.boiler=rise;p.bodyPitch=-rise*8;}
+rig.apply(p);rig.root.updateMatrixWorld(true);ps1Globals.uTime.value=t;document.querySelector('#scrub').value=t%6;}
+function render(){const w=canvas.clientWidth,h=canvas.clientHeight;if(canvas.width!==Math.round(w*renderer.getPixelRatio())||canvas.height!==Math.round(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();setSnapGrid(w*.6,h*.6);}renderer.render(scene,camera);document.querySelector('output').textContent=`${t.toFixed(2)} s · ${renderer.info.render.calls} Draws · ${renderer.info.render.triangles.toLocaleString('de-DE')} Dreiecke`;}
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(.04,(now-last)/1000);last=now;if(!paused){t+=dt;updatePose();}render();}
+updatePose();requestAnimationFrame(frame);
+</script>
+</html>
+
