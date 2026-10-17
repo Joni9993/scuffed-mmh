@@ -76,7 +76,9 @@ function echoes(fx, m, v, time) {
     let g = fx.echoes.get(e.slot);
     if (!g) { g = m.extra.makeEcho(); m.mesh.add(g); fx.echoes.set(e.slot, g); }
     g.visible = true;
-    local(fx, m, e.x, ground(m, e.x, e.z), e.z, g.position);
+    // local() fills an array; a Vector3 has no [0]/[1]/[2], which pinned every echo inside the real body.
+    const lp = local(fx, m, e.x, ground(m, e.x, e.z), e.z, fx.tmp ??= [0, 0, 0]);
+    g.position.set(lp[0], lp[1], lp[2]);
     g.rotation.y = (e.yaw ?? 0) - m.rot;
     const mat = g.children[0]?.material, fade = clamp01((e.t1 - time) / 1.2) * clamp01((time - e.t0) / .3);
     const next = e.shots.find((s) => !s.fired), charging = next && time > next.at - VOLT.ECHO_TELE;
