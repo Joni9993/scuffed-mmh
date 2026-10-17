@@ -1,4 +1,6 @@
-// Pyrostur's battlefield control: lingering scorched ground and expanding shock rings.
+// Elder battlefield control (Pyrostur first, shared by later elders): lingering ground
+// fields and expanding shock rings. Options name the attack id, status and an optional
+// fuse blast, so Felsengroll's slag fields and quake rings reuse the same system.
 // Both are spawned only from `all` attack events, i.e. from replicated attack params,
 // so host and guests build the same list. Every client resolves damage against its
 // LOCAL hunters only, exactly like monster melee hits. Rolls keep their i-frames.
@@ -12,17 +14,19 @@ export const SCALD = { type: 'burn', t: 6, rolls: 2, dps: 4 };
 const state = (m) => (m.extra.hazards ??= { scorch: [], rings: [], seq: 0 });
 
 /** Burning ground at world x/z. `age` = seconds the spawning event fired late (replay). */
-export function addScorch(m, x, z, { r = SCORCH.RADIUS, secs = SCORCH.SECS, age = 0, key } = {}) {
+// opts.blast { r, dmg, knock }: the field detonates when it expires (slag fuse).
+// opts.kind: 'fire' | 'slag' (render tint), opts.dmg/status/attackId override the fire defaults.
+export function addScorch(m, x, z, { r = SCORCH.RADIUS, secs = SCORCH.SECS, age = 0, key, dmg = SCORCH.DMG, status = GLUTBRAND, attackId = 'pyrostur_glutboden', blast = null, kind = 'fire', ignite = SCORCH.IGNITE } = {}) {
   const h = state(m), now = m.time - age;
-  h.scorch.push({ x, z, r, t0: now + SCORCH.IGNITE, t1: now + SCORCH.IGNITE + secs, key: key ?? `pyro-scorch-${h.seq++}`, next: new Map() });
+  h.scorch.push({ x, z, r, t0: now + ignite, t1: now + ignite + secs, key: key ?? `pyro-scorch-${h.seq++}`, next: new Map(), dmg, status, attackId, blast, kind });
   // Old fires go out first: the arena stays contested, never fully flooded.
   while (h.scorch.length > SCORCH.MAX) h.scorch.shift();
 }
 
 /** A ring that grows from `r0` at `speed` m/s up to `rMax`; one hit per hunter. */
-export function addRing(m, x, z, { r0 = 1.5, rMax = 16, speed = RING.SPEED, width = RING.WIDTH, dmg = 170, age = 0, key, status = GLUTBRAND, knock = 'down' }) {
+export function addRing(m, x, z, { r0 = 1.5, rMax = 16, speed = RING.SPEED, width = RING.WIDTH, dmg = 170, age = 0, key, status = GLUTBRAND, knock = 'down', attackId = 'pyrostur_druckwelle', kind = 'fire' }) {
   const h = state(m);
-  h.rings.push({ x, z, r0, rMax, speed, width, dmg, status, knock, t0: m.time - age, key: key ?? `pyro-ring-${h.seq++}`, hit: new Set() });
+  h.rings.push({ x, z, r0, rMax, speed, width, dmg, status, knock, attackId, kind, t0: m.time - age, key: key ?? `pyro-ring-${h.seq++}`, hit: new Set() });
 }
 
 export const ringRadius = (ring, time) => ring.r0 + Math.max(0, time - ring.t0) * ring.speed;
@@ -34,6 +38,18 @@ export function clearHazards(m) {
   h.scorch.length = 0; h.rings.length = 0;
 }
 
+function detonate(m, s) {
+  const ctx = m.ctx, b = s.blast;
+  ctx.fx?.spark?.({ x: s.x, y: m.pos.y - (m.air ?? 0) + .4, z: s.z }, 18, '#ffb040', 7);
+  ctx.fx?.shake?.(.18, .2);
+  ctx.bus.emit('sfx', { name: 'heavy', pos: { x: s.x, y: m.pos.y, z: s.z } });
+  for (const p of ctx.players) {
+    if (!p.local || !p.alive) continue;
+    if (Math.hypot(p.pos.x - s.x, p.pos.z - s.z) > (b.r ?? s.r) + (p.radius ?? .4)) continue;
+    p.takeHit({ dmg: b.dmg * (m.dmgMul ?? 1), knock: b.knock ?? 'down', key: `${s.key}|blast|${p.id}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: b.attackId ?? s.attackId, monster: m, status: b.status });
+  }
+}
+
 /** Per-frame on every client: expire, resolve damage on local hunters, update ring markers. */
 export function tickHazards(m) {
   const h = m.extra.hazards; if (!h) return;
@@ -41,7 +57,10 @@ export function tickHazards(m) {
   if (!m.alive) { clearHazards(m); return; }
   for (let i = h.scorch.length - 1; i >= 0; i--) {
     const s = h.scorch[i];
-    if (time > s.t1) { h.scorch.splice(i, 1); continue; }
+    if (time > s.t1) {
+      if (s.blast) detonate(m, s);
+      h.scorch.splice(i, 1); continue;
+    }
     if (time < s.t0) continue;
     for (const p of ctx.players) {
       if (!p.local || !p.alive || p.state === 'ko') continue;
@@ -49,7 +68,7 @@ export function tickHazards(m) {
       const next = s.next.get(p.id) ?? 0;
       if (time < next) continue;
       s.next.set(p.id, time + SCORCH.TICK);
-      const res = p.takeHit({ dmg: SCORCH.DMG * (m.dmgMul ?? 1), knock: 'none', key: `${s.key}|${p.id}|${Math.floor(time / SCORCH.TICK)}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: 'pyrostur_glutboden', monster: m, noPerfect: true, status: GLUTBRAND });
+      const res = p.takeHit({ dmg: (s.dmg ?? SCORCH.DMG) * (m.dmgMul ?? 1), knock: 'none', key: `${s.key}|${p.id}|${Math.floor(time / SCORCH.TICK)}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: s.attackId ?? 'pyrostur_glutboden', monster: m, noPerfect: true, status: s.status === undefined ? GLUTBRAND : s.status ?? undefined });
       if (res === 'hit') ctx.fx?.flash?.('rgba(255,90,20,.28)', .25);
     }
   }
@@ -63,7 +82,7 @@ export function tickHazards(m) {
       const d = Math.hypot(p.pos.x - ring.x, p.pos.z - ring.z);
       // Hunters inside the start radius met the blast itself; the wave only runs away from them.
       if (d < ring.r0 || Math.abs(d - r) > ring.width + (p.radius ?? .4)) continue;
-      const res = p.takeHit({ dmg: ring.dmg * (m.dmgMul ?? 1), knock: ring.knock, key: `${ring.key}|${p.id}`, sourcePos: { x: ring.x, y: p.pos.y, z: ring.z }, attackId: 'pyrostur_druckwelle', monster: m, status: ring.status });
+      const res = p.takeHit({ dmg: ring.dmg * (m.dmgMul ?? 1), knock: ring.knock, key: `${ring.key}|${p.id}`, sourcePos: { x: ring.x, y: p.pos.y, z: ring.z }, attackId: ring.attackId ?? 'pyrostur_druckwelle', monster: m, status: ring.status ?? undefined });
       if (res === 'hit' || res === 'block' || res === 'perfect') ring.hit.add(p.id);
       if (res === 'hit') ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
     }
