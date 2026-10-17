@@ -21,7 +21,7 @@ body{margin:16px;background:#171c30;color:#e3e8f2;font:14px monospace}h1{font-si
 <output aria-live="polite">Spiel lädt …</output>
 <script type="module">
 const frame=document.querySelector('iframe'),out=document.querySelector('output'),boss=document.querySelector('#boss'),weapon=document.querySelector('#weapon');
-const signatures={pyrostur:'pyrostur_feuerregen',felsengroll:'felsengroll_meteor',voltiris:'voltiris_prismensturm',gockelok:'gockelok_flatterartillerie'};
+const signatures={pyrostur:'pyrostur_kometensturz',felsengroll:'felsengroll_meteor',voltiris:'voltiris_prismensturm',gockelok:'gockelok_flatterartillerie'};
 let live=false,ready=false,flight=null,last='Lädt',errors=[];
 function state(){const sh=frame.contentWindow.__SH;if(!sh?.hunt)throw Error('Die Jagd lädt noch.');return {sh,h:sh.hunt,m:sh.hunt.mainMonster,p:sh.hunt.player};}
 function report(label){try{const {sh,h,m,p}=state(),info=sh.app.renderer.renderer.info;out.textContent=`${label} · ${frame.width}×${frame.height}\n${m.def.name} · HP ${Math.ceil(m.hp)}/${m.maxHp} · Zustand ${m.state} · Phase ${m.phase} · Höhe ${m.air.toFixed(2)} m\nAngriff ${m.attack?.id??'keiner'} · Zeit ${(m.attack?.t??0).toFixed(2)} s · Waffe ${p.weaponId} · Puste ${p.v.stamina.toFixed(0)}\nPosition Boss ${m.pos.toArray().map(n=>n.toFixed(1))} · Spieler ${p.pos.toArray().map(n=>n.toFixed(1))} · Modell ${m.mesh.position.toArray().map(n=>n.toFixed(1))}\nTeilbrüche: ${Object.values(m.partById).filter(v=>v.broken).map(v=>v.label??v.id).join(', ')||'keine'}\n${info.render.calls} Draw Calls · ${info.render.triangles} Dreiecke · WebGL Fehler: ${errors.length?errors.join(' | '):'keine gemeldet'}`;}catch(e){out.textContent=String(e.stack??e);}}

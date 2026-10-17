@@ -9,6 +9,69 @@ explosive Jagdbewegung, verbunden durch den eigenen Druck-/Flammencharakter.
 Erste Fehlversuche sind ausdrücklich erwünscht; Endgame-Ausrüstung ersetzt das Lernen nicht.
 Der absichtlich kantige PS1-/Glitch-Look bleibt, die Animation muss trotzdem präzise sein.
 
+## Kampf-Neustart vom 17. Oktober: Apex-Räuber (Referenz für alle Brocken)
+
+Owner-Feedback: Modell gut, Moves peinlich. Pyrostur war ein Panzer mit 1,3 s Ansage und
+2 s Stehpause nach jedem Schlag. Neuer Maßstab: **Druck und Brennen**, schneller, agiler
+Jäger, Endgame-Kampf, den man beim ersten Versuch nicht gewinnt. Schwierigkeit kommt aus
+Tempo, Raumkontrolle und Ketten, nicht aus HP oder Schaden. Dieser Abschnitt ist der
+Standard, an dem spätere Brocken-Überarbeitungen gemessen werden.
+
+**Säulen**
+
+1. *Räuber-Tempo.* Schnelle Schläge mit 0,55–0,8 s Ansage (Biss, Glutsprung, Flankensatz,
+   Sichelschweif). Kurze Erholung (0,5/0,32/0,2 s je Zustand), Ketten bis zu 4 Glieder.
+   Jedes Kettenglied liest die aktuelle Spielerposition neu: Glutsprung kann sich selbst
+   mehrfach verketten und verfolgt so den Jäger wie Nargacuga.
+2. *Raumkontrolle.* Glutboden (`pyrosturHazards.js`) bleibt 5–8 s brennend liegen
+   (Tick 26 Rohschaden/0,5 s + Glutbrand), höchstens 14 Flächen, älteste erlischt zuerst.
+   Druckwellen-Ringe wachsen mit 14–16 m/s; das Band passiert den Jäger in ~0,2 s und ist
+   mit einer getimten Rolle durchrollbar (perfekte Rolle = Glitch-Konter).
+3. *Brennen.* Feuertreffer geben Glutbrand (5,5 LP/s, 12 s, 3 Rollen zum Löschen), Dampf
+   Verbrühung (4 LP/s, 6 s). Weiterhin nie tödlich.
+4. *Druckzyklus Glutrausch.* Druck steigt im Leerlauf, pro Angriff und pro Treffer am
+   Jäger (Erfolg füttert den Ofen). Bei 100: 16 s Glutrausch (Tempo ×1,15, Erholung 0,12 s,
+   mehr Ketten, Rammen hinterlassen Brandspur). Er endet immer im Ablass: Überdruck
+   (konterbar über die Brust) oder im letzten Zustand Sonnenbruch. Brustbruch beendet ihn.
+5. *Positionsgedächtnis.* Wer auf Distanz campt (>13 m), zieht Schlackensalve,
+   Kesselramme und Kometensturz an; wer klebt (<4,5 m), Rückzugsglut und Sichelschweif.
+6. *Verdiente Öffnungen.* Signaturen (Kometensturz, Sonnenbruch, Überdruck, Feuerregen …)
+   enden ohne Kette mit ≥1,5 s Strafzeit, freiliegender Brust und erhöhtem Brustfaktor.
+
+**Neue Angriffe** (24 statt 16): Glutsprung, Flankensatz, Rückzugsglut, Sichelschweif (360°),
+Flammenpeitsche (schwenkender Strahl, Markierung als echter Bogen), Schlackensalve (5
+Magmabomben auf Spieler und Fluchtwege), Kometensturz (Aufstieg auf 10 m, außer
+Nahkampfreichweite, Sturz auf die markierte Stelle, Ring + Glutkranz; Flügelbruch im Flug
+holt ihn 4 s vom Himmel) und Sonnenbruch (schwebende Supernova r 7,5 + drei Ringe,
+nicht konterbar, längste Öffnung des Kampfes). Zustandswechsel: 72 % → Kometensturz,
+38 % → Sonnenbruch. Alle bestehenden Angriffe wurden auf das neue Tempo gekürzt.
+
+**Messwerte** (Simulation, rücksichtsloser Jäger, 3 Seeds, je 2 min, Schutz 150):
+
+| | alt Z0 | neu Z0 | alt Z2 | neu Z2 |
+|---|---|---|---|---|
+| Angriffe/min | 14 | 20,2 | 12,8 | 19 |
+| Schaden/min (roh am Jäger) | 567 | 941 | 468 | 852 |
+| Median-Pause zwischen Angriffen | 0,63 s | 0,52 s | 0,62 s | 0,25 s |
+| Untätiger Jäger, 190 LP: K.O. nach | 10–13 s | 6–7 s | 17–18 s | 5–6 s |
+| Ø Ansage / kürzeste | 1,28 / 0,85 s | 1,03 / 0,55 s | | |
+| Ø Erholung nach letztem Treffer | 2,0 s | 1,4 s | | |
+
+Fairness-Regeln (Tests): jede Ansage auch in Wut + Glutrausch ≥ 0,5 s; jeder Angriff
+setzt sichtbar zurück (≥ 0,4 s); Signaturen ≥ 1,5 s Strafzeit; Bodenmarker kommen aus
+den echten Trefferformen; Gefahrenflächen und Ringe entstehen nur aus replizierten
+Angriffsereignissen (Host/Gast identisch, im Test geprüft).
+Ringe treffen nur Jäger außerhalb ihres Startradius: wer die Explosion durchrollt hat,
+wird nicht doppelt bestraft. Kometensturz ist mit einer Rolle aus dem Sturzkreis lösbar;
+Ring (ab 8 m) und Glutkranz (9,2 m) bestrafen nur, wer weit geflohen ist, statt für die
+Landeöffnung nah zu bleiben. Feuerregen lässt nur die äußere Welle brennen.
+
+`pyrosturPredator.test.js` misst: Angriffe/min und Pausen je Zustand, Glutrausch-Zyklus,
+Glutboden/Ring inkl. Rollen-i-Frames, Host/Gast-Gleichheit der Gefahren, Flugphase
+außer Nahkampfreichweite + Absturz bei Flügelbruch, und einen „geübten Roller“-Bot:
+er nimmt nur ~10–11 % des Schadens eines untätigen Jägers (Lesbarkeit belegt).
+Screenshots: `docs/shots/pyrostur-predator-*.png` (`tools/pyrostur-predator-shots.mjs`).
+
 ## Umsetzung
 
 - Crimson-/Obsidian-Panzer, schwere Schulterpartie, zurückgezogene dunkle Kronenhörner,

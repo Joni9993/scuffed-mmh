@@ -295,7 +295,7 @@ export class Player {
       return true;
     }
     if (type === 'schleim' && had) return true; // Krachfaust: laufende Zündschnur wird nicht verlängert
-    this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft };
+    this.status[type] = { t: opts.t ?? base.t, rollsLeft: opts.rolls ?? base.rollsLeft, ...(opts.dps ? { dps: Math.max(opts.dps, this.status[type]?.dps ?? 0) } : {}) }; // dps: stärkerer Brand (Pyrostur-Glutbrand)
     if (type === 'schleim' && this.local) { this.ctx.fx?.number?.(this.#top(), 'SCHLEIM! ROLLEN!', 'kf-pulse'); this.ctx.bus.emit('sfx', { name: 'slimeSplat', pos: this.pos }); }
     if (!had) this.ctx.bus.emit('playerStatus', { player: this, type, on: true });
     return true;
@@ -412,7 +412,7 @@ export class Player {
     if (st.mud && (st.mud.t -= dt) <= 0) this.clearStatus('mud');
     if (st.burn) {
       if ((st.burn.t -= dt) <= 0) this.clearStatus('burn');
-      else { this.#dot(3 * dt); if (Math.random() < dt * 10) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, Math.random() < 0.5 ? '#ff7a1a' : '#ffd060', 1.5); }
+      else { this.#dot((st.burn.dps ?? 3) * dt); if (Math.random() < dt * 10) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, Math.random() < 0.5 ? '#ff7a1a' : '#ffd060', 1.5); }
     }
     if (st.poison) {
       if ((st.poison.t -= dt) <= 0) this.clearStatus('poison');

@@ -101,7 +101,7 @@ export class AttackInstance {
       const h = hits[i];
       if (!(h.dmg > 0 || h.knock === 'pin')) continue;
       const pts = [];
-      const samples = h.shape === 'capsule' ? 10 : 3;
+      const samples = h.fpSamples ?? (h.shape === 'capsule' ? 10 : 3); // fpSamples: Schwenks (Flammenpeitsche) brauchen dichtere Scheiben
       for (let k = 0; k < samples; k++) {
         const s = this.sample(this.wall(h.t0 + (h.t1 - h.t0) * (k / (samples - 1))));
         const base = { x: s.x, y: (s.groundY ?? this.origin.y) + s.air, z: s.z };
@@ -117,7 +117,7 @@ export class AttackInstance {
         if (r <= 0) continue;
         if (kept.every((q) => Math.hypot(q.x - c.x, q.z - c.z) > (h.shape === 'capsule' ? Math.max(0.8, r * 1.1) : 0.35))) kept.push({ x: c.x, z: c.z, r });
       }
-      if (kept.length > 12) { // Schwenk um den Brocken (Schwanzfeger): eine Außenkante um ihn statt Dutzender Scheiben
+      if (kept.length > 12 && !h.noCollapse) { // noCollapse: Bogen-Schwenk bleibt als echte Bahn sichtbar // Schwenk um den Brocken (Schwanzfeger): eine Außenkante um ihn statt Dutzender Scheiben
         const mid = this.sample(this.wall((h.t0 + h.t1) / 2)), R = Math.max(...pts.map((c) => Math.hypot(c.x - mid.x, c.z - mid.z)));
         kept.length = 0; kept.push({ x: mid.x, z: mid.z, r: R + h.radius + HURT_R });
       }

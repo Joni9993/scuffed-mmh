@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { make } from './p3helpers.js';
 import { pyrostur } from '../../src/game/monsters/pyrostur.js';
+import { addScorch, addRing, SCORCH } from '../../src/game/monsters/pyrosturHazards.js';
 import { updatePyrosturFx } from '../../src/game/monsters/pyrosturFx.js';
 
 describe('Pyrostur visible attack effects', () => {
@@ -49,5 +50,41 @@ describe('Pyrostur visible attack effects', () => {
     for (let i = 0; i < 20; i++) updatePyrosturFx(m);
     expect(geo.attributes.position.array).toBe(old); // no growing geometry or particle pools
     expect(m.extra.pyroFx.debris.mesh.parent).toBe(m.mesh);
+  });
+  it('draws bounded scorch patches and ring walls with no attack, and nothing once expired', () => {
+    const { m, ctx } = make(pyrostur); ctx.scene = {};
+    updatePyrosturFx(m);
+    const geo = m.extra.pyroFx.debris.mesh.geometry, base = geo.drawRange.count;
+    addScorch(m, 3, 12, { r: 2 });
+    addRing(m, 0, 0, { r0: 4, rMax: 16 });
+    m.time += .1; updatePyrosturFx(m);
+    const warn = geo.drawRange.count;
+    expect(warn).toBeGreaterThan(base); // ring + ignite outline
+    m.time += SCORCH.IGNITE + .3; updatePyrosturFx(m);
+    const live = geo.drawRange.count;
+    expect(live).toBeGreaterThan(warn);
+    expect(live).toBeLessThan(geo.attributes.position.count);
+    expect([...geo.attributes.position.array.subarray(0, live * 3)].every(Number.isFinite)).toBe(true);
+    const old = geo.attributes.position.array;
+    for (let i = 0; i < 20; i++) { m.time += 1 / 60; updatePyrosturFx(m); }
+    expect(geo.attributes.position.array).toBe(old);
+    m.time += 30; updatePyrosturFx(m);
+    expect(geo.drawRange.count).toBe(base);
+  });
+  it('max hazards stay under the batch capacity', () => {
+    const { m, ctx } = make(pyrostur); ctx.scene = {};
+    for (let i = 0; i < 20; i++) addScorch(m, i, i, { r: 2.2 });
+    for (let i = 0; i < 6; i++) addRing(m, 0, 0, { r0: 20, rMax: 40 });
+    m.time += 1; updatePyrosturFx(m);
+    const geo = m.extra.pyroFx.debris.mesh.geometry;
+    expect(geo.drawRange.count).toBeGreaterThan(0);
+    expect(geo.drawRange.count).toBeLessThanOrEqual(geo.attributes.position.count);
+  });
+  it('dive trail and nova core draw while active', () => {
+    const { m, ctx } = make(pyrostur); ctx.scene = {};
+    const inst = m.beginAttack('pyrostur_sonnenbruch', { teach: false });
+    if (!inst) return;
+    m.attack.t = inst.wall(1.5); updatePyrosturFx(m);
+    expect(m.extra.pyroFx.flame.mesh.geometry.drawRange.count).toBeGreaterThan(0);
   });
 });

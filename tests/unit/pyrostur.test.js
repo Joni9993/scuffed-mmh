@@ -22,32 +22,39 @@ describe('Pyrostur boiler apex', () => {
     }
     for (const part of pyrostur.parts) for (const sp of part.spheres) expect(rig.nodes[sp.node]).toBeTruthy();
   });
-  it('has sixteen attacks, multiple chain families and no hit without deterministic ground markers/audit', () => {
+  it('has the full predator moveset, many chain families and no hit without deterministic ground markers/audit', () => {
     const moves = Object.values(pyrostur.attacks).filter((a) => a.id.startsWith('pyrostur_'));
-    expect(moves).toHaveLength(16);
+    expect(moves.length).toBeGreaterThanOrEqual(24);
     expect(Object.keys(pyrostur.chains).length).toBeGreaterThanOrEqual(3);
     for (const a of moves) {
       expect(a.markerFromHits).toBe(true); expect(a.audit.length).toBeGreaterThan(0);
       const one = new AttackInstance(a, params(a.id)), two = new AttackInstance(a, params(a.id));
-      expect(one.footprints().length).toBeGreaterThan(0);
+      // Projectile salvos mark their landing spots through the projectile system instead.
+      if (a.hits.length) expect(one.footprints().length).toBeGreaterThan(0);
+      else expect(a.events.some((e) => e.all)).toBe(true);
       for (let t = 0; t < one.duration; t += .08) { expect(one.hitsAt(t)).toEqual(two.hitsAt(t)); expect(one.sample(t)).toEqual(two.sample(t)); }
-      const rage = new AttackInstance(a, { ...params(a.id), rage: true });
+      // Worst case: rage plus Glutrausch tempo. Still at least the shared 0.5 s tell.
+      const rage = new AttackInstance(a, { ...params(a.id), rage: true, tempoMul: PYRO.OVERHEAT_TEMPO });
+      expect(rage.tgWall).toBeGreaterThanOrEqual(.5);
+      if (!a.hits.length) continue;
       expect(rage.firstHitTime()).toBeGreaterThanOrEqual(.5);
+      // Quick strikes may flow into each other, but every move visibly resets;
+      // signatures always leave a real punish window.
       const recovery = (a.duration - Math.max(...a.hits.map((h) => h.t1))) / rage.speed;
-      expect(recovery).toBeGreaterThanOrEqual(.7);
-      expect(recovery + pyrostur.recoverAfter()).toBeGreaterThanOrEqual(1.5);
+      expect(recovery, a.id).toBeGreaterThanOrEqual(.4);
+      if (a.punishWindow) expect(recovery, a.id).toBeGreaterThanOrEqual(1.5);
     }
   });
   it('transitions through the two planned HP states', () => {
     const { m } = make(pyrostur); m.recover = 99; m.hp = m.maxHp * .64; m._b2Tick(1 / 60);
-    expect(m.phase).toBe(1); expect(m.phaseSpecial).toBe('pyrostur_feuerregen');
+    expect(m.phase).toBe(1); expect(m.phaseSpecial).toBe('pyrostur_kometensturz');
     m.hp = m.maxHp * .29; m._b2Tick(1 / 60);
-    expect(m.phase).toBe(2); expect(m.phaseSpecial).toBe('pyrostur_ueberdruck');
+    expect(m.phase).toBe(2); expect(m.phaseSpecial).toBe('pyrostur_sonnenbruch');
   });
   it('overlapping horn and head shapes count as one impact even through super armor', () => {
     const { m, p, ctx } = make(pyrostur);
     const inst = m.beginAttack('pyrostur_hornbrecher', { teach: false });
-    const t = inst.wall(1.2), sample = inst.sample(t);
+    const t = inst.wall(.85), sample = inst.sample(t);
     p.spawnAt(sample.x + .7, sample.z + 4.6); p.v.hp = p.v.maxHp = 1000;
     p.weapon.superArmor = () => 'all';
     const shapes = inst.hitsAt(t).filter(h => p.hitCapsules().some(c => overlap(h.shape, c)));

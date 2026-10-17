@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { basic } from '../../render/ps1.js';
+import { ringRadius, scorchLive, SCORCH } from './pyrosturHazards.js';
 
 // Two bounded dynamic batches. Flames use the very same committed positions and
 // times as AttackInstance; they never create damage, timers or network decisions.
-const CAPACITY = 6144, FIRE = [1, .29, .035], CORE = [1, .87, .43], ASH = [.48, .42, .36], STEAM = [.75, .83, .86];
+// Capacities are vertices (3 per tri): flame 6144 tris + debris 4096 tris = 10240 tris max.
+const FLAME_CAP = 18432, DEBRIS_CAP = 12288, CAPACITY = FLAME_CAP, FIRE = [1, .29, .035], CORE = [1, .87, .43], ASH = [.48, .42, .36], STEAM = [.75, .83, .86];
 const COAL = [.55, .075, .025], HOT = [1, .42, .09];
-function batch(name) {
+function batch(name, CAPACITY) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CAPACITY * 3), 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(CAPACITY * 3), 3).setUsage(THREE.DynamicDrawUsage));
@@ -61,7 +63,7 @@ function eruption(b, at, radius, age, time, color, seed = 0) {
 }
 
 export function createPyrosturFx(root) {
-  const flame = batch('pyrostur-fire-volume'), debris = batch('pyrostur-impact-trails');
+  const flame = batch('pyrostur-fire-volume', FLAME_CAP), debris = batch('pyrostur-impact-trails', DEBRIS_CAP);
   // Four feet share one instanced, soft contact-shadow draw. A tiny data texture
   // works in headless checks too and adds no realtime shadow-map pass.
   const pixels = new Uint8Array(32 * 32 * 4);
@@ -76,7 +78,9 @@ export function createPyrosturFx(root) {
   root.add(flame.mesh, debris.mesh, footShadows);
   return { flame, debris, attack: null, sounded: false, warned: false,
     footShadows, shadowTransform: new THREE.Object3D(),
-    inverse: new THREE.Matrix4(), anchorPosition: new THREE.Vector3() };
+    inverse: new THREE.Matrix4(), anchorPosition: new THREE.Vector3(),
+    // Scratch vertices/colours/ground heights: hazards draw every frame without allocating.
+    v: Array.from({ length: 6 }, () => [0, 0, 0]), c: Array.from({ length: 4 }, () => [0, 0, 0]), ground: new Float32Array(64) };
 }
 
 function groundContacts(m, fx) {
@@ -106,8 +110,9 @@ function groundContacts(m, fx) {
 function furnacePresence(m, fx) {
   const anchors = m.extra.ventAnchors;
   if (!anchors?.length) return;
-  const heat = Math.max(0, Math.min(1, (m.pressure ?? 0) / 100));
-  const intensity = Math.min(1.35, .22 + heat * .72 + (m.rage ? .28 : 0));
+  const hot = (m.overheat ?? 0) > 0;
+  const heat = hot ? 1 : Math.max(0, Math.min(1, (m.pressure ?? 0) / 100));
+  const intensity = Math.min(hot ? 1.75 : 1.35, .22 + heat * .72 + (m.rage ? .28 : 0) + (hot ? .4 : 0));
   const time = m.time ?? 0;
   m.mesh.updateWorldMatrix(true, false);
   fx.inverse.copy(m.mesh.matrixWorld).invert();
@@ -141,21 +146,148 @@ function furnacePresence(m, fx) {
   }
 }
 
+
+// ---- hazards -------------------------------------------------------------------
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+// World point -> monster-local scratch vertex i (batches are children of m.mesh).
+function L(fx, i, x, y, z) {
+  const p = fx.anchorPosition.set(x, y, z).applyMatrix4(fx.inverse), v = fx.v[i];
+  v[0] = p.x; v[1] = p.y; v[2] = p.z; return v;
+}
+function tint(out, col, k) { out[0] = col[0] * k; out[1] = col[1] * k; out[2] = col[2] * k; return out; }
+
+// Burning ground: dark-red disc, hot rim band and flame tongues. Before ignition only
+// a pulsing thin outline warns; the last 0.6 s the patch shrinks and dims.
+function scorchFx(m, fx, s, time) {
+  const b = fx.debris, world = m.ctx.world, N = 14;
+  const warn = time < s.t0, live = scorchLive(s, time);
+  if (!warn && !live) return;
+  const phase = s.x * 1.7 + s.z * 2.3;
+  const R0 = s.r ?? SCORCH.RADIUS;
+  const grow = warn ? 1 : clamp01((time - s.t0) / .3), shrink = warn ? 1 : clamp01((s.t1 - time) / .6);
+  const R = R0 * (warn ? 1 : (.35 + .65 * grow) * (.25 + .75 * shrink));
+  const gy = fx.ground, cx = s.x, cz = s.z;
+  for (let i = 0; i <= N; i++) {
+    const a = i / N * Math.PI * 2;
+    gy[i] = (world?.heightAt?.(cx + Math.sin(a) * R, cz + Math.cos(a) * R) ?? 0) + .06;
+  }
+  const centerY = (world?.heightAt?.(cx, cz) ?? 0) + .06;
+  const pulse = .6 + .4 * Math.sin(time * (warn ? 22 : 7) + phase);
+  const bright = warn ? .5 + .5 * pulse : (.55 + .45 * pulse) * (.4 + .6 * shrink);
+  const wid = warn ? .12 : .26;
+  const edge = tint(fx.c[0], HOT, bright), hotC = tint(fx.c[1], FIRE, bright);
+  const dark = tint(fx.c[2], COAL, .55 * bright + .2), mid = tint(fx.c[3], HOT, .5 * bright);
+  for (let i = 0; i < N; i++) {
+    const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2;
+    const s0 = Math.sin(a0), c0 = Math.cos(a0), s1 = Math.sin(a1), c1 = Math.cos(a1);
+    if (!warn) { // flat disc fan: dark rim, glowing centre
+      b.tri(L(fx, 0, cx + s0 * R, gy[i], cz + c0 * R), L(fx, 1, cx + s1 * R, gy[i + 1], cz + c1 * R), L(fx, 2, cx, centerY, cz), dark, mid);
+    }
+    // bright outline band (readable at distance)
+    const Ri = Math.max(.05, R - wid);
+    b.tri(L(fx, 0, cx + s0 * R, gy[i] + .02, cz + c0 * R), L(fx, 1, cx + s1 * R, gy[i + 1] + .02, cz + c1 * R), L(fx, 2, cx + s1 * Ri, gy[i + 1] + .02, cz + c1 * Ri), edge, hotC);
+    b.tri(L(fx, 0, cx + s0 * R, gy[i] + .02, cz + c0 * R), L(fx, 1, cx + s1 * Ri, gy[i + 1] + .02, cz + c1 * Ri), L(fx, 2, cx + s0 * Ri, gy[i] + .02, cz + c0 * Ri), edge, hotC);
+    if (warn) continue;
+    // rim flame tongue at the middle of this segment
+    const am = (a0 + a1) * .5, sm = Math.sin(am), cm = Math.cos(am);
+    const fl = .5 + .5 * Math.sin(time * 9 + i * 2.1 + phase);
+    const h = (.45 + .85 * fl) * shrink * grow, bx = cx + sm * R * .92, bz = cz + cm * R * .92;
+    const tw = R * .12, tx = cm * tw, tz = -sm * tw, by = gy[i] + .02;
+    b.tri(L(fx, 0, bx - tx, by, bz - tz), L(fx, 1, bx + tx, by, bz + tz), L(fx, 2, bx + sm * .1, by + h, bz + cm * .1), tint(fx.c[0], COAL, bright + .3), tint(fx.c[1], FIRE, bright));
+  }
+  if (warn) return;
+  // inner tongues, two crossed tris each: the patch reads as burning inside too
+  for (let i = 0; i < 4; i++) {
+    const a = i * 1.571 + phase, r = R * (.25 + .2 * (i & 1)), x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
+    const fl = .5 + .5 * Math.sin(time * 11 + i * 1.9 + phase);
+    const h = (.6 + 1.0 * fl) * shrink * grow, y = (world?.heightAt?.(x, z) ?? 0) + .07, w = R * .1;
+    const top = tint(fx.c[1], CORE, bright), base = tint(fx.c[0], HOT, bright);
+    b.tri(L(fx, 0, x - w, y, z), L(fx, 1, x + w, y, z), L(fx, 2, x, y + h, z + .05), base, top);
+    b.tri(L(fx, 0, x, y, z - w), L(fx, 1, x, y, z + w), L(fx, 2, x + .05, y + h * .85, z), base, top);
+  }
+}
+
+// Shock ring: a low flame wall at the current radius, fading towards rMax.
+function ringFx(m, fx, ring, time) {
+  if (time < ring.t0) return;
+  const r = ringRadius(ring, time);
+  if (r > ring.rMax) return;
+  const b = fx.debris, world = m.ctx.world, cx = ring.x, cz = ring.z;
+  const fade = clamp01((ring.rMax - r) / Math.max(3, ring.rMax * .3)) * clamp01((time - ring.t0) / .1 + .4);
+  if (fade <= 0) return;
+  const N = Math.min(48, Math.max(12, Math.ceil(r * 2.4))), gy = fx.ground;
+  for (let i = 0; i <= N; i++) {
+    const a = i / N * Math.PI * 2;
+    gy[i] = (world?.heightAt?.(cx + Math.sin(a) * r, cz + Math.cos(a) * r) ?? 0) + .05;
+  }
+  const base = tint(fx.c[0], HOT, .5 + .5 * fade), tip = tint(fx.c[1], FIRE, fade), top = tint(fx.c[2], CORE, fade);
+  for (let i = 0; i < N; i++) {
+    const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2;
+    const x0 = cx + Math.sin(a0) * r, z0 = cz + Math.cos(a0) * r, x1 = cx + Math.sin(a1) * r, z1 = cz + Math.cos(a1) * r;
+    const f0 = .5 + .5 * Math.sin(time * 14 + i * 1.7), f1 = .5 + .5 * Math.sin(time * 14 + (i + 1) * 1.7);
+    const h0 = .9 * fade * (.7 + .3 * f0), h1 = .9 * fade * (.7 + .3 * f1);
+    const pk = (a0 + a1) * .5, peak = 1.35 * fade * (.8 + .4 * f0);
+    b.tri(L(fx, 0, x0, gy[i], z0), L(fx, 1, x1, gy[i + 1], z1), L(fx, 2, x1, gy[i + 1] + h1, z1), base, tip);
+    b.tri(L(fx, 0, x1, gy[i + 1] + h1, z1), L(fx, 1, x0, gy[i] + h0, z0), L(fx, 2, x0, gy[i], z0), tip, base);
+    b.tri(L(fx, 0, x0, gy[i] + h0, z0), L(fx, 1, x1, gy[i + 1] + h1, z1),
+      L(fx, 2, (x0 + x1) * .5 + Math.sin(pk) * .1, (gy[i] + gy[i + 1]) * .5 + peak, (z0 + z1) * .5 + Math.cos(pk) * .1), tip, top);
+  }
+}
+
+function hazardsFx(m, fx) {
+  const h = m.extra.hazards, time = m.time ?? 0;
+  if (!h) return;
+  for (let i = 0; i < h.scorch.length; i++) scorchFx(m, fx, h.scorch[i], time);
+  for (let i = 0; i < h.rings.length; i++) ringFx(m, fx, h.rings[i], time);
+}
+
+// Glowing core sphere (three crossed plumes) at a local point.
+function core(b, at, radius, time, color) {
+  const d = radius * .9;
+  plume(b, [at[0], at[1] - d, at[2]], [at[0], at[1] + d, at[2]], radius, time, color, 0);
+  plume(b, [at[0] - d, at[1], at[2]], [at[0] + d, at[1], at[2]], radius, time, color, 2);
+  plume(b, [at[0], at[1], at[2] - d], [at[0], at[1], at[2] + d], radius, time, color, 4);
+}
+
+function attackFx(m, fx, kind) {
+  const a = m.attack, inst = a.inst;
+  if (kind === 'dive' && (m.air ?? 0) > 1) { // fire trail behind the airborne body
+    const k = clamp01(m.air / 6), time = m.time;
+    plume(fx.flame, [0, 1.6, -1.5], [0, 1.6 + 2 * k, -1.5 - 7 * k], 1.5 * k, time, FIRE, 1);
+    plume(fx.flame, [2.4, 1.6, -1], [2.8, 1.6 + k, -1 - 5 * k], .6 * k, time, FIRE, 3);
+    plume(fx.flame, [-2.4, 1.6, -1], [-2.8, 1.6 + k, -1 - 5 * k], .6 * k, time, FIRE, 5);
+  }
+  if (kind === 'nova') {
+    const hit = inst.def.hits?.[0], t0 = hit?.t0 ?? 2.4, tau = inst.tau(a.t), time = m.time;
+    if (tau < t0) { // swelling core around the chest
+      const g = clamp01(tau / t0), node = m.nodes?.chest;
+      const at = fx.v[5];
+      if (node) { node.updateWorldMatrix(true, false); const p = fx.anchorPosition.setFromMatrixPosition(node.matrixWorld).applyMatrix4(fx.inverse); at[0] = p.x; at[1] = p.y; at[2] = p.z; }
+      else { at[0] = 0; at[1] = 2.5; at[2] = 0; }
+      core(fx.flame, at, (.5 + 3.2 * g * g) * (1 + .06 * Math.sin(time * 30)), time, g > .6 ? CORE : FIRE);
+    } else if (tau < t0 + .3) { // flash
+      const age = (tau - t0) / .3, at = fx.v[5]; at[0] = 0; at[1] = 1.5; at[2] = 0;
+      core(fx.flame, at, 6 * (1 - age * .6), time, CORE);
+    }
+  }
+}
+
 export function updatePyrosturFx(m) {
   // Headless combat simulations have no scene. Avoid allocating GPU batches there.
   if (!m.ctx.scene) return;
   const fx = m.extra.pyroFx ??= createPyrosturFx(m.mesh);
   fx.flame.reset(); fx.debris.reset();
   groundContacts(m, fx);
-  if (m.alive) furnacePresence(m, fx);
+  if (m.alive) { furnacePresence(m, fx); hazardsFx(m, fx); }
   const a = m.attack, kind = a?.inst.def.vfx;
   if (a?.inst !== fx.attack) { fx.attack = a?.inst; fx.sounded = false; fx.warned = false; }
   if (m.alive && a && kind) {
     const inst = a.inst, tau = inst.tau(a.t), time = m.time;
-    const fire = ['breath', 'rain', 'pressure'].includes(kind), steam = kind === 'steam';
+    const fire = ['breath', 'rain', 'pressure', 'dive', 'nova'].includes(kind), steam = kind === 'steam';
     if (!fx.warned && kind === 'pressure') {
       fx.warned = true; m.ctx.bus.emit('sfx', { name: 'pyroPressure', pos: m.pos });
     }
+    attackFx(m, fx, kind);
     for (const [i, h] of (inst.def.hits ?? []).entries()) {
       const pre = h.t0 - tau, age = (tau - h.t0) / .42;
       if (kind === 'rain' && pre > 0 && pre < .65 && h.shape === 'sphere') {
