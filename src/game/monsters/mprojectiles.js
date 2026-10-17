@@ -47,7 +47,7 @@ export function kokosDef({ from, to, dur = 1.1, arc = 6, splash = 1.4, dmg = 16,
 
 const geoBox = new THREE.BoxGeometry(1, 1, 1);
 const mats = {};
-const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : kind === 'magma' ? '#ff5a12' : '#5a3e22' }));
+const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : kind === 'magma' ? '#ff5a12' : kind === 'rock' ? '#6d665d' : '#5a3e22' }));
 
 export class ProjectileSet {
   constructor(ctx, owner) {
@@ -58,7 +58,7 @@ export class ProjectileSet {
   spawn(def, age = 0) {
     const pr = { def, age, hit: new Set(), mesh: null, prev: projPos(def, age) };
     if (this.ctx.scene) {
-      const s = def.kind === 'magma' ? 1.1 : def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' ? 0.95 : 0.45;
+      const s = def.kind === 'magma' || def.kind === 'rock' ? 1.1 : def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' ? 0.95 : 0.45;
       pr.mesh = new THREE.Mesh(geoBox, matFor(def.kind));
       pr.mesh.scale.setScalar(s);
       this.ctx.scene.add(pr.mesh);
@@ -83,7 +83,7 @@ export class ProjectileSet {
       }
       if ((def.kind === 'fire' || def.kind === 'magma') && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#ff8a20' : '#ffd060', 1.2);
       if (def.mode === 'impact') {
-        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'magma' ? '#ff2a2a' : '#b06a20';
+        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'magma' || def.kind === 'rock' ? '#ff2a2a' : '#b06a20';
         const mr = def.kind === 'kokos' ? def.splash + 0.4 : def.splash; // Kokos: Marker = echte Reichweite (Splash + Pirscher-Radius 0,4)
         if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, false);
         else if (!pr.landed) {
@@ -104,6 +104,7 @@ export class ProjectileSet {
     ctx.debugShape?.(shape, '#ff3030');
     for (const p of ctx.players) {
       if (!p.local || !p.alive || pr.hit.has(p.id)) continue;
+      if (def.mode === 'impact' && (this.owner.def?.cover?.(this.owner, def.to, p) || this.owner.def?.cover?.(this.owner, def.from, p))) continue; // hard cover between thrower/impact and hunter
       if (!p.hitCapsules().some((c) => overlap(shape, c))) continue;
       const res = p.takeHit({
         dmg: def.dmg * (this.owner.dmgMul ?? 1), knock: def.knock ?? 'flinch', key: `${def.key}|${p.id}`,

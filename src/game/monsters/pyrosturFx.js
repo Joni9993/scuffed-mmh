@@ -5,9 +5,12 @@ import { ringRadius, scorchLive, SCORCH } from './pyrosturHazards.js';
 // Two bounded dynamic batches. Flames use the very same committed positions and
 // times as AttackInstance; they never create damage, timers or network decisions.
 // Capacities are vertices (3 per tri): flame 6144 tris + debris 4096 tris = 10240 tris max.
-const FLAME_CAP = 18432, DEBRIS_CAP = 12288, CAPACITY = FLAME_CAP, FIRE = [1, .29, .035], CORE = [1, .87, .43], ASH = [.48, .42, .36], STEAM = [.75, .83, .86];
+export const FLAME_CAP = 18432, DEBRIS_CAP = 12288, CAPACITY = FLAME_CAP, FIRE = [1, .29, .035], CORE = [1, .87, .43], ASH = [.48, .42, .36], STEAM = [.75, .83, .86];
 const COAL = [.55, .075, .025], HOT = [1, .42, .09];
-function batch(name, CAPACITY) {
+// Felsengroll tints: molten slag fields (amber/brown) and quake walls (dust and rock).
+const SLAG = { edge: [1, .66, .2], hot: [.9, .5, .14], dark: [.26, .17, .1], mid: [.62, .36, .1], core: [1, .86, .5] };
+const DUST = { base: [.34, .28, .22], tip: [.55, .48, .38], top: [.78, .7, .56] };
+export function batch(name, CAPACITY) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CAPACITY * 3), 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(CAPACITY * 3), 3).setUsage(THREE.DynamicDrawUsage));
@@ -31,7 +34,7 @@ function batch(name, CAPACITY) {
   };
 }
 
-function plume(b, from, to, radius, time, color, seed = 0) {
+export function plume(b, from, to, radius, time, color, seed = 0) {
   const dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2], len = Math.hypot(dx, dy, dz) || 1;
   const ux = dx / len, uy = dy / len, uz = dz / len;
   const sideLen = Math.hypot(ux, uz);
@@ -54,7 +57,7 @@ function plume(b, from, to, radius, time, color, seed = 0) {
   }
 }
 
-function eruption(b, at, radius, age, time, color, seed = 0) {
+export function eruption(b, at, radius, age, time, color, seed = 0) {
   for (let i = 0; i < 5; i++) {
     const a = i * 2.4 + seed, r = radius * .48, x = at[0] + Math.sin(a) * r, z = at[2] + Math.cos(a) * r;
     const h = radius * (1.3 + .4 * Math.sin(i + time * 13)) * Math.max(.18, 1 - age);
@@ -83,7 +86,7 @@ export function createPyrosturFx(root) {
     v: Array.from({ length: 6 }, () => [0, 0, 0]), c: Array.from({ length: 4 }, () => [0, 0, 0]), ground: new Float32Array(64) };
 }
 
-function groundContacts(m, fx) {
+export function groundContacts(m, fx) {
   const ids = ['ankleForeL', 'ankleForeR', 'ankleL', 'ankleR'];
   fx.footShadows.visible = !!m.alive;
   if (!m.alive) return;
@@ -107,7 +110,7 @@ function groundContacts(m, fx) {
 // Cosmetic only: anatomical vents breathe even between attacks. Small opaque
 // ribbons and sparks leave the armour and silhouette readable on a phone. Their
 // clock is the monster clock; there are no particle lifetimes or random pools.
-function furnacePresence(m, fx) {
+export function furnacePresence(m, fx) {
   const anchors = m.extra.ventAnchors;
   if (!anchors?.length) return;
   const hot = (m.overheat ?? 0) > 0;
@@ -150,11 +153,11 @@ function furnacePresence(m, fx) {
 // ---- hazards -------------------------------------------------------------------
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 // World point -> monster-local scratch vertex i (batches are children of m.mesh).
-function L(fx, i, x, y, z) {
+export function L(fx, i, x, y, z) {
   const p = fx.anchorPosition.set(x, y, z).applyMatrix4(fx.inverse), v = fx.v[i];
   v[0] = p.x; v[1] = p.y; v[2] = p.z; return v;
 }
-function tint(out, col, k) { out[0] = col[0] * k; out[1] = col[1] * k; out[2] = col[2] * k; return out; }
+export function tint(out, col, k) { out[0] = col[0] * k; out[1] = col[1] * k; out[2] = col[2] * k; return out; }
 
 // Burning ground: dark-red disc, hot rim band and flame tongues. Before ignition only
 // a pulsing thin outline warns; the last 0.6 s the patch shrinks and dims.
@@ -175,8 +178,9 @@ function scorchFx(m, fx, s, time) {
   const pulse = .6 + .4 * Math.sin(time * (warn ? 22 : 7) + phase);
   const bright = warn ? .5 + .5 * pulse : (.55 + .45 * pulse) * (.4 + .6 * shrink);
   const wid = warn ? .12 : .26;
-  const edge = tint(fx.c[0], HOT, bright), hotC = tint(fx.c[1], FIRE, bright);
-  const dark = tint(fx.c[2], COAL, .55 * bright + .2), mid = tint(fx.c[3], HOT, .5 * bright);
+  const slag = s.kind === 'slag';
+  const edge = tint(fx.c[0], slag ? SLAG.edge : HOT, bright), hotC = tint(fx.c[1], slag ? SLAG.hot : FIRE, bright);
+  const dark = tint(fx.c[2], slag ? SLAG.dark : COAL, .55 * bright + .2), mid = tint(fx.c[3], slag ? SLAG.mid : HOT, .5 * bright);
   for (let i = 0; i < N; i++) {
     const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2;
     const s0 = Math.sin(a0), c0 = Math.cos(a0), s1 = Math.sin(a1), c1 = Math.cos(a1);
@@ -191,7 +195,7 @@ function scorchFx(m, fx, s, time) {
     // rim flame tongue at the middle of this segment
     const am = (a0 + a1) * .5, sm = Math.sin(am), cm = Math.cos(am);
     const fl = .5 + .5 * Math.sin(time * 9 + i * 2.1 + phase);
-    const h = (.45 + .85 * fl) * shrink * grow, bx = cx + sm * R * .92, bz = cz + cm * R * .92;
+    const h = (.45 + .85 * fl) * shrink * grow * (slag ? .4 : 1), bx = cx + sm * R * .92, bz = cz + cm * R * .92;
     const tw = R * .12, tx = cm * tw, tz = -sm * tw, by = gy[i] + .02;
     b.tri(L(fx, 0, bx - tx, by, bz - tz), L(fx, 1, bx + tx, by, bz + tz), L(fx, 2, bx + sm * .1, by + h, bz + cm * .1), tint(fx.c[0], COAL, bright + .3), tint(fx.c[1], FIRE, bright));
   }
@@ -200,8 +204,8 @@ function scorchFx(m, fx, s, time) {
   for (let i = 0; i < 4; i++) {
     const a = i * 1.571 + phase, r = R * (.25 + .2 * (i & 1)), x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
     const fl = .5 + .5 * Math.sin(time * 11 + i * 1.9 + phase);
-    const h = (.6 + 1.0 * fl) * shrink * grow, y = (world?.heightAt?.(x, z) ?? 0) + .07, w = R * .1;
-    const top = tint(fx.c[1], CORE, bright), base = tint(fx.c[0], HOT, bright);
+    const h = (.6 + 1.0 * fl) * shrink * grow * (slag ? .35 : 1), y = (world?.heightAt?.(x, z) ?? 0) + .07, w = R * .1;
+    const top = tint(fx.c[1], slag ? SLAG.core : CORE, bright), base = tint(fx.c[0], slag ? SLAG.hot : HOT, bright);
     b.tri(L(fx, 0, x - w, y, z), L(fx, 1, x + w, y, z), L(fx, 2, x, y + h, z + .05), base, top);
     b.tri(L(fx, 0, x, y, z - w), L(fx, 1, x, y, z + w), L(fx, 2, x + .05, y + h * .85, z), base, top);
   }
@@ -220,13 +224,15 @@ function ringFx(m, fx, ring, time) {
     const a = i / N * Math.PI * 2;
     gy[i] = (world?.heightAt?.(cx + Math.sin(a) * r, cz + Math.cos(a) * r) ?? 0) + .05;
   }
-  const base = tint(fx.c[0], HOT, .5 + .5 * fade), tip = tint(fx.c[1], FIRE, fade), top = tint(fx.c[2], CORE, fade);
+  const quake = ring.kind === 'quake';
+  const base = tint(fx.c[0], quake ? DUST.base : HOT, .5 + .5 * fade), tip = tint(fx.c[1], quake ? DUST.tip : FIRE, fade), top = tint(fx.c[2], quake ? DUST.top : CORE, fade);
   for (let i = 0; i < N; i++) {
     const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2;
     const x0 = cx + Math.sin(a0) * r, z0 = cz + Math.cos(a0) * r, x1 = cx + Math.sin(a1) * r, z1 = cz + Math.cos(a1) * r;
     const f0 = .5 + .5 * Math.sin(time * 14 + i * 1.7), f1 = .5 + .5 * Math.sin(time * 14 + (i + 1) * 1.7);
-    const h0 = .9 * fade * (.7 + .3 * f0), h1 = .9 * fade * (.7 + .3 * f1);
-    const pk = (a0 + a1) * .5, peak = 1.35 * fade * (.8 + .4 * f0);
+    const wall = quake ? 1.25 : 1; // rock wall: taller, steadier
+    const h0 = .9 * wall * fade * (.7 + .3 * f0), h1 = .9 * wall * fade * (.7 + .3 * f1);
+    const pk = (a0 + a1) * .5, peak = (quake ? 1.7 : 1.35) * fade * (quake ? .9 + .1 * f0 : .8 + .4 * f0);
     b.tri(L(fx, 0, x0, gy[i], z0), L(fx, 1, x1, gy[i + 1], z1), L(fx, 2, x1, gy[i + 1] + h1, z1), base, tip);
     b.tri(L(fx, 0, x1, gy[i + 1] + h1, z1), L(fx, 1, x0, gy[i] + h0, z0), L(fx, 2, x0, gy[i], z0), tip, base);
     b.tri(L(fx, 0, x0, gy[i] + h0, z0), L(fx, 1, x1, gy[i + 1] + h1, z1),
@@ -234,7 +240,7 @@ function ringFx(m, fx, ring, time) {
   }
 }
 
-function hazardsFx(m, fx) {
+export function hazardsFx(m, fx) {
   const h = m.extra.hazards, time = m.time ?? 0;
   if (!h) return;
   for (let i = 0; i < h.scorch.length; i++) scorchFx(m, fx, h.scorch[i], time);
