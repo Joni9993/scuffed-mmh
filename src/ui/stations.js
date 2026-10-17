@@ -67,9 +67,15 @@ export function openStation(id, app, { onClose, adapter, store = saveStore } = {
     body.scrollTop = top;
     panel.after?.(body);
   };
+  // Geister-Klick: der Tap, der das Panel geöffnet hat, erzeugt danach einen Klick an derselben Stelle – ohne eigenes Drücken im Panel
+  const openedAt = performance.now();
+  let pressed = false;
+  root.addEventListener('pointerdown', () => { pressed = true; }, true);
+  root.addEventListener('touchstart', () => { pressed = true; }, { capture: true, passive: true });
   root.addEventListener('click', (e) => {
     const t = e.target.closest('[data-a]');
     if (!t) return;
+    if (!pressed && performance.now() - openedAt < 600) return;
     if (t.dataset.a === '__close') { closeStation(); return; }
     sfx.unlock?.();
     if (panel.click(t.dataset.a, t.dataset, e) !== false) render();

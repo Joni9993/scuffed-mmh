@@ -453,7 +453,7 @@ export class Hunt {
     this.kkfx?.update(dt); // [KK] Boden-Ringe / fliegende Sample-Symbole (angelegt beim ersten Abspielen)
     this.rig.update(dt, {
       playerPos: p.pos, playerYaw: p.rot, moving: p.speed > 1, camInput: this.input.takeCamera(),
-      lockPos: p.lockPoint(), lockSize: p.lock?.monster?.bodyRadius, shake: this.fx.shakeOffset,
+      lockPos: p.lockPoint(), lockCenter: p.lock?.monster?.pos, lockRef: p.lock?.monster ?? null, lockSize: p.lock?.monster?.bodyRadius, shake: this.fx.shakeOffset,
     });
     this.viz.end();
     this.app.input.contextLabel = this.contextLabel ?? null;

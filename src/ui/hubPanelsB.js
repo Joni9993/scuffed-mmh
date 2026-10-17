@@ -20,6 +20,8 @@ import { GearPreview, previewSlot } from './gearPreview.js';
 import { BESTIARY, CONDITIONS, KIND_LABEL, ELEM_NOTES, unlockedEntries, nextUnlock, weaknessOf } from '../data/compendium.js';
 import { makeGear } from '../data/gearlook.js';
 
+const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}${glow[k] ? ' glow' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
+
 // ============================================================ Kochtopf
 export function createKochtopf(ctx) {
   return {
@@ -71,48 +73,103 @@ export function startSolo(app, store, questId, mutators = []) {
   app.goto('hunt', { quest: questId, mutators, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
 }
 
+// Aufbau: oben (falls vorhanden) dein Auftrag bzw. offene Aufträge im Raum, darunter Reiter Jagd | Rotglut | Sammeln | ★ Woche.
+// Links die Liste (kompakt, gesperrte zusammengefasst), rechts der gewählte Auftrag mit Mutatoren und „Posten".
+const QB_TABS = [['hunt', 'Jagd'], ['rot', 'Rotglut'], ['gather', 'Sammeln'], ['week', '★ Woche']];
+const qCat = (q) => (q.id === FIELDSTUDY_ID ? 'week' : q.gather ? 'gather' : q.variant ? 'rot' : 'hunt');
+const mName = (id) => (id ? monsters[id]?.name ?? id : null);
+
 export function createBrett(ctx) {
   const adapter = ctx.adapter ?? createLocalBoard({ name: () => ctx.save.name, start: (q, mu) => { ctx.close(); startSolo(ctx.app, ctx.store, q, mu); } });
   const unsub = adapter.onChange?.(() => ctx.rerender());
-  let sel = null, info = null;
+  let sel = null, info = null, tab = null, mutOpen = false, showLocked = false;
   const chosen = []; // 0-2 Mutatoren fuer den naechsten Posten
   const mutHtml = (ids) => ids.map((i) => MUTATORS[i]).filter(Boolean).map((m) => `${esc(m.name)}${rewardLabel(m) ? ` (${rewardLabel(m)})` : ''}`).join(' · ');
+  const allQuests = () => [registerFieldStudy(), ...questList()];
+  const isOpen = (s, q) => !questLock(s, q) && (!q.monster || !!monsters[q.monster]);
+
+  /** Standard: der nächste offene Rang-Auftrag, sonst der erste offene Auftrag im Reiter. */
+  function pickDefault(s) {
+    const key = questList().find((q) => isKeyQuest(q, s) && isOpen(s, q));
+    if (!tab) tab = key ? qCat(key) : 'hunt';
+    const list = allQuests().filter((q) => qCat(q) === tab);
+    if (!list.some((q) => q.id === sel)) sel = (key && qCat(key) === tab ? key : list.find((q) => isOpen(s, q)) ?? list[0])?.id ?? null;
+  }
+
+  function listHtml(s) {
+    const list = allQuests().filter((q) => qCat(q) === tab);
+    const open = list.filter((q) => isOpen(s, q)), locked = list.filter((q) => !isOpen(s, q));
+    const row = (q) => {
+      const ok = isOpen(s, q), key = isKeyQuest(q, s), done = s.clears[q.id] ?? 0;
+      return `<button class="rowbtn qrow${q.id === sel ? ' sel' : ''}${ok ? '' : ' lock'}${key && ok ? ' key' : ''}" data-a="qsel" data-k="${q.id}">
+        <span class="nm">${key ? '<i class="qk">RANG</i> ' : ''}${esc(q.name)}${done ? ` <small class="qd">✓${done}</small>` : ''}<br><small>${ok ? esc(mName(q.monster) ?? 'Sammelauftrag') : questLock(s, q) ? (questLock(s, q).reason === 'rp' ? `noch ${questLock(s, q).need} RP` : `ab JR ${questLock(s, q).need}`) : 'kommt noch'}</small></span>
+        <span class="chip ok">${iconHtml('schrott')}${q.reward}</span></button>`;
+    };
+    let html = open.map(row).join('');
+    if (locked.length) {
+      html += showLocked || !open.length ? locked.map(row).join('')
+        : `${row(locked[0])}${locked.length > 1 ? `<button class="rowbtn qmore" data-a="qlocked">+ ${locked.length - 1} weitere gesperrte zeigen</button>` : ''}`;
+    }
+    return html || '<div class="note">Hier gibt es noch nichts.</div>';
+  }
+
+  function detailHtml(s) {
+    const q = allQuests().find((x) => x.id === sel);
+    if (!q) return '<div class="note">Wähle links einen Auftrag.</div>';
+    const isFs = q.id === FIELDSTUDY_ID, lock = questLock(s, q), ok = isOpen(s, q), key = isKeyQuest(q, s);
+    const fixed = q.mutators?.length ? q.mutators : null;
+    const head = `<div class="fi-h"><b>${esc(q.name)}</b>${mName(q.monster) ? ` <small>· ${esc(mName(q.monster))}</small>` : ''}</div>
+      <div class="qchips"><span class="chip ok">${iconHtml('schrott')}${q.reward}</span>${q.rp ? `<span class="chip">+${q.rp} RP</span>` : ''}${key ? `<span class="chip qkey">Rang-Auftrag → JR ${q.jrUp}</span>` : ''}${s.clears[q.id] ? `<span class="chip">✓ ${s.clears[q.id]}×</span>` : ''}${s.best?.[q.id] ? `<span class="chip">⏱ ${mmss(s.best[q.id])}</span>` : ''}</div>`;
+    if (!ok) return `${head}<div class="note">${esc(q.desc)}</div><div class="qlockmsg">${!lock ? 'Dieser Brocken ist noch nicht im Rostnest angekommen.' : lock.reason === 'rp' ? `Gesperrt: noch ${lock.need} RP sammeln.` : `Gesperrt: Jägerrang ${lock.need} nötig.`}</div>`;
+    if (mutOpen && !fixed) { // Mutator-Auswahl ersetzt kurz die Beschreibung
+      const tiles = MUTATOR_ORDER.map((id) => { const m = MUTATORS[id], on = chosen.includes(id);
+        return `<button class="mtile${on ? ' on' : ''}" aria-pressed="${on}" data-a="mut" data-k="${id}"><span class="mt-n">${on ? '✓ ' : ''}${esc(m.name)}</span><span class="mt-r">${esc(rewardLabel(m))}</span></button>`; }).join('');
+      const focus = info ?? chosen[chosen.length - 1];
+      return `<div class="fi-h"><b>Mutatoren</b> <small>${chosen.length}/${MAX_MUTATORS}${chosen.length ? ' · ' + esc(rewardLabel(resolveMods(chosen))) : ''}</small></div>
+        <div class="muts">${tiles}</div><div class="mt-info">${focus && MUTATORS[focus] ? `<b>${esc(MUTATORS[focus].name)}:</b> ${esc(MUTATORS[focus].desc)}` : 'Antippen: Wirkung erscheint hier. Mehr Risiko, mehr Beute.'}</div>
+        <div class="qact"><button class="btn small" data-a="mutclr">Keine</button><button class="btn small go" data-a="mutdone">Fertig</button></div>`;
+    }
+    const mutLine = fixed ? `<div class="qmut"><small>Feste Mutatoren:</small> ${mutHtml(fixed)}</div>`
+      : `<button class="qmut tapline" data-a="mutopen"><small>Mutatoren:</small> ${chosen.length ? mutHtml(chosen) : 'keine'} <b>✎</b></button>`;
+    const fsLine = isFs ? `<div class="note">Bestzeit diese Woche: ${getBestTime(q.fieldStudy) ? mmss(getBestTime(q.fieldStudy)) : '–'}</div>` : '';
+    const mine = adapter.getPosted().find((p) => p.joined);
+    return `${head}<div class="qdesc">${esc(q.desc)}</div>${fsLine}${mutLine}
+      <div class="qact">${mine ? '<small>Du hast schon einen Auftrag offen (oben).</small>' : `<button class="btn small go" data-a="post" data-k="${q.id}">Posten</button>`}</div>`;
+  }
+
+  function postedHtml() {
+    const posted = adapter.getPosted();
+    const mine = posted.find((p) => p.joined), others = mine ? [] : posted;
+    const one = (p) => {
+      const q = allQuests().find((x) => x.id === p.quest);
+      const me = p.members.find((m) => m.me), alone = p.members.length <= 1;
+      const mu = p.mutators?.length ? p.mutators : q?.mutators ?? [];
+      return `<div class="qpost${p.joined ? ' mine' : ''}"><span class="nm"><b>${esc(q?.name ?? p.quest)}</b> <small>von ${esc(p.host)} · ${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(', ')}${mu.length ? ` · ${mutHtml(mu)}` : ''}</small></span>
+        ${p.joined ? `${p.mine ? '<button class="btn small" data-a="unpost">Zurückziehen</button>' : ''}<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>`
+          : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
+    };
+    if (mine) return `<div class="qtop">${one(mine)}</div>`;
+    return others.length ? `<div class="qtop"><div class="sub">Offen im Raum</div>${others.map(one).join('')}</div>` : '';
+  }
+
   return {
     dispose() { unsub?.(); },
     render() {
       const s = ctx.save;
-      const fs = registerFieldStudy(), fsBest = getBestTime(fs.fieldStudy);
-      const list = [fs, ...questList()].map((q) => {
-        const isFs = q.id === FIELDSTUDY_ID;
-        const lock = questLock(s, q), open = !lock, key = isKeyQuest(q, s), avail = !q.monster || !!monsters[q.monster];
-        const done = s.clears[q.id] ?? 0;
-        return `<div class="row quest${open && avail ? '' : ' lock'}${sel === q.id ? ' sel' : ''}${isFs ? ' fieldstudy' : ''}"${isFs ? ' style="border:1px solid #ffd040;background:rgba(255,208,64,.12)"' : ''} data-a="qsel" data-k="${q.id}">
-          <span class="nm">${isFs ? '<small>★ Wochenauftrag</small><br>' : ''}<b>${esc(q.name)}</b>${key ? ` <small class="keyq" style="color:#ffd040">Rang-Auftrag → JR ${q.jrUp}</small>` : ''} ${isFs ? `<small>(${esc(q.monster)})</small>` : ''}${done ? ` <small>✓${done}</small>` : ''}<br><small>${open ? (avail ? esc(q.desc) + (isFs ? ` Mutatoren: ${mutHtml(q.mutators)}. Bestzeit: ${fsBest ? mmss(fsBest) : '–'}` : '') : 'Dieser Brocken ist noch nicht im Rostnest angekommen.') : lock.reason === 'rp' ? `Noch ${lock.need} RP.` : `Jägerrang ${lock.need} nötig.`}</small></span>
-          <span class="chip ok">${iconHtml('schrott')}${q.reward}</span>${q.rp ? `<span class="chip">+${q.rp} RP</span>` : ''}
-          ${open && avail ? `<button class="btn small go" data-a="post" data-k="${q.id}">Posten</button>` : '<span class="lockm">gesperrt</span>'}</div>`;
-      }).join('');
-      const posted = adapter.getPosted();
-      const postedHtml = posted.length ? posted.map((p) => {
-        const q = [registerFieldStudy(), ...questList()].find((x) => x.id === p.quest);
-        const me = p.members.find((m) => m.me);
-        const alone = p.members.length <= 1;
-        return `<div class="card post"><b>${esc(q?.name ?? p.quest)}</b> <small>von ${esc(p.host)}</small>
-          ${(p.mutators?.length || q?.mutators?.length) ? `<div class="note">Mutatoren: ${mutHtml(p.mutators?.length ? p.mutators : q.mutators)}</div>` : ''}<div class="note">${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(' · ')}</div>
-          ${p.joined ? `<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>${p.mine ? `<button class="btn small" data-a="unpost">Zurückziehen</button>` : ''}`
-          : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
-      }).join('') : '<div class="note">Niemand hat etwas gepostet. Sei der Erste.</div>';
-      const chips = MUTATOR_ORDER.map((id) => { const m = MUTATORS[id], on = chosen.includes(id);
-        return `<button class="mtile${on ? ' on' : ''}" aria-pressed="${on}" data-a="mut" data-k="${id}"><span class="mt-n">${on ? '✓ ' : ''}${esc(m.name)}</span><span class="mt-r">${esc(rewardLabel(m))}</span></button>`; }).join('');
-      const focus = info ?? chosen[chosen.length - 1];
-      const infoLine = `<div class="mt-info">${focus && MUTATORS[focus] ? `<b>${esc(MUTATORS[focus].name)}:</b> ${esc(MUTATORS[focus].desc)}` : 'Tippe einen Mutator an: Wirkung und Bonus erscheinen hier.'}</div>`;
-      const mb = `<div class="sub">Mutatoren (optional) <small>${chosen.length}/${MAX_MUTATORS} gewählt${chosen.length ? ' · ' + esc(rewardLabel(resolveMods(chosen))) : ''}</small></div><div class="muts">${chips}</div>${infoLine}`;
-      const pb = `<div class="sub">Gepostete Aufträge</div>${postedHtml}`, qb = `<div class="sub">Aufträge · ${rankLine(s)}</div>${list}${mb}`;
-      return posted.length ? pb + qb : qb + pb; // posts first once something is posted
+      pickDefault(s);
+      const glow = { [qCat(questList().find((q) => isKeyQuest(q, s) && isOpen(s, q)) ?? { id: '-' })]: true };
+      return `${postedHtml()}<div class="qhead">${tabs(tab, QB_TABS, glow)}<small class="qrank">${rankLine(s)}</small></div>
+        <div class="qb"><div class="qlist">${listHtml(s)}</div><div class="qdet">${detailHtml(s)}</div></div>`;
     },
     click(a, d) {
-      if (a === 'qsel') { sel = d.k; return true; }
+      if (a === 'tab') { tab = d.k; sel = null; mutOpen = false; showLocked = false; return true; }
+      if (a === 'qsel') { sel = d.k; mutOpen = false; return true; }
+      if (a === 'qlocked') { showLocked = true; return true; }
+      if (a === 'mutopen') { mutOpen = true; return true; }
+      if (a === 'mutdone') { mutOpen = false; return true; }
+      if (a === 'mutclr') { chosen.length = 0; info = null; return true; }
       if (a === 'mut') { info = d.k; const i = chosen.indexOf(d.k); if (i >= 0) chosen.splice(i, 1); else { if (chosen.length >= MAX_MUTATORS) chosen.shift(); chosen.push(d.k); } return true; }
-      if (a === 'post') { adapter.post(d.k, d.k === FIELDSTUDY_ID ? [] : [...chosen]); return true; } // Feldstudie: feste Mutatoren stecken im Auftrag
+      if (a === 'post') { const q = allQuests().find((x) => x.id === d.k); adapter.post(d.k, q?.mutators?.length ? [] : [...chosen]); return true; } // feste Mutatoren stecken im Auftrag
       if (a === 'join') { adapter.join(d.k); return true; }
       if (a === 'unpost') { adapter.unpost?.(); return true; }
       if (a === 'ready') { adapter.setReady(d.r === '1'); return true; }
@@ -125,7 +182,7 @@ function rankLine(s) {
   const { next, rp } = rankProgress(s);
   if (!next) return `JR ${s.jr} · RP ${rp} (Höchstrang)`;
   const k = next.keys.map((id) => questById(id).name).join(' oder ');
-  return `JR ${s.jr} · RP ${rp}/${next.rp} – nächster Rang: ${esc(k)} besiegen`;
+  return `JR ${s.jr} · RP ${rp}/${next.rp} · nächster Rang: ${esc(k)}`;
 }
 
 // ============================================================ Spiegel (Aussehen + Erfolge)
@@ -243,6 +300,7 @@ export function createOptionen(ctx) {
         <div class="row"><span class="nm">Scanlines</span><button class="btn small" data-a="scan">${on(settings.scanlines)}</button></div>
         <div class="row"><span class="nm">Schadenszahlen</span><button class="btn small" data-a="dmg">${{ all: 'Alle', own: 'Eigene', off: 'Aus' }[normDmgMode(settings.dmgNumbers)]}</button></div>
         <div class="row"><span class="nm">Steuerungs-Tipps in der Jagd</span><button class="btn small" data-a="tips">${on(!settings.tipsSeen)}</button></div>
+        <div class="row"><span class="nm">Kamera-Abstand</span><span class="seg">${[['N', 'nah'], ['M', 'mittel'], ['W', 'weit']].map(([k, l]) => `<button class="btn small ${settings.camDist === k ? 'on' : ''}" data-a="camd" data-v="${k}">${l}</button>`).join('')}</span></div>
         <div class="sub">Layout (Touch)</div>
         <div class="row"><span class="nm">Tastengröße</span><span class="seg">${['S', 'M', 'L'].map((k) => `<button class="btn small ${settings.btnSize === k ? 'on' : ''}" data-a="bsz" data-v="${k}">${k}</button>`).join('')}</span></div>
         <div class="row"><span class="nm">Linkshänder (spiegeln)</span><button class="btn small" data-a="lefty">${on(settings.leftHand)}</button></div>
@@ -279,6 +337,7 @@ export function createOptionen(ctx) {
       else if (a === 'bsz') { settings.btnSize = ds?.v === 'S' || ds?.v === 'L' ? ds.v : 'M'; saveSettings(); app.touch?.relayout(); }
       else if (a === 'mus') { settings.musicOn = settings.musicOn === false; saveSettings(); music.refresh(); }
       else if (a === 'musv') { settings.musicVolume = Math.max(0, Math.min(100, Number(ds?.v) || 0)) / 100; saveSettings(); music.refresh(); }
+      else if (a === 'camd') { settings.camDist = ['N', 'W'].includes(ds?.v) ? ds.v : 'M'; saveSettings(); }
       else if (a === 'stk') { settings.stickMode = settings.stickMode === 'fixed' ? 'follow' : 'fixed'; saveSettings(); }
       else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
       else if (a === 'hap') { settings.haptics = !settings.haptics; saveSettings(); if (settings.haptics) navigator.vibrate?.(15); }
