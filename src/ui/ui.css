@@ -91,6 +91,8 @@ body.scan #stage::after {
 .hud-status .st-poison { background: #9be15a; }
 .hud-status .st-rost { background: #c8661e; }
 .hud-status .st-konter { background: #5ad8ff; }
+.hud-status .st-volt { background: #8de4df; letter-spacing: .1vmin; }
+.hud-status .st-voltx { background: #fff3b0; color: #101010; padding: 0 .6vmin; animation: monflick .14s steps(1) infinite; }
 .wstat { display: flex; gap: .6vmin; align-items: center; height: 2.6vmin; overflow: hidden; white-space: nowrap; font-size: max(8px, 1.9vmin); }
 .wstat span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .wstat b { width: 2.4vmin; height: 1.6vmin; background: #2a2a6a; border: 1px solid #000; }

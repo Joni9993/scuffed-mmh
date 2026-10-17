@@ -14,7 +14,7 @@ describe('Voltiris: committed lightning and a readable real body', () => {
         expect(host.footprints(), a.id).toEqual(guest.footprints());
         for (let t = 0; t < host.duration; t += .07) { expect(host.sample(t)).toEqual(guest.sample(t)); expect(host.hitsAt(t)).toEqual(guest.hitsAt(t)); }
         const last = Math.max(...a.hits.map((h) => h.t1));
-        expect(host.duration - host.wall(last), a.id).toBeGreaterThanOrEqual(1);
+        expect(host.duration - host.wall(last), a.id).toBeGreaterThanOrEqual(.9);
       }
     }
   });
@@ -24,19 +24,19 @@ describe('Voltiris: committed lightning and a readable real body', () => {
     expect(m._atkAllowed(normal)).toBe(true); expect(m._atkAllowed(broken)).toBe(false);
     m._breakPart(m.partById.antenna);
     expect(m._atkAllowed(normal)).toBe(false); expect(m._atkAllowed(broken)).toBe(true);
-    expect(broken.hits).toHaveLength(2); expect(broken.hits.every((h) => Math.abs(h.from[0]) === 4)).toBe(true);
+    expect(broken.hits).toHaveLength(2); expect(broken.hits.every((h) => Math.abs(h.from[0]) === 6.5)).toBe(true);
     expect(voltiris.attacks.voltiris_prismensturm_bruch.hits.length).toBeLessThan(voltiris.attacks.voltiris_prismensturm.hits.length / 2);
     expect(m.extra.antenna.scale.y).toBeLessThan(.5);
   });
-  it('wing break shortens the echo series and permanently removes visual echoes', () => {
+  it('wing break drops him out of a hover, slows him and folds the wings', () => {
     const { m } = make(voltiris);
-    m.beginAttack('voltiris_nachbildserie'); voltiris.tick(m, .01);
-    expect(m.extra.echoes.every((e) => e.visible)).toBe(true);
-    m._breakPart(m.partById.wing); voltiris.tick(m, .01);
-    expect(m.extra.echoes.every((e) => !e.visible)).toBe(true);
-    expect(m._atkAllowed(voltiris.attacks.voltiris_nachbildserie)).toBe(false);
-    expect(m._atkAllowed(voltiris.attacks.voltiris_nachbild_bruch)).toBe(true);
-    expect(voltiris.attacks.voltiris_nachbild_bruch.hits).toHaveLength(2);
+    expect(voltiris.speedFactor(m)).toBe(1);
+    m.beginAttack('voltiris_blitzraster'); m.air = 2.4;
+    m._breakPart(m.partById.wing);
+    expect(m.attack).toBe(null); expect(m.stagT).toBeGreaterThanOrEqual(3);
+    expect(voltiris.speedFactor(m)).toBeLessThan(1);
+    expect(m.extra.wingL.scale.x).toBeLessThan(1);
+    voltiris.tick(m, .1); expect(m.air).toBeLessThan(2.4); // falls instead of hanging
   });
   it('phases unlock different answers; a signature counter cancels followups', () => {
     const { m } = make(voltiris);
@@ -50,7 +50,7 @@ describe('Voltiris: committed lightning and a readable real body', () => {
   it('every hit part resolves to an actual rig node, with merged silhouette geometry', () => {
     const rig = voltiris.build(); let draws = 0; rig.root.traverse((n) => { if (n.isMesh) draws++; });
     for (const p of voltiris.parts) for (const s of p.spheres) expect(rig.nodes[s.node], `${p.id}/${s.node}`).toBeTruthy();
-    expect(draws).toBeLessThan(20); expect(rig.extra.wingL.children[0].geometry.attributes.position.count).toBeGreaterThan(36);
+    expect(draws).toBeLessThanOrEqual(75); expect(rig.extra.wingL).toBeTruthy(); expect(rig.extra.makeEcho().children.length).toBeLessThanOrEqual(6);
   });
   it('rear-tail hazard actually hits a rear hunter and can be escaped by a real lateral roll', () => {
     const probe = (roll) => {

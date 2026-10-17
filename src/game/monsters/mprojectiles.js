@@ -47,7 +47,7 @@ export function kokosDef({ from, to, dur = 1.1, arc = 6, splash = 1.4, dmg = 16,
 
 const geoBox = new THREE.BoxGeometry(1, 1, 1);
 const mats = {};
-const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : kind === 'magma' ? '#ff5a12' : kind === 'rock' ? '#6d665d' : '#5a3e22' }));
+const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : kind === 'volt' ? '#8de4df' : kind === 'magma' ? '#ff5a12' : kind === 'rock' ? '#6d665d' : '#5a3e22' }));
 
 export class ProjectileSet {
   constructor(ctx, owner) {
@@ -58,7 +58,7 @@ export class ProjectileSet {
   spawn(def, age = 0) {
     const pr = { def, age, hit: new Set(), mesh: null, prev: projPos(def, age) };
     if (this.ctx.scene) {
-      const s = def.kind === 'magma' || def.kind === 'rock' ? 1.1 : def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' ? 0.95 : 0.45;
+      const s = def.kind === 'magma' || def.kind === 'rock' ? 1.1 : def.kind === 'volt' ? 0.55 : def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' ? 0.95 : 0.45;
       pr.mesh = new THREE.Mesh(geoBox, matFor(def.kind));
       pr.mesh.scale.setScalar(s);
       this.ctx.scene.add(pr.mesh);
@@ -78,12 +78,14 @@ export class ProjectileSet {
         pr.mesh.position.set(pos.x, pos.y, pos.z);
         pr.mesh.rotation.set(pr.age * 7, pr.age * 5, 0);
         if (def.kind === 'fire') pr.mesh.scale.setScalar(0.65 + Math.sin(pr.age * 40) * 0.08);
+        if (def.kind === 'volt') pr.mesh.scale.set(0.35 + Math.sin(pr.age * 55) * 0.08, 0.35, 1.5);
         if (def.kind === 'kokos' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, '#c8902c', 0.8);
         if (def.kind === 'slime' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#39ff14' : '#d8ffd0', 0.8);
       }
       if ((def.kind === 'fire' || def.kind === 'magma') && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#ff8a20' : '#ffd060', 1.2);
+      if (def.kind === 'volt' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#8de4df' : '#ffffff', 1.2);
       if (def.mode === 'impact') {
-        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'magma' || def.kind === 'rock' ? '#ff2a2a' : '#b06a20';
+        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'magma' || def.kind === 'rock' || def.kind === 'volt' ? '#ff2a2a' : '#b06a20';
         const mr = def.kind === 'kokos' ? def.splash + 0.4 : def.splash; // Kokos: Marker = echte Reichweite (Splash + Pirscher-Radius 0,4)
         if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, false);
         else if (!pr.landed) {
@@ -113,7 +115,9 @@ export class ProjectileSet {
       if (res === 'hit' || res === 'block') {
         pr.hit.add(p.id);
         if (def.kind === 'fire') { ctx.fx?.spark?.(pos, 14, '#ff8a20', 5); pr.age = Math.max(pr.age, def.dur); }
+        if (def.kind === 'volt') { ctx.fx?.spark?.(pos, 14, '#8de4df', 5); pr.age = Math.max(pr.age, def.dur); }
         ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
+        if (res === 'hit') this.owner.def?.onProjectileHit?.(this.owner, p, def, res); // Voltiris: Bolzentreffer laden auf
       }
     }
   }

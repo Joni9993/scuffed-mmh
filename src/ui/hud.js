@@ -156,10 +156,11 @@ export function createHud(root) {
         refs.wstat.classList.toggle('sauber', !!stat.sauber);
       });
       // [M] player status icons (Schlamm / Brennen / Gift), tiny
-      const stKeys = Object.keys(p.status || {}).concat(p.glitchT > 0 ? ['konter'] : []).join(','); // [B] Glitch-Konter bonus ready (1.5 s)
+      const vc = p.voltCharge; // Voltiris: Ladung 0-3 (Blitz-Pips), Countdown = Entladung
+      const stKeys = Object.keys(p.status || {}).concat(p.glitchT > 0 ? ['konter'] : [], vc?.n > 0 ? [vc.countdown > 0 ? 'voltx' : `volt${vc.n}`] : []).join(','); // [B] Glitch-Konter bonus ready (1.5 s)
       set('pstatus', stKeys, (x) => {
-        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', blend: 'Geblendet', verwirrt: 'VERKEHRT!', itemlock: 'Item-Sperre', schleim: 'SCHLEIM! ROLLEN!', konter: 'Konter x1,5' };
-        refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k}">${names[k] ?? k}</span>`).join('') : '';
+        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', blend: 'Geblendet', verwirrt: 'VERKEHRT!', itemlock: 'Item-Sperre', schleim: 'SCHLEIM! ROLLEN!', konter: 'Konter x1,5', volt1: '⚡◇◇', volt2: '⚡⚡◇', volt3: '⚡⚡⚡', voltx: 'ENTLADUNG! ROLLEN!' };
+        refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k.startsWith('volt') && k !== 'voltx' ? 'volt' : k}">${names[k] ?? k}</span>`).join('') : '';
       });
       if (hunt.training) { // Übungsplatz: kein Zeitlimit, keine KOs, dafür DPS + Combo
         set('timer', 'Übung', (x) => { refs.timer.textContent = x; refs.ko.style.display = 'none'; refs.train.style.display = ''; });
