@@ -227,3 +227,69 @@ small { opacity: .7; font-size: .88em; }
 @keyframes forgeGlow { 0%, 100% { box-shadow: 0 0 2px 0 rgba(255,216,74,.35), inset 0 0 0 1px #ffd84a; } 50% { box-shadow: 0 0 10px 3px rgba(255,216,74,.85), inset 0 0 0 1px #ffd84a; } }
 .glow { animation: forgeGlow 1.4s ease-in-out infinite; border-color: #ffd84a; }
 @media (prefers-reduced-motion: reduce) { .glow { animation: none; box-shadow: 0 0 8px 2px rgba(255,216,74,.8); } }
+
+/* ===== Auftragsbrett 2.0: Reiter + Liste links + Auftrag rechts, eigener/offene Posten oben ===== */
+.st-panel[data-station="auftragsbrett"] .st-body { display: flex; flex-direction: column; overflow: hidden; }
+.qtop { flex: none; margin-bottom: 6px; } .qtop .sub { margin: 0 0 4px; }
+.qpost { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 4px; background: rgba(60, 50, 140, .35); border: 1px solid #6a6ad0; }
+.qpost.mine { border: 2px solid #7dff7d; background: rgba(31, 122, 42, .25); }
+.qpost .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .qpost .btn { margin: 0; }
+.qhead { flex: none; display: flex; align-items: center; gap: 10px; } .qhead .tabs { margin: 0 0 6px; flex-wrap: nowrap; } .qhead .tab { padding: 2px 12px; }
+.qrank { flex: 1; min-width: 0; text-align: right; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 10px; }
+.qlist, .qdet { min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.qrow .nm { white-space: normal; line-height: 1.2; } .qrow .nm small { opacity: .65; }
+.qrow.key { box-shadow: inset 0 0 0 2px #ffd040; } .qrow.sel { box-shadow: inset 0 0 0 2px #fff; }
+.qk { font-style: normal; font-size: .75em; padding: 0 4px; background: #ffd040; color: #1a1030; }
+.qd { color: #7dff7d; opacity: 1 !important; }
+.qmore { justify-content: center; opacity: .75; background: transparent; }
+.qdet { display: flex; flex-direction: column; gap: 6px; background: rgba(60, 50, 140, .3); border: 1px solid #6a6ad0; padding: 6px 10px; }
+.qdet > * { flex: none; }
+.qdet .fi-h { font-size: calc(var(--f) * 1.1); white-space: normal; }
+.qchips { display: flex; flex-wrap: wrap; gap: 4px; } .chip.qkey { color: #1a1030; background: #ffd040; }
+.qdesc { line-height: 1.4; opacity: .9; }
+.qmut { text-align: left; font: inherit; color: inherit; padding: 6px 8px; background: rgba(16, 16, 64, .7); border: 1px solid #3a3a8a; border-left: 3px solid #ffd84a; }
+.qmut.tapline { cursor: pointer; min-height: 44px; } .qmut b { float: right; color: #ffd84a; }
+.qact { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; } .qact .btn { flex: 1; margin: 0; }
+.qlockmsg { margin-top: auto; padding: 8px; text-align: center; background: rgba(138, 42, 42, .35); border: 1px solid #8a2a2a; }
+.qdet .muts { grid-template-columns: repeat(2, 1fr); }
+@media (max-aspect-ratio: 1/1), (max-width: 520px) {
+  .st-panel[data-station="auftragsbrett"] .st-body { display: block; overflow-y: auto; }
+  .qb { display: flex; flex-direction: column-reverse; } .qrank { display: none; }
+}
+
+/* ===== Truhe 2.0: Ausrüstung = Slots links, Vorschau Mitte, Auswahl rechts ===== */
+.st-body.trfit { display: flex; flex-direction: column; overflow: hidden; }
+.st-body.trfit > .tabs { flex: none; }
+.fg.tr { flex: 1; min-height: 0; height: auto; grid-template-columns: minmax(0, 1fr) minmax(0, .75fr) minmax(0, 1.15fr); }
+.fg.tr .fg-l, .fg.tr .fg-r { padding-top: 0; }
+.tslot { flex-wrap: nowrap; } .tslot .ts-k { width: 4.6em; flex: none; font-size: .85em; color: #ffd84a; } .tslot .nm { white-space: normal; line-height: 1.2; }
+.tslot .ts-a { opacity: .6; font-size: 1.3em; } .tslot.sel .ts-a { opacity: 1; color: #ffd84a; }
+.tsum { margin-top: 6px; padding: 6px 8px; background: rgba(16, 16, 64, .7); border-left: 3px solid #7dff7d; }
+.tsum .stats { margin: 4px 0 0; }
+.tr-h { margin: 0 0 4px; flex: none; }
+.tgrp { margin: 6px 0 2px; font-size: max(10px, 1.9vmin); color: #ffd84a; opacity: .8; } .tgrp:first-child { margin-top: 0; }
+.tch { flex-wrap: nowrap; margin-bottom: 3px; } .tch .nm { white-space: normal; line-height: 1.2; } .tch > small { white-space: nowrap; }
+.tr-on { color: #7dff7d; opacity: 1; }
+.tch2 { margin-bottom: 6px; } .tch2 .tch { margin-bottom: 0; } .tch-sk { padding: 2px 8px 4px; background: rgba(16, 16, 64, .5); }
+.cell.inbar { box-shadow: inset 0 0 0 2px #7dff7d; } .cell.inbar.sel { box-shadow: inset 0 0 0 2px #ffd84a; }
+.cell b { font-size: max(10px, 1.9vmin); white-space: nowrap; }
+.slot.sel { box-shadow: inset 0 0 0 2px #ffd84a; }
+.tbar-ctl .num { font-size: 1.2em; }
+@media (max-aspect-ratio: 1/1), (max-width: 520px) {
+  .st-body.trfit { display: block; overflow-y: auto; } .fg.tr { display: block; }
+}
+
+/* ===== Schmiede 2.0: Waffenart als eine Zeile, Baum kompakt (eine Zeile pro Stufe, Äste nebeneinander) ===== */
+.wpager { display: flex; gap: 4px; margin-bottom: 6px; flex: none; } .wpager .sm { flex: none; min-width: 44px; }
+.wpager .wpick { flex: 1; min-width: 0; padding: 2px 6px; display: flex; overflow: hidden; white-space: nowrap; }
+.wpager .wpick b { overflow: hidden; text-overflow: ellipsis; }
+.fg-scroll .chips.wtypes { grid-template-columns: 1fr 1fr; }
+.tree { gap: 4px; }
+.trow { display: flex; align-items: stretch; gap: 4px; }
+.tlv { flex: none; width: 1.6em; display: grid; place-items: center; font-size: max(10px, 1.9vmin); color: #ffd84a; opacity: .7; background: rgba(16, 16, 64, .6); }
+.tcells { flex: 1; min-width: 0; display: grid; gap: 4px; } .tcells.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tcells.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tcells .tn { min-width: 0; }
+.tcells .tn { width: 100%; padding: 2px 6px; gap: 4px; } .tcells .tn .nm { white-space: normal; line-height: 1.15; font-size: max(10px, 2vmin); overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
+.tcells.c3 .tn .nm { font-size: max(9px, 1.8vmin); } .tcells .tn .mk { width: .9em; }
+.tcells .tn .nm small { opacity: .6; }
+@media (max-width: 760px) { .tcells.c3 { grid-template-columns: minmax(0, 1fr); } .tcells.c3 .tn .nm { font-size: max(10px, 2vmin); } }
