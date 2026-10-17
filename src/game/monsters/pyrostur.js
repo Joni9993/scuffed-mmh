@@ -153,6 +153,7 @@ export const pyrostur = {
   cueParts: ['chest', 'valve'], cueIntensity: .35,
   walk: 4.4, run: 8.2, turn: 1.5, detect: 34, prefer: 3.5,
   drops: ['pyrostur_schuppe', 'pyrostur_kesselsack', 'pyrostur_fluegel', 'pyrostur_rubin'],
+  poseDefaults: REST, locomotionPose: posePyrosturPresence,
   build: buildPyrostur, stamina: true, flinchDmg: 1800, chainMax: 2, teachAttack: uppercut.id,
   recoverAfter: () => .6,
   parts: [
@@ -203,7 +204,6 @@ export const pyrostur = {
   poseHook(m, p) {
     for (const key of Object.keys(REST)) if (!Number.isFinite(p[key])) p[key] = REST[key];
     if (!m.attack) {
-      for (const key of ['foreKneeL', 'foreKneeR', 'foreAnkleL', 'foreAnkleR', 'kneeL', 'kneeR', 'ankleL', 'ankleR']) p[key] = 0;
       if (m.state === 'dead' || m.sleeping || m.stunT > 0 || m.trapped || m.blind) return;
       if (m.state === 'notice' || m.state === 'enrage') {
         const rise = Math.sin(Math.min(1, m.stateT / 1.4) * Math.PI);
@@ -212,7 +212,6 @@ export const pyrostur = {
         return;
       }
       if (m.stagT > 0 || m.tired) { p.bodyY = -.5; p.head = 10; p.neck = 0; p.foreL = p.foreR = -5; p.wing = 8; return; }
-      posePyrosturPresence(m, p);
     }
   },
   onDamage(m, res) {

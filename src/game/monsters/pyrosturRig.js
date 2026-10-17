@@ -16,14 +16,23 @@ export function buildPyrostur() {
   function joint(id, parent, x, y, z) { const n = new THREE.Group(); n.position.set(x, y, z); parent.add(n); nodes[id] = n; return n; }
   function geo(part, parent, color, g, pos = [0, 0, 0], stretch = [1, 1, 1], rot = [0, 0, 0], glow = false) {
     glow ||= color === C.hot || color === C.core;
-    const key = `${parent.uuid}/${part}/${color}/${glow}`, mk = `${part}/${color}/${glow}`;
+    // Solid colours live in vertices: several armour shades share one draw per
+    // joint. Only independently animated heat materials retain separate colours.
+    const surface = [C.hide,C.muscle].includes(color) ? 'scale' : [C.membrane,C.panel].includes(color) ? 'leather' : 'plain';
+    const mk = glow ? `${part}/${color}/true` : `${part}/${surface}`;
+    const key = `${parent.uuid}/${mk}`;
     if (!materials.has(mk)) {
-      const mat = glow ? basic({ color, side: THREE.DoubleSide }) : lambert({ color, flatShading: true, side: THREE.DoubleSide });
-      if(!glow && [C.hide,C.muscle,C.membrane,C.panel].includes(color)) dragonSurface(mat,color===C.membrane||color===C.panel);
+      const mat = glow ? basic({ color, side: THREE.DoubleSide }) : lambert({ color: '#ffffff', vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+      if(!glow && surface!=='plain') dragonSurface(mat,surface==='leather');
       mat.userData.ps1.uSnapDetail.value = 2; materials.set(mk, mat);
     }
     const g2 = g.index ? g.toNonIndexed() : g;
     g2.deleteAttribute('uv');
+    if (!glow) {
+      const tint = new THREE.Color(color), colors = new Float32Array(g2.attributes.position.count * 3);
+      for (let i=0;i<colors.length;i+=3) { colors[i]=tint.r; colors[i+1]=tint.g; colors[i+2]=tint.b; }
+      g2.setAttribute('color',new THREE.BufferAttribute(colors,3));
+    }
     g2.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...stretch)));
     if (g2 !== g) g.dispose();
     if (!batches.has(key)) batches.set(key, { parent, part, mat: materials.get(mk), list: [] });
@@ -151,7 +160,10 @@ export function buildPyrostur() {
     const innerGeometry=new THREE.BufferGeometry();
     innerGeometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(81),3).setUsage(THREE.DynamicDrawUsage));
     innerGeometry.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(81),3).setUsage(THREE.DynamicDrawUsage));
-    const innerMesh=new THREE.Mesh(innerGeometry,materials.get(`${id}/${C.membrane}/false`));
+    const innerTint=new THREE.Color(C.membrane),innerColors=new Float32Array(27*3);
+    for(let i=0;i<innerColors.length;i+=3){innerColors[i]=innerTint.r;innerColors[i+1]=innerTint.g;innerColors[i+2]=innerTint.b;}
+    innerGeometry.setAttribute('color',new THREE.BufferAttribute(innerColors,3));
+    const innerMesh=new THREE.Mesh(innerGeometry,materials.get(`${id}/leather`));
     innerMesh.frustumCulled=false; body.add(innerMesh); partMeshes[id].push(innerMesh);
     innerSails.push({s,w,elbow,wrist,geometry:innerGeometry,tip:tips.at(-1),points:Array.from({length:5},()=>new THREE.Vector3()),center:new THREE.Vector3(),matrix:new THREE.Matrix4()});
     // Distinct four weightbearing legs. Wings never touch the floor at rest.

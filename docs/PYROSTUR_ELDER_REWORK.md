@@ -13,7 +13,7 @@ Der absichtlich kantige PS1-/Glitch-Look bleibt, die Animation muss trotzdem pr�
 
 - Crimson-/Obsidian-Panzer, schwere Schulterpartie, zurückgezogene dunkle Kronenhörner,
   S-Hals, glühende Brustfissuren, vier separate Lastbeine und zwei große Flugorgane.
-  Rund 83 Modell-Meshes und 7.300 Dreiecke; Geometrie pro Gelenk/Material gebündelt.
+  Rund 68 Modell-Meshes und 7.300 Dreiecke; Farben als Vertexdaten, Geometrie pro Gelenk/Oberfläche gebündelt.
   Rund 21 m Spannweite. Innere Flügelsegel reichen bis zum beweglichen Torsoanschluss.
 - Zusätzliche Schulter-, Ellbogen-, Handgelenk-, Nacken- und Schweifkanäle.
   Vorderklauen und gegliederte Hinterläufe erhalten eine begrenzte Korrektur gegen Bodenpenetration, unabhängig von

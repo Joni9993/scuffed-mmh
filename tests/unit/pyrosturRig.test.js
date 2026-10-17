@@ -33,7 +33,7 @@ describe('Pyrostur elder silhouette and articulation', () => {
     }
     let meshes = 0, triangles = 0;
     r.root.traverse(o => { if (o.isMesh) { meshes++; triangles += o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3; } });
-    expect(meshes).toBeLessThanOrEqual(110); expect(triangles).toBeLessThanOrEqual(15000);
+    expect(meshes).toBeLessThanOrEqual(75); expect(triangles).toBeLessThanOrEqual(15000);
     expect(r.extra.coreMat.isMeshBasicMaterial).toBe(true);
     expect(Object.values(r.partMeshes).every(list => list.length > 0)).toBe(true);
   });

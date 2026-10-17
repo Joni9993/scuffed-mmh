@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildPyrostur } from '../../src/game/monsters/pyrosturRig.js';
 import { posePyrosturPresence } from '../../src/game/monsters/pyrosturMotion.js';
+import { pyrostur } from '../../src/game/monsters/pyrostur.js';
+import { make, DT } from './p3helpers.js';
 const feet = ['ankleForeL', 'ankleForeR', 'ankleL', 'ankleR'];
 const snapshot = (rig, id) => { rig.root.updateMatrixWorld(true); return new THREE.Box3().setFromObject(rig.nodes[id], true).min.y; };
 function pose(rig, speed, phase, time = 0) {
@@ -37,5 +39,33 @@ describe('Pyrostur grounded quadruped presence', () => {
     expect(rig.nodes.wingL.quaternion.angleTo(wing)).toBeLessThan(.00001);
     expect(rig.nodes.forelegL.quaternion.angleTo(fore)).toBeGreaterThan(.2);
   });
+  it('preserves the production feeding pose instead of replacing it with neutral presence', () => {
+    const { m } = make(pyrostur, 'fressen');
+    m.time = .2; m._visuals(DT);
+    expect(m._tgt.neck).toBeGreaterThan(.4);
+    expect(m._tgt.head).toBeGreaterThan(25);
+    expect(m._tgt.bodyPitch).toBeGreaterThan(5);
+    expect(m.nodes.head.rotation.x).toBeGreaterThan(0);
+    m.state = 'combat'; m._visuals(DT);
+    expect(m._tgt.neck).toBeLessThan(.1);
+    expect(m._tgt.head).toBeLessThan(5);
+  });
+  it('layers poison, scald, stink and rust reactions over the actual quadruped gait', () => {
+    const sample = status => {
+      const { m } = make(pyrostur); m.time = .2; m.gait = .37; m.vel.set(0, 0, 3);
+      if (status) m.st[status] = 5;
+      m._visuals(DT); return m._tgt;
+    };
+    const base = sample();
+    for (const [status, channels] of [
+      ['poisonT', ['neck', 'head', 'jaw']],
+      ['scaldT', ['bodyRoll', 'bodyY', 'tailYaw']],
+      ['stink', ['headYaw', 'head', 'neck']],
+      ['rustT', ['neck', 'tailYaw']],
+    ]) {
+      const affected = sample(status);
+      for (const key of channels) expect(Math.abs(affected[key] - base[key]), `${status}/${key}`).toBeGreaterThan(.001);
+      expect(Math.abs(affected.foreL) + Math.abs(affected.hindL), status + ' still walks on four legs').toBeGreaterThan(1);
+    }
+  });
 });
-
