@@ -11,9 +11,11 @@ body{margin:16px;background:#171c30;color:#e3e8f2;font:14px monospace}h1{font-si
 <label>Boss <select id="boss"><option value="pyrostur">Pyrostur</option><option value="felsengroll">Felsengroll</option><option value="voltiris">Voltiris</option><option value="gockelok">Gockelok</option></select></label>
 <label>Waffe <select id="weapon"><option value="gs">Großschwert</option><option value="db">Doppelklingen</option><option value="bow">Bogen</option><option value="kt">Katana</option><option value="ga">Glitchaxt</option><option value="kk">Krachkiste</option><option value="lb">Armbrust</option></select></label>
 <label>Display <select id="size"><option>844×390</option><option>740×360</option><option>568×320</option></select></label>
+<label>Angriff <select id="move"></select></label>
 </nav>
 <nav id="actions">
 <button data-action="model">Modell</button><button data-action="profile">Profil</button><button data-action="melee">Nahkampf</button><button data-action="signature">Signatur</button><button data-action="phase">Phase 2</button><button data-action="final">Finalphase</button><button data-action="break">Teilbruch</button><button data-action="flight">Flug</button><button data-action="land">Landung</button><button data-action="step">+ 0,5 s</button><button data-action="attack">Waffenangriff</button><button data-action="roll">Ausweichen</button><button data-action="play">Live / Pause</button><button data-action="reset">Neue Jagd</button>
+<button data-action="move">Angriff ansehen</button><button data-action="fine">+ 0,1 s</button><button data-action="lock">Kamera-Lock</button><button data-action="duel">Jagd mit Endgame-Ausrüstung</button>
 </nav>
 <iframe title="Glitchgrat Kampfprüfung" width="844" height="390"></iframe>
 <output aria-live="polite">Spiel lädt …</output>
@@ -24,11 +26,11 @@ let live=false,ready=false,flight=null,last='Lädt',errors=[];
 function state(){const sh=frame.contentWindow.__SH;if(!sh?.hunt)throw Error('Die Jagd lädt noch.');return {sh,h:sh.hunt,m:sh.hunt.mainMonster,p:sh.hunt.player};}
 function report(label){try{const {sh,h,m,p}=state(),info=sh.app.renderer.renderer.info;out.textContent=`${label} · ${frame.width}×${frame.height}\n${m.def.name} · HP ${Math.ceil(m.hp)}/${m.maxHp} · Zustand ${m.state} · Phase ${m.phase} · Höhe ${m.air.toFixed(2)} m\nAngriff ${m.attack?.id??'keiner'} · Zeit ${(m.attack?.t??0).toFixed(2)} s · Waffe ${p.weaponId} · Puste ${p.v.stamina.toFixed(0)}\nPosition Boss ${m.pos.toArray().map(n=>n.toFixed(1))} · Spieler ${p.pos.toArray().map(n=>n.toFixed(1))} · Modell ${m.mesh.position.toArray().map(n=>n.toFixed(1))}\nTeilbrüche: ${Object.values(m.partById).filter(v=>v.broken).map(v=>v.label??v.id).join(', ')||'keine'}\n${info.render.calls} Draw Calls · ${info.render.triangles} Dreiecke · WebGL Fehler: ${errors.length?errors.join(' | '):'keine gemeldet'}`;}catch(e){out.textContent=String(e.stack??e);}}
 function settle(n=1){const {sh,h}=state();sh.step(n);h.hud.update(h,2);report(last);}
-function poseScene(){const {sh,h,m,p}=state();sh.pause(true);live=false;sh.input.reset();m._interrupt();m.chainNext=null;m.queued=null;m.stagT=m.stunT=m.phaseT=0;m.recover=999;m.setState('combat');m.air=0;m.rot=Math.PI;p.spawnAt(m.pos.x,m.pos.z-14,0);p.god=true;p.setWeapon(weapon.value,7);m.target=p;h.rig.snap(p.pos,0);h.rig.pitch=.32;settle(12);}
+function poseScene(){const {sh,h,m,p}=state();sh.pause(true);live=false;sh.input.reset();m._interrupt();m.chainNext=null;m.queued=null;m.stagT=m.stunT=m.phaseT=0;m.recover=999;m.setState('combat');m.air=0;m.rot=Math.PI;p.lock=null;p.spawnAt(m.pos.x,m.pos.z-14,0);p.god=true;p.setWeapon(weapon.value,7);m.target=p;h.rig.snap(p.pos,0);h.rig.pitch=.32;settle(12);}
 function begin(id){const {m}=state();m._interrupt();m.chainNext=null;m.queued=null;m.stagT=m.stunT=m.phaseT=0;m.recover=999;const a=m.def.attacks[id];if(!a)throw Error(`Angriff fehlt: ${id}`);m.beginAttack(id,{seed:1337,tgMul:1,tempoMul:1,rage:false});settle(Math.max(1,Math.floor(m.attack.inst.tgWall*.75*60)));}
 function reload(){ready=false;flight=null;errors=[];frame.src=`../?scene=hunt&quest=${boss.value}&weapon=${weapon.value}&god=1&res=640&seed=7&nofauna=1&noambient=1`;out.textContent='Spiel lädt …';}
-frame.addEventListener('load',()=>{const w=frame.contentWindow;w.addEventListener('error',e=>{errors.push(e.message);report('Laufzeitfehler');});w.addEventListener('unhandledrejection',e=>{errors.push(String(e.reason));report('Promise-Fehler');});});
-const timer=setInterval(()=>{try{if(!ready&&frame.contentWindow.__SH?.hunt?.mainMonster){ready=true;frame.contentDocument.querySelector('.ob .go')?.click();poseScene();last='Modell bereit';report(last);}else if(live)report('Live');}catch(e){out.textContent=String(e.stack??e);}},200);
+frame.addEventListener('load',()=>{ready=false;const w=frame.contentWindow;w.addEventListener('error',e=>{errors.push(e.message);report('Laufzeitfehler');});w.addEventListener('unhandledrejection',e=>{errors.push(String(e.reason));report('Promise-Fehler');});});
+const timer=setInterval(()=>{try{if(!ready&&frame.contentWindow.__SH?.hunt?.mainMonster){ready=true;frame.contentDocument.querySelector('.ob .go')?.click();poseScene();const options=Object.values(state().m.def.attacks).filter(a=>!a.internal);document.querySelector('#move').replaceChildren(...options.map(a=>{const el=document.createElement('option');el.value=a.id;el.textContent=a.id.replace(boss.value+'_','');return el;}));last='Modell bereit';report(last);}else if(live)report('Live');}catch(e){out.textContent=String(e.stack??e);}},200);
 document.querySelector('#actions').addEventListener('click',e=>{const action=e.target.dataset.action;if(!action)return;try{if(action==='reset'){reload();return;}const {sh,h,m,p}=state();last=e.target.textContent;if(action==='play'){live=!live;sh.pause(!live);report(last);return;}sh.pause(true);live=false;sh.input.reset();
 if(action==='model'){poseScene();}
 if(action==='profile'){poseScene();m.rot=Math.PI/3;m.recover=999;p.spawnAt(m.pos.x,m.pos.z-11,0);h.rig.snap(p.pos,0);settle(1);}
@@ -39,6 +41,10 @@ if(action==='break'){poseScene();const parts=Object.values(m.partById).filter(v=
 if(action==='flight'){poseScene();if(!m.def.attacks.apex_migration){last='Gockelok bleibt für das Finale am Weltenkamm.';settle(1);return;}const current=h.world.zoneAt(m.pos.x,m.pos.z),zones=m.def.apexZones,next=zones[(Math.max(0,zones.indexOf(current))+1)%zones.length],dest=h.world.layout.nests[next];flight={...dest};m.setState('fly');m.beginAttack('apex_migration',{targetPos:{x:dest.x,y:h.world.heightAt(dest.x,dest.z),z:dest.z},seed:1337,tgMul:1,tempoMul:1,rage:false});sh.step(210);p.spawnAt(dest.x,dest.z-18,0);h.rig.snap(p.pos,0);settle(1);}
 if(action==='land'){if(!flight){last='Zuerst Flug starten.';}else{const a=m.attack;if(a?.id==='apex_migration')sh.step(Math.max(1,Math.ceil((a.inst.wall(6.85)-a.t)*60)));settle(1);}}
 if(action==='step')settle(30);
+if(action==='fine')settle(6);
+if(action==='move'){poseScene();p.spawnAt(m.pos.x,m.pos.z-8,0);h.rig.snap(p.pos,0);p.lock={monster:m,idx:0};begin(document.querySelector('#move').value);}
+if(action==='lock'){p.lock=p.lock?null:{monster:m,idx:0};settle(60);}
+if(action==='duel'){poseScene();p.protect=150;p.v.hp=p.v.maxHp=190;p.god=false;p.lock={monster:m,idx:0};m.recover=.5;m.phaseT=0;m.apexClock=-999;p.spawnAt(m.pos.x,m.pos.z-8,0);h.rig.snap(p.pos,0);live=true;sh.pause(false);report(last);return;}
 if(action==='attack'){sh.press('A',150);settle(45);}
 if(action==='roll'){sh.stick(-1,0);sh.press('roll',50);settle(25);sh.input.reset();}
 report(last);

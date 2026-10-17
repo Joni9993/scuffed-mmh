@@ -110,6 +110,26 @@ const KK_ZONE = {
 };
 
 const SOUNDS = {
+  // Furnace elder: coarse breath, rising pressure and heavy claw scrapes are distinct tells.
+  pyroFlame: () => {
+    noise({ dur: .65, vol: .34, f0: 3100, f1: 650, type: 'bandpass', q: .6 });
+    tone({ f0: 92, f1: 38, dur: .7, type: 'sawtooth', vol: .22, lp: 420 });
+    noise({ dur: .18, vol: .14, f0: 7200, f1: 2500, type: 'highpass', delay: .08 });
+  },
+  pyroPressure: () => {
+    noise({ dur: .95, vol: .22, f0: 700, f1: 5200, type: 'bandpass', q: 1.1 });
+    tone({ f0: 66, f1: 180, dur: .95, type: 'sawtooth', vol: .23, lp: 480 });
+    tone({ f0: 440, f1: 960, dur: .8, type: 'triangle', vol: .08, delay: .1 });
+  },
+  pyroClaw: () => {
+    noise({ dur: .23, vol: .32, f0: 4200, f1: 380, type: 'bandpass', q: .7 });
+    tone({ f0: 135, f1: 36, dur: .27, vol: .3 });
+  },
+  pyroRoar: () => {
+    tone({ f0: 58, f1: 116, dur: .4, type: 'sawtooth', vol: .36, lp: 480, vib: 20 });
+    tone({ f0: 116, f1: 34, dur: .9, type: 'sawtooth', vol: .34, lp: 550, delay: .35, vib: 28 });
+    noise({ dur: 1.2, vol: .25, f0: 1800, f1: 180, type: 'bandpass', q: .6 });
+  },
   windup: (o) => { const d = Math.max(0.15, Math.min(3, o?.dur ?? 0.5)); (WINDUP[o?.timbre] ?? WINDUP.brumm)(o?.f ?? 180, d, o?.teach ? 1.5 : 1); if (o?.teach) noise({ dur: 0.12, vol: 0.15, f0: 3000, f1: 800, type: 'bandpass' }); },
   tired: () => { noise({ dur: 0.3, vol: 0.2, f0: 1500, f1: 400, type: 'bandpass' }); noise({ dur: 0.3, vol: 0.2, f0: 1400, f1: 350, type: 'bandpass', delay: 0.4 }); tone({ f0: 160, f1: 90, dur: 0.5, vol: 0.2, lp: 500, delay: 0.1 }); },
   eye: () => { tone({ f0: 330, f1: 330, dur: 0.12, type: 'triangle', vol: 0.18 }); tone({ f0: 495, f1: 520, dur: 0.22, type: 'triangle', vol: 0.18, delay: 0.1 }); },
@@ -259,8 +279,8 @@ const SOUNDS = {
   },
 };
 
-const DUR = { kkDing: 0.6, kkBumm: 0.35, kkTschak: 0.2, kkBeat: 1.2, kkRemix: 1.1, tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, blendFlash: 1.1, whiteStatic: 0.3, burp: 0.8, stinkHiss: 1, confuse: 0.4, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
-const PRIO = { kkDing: 3, kkBumm: 3, kkTschak: 3, kkBeat: 3, kkRemix: 3, windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, blendFlash: 4, whiteStatic: 4, burp: 3, confuse: 3, drum: 2, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
+const DUR = { pyroFlame: .85, pyroPressure: 1.15, pyroClaw: .35, pyroRoar: 1.4, kkDing: 0.6, kkBumm: 0.35, kkTschak: 0.2, kkBeat: 1.2, kkRemix: 1.1, tired: 1, phase: 1, roar: 1.8, questComplete: 1.6, questFail: 1.9, glitch: 0.5, glitchOn: 0.8, glitchOff: 0.4, blendFlash: 1.1, whiteStatic: 0.3, burp: 0.8, stinkHiss: 1, confuse: 0.4, ko: 1.2, gather: 0.5, heavy: 0.5, break: 0.5, step_mud: 0.2, itemUse: 0.5, sizzle: 0.4 };
+const PRIO = { pyroFlame: 3, pyroPressure: 3, pyroClaw: 2, pyroRoar: 3, kkDing: 3, kkBumm: 3, kkTschak: 3, kkBeat: 3, kkRemix: 3, windup: 3, phase: 3, tired: 2, eye: 2, roar: 3, questComplete: 4, questFail: 4, ko: 3, hurt: 3, glitch: 3, glitchOn: 4, glitchOff: 3, blendFlash: 4, whiteStatic: 4, burp: 3, confuse: 3, drum: 2, gather: 2, heavy: 2, break: 2, hit: 2, hitCrit: 2, hitWeak: 2 };
 const MIN_GAP = { windup: 0.05, step_grass: 0.06, step_rock: 0.06, step_mud: 0.06, step_lava: 0.06, hit: 0.03, gatherTick: 0.1 };
 
 // ------------------------------------------------------------------ ambient (per zone)
@@ -308,7 +328,7 @@ function takeVoice(prio) {
   return best;
 }
 
-const BIG = new Set(['roar', 'phase', 'ko', 'questComplete', 'questFail', 'glitchOn']);
+const BIG = new Set(['roar', 'pyroRoar', 'phase', 'ko', 'questComplete', 'questFail', 'glitchOn']);
 let primed = false;
 export const sfx = {
   /** Audio-Knoten für die Musik (ctx + master) oder null vor dem ersten Gesture */

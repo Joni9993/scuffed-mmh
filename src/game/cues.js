@@ -101,9 +101,10 @@ export function attach(hunt) {
         g.t -= dt;
         if (g.t <= 0) { glows.delete(m); continue; }
         const pulse = g.teach ? 0.55 + 0.45 * Math.sin(now * 18) : 0.5 + 0.2 * Math.sin(now * 12);
-        const k = pulse * Math.min(1, g.t / 0.15 + 0.3);
+        const k = pulse * Math.min(1, g.t / 0.15 + 0.3) * (m.def?.cueIntensity ?? 1);
         for (const part of m.parts ?? []) {
           if (part.gone) continue;
+          if (m.def?.cueParts && !m.def.cueParts.includes(part.id)) continue;
           for (const mat of part.mats) if (mat.emissive) mat.emissive.setRGB(Math.max(mat.emissive.r, g.rgb[0] * k), Math.max(mat.emissive.g, g.rgb[1] * k), Math.max(mat.emissive.b, g.rgb[2] * k));
         }
       }
