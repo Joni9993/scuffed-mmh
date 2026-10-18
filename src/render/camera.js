@@ -32,6 +32,7 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
     sens: 0.0042,
     shake: new THREE.Vector3(),
     frameK: 0, frameAmt: 0, frameT: 0, // Auto-Framing: extra Distanz (Anteil), Ziel, Restzeit
+    cine: null, _cineOn: false, _cineLook: new THREE.Vector3(),
     clearDist: 99, // how far the camera may sit from the focus without poking into terrain / walls (smoothed)
     setDistance(k) { this.distMul = k == null ? null : DIST_MUL[k] ?? 1; },
     get distK() { return this.distMul ?? DIST_MUL[settings.camDist] ?? 1; },
@@ -42,6 +43,16 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
      */
     update(dt, p) {
       const { camInput } = p;
+      if (this.cine) { // scripted shot (boss reveal): {pos, look, snap?}; the follow camera resumes when cleared
+        const c = this.cine, k = c.snap || !this._cineOn ? 1 : 1 - Math.exp(-3.5 * dt);
+        if (k === 1) this._cineLook.set(c.look.x, c.look.y, c.look.z);
+        camera.position.x += (c.pos.x - camera.position.x) * k; camera.position.y += (c.pos.y - camera.position.y) * k; camera.position.z += (c.pos.z - camera.position.z) * k;
+        this._cineLook.x += (c.look.x - this._cineLook.x) * k; this._cineLook.y += (c.look.y - this._cineLook.y) * k; this._cineLook.z += (c.look.z - this._cineLook.z) * k;
+        camera.lookAt(this._cineLook); this._cineOn = true; c.snap = false;
+        this.focus.set(p.playerPos.x, p.playerPos.y + 1.6, p.playerPos.z); this.lockActive = false;
+        return;
+      }
+      this._cineOn = false;
       const hasInput = Math.abs(camInput.dx) + Math.abs(camInput.dy) > 0.0001;
       if (p.lockPos) {
         const c = p.lockCenter ?? p.lockPos;

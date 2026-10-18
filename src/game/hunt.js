@@ -254,8 +254,8 @@ export class Hunt {
     player.respawn(c.x, c.z);
     this.rig.snap(player.pos, player.rot);
     const eye = this.monsters.find(m => m.alive && m.gockelForm === 'eye');
-    if (eye) eye.def.returnPlayer?.(eye, player);
-    this.hud.center(eye ? 'Zurück im Auge des Glitch' : 'Zurück im Lager', 1.2);
+    // Gockelok eye phase: wake up at the still open portal on the rooster's spot (it shows its own hint)
+    if (!eye?.def.returnPlayer?.(eye, player)) this.hud.center('Zurück im Lager', 1.2);
   }
 
   playerHit(player, monster, hp, ah) {

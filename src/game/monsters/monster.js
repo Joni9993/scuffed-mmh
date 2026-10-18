@@ -609,7 +609,7 @@ export class Monster {
   _pickTarget() {
     const rv = this.ctx.revier?.rivalOf(this); // Revierstreit: erst gegen den anderen Brocken
     if (rv) { this.target = rv; return; }
-    const alive = this.ctx.players.filter((p) => p.alive);
+    const alive = this.ctx.players.filter((p) => p.alive && this.def.canTarget?.(this, p) !== false); // def.canTarget: Gockelok-Auge greift nur Pirscher in seiner Arena an
     if (!alive.length) { this.target = null; return; }
     if (this._b2) return this._pickTargetB2(alive);
     let best = null, bt = -1;

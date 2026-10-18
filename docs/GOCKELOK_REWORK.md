@@ -580,3 +580,23 @@ Weiterhin offene Abnahme: vollständige geübte Solojagden mit allen Waffen, mes
 8–12 Minuten Gesamtdauer, menschliches Urteil zu Härte/Bewegung/Spektakel und echte
 Android-Chrome-/iPhone-Safari-Geräte. Automatische Prüfungen ersetzen diese Abnahme nicht.
 Kein Merge nach `main` und kein Live-Deployment im Rahmen dieser Umsetzung.
+
+## Nachschärfung nach Spieler-Feedback (18. Oktober 2026)
+
+Feedback: weder Hahn noch Auge fordernd. Umgesetzt:
+
+| Wert | Drachen (Pyrostur / Felsengroll / Voltiris) | Hahn | Auge |
+|---|---|---|---|
+| LP | 22000 / 24000 / 23000 | 52000 gesamt, 36400 bis zur Enthüllung (30 %) | eigener Pool 42 % = 21840 |
+| Treffer Ø / Spitze | 152 / 134 / 121 · Spitze 175–190 | Ø ~150, Spitze 230 (Nahtsignatur 80 % Max-LP) | 175–260, Absturz 90 % Max-LP |
+| Nachlauf + recoverAfter | ~1 s + .2–.5 s | ~1 s + .3/.2/.12 s | ~.9 s + .1 s (Überlauf .05 s) |
+| Tempo / Ketten | bis 1.16 / chainMax 3–4 | 1.12/1.2/1.3 / chainMax 4, Ketten für fast jeden Angriff | 1.3 (Überlauf 1.45) / Ketten über alle Augen-Angriffe |
+
+Auge zusätzlich: neue Angriffe Speicherleck (dreifacher Blink-Einschlag), Nullsektor (200°-Löschstrahl),
+Überlauf (Arena-Gitter); arena-weite Störungen über allen Angriffen (rotierende Scanlinien 1–4, zielsuchende
+Splitter, schrumpfende Zone 27→15 m); Firewall bei 75/50/25 % des Augen-Pools, die nur eine zerrissene
+Realitätsnaht bricht; Speicherüberlauf nach 180 s (Tempo, Schaden x1.35, Zone 11 m).
+
+Enthüllung: echte Kamerasequenz (drei Einstellungen, Interagieren überspringt). K. o. im Auge: Erwachen am
+weiterhin offenen Portal an der Stelle des Hahns; Hineinlaufen oder Interagieren führt zurück. Die Arena liegt
+dafür 420 m östlich des Nests außerhalb der Karte, damit ihre Welt-Overrides die Oberwelt nicht berühren.

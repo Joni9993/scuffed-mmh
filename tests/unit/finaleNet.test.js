@@ -67,7 +67,8 @@ describe('Glitchgrat through the real HuntNet protocol handlers', () => {
       guest.net.sendHit(remote, { dmg: 100, elemDmg: 0, partId: 'body', blunt: 0 });
       expect(m.hp).toBeLessThan(hp);
       expect(host.net.stats.hitsApplied).toBe(1);
-      for (let i = 0; i < 20 && m.alive; i++) {
+      for (let i = 0; i < 40 && m.alive; i++) {
+        if (m.eyeShield) m.eyeShield = false; // Gockelok eye firewall: stands in for a torn reality seam
         guest.net.sendHit(remote, { dmg: 4000, elemDmg: 0, partId: 'body', blunt: 0 });
         if (m.gockelForm === 'reveal') {
           expect(remote.alive).toBe(true);step(20);expect(remote.gockelForm).toBe('reveal');
