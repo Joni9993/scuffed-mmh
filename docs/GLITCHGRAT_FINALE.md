@@ -28,10 +28,10 @@ Leistung auf echten Mobilgeräten sind noch nicht durch Spieltests belegt.
   verzweigter finaler Bodenbruch. Schulterbruch öffnet die Flanke; Keulenbruch entfernt Außenhits.
 - **Voltiris:** dreizehn Angriffe einschließlich Teilbruchvarianten, asymmetrische Prismaflügel,
   augenlose Drahtgitter-Nachbilder und vorbereitete Blitzbahnen. Antennen und Flügel verändern Serien.
-- **Gockelok:** elf Angriffe einschließlich Varianten, fünf Pickhiebe, Pusteschrei,
-  drei Eier mit je drei Splittern, Spornwirbel und dreiteiliger Sprint mit Stolperfenster.
-  Der Kopf sinkt beim Picken und Stolpern in Nahkampfreichweite. Der Wirbel verwendet hohen
-  Schaden; ein zusätzlicher Blutungsstatus wird nicht eingeführt.
+- **Gockelok (18. Oktober):** drei Hahnphasen, körperliche Jagdangriffe, Fehlkopie
+  und erreichbare Realitätsnähte; danach Enthüllung und wahre Form in eigener Augenarena.
+  Kamm-, Sporn- und Flügelbruch beeinflussen Angriffe. Kein Jagdsieg vor der zweiten Form.
+  Umsetzung und offene Abnahme: [Gockelok-Rework](GOCKELOK_REWORK.md).
 - **Flug:** frühestens nach 65 s Bodenkampf, 8,6 s Flugereignis, 25 m Flughöhe,
   3 s Zielkreis vor dem Einschlag, danach 1,8 s Erholung. Host überträgt Ziel, Seed und Tempo;
   die Höheninterpolation ist auch zwischen unterschiedlich hohen Plateaus deterministisch.
@@ -78,7 +78,7 @@ Leistung auf echten Mobilgeräten sind noch nicht durch Spieltests belegt.
 | **Pyrostur** | Breite Kesselflügel, schwerer Brustbalg, schiefes Überdruckventil; Brust und Flügel pumpen vor Dampfstößen | Druck am sichtbaren Brustzustand lesen, seitliche Ablässe umspielen, nach Feuerregen zum entlüfteten Brustteil wechseln | Ventilbruch verändert den Ablass; rechtzeitiger Brustbruch während Überdruck erzeugt eine lange, sichere Öffnung |
 | **Felsengroll** | Tief sitzender Schlackekörper, gestapelte Schulterplatten, übergroße Schweifkeule | Versetzte Bodenwellen und langsam scharf werdende Schlackefelder so lenken, dass Laufwege offen bleiben | Schulterbruch öffnet eine Flanke; Keulenbruch entfernt den äußeren Nachschlag und verändert seine Ketten |
 | **Voltiris** | Dünne Antennenkrone, asymmetrische Prismaflügel, abgesetzte Nachbilder | Echten Körper an Pose und Ton erkennen; angekündigte Blitzbahnen gemeinsam platzieren, dann aus dem Raster treten | Antennenbruch nimmt eine Blitzbahn, Flügelbruch verkürzt die Nachbildserie; kein Raten zwischen identischen Attrappen |
-| **Gockelok** | Lächerlich großer Hahn, schlabbriger Kamm, übertriebener Brustkorb, gelbe Stelzen; jede Attacke hat eine klare Kopf-/Fußpose | Picken seitlich verlassen, Hals-Aufblasen lesen, Eier gezielt aus dem Zentrum ziehen; nach der letzten Sprintwende angreifen | Spornbruch verkürzt den Wirbel, Kammbruch schwächt den Schrei; nach der Sprintserie stolpert der Hahn spektakulär |
+| **Gockelok** | Körperlicher Vogelräuber mit sichtbarer Korruption; wahre Form im Auge | Winkel und verzögerte Schläge lesen, Fehlkopien ablegen, Nähte angreifen | Teilbrüche schwächen Ruf/Landungen; Nahtkonter öffnet den Ursprung |
 
 ### Optik, Mobile und Koop als Abnahme
 
@@ -158,16 +158,27 @@ Beim Zonenwechsel läuft der Drache nicht:
 > *„Man erwartete das Ende der Welt. Man fand ein Huhn. Und dann starb man.“*
 
 ### 3.1 Konzept & Rig
-- **Look:** Übergroßer (3,5-fache Pirscher-Höhe), blockiger PS1-Kampfhahn. Roter Wackelkamm, staksige gelbe Beine mit langen Spornen, gefiederte Flügel mit Glitch-Fransen, irrer Blick.
-- **HP:** zunächst 28 000 (Solo), hoher Druck, klar verdiente Erholungspausen nach Ketten und Signaturen.
-- **Geschwindigkeit:** Höchstes Bewegungstempo im Spiel (`speedFactor 1.35`), blitzschnelle Richtungswechsel.
+Gefährlicher Ur-Hahn mit geschichtetem Gefieder, kräftigen Läufen, Greifkrallen,
+Spornen und niedrig erreichbaren Kopföffnungen. Die zweite Form legt den Ursprung
+frei und ergänzt abgetrennte Schwingen und zusätzliche gegliederte Gliedmaßen.
 
-### 3.2 Moveset
-1. **Maschinengewehr-Picken:** 5 blitzschnelle Pick-Hiebe vor sich in den Boden mit Mikro-Schockwellen.
-2. **Kikeriki des Untergangs:** Hebt den Kopf, Hals bläht sich auf – ohrenbetäubender Schrei (Bitcrush-Audio), 15 m Schockwelle, entzieht Puste und bricht Aktionen.
-3. **Flatter-Artillerie:** Hebt kurz ab, schlägt mit den Flügeln und feuert 3 Glitch-Eier in hohem Bogen. Eier explodieren beim Kontakt in 3 Splitter.
-4. **Sporn-Wirbeltritt:** 360°-Drehkick der Hinterläufe mit Blutung/hohem Schaden.
-5. **Kopfloser Sprint (Wut):** Rennt im Zickzack wie von Sinnen quer durch die Arena, trampelt alles nieder.
+### 3.2 Kampfstruktur
+Vorläufig 38.000 Gesamt-LP; bei 78 % und 50 % beginnen die späteren Hahnphasen.
+Bei 26 % beginnt eine geschützte Enthüllung. Interagieren überspringt sie; Annäherung
+an das Auge oder spätestens der Ablauf von 16 Sekunden führt die Gruppe hinein.
+Die verbleibenden LP gehören der wahren Form. Individuelles K. o. erhält diese Form
+nur in der laufenden Jagd. Erst ihr Tod liefert Sieg und Abschlussbelohnungen.
+
+Körperliche Familien: Pickfolge, Schnabelanker, Scharren, Spornstich, Flügelfeger,
+Flankenwechsel, Jagdlauf und Sprungsporne. Korruption ergänzt Ruf, versetzten Schnabel,
+Risssprung und Nahtsignatur. In der Augenarena folgen Frames, Rollback, Raumbruch,
+Fehlerkaskade und Absturz. Die Eier-Artillerie entfällt.
+
+Fehlkopie dauert acht Sekunden, legt höchstens zwei feste Abdrücke ab und trifft
+nur den Besitzer. Fremde Abdrücke sind blau dargestellt. Glitch-Konter/-Modus
+bereinigen den Status. Nähte sind separate Trefferzonen; 180 Schaden (Koop-skaliert)
+unterbrechen den Angriff und öffnen vier Sekunden, gefolgt von 13 Sekunden Konterpause.
+Die Zahlen und Jagddauer bleiben bis zur menschlichen Spielabnahme vorläufig.
 
 ---
 

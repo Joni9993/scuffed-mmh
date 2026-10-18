@@ -159,7 +159,7 @@ export function createHud(root) {
       const vc = p.voltCharge; // Voltiris: Ladung 0-3 (Blitz-Pips), Countdown = Entladung
       const stKeys = Object.keys(p.status || {}).concat(p.glitchT > 0 ? ['konter'] : [], vc?.n > 0 ? [vc.countdown > 0 ? 'voltx' : `volt${vc.n}`] : []).join(','); // [B] Glitch-Konter bonus ready (1.5 s)
       set('pstatus', stKeys, (x) => {
-        const names = { mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', blend: 'Geblendet', verwirrt: 'VERKEHRT!', itemlock: 'Item-Sperre', schleim: 'SCHLEIM! ROLLEN!', konter: 'Konter x1,5', volt1: '⚡◇◇', volt2: '⚡⚡◇', volt3: '⚡⚡⚡', voltx: 'ENTLADUNG! ROLLEN!' };
+        const names = { fehlkopie: 'FEHLKOPIE • Abdruck verlassen', mud: 'Schlamm', burn: 'Brennt', poison: 'Gift', rost: 'Rost', blend: 'Geblendet', verwirrt: 'VERKEHRT!', itemlock: 'Item-Sperre', schleim: 'SCHLEIM! ROLLEN!', konter: 'Konter x1,5', volt1: '⚡◇◇', volt2: '⚡⚡◇', volt3: '⚡⚡⚡', voltx: 'ENTLADUNG! ROLLEN!' };
         refs.status.innerHTML = x ? x.split(',').map((k) => `<span class="st-${k.startsWith('volt') && k !== 'voltx' ? 'volt' : k}">${names[k] ?? k}</span>`).join('') : '';
       });
       if (hunt.training) { // Übungsplatz: kein Zeitlimit, keine KOs, dafür DPS + Combo
@@ -216,7 +216,7 @@ export function createHud(root) {
       const ang = Math.atan2(x, y); // 0 = nach oben
       a.style.display = 'block';
       a.style.transform = `translate(${((0.5 + x * 0.5) * 100).toFixed(1)}vw,${((0.5 - y * 0.5) * 100).toFixed(1)}vh) translate(-50%,-50%)`;
-      const txt = `<div style="transform:rotate(${ang.toFixed(2)}rad);font-size:3.2vmin">▲</div>${m.def.name} ${d} m`;
+      const txt = `<div style="transform:rotate(${ang.toFixed(2)}rad);font-size:3.2vmin">▲</div>${m.gockelForm === 'eye' ? 'Auge des Glitch' : m.def.name} ${d} m`;
       if (a._t !== txt) { a._t = txt; a.innerHTML = txt; }
     }
   }

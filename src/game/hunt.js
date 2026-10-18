@@ -253,7 +253,9 @@ export class Hunt {
     const c = this.world.campPoint;
     player.respawn(c.x, c.z);
     this.rig.snap(player.pos, player.rot);
-    this.hud.center('Zurück im Lager', 1.2);
+    const eye = this.monsters.find(m => m.alive && m.gockelForm === 'eye');
+    if (eye) eye.def.returnPlayer?.(eye, player);
+    this.hud.center(eye ? 'Zurück im Auge des Glitch' : 'Zurück im Lager', 1.2);
   }
 
   playerHit(player, monster, hp, ah) {
@@ -487,6 +489,7 @@ export class Hunt {
 
   dispose() {
     this.disposed = true;
+    for (const m of this.monsters) m.def.dispose?.(m);
     music.setScene(null);
     closeStation(); // restores nothing visible (touch is hidden below) but clears the module-level panel state
     this.app.renderer.onResize.delete(this._onResize);

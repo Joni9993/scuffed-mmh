@@ -105,6 +105,7 @@ export class HuntNet {
     off.push(n.on(MSG.FX, (d, from) => this.#onFx(d, from)));
     off.push(n.on(MSG.EV, (d, from) => this.#onEv(d, from)));
     // Glitch-Modus des lokalen Pirschers -> alle (nur Optik; Schaden ist client-autoritativ)
+    off.push(hunt.bus.on('gockelCopies', e => n.sendAll(MSG.EV, { k: 'gcopy', m: e.monster.id, c: e.copies })));
     off.push(hunt.bus.on('glitchStart', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeGlitch(true)); }));
     off.push(hunt.bus.on('glitchEnd', (e) => { if (e?.player?.local) n.sendAll(MSG.EV, encodeGlitch(false)); }));
     // [KK] Krachkiste: Abspielen (Position, Leiste, Stufen) und Leisten-Stand (nur Kragen-Optik) -> alle; jeder Client buffed seinen eigenen Pirscher
@@ -142,6 +143,7 @@ export class HuntNet {
       off.push(n.on(MSG.ATK, (d) => this.#onAtk(d)));
       off.push(n.on(MSG.END, (d) => { this.ended = true; hunt.netFinish(d.r, d.why); }));
       // Glitch-Konter eines Gastes auf einen Brocken-Angriff (Blendax-Blitz): der Host entscheidet, was der Brocken tut (def.onGlitchCounter)
+      off.push(hunt.bus.on('gockelEnter', e => n.sendHost(MSG.EV, { k: 'genter', m: e.monster.id })));
       off.push(hunt.bus.on('glitchCounter', (e) => { const lh = e?.player?.lastHit; if (e?.player?.local && lh?.attackId) n.sendHost(MSG.EV, { k: 'gcm', a: lh.attackId, m: lh.monsterId }); }));
     }
   }
@@ -181,6 +183,8 @@ export class HuntNet {
     switch (d.k) {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
       case 'fst': if (this.isHost) { const m = this.#mon(d.m); if (m?.alive) m.def.onFoodStolen?.(m, d.f); } break; // Gast wurde bestohlen: Mampfaffe frisst das Futter
+      case 'gcopy': { const m=this.#mon(d.m); if(this.peers.has(from) || from===this.net.hostId)m?.def.receiveCopies?.(m,from,d.c); break; }
+      case 'genter': if (this.isHost) { const m = this.#mon(d.m); if (m?.def.id === 'gockelok' && ['reveal','entry'].includes(m.gockelForm)) m.formTime = 16; } break;
       case 'gcm': if (this.isHost) for (const m of hunt.monsters) if (m.alive && m.def.id === d.m && m.attack?.id === d.a) m.def.onGlitchCounter?.(m, d.a, this.peers.get(from)?.player); break;
       case 'gear': this.#onGear(from, d.g); break;
       case 'ia': hunt.interact?.onNet(d, from); break;
@@ -272,6 +276,7 @@ export class HuntNet {
 
   #kill(m) {
     m.attack = null;
+    if (m.def.id === 'gockelok') m.gockelForm = 'eye';
     m.applyDamage({ dmg: Math.ceil(m.hp) + 1, elemDmg: 0, partId: null, blunt: 0, attackerId: 'net' });
   }
 

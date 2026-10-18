@@ -129,7 +129,7 @@ Object.assign(DROPS, {
   gockelok: {
     carve: [{ id: 'gockel_feder', w: 45 }, { id: 'gockel_sporn', w: 30 }, { id: 'gockel_kamm', w: 20 }, { id: 'ur_gockelei', w: 5 }],
     tail: [],
-    breaks: { comb: [{ id: 'gockel_kamm', n: 1, chance: 1 }], spur: [{ id: 'gockel_sporn', n: 2, chance: 1 }] },
+    breaks: { wing: [{ id: 'gockel_feder', n: 2, chance: 1 }], comb: [{ id: 'gockel_kamm', n: 1, chance: 1 }], spur: [{ id: 'gockel_sporn', n: 2, chance: 1 }] },
     reward: [{ id: 'gockel_feder', n: [2, 3], chance: 1 }, { id: 'gockel_sporn', n: 2, chance: 1 }, { id: 'ur_gockelei', n: 1, chance: 1 }],
   },
 });

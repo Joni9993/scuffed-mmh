@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>Gockelok – lokale Abnahme</title>
+<style>body{margin:0;background:#111822;color:#eef;font:14px system-ui}nav{height:55px;box-sizing:border-box;padding:8px;display:flex;gap:8px;overflow:auto}button{white-space:nowrap;flex-shrink:0}button{padding:8px;background:#27414c;color:white;border:1px solid #7acac0;cursor:pointer}iframe{width:100%;height:calc(100vh - 55px);border:0}</style>
+<nav><button id="approach">Hahn ansehen</button><button id="phase">Phase 3</button><button id="eye">Enthüllung</button><button id="enter">Auge betreten</button><button id="break">Teilbrüche</button><button id="fight">Kämpfen</button><button id="copy">Fehlkopie</button></nav>
+<iframe src="/?scene=hunt&quest=gockelok&god=1&noambient=1&nofauna=1"></iframe>
+<script type="module">
+const frame=document.querySelector('iframe');
+const get=()=>{const d=frame.contentWindow.__SH,h=d.hunt,m=h.monsters.find(m=>m.def.id==='gockelok');return {d,h,m,p:h.player};};
+document.querySelector('#approach').onclick=()=>{const {d,h,m,p}=get();m._previewAI??=m._ai;m._ai=()=>{};m._interrupt();m.setState('combat');m.recover=999;m.rot=0;p.spawnAt(m.pos.x+8,m.pos.z+16,Math.PI);h.rig.snap(p.pos,Math.PI);p.lock={monster:m,idx:m.lockPoints().findIndex(q=>q.partId==='body')};d.god();};
+document.querySelector('#phase').onclick=()=>{const {m}=get();m.hp=m.maxHp*.4;m.phase=2;m.phaseSpecial=null;m.recover=999;};
+document.querySelector('#eye').onclick=()=>{const {m}=get();m.applyDamage({dmg:m.maxHp,partId:'body'});};
+document.querySelector('#enter').onclick=()=>{const {m}=get();m.def.enterEye(m);m.recover=999;};
+document.querySelector('#break').onclick=()=>{const {m}=get();for(const id of ['comb','spur','wing'])m._breakPart(m.partById[id]);};
+document.querySelector('#fight').onclick=()=>{const {m}=get();if(m._previewAI)m._ai=m._previewAI;m.recover=0;};
+document.querySelector('#copy').onclick=()=>{const {m,p}=get();m.def.onHitPlayer(m,p,{hit:{copy:true}});};
+</script>

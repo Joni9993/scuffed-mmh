@@ -1,94 +1,68 @@
-import { describe, it, expect } from 'vitest';
+import { describe,it,expect } from 'vitest';
 import * as THREE from 'three';
-import { gockelok } from '../../src/game/monsters/gockelok.js';
+import { gockelok, beginEye, seamOpen } from '../../src/game/monsters/gockelok.js';
+import { applyCopy, tickCopies, clearCopy } from '../../src/game/monsters/gockelokCopy.js';
 import { AttackInstance } from '../../src/game/monsters/attack.js';
-import { make, DT } from './p3helpers.js';
-
-const params = { attackId: 'test', t0: 0, origin: { x: 4, y: 0, z: -3 }, yaw: .4, targetPos: { x: 6, y: 0, z: 15 }, seed: 7 };
-describe('Gockelok: five ridiculous signatures, fair recovery', () => {
-  it('all moves replay identically with red damage footprints and usable recovery in rage', () => {
-    for (const a of Object.values(gockelok.attacks)) {
-      const host = new AttackInstance(a, { ...params, rage: true }), guest = new AttackInstance(a, { ...params, rage: true });
-      expect(host.firstHitTime(), a.id).toBeGreaterThanOrEqual(.5); expect(a.markerFromHits).toBe(true); expect(a.audit.length).toBeGreaterThan(0);
+import { make,DT } from './p3helpers.js';
+const params={attackId:'test',t0:0,origin:{x:4,y:0,z:-3},yaw:.4,targetPos:{x:6,y:0,z:15},seed:7};
+describe('Gockelok and the Eye',()=>{
+  it('replays every committed attack identically with telegraphs and recovery',()=>{
+    for(const a of Object.values(gockelok.attacks)){
+      const host=new AttackInstance(a,{...params,rage:true}),guest=new AttackInstance(a,{...params,rage:true});
+      expect(host.firstHitTime(),a.id).toBeGreaterThanOrEqual(.5);expect(a.markerFromHits).toBe(true);
       expect(host.footprints()).toEqual(guest.footprints());
-      for (let t = 0; t < host.duration; t += .09) { expect(host.sample(t)).toEqual(guest.sample(t)); expect(host.hitsAt(t)).toEqual(guest.hitsAt(t)); }
-      expect(host.duration - host.wall(Math.max(...a.hits.map((h) => h.t1))) + gockelok.recoverAfter(), a.id).toBeGreaterThanOrEqual(1.5);
+      for(let t=0;t<host.duration;t+=.09){expect(host.sample(t)).toEqual(guest.sample(t));expect(host.hitsAt(t)).toEqual(guest.hitsAt(t));}
+      expect(host.duration-host.wall(Math.max(...a.hits.map(h=>h.t1)))+gockelok.recoverAfter()).toBeGreaterThanOrEqual(1.5);
     }
+    expect(gockelok.attacks.gockelok_flatterartillerie).toBeUndefined();
   });
-  it('pecks five times; each egg produces exactly three marked fragment spokes', () => {
-    expect(gockelok.attacks.gockelok_maschinenpicken.hits).toHaveLength(5);
-    const eggs = gockelok.attacks.gockelok_flatterartillerie;
-    expect(eggs.hits.filter((h) => h.shape === 'sphere')).toHaveLength(3);
-    expect(eggs.hits.filter((h) => h.shape === 'capsule')).toHaveLength(9);
-    expect(eggs.events.every((e) => e.all)).toBe(true);
-    expect(new AttackInstance(eggs, params).footprints().length).toBeGreaterThanOrEqual(12);
+  it('keeps one hunt target, blocks transition damage and dies exactly once',()=>{
+    const {m,ctx,p}=make(gockelok);let deaths=0;ctx.bus.on('monsterDead',()=>deaths++);
+    const ev=m.applyDamage({dmg:999999,partId:'body'});
+    expect(ev.killed).toBe(false);expect(m.gockelForm).toBe('reveal');expect(m.alive).toBe(true);expect(deaths).toBe(0);
+    const hp=m.hp;expect(m.applyDamage({dmg:99999})).toBe(null);expect(m.hp).toBe(hp);
+    beginEye(m);expect(m.gockelForm).toBe('eye');expect(p.pos.y).toBe(100);
+    p.pos.set(0,0,0);gockelok.returnPlayer(m,p);expect(p.pos.y).toBe(100);expect(m.hp).toBe(hp);
+    m.applyDamage({dmg:99999,partId:'body'});m._die();expect(deaths).toBe(1);
+    gockelok.dispose(m);expect(ctx.world.heightAt(0,0)).toBe(0);expect(make(gockelok).m.gockelForm).toBe('rooster');
   });
-  it('comb break changes roar radius and stamina loss, while a perfect counter ends the chain', () => {
-    const { m, p } = make(gockelok);
-    const full = gockelok.attacks.gockelok_kikeriki, hoarse = gockelok.attacks.gockelok_kikeriki_heiser;
-    gockelok.onHitPlayer(m, p, { hit: full.hits[0] }); expect(p.v.stamina).toBe(55);
-    m._breakPart(m.partById.comb);
-    expect(m._atkAllowed(full)).toBe(false); expect(m._atkAllowed(hoarse)).toBe(true);
-    expect(hoarse.hits[0].radius).toBeLessThan(full.hits[0].radius);
-    p.v.stamina = 100; gockelok.onHitPlayer(m, p, { hit: hoarse.hits[0] }); expect(p.v.stamina).toBe(80);
-    m.beginAttack(hoarse.id); m.chainNext = { id: 'gockelok_schnabelbohrer' }; gockelok.onGlitchCounter(m, hoarse.id);
-    expect(m.attack).toBe(null); expect(m.chainNext).toBe(null); expect(m.recover).toBeGreaterThanOrEqual(1.9);
+  it('also intercepts poison death and auto-enters without a blocking hunter',()=>{
+    const {m}=make(gockelok);m.hp=.01;m.st.poisonT=10;m._poisonTick(1);expect(m.gockelForm).toBe('reveal');
+    gockelok.tick(m,17);expect(m.gockelForm).toBe('eye');gockelok.dispose(m);
   });
-  it('spur break removes the second kick and opens an outer safe ring', () => {
-    const { m } = make(gockelok);
-    m._breakPart(m.partById.spur);
-    const full = gockelok.attacks.gockelok_spornwirbel, broken = gockelok.attacks.gockelok_spornwirbel_bruch;
-    expect(m._atkAllowed(full)).toBe(false); expect(m._atkAllowed(broken)).toBe(true);
-    expect(full.hits).toHaveLength(2); expect(broken.hits).toHaveLength(1); expect(broken.hits[0].radius).toBeLessThan(full.hits[0].radius);
-    expect(m.extra.spurL.scale.z).toBe(.2);
+  it('comb and spur breaks remove danger and wing breaks lengthen landings',()=>{
+    const {m}=make(gockelok);m.phase=2;
+    for(const id of ['comb','spur','wing'])m._breakPart(m.partById[id]);
+    expect(m._atkAllowed(gockelok.attacks.gockelok_kikeriki)).toBe(false);
+    expect(m._atkAllowed(gockelok.attacks.gockelok_kikeriki_heiser)).toBe(true);
+    expect(gockelok.attacks.gockelok_sprungsporne.hits).toHaveLength(2);
+    expect(gockelok.attacks.gockelok_sprungsporne_bruch.hits).toHaveLength(1);
+    gockelok.onAttackEnd(m,'gockelok_sprungsporne_bruch');expect(m.recover).toBeGreaterThanOrEqual(2.5);
+    expect(m.extra.spurL.scale.z).toBe(.2);expect(m.nodes.wingL.scale.z).toBe(.6);
   });
-  it('sprint changes direction twice, then stumbles for at least 1.5s even in rage', () => {
-    const a = gockelok.attacks.gockelok_kopflosersprint, inst = new AttackInstance(a, { ...params, rage: true });
-    expect(new Set(a.hits.map((h) => inst.sample(inst.wall(h.t0)).yaw)).size).toBe(3);
-    expect(inst.duration - inst.wall(a.hits.at(-1).t1)).toBeGreaterThanOrEqual(1.5);
-    const { m } = make(gockelok); m.chainNext = { id: 'gockelok_maschinenpicken' }; gockelok.onAttackEnd(m, a.id);
-    expect(m.chainNext).toBe(null); expect(m.recover).toBeGreaterThanOrEqual(1.8);
+  it('only actual seam hits interrupt; cooldown prevents permanent stagger',()=>{
+    const {m}=make(gockelok);m.phase=2;m.beginAttack('gockelok_nahtsignatur',{tgMul:1});m.attack.t=.5;
+    expect(seamOpen(m)).toBe(true);m._visuals(DT);
+    expect(m.hurtParts().some(h=>h.part.id==='seam')).toBe(true);
+    m.applyDamage({dmg:200,partId:'body'});expect(m.attack).not.toBe(null);
+    m.applyDamage({dmg:200,partId:'seam'});expect(m.attack).toBe(null);expect(m.recover).toBe(4);
+    m.beginAttack('gockelok_nahtsignatur',{tgMul:1});m.attack.t=.5;expect(seamOpen(m)).toBe(false);
+    m._visuals(DT);expect(m.hurtParts().some(h=>h.part.id==='seam')).toBe(false);
   });
-  it('brings its real head and comb into melee reach when pecking or stumbling', () => {
-    const { m } = make(gockelok);
-    const attack = m.beginAttack('gockelok_maschinenpicken', { tgMul: 1, rage: false });
-    m.attack.t = attack.wall(.85); m._visuals(1);
-    const head = m.nodes.head.getWorldPosition(new THREE.Vector3());
-    expect(head.y).toBeGreaterThan(.4); expect(head.y).toBeLessThan(2.3);
-    const comb = m.hurtParts().find((p) => p.part.id === 'comb');
-    expect(comb.pos.y - comb.sphere.r).toBeLessThan(2);
-    // The fixed-step pose filter must preserve that opening in a real attack too.
-    const live = make(gockelok).m;
-    live.beginAttack('gockelok_maschinenpicken', { tgMul: 1, rage: false });
-    let lowest = Infinity;
-    for (let i = 0; i < 100; i++) {
-      live.update(DT);
-      lowest = Math.min(lowest, live.nodes.head.getWorldPosition(new THREE.Vector3()).y);
-    }
-    expect(lowest).toBeLessThan(2.3);
-    const rig = gockelok.build();
-    rig.apply({ bodyY: -.75, bodyPitch: 40, bodyRoll: 0, head: 25, headYaw: 0, neck: 0,
-      spread: 0, wing: 40, legL: 0, legR: 0, tailPitch: 0, tailYaw: 0 });
-    rig.root.updateMatrixWorld(true);
-    const low = rig.nodes.head.getWorldPosition(new THREE.Vector3());
-    expect(low.y).toBeGreaterThan(.5); expect(low.y).toBeLessThan(2.4);
+  it('pins at most two copies, does not refresh, and clears pending geometry on all cures',()=>{
+    const {m,p,ctx}=make(gockelok);ctx.scene=new THREE.Scene();applyCopy(m,p);tickCopies(m,1);
+    const s=p.status.fehlkopie,c=s.copies[0];p.pos.x+=10;applyCopy(m,p);
+    expect(p.status.fehlkopie).toBe(s);expect(c.x).not.toBe(p.pos.x);expect(s.t).toBe(7);
+    tickCopies(m,1.7);expect(s.next).toBe(1);expect(ctx.scene.children).toHaveLength(0);
+    tickCopies(m,1.4);expect(s.next).toBe(2);expect(ctx.scene.children).toHaveLength(1);
+    ctx.bus.emit('glitchStart',{player:p});expect(p.status.fehlkopie).toBeUndefined();expect(ctx.scene.children).toHaveLength(0);
+    applyCopy(m,p);tickCopies(m,1);p.clearStatus();tickCopies(m,.01);expect(ctx.scene.children).toHaveLength(0);
+    applyCopy(m,p);tickCopies(m,1);clearCopy(m,p);expect(ctx.scene.children).toHaveLength(0);
   });
-  it('reaches all three combat states and keeps every part attached to an actual node', () => {
-    const { m } = make(gockelok); m.hp = m.maxHp * .69; m._b2Tick(.01); expect(m.phase).toBe(1);
-    m.hp = m.maxHp * .3; m._b2Tick(.01); expect(m.phase).toBe(2);
-    const rig = gockelok.build(); let draws = 0; rig.root.traverse((n) => { if (n.isMesh) draws++; });
-    for (const p of gockelok.parts) for (const s of p.spheres) expect(rig.nodes[s.node]).toBeTruthy();
-    const bounds = new THREE.Box3().setFromObject(rig.root); expect(bounds.max.y).toBeGreaterThan(6); expect(bounds.max.y).toBeLessThan(8);
-    expect(draws).toBeLessThan(25); expect(gockelok.speedFactor(m)).toBe(1.35);
-  });
-  it('egg impact at an off-center landing is dangerous but a lateral escape avoids its fragments', () => {
-    const probe = (roll) => {
-      const {m,p,ctx}=make(gockelok,'combat',-4,9);let damage=0;
-      ctx.bus.on('playerHit',e=>{if(e.player===p)damage+=e.dmg;});m.recover=999;m.beginAttack('gockelok_flatterartillerie',{tgMul:1});
-      for(let i=0;i<300;i++){if(roll&&i===55){ctx.input.setStick(1,0,'bot');ctx.input.press('roll',50);}
-        ctx.input.poll(DT);p.update(DT);m.update(DT);m.recover=999;m.chainNext=null;
-      }return damage;
-    };
-    expect(probe(false)).toBeGreaterThan(0);expect(probe(true)).toBe(0);
+  it('makes the peck head reachable and stays under the mesh budget in both forms',()=>{
+    const {m}=make(gockelok);const a=m.beginAttack('gockelok_maschinenpicken',{tgMul:1});m.attack.t=a.wall(.85);m._visuals(1);
+    const head=m.nodes.head.getWorldPosition(new THREE.Vector3());expect(head.y).toBeGreaterThan(.4);expect(head.y).toBeLessThan(2.3);
+    let draws=0;m.mesh.traverse(n=>{if(n.isMesh)draws++;});expect(draws).toBeLessThan(30);
+    for(const p of gockelok.parts)for(const s of p.spheres)expect(m.nodes[s.node]).toBeTruthy();
   });
 });

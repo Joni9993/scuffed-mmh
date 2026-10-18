@@ -142,7 +142,7 @@ export class Monster {
 
   get alive() { return this.state !== 'dead'; }
   get sleeping() { return this.state === 'sleep'; }
-  get invulnerable() { return !!this.burrowed; } // def-gesetzt (Gorgo eingegraben): keine Hurtboxen/Lock-Punkte, nur Umgebungsschaden greift
+  get invulnerable() { return !!this.burrowed || !!this.def.invulnerable?.(this); } // def-gesetzt (Gorgo eingegraben): keine Hurtboxen/Lock-Punkte, nur Umgebungsschaden greift
   /** Mutator-Hooks (GDD 16.5, data/mutators.js): generisch fuer alle Brocken, nie fuer Kleinvieh. */
   get mm() { return this.minor ? null : this.ctx.mods?.monster ?? null; }
   get speedMul() { return (this.rage ? 1.2 : 1) * (this.limping ? 0.8 : 1) * (this.tired ? 0.5 : 1) * (this.mm?.speedMul ?? 1) * (this.def.speedFactor?.(this) ?? 1); }
@@ -176,7 +176,7 @@ export class Monster {
     const sc = this.def.scale;
     let n = 0;
     for (const part of this.parts) {
-      if (part.gone) continue;
+      if (part.gone || this.def.partActive?.(this, part) === false) continue;
       for (const sp of part.sph) {
         let e = out[n];
         if (!e) e = out[n] = { part, pos: new THREE.Vector3(), sphere: { type: 'sphere', x: 0, y: 0, z: 0, r: 0 }, key: '' };
@@ -198,7 +198,7 @@ export class Monster {
     const pts = (this._lpList ??= []);
     let n = 0;
     for (const part of this.parts) {
-      if (part.lock === false || part.gone) continue;
+      if (part.lock === false || part.gone || this.def.partActive?.(this, part) === false) continue;
       const sp = part.sph[0];
       let e = pts[n];
       if (!e) e = pts[n] = { partId: part.id, pos: new THREE.Vector3() };
@@ -307,8 +307,9 @@ export class Monster {
 
   // ---------- damage intake
   applyDamage(res) {
-    if (!this.alive) return null;
+    if (!this.alive || this.def.invulnerable?.(this)) return null;
     const part = this.partById[res.partId];
+    if (part && this.def.partActive?.(this, part) === false) return null;
     const total = res.dmg; // res.dmg already INCLUDES elemDmg (combat.resolvePlayerHit); elemDmg is informational only
     const wasSleeping = this.sleeping;
     this.hp = Math.max(0, this.hp - total);
@@ -335,7 +336,7 @@ export class Monster {
       if (!this.rageUsed && this.hp <= this.maxHp * RAGE_HP) { this.rageUsed = true; this._enrage(); }
       else if (this.rageCd <= 0 && !this.rage && this._burstDamage() >= this.maxHp * RAGE_BURST_PCT) this._enrage();
     }
-    if (this.hp <= 0) { this._die(); ev.killed = true; return ev; }
+    if (this.hp <= 0) { this._die(); ev.killed = !this.alive; return ev; }
     if (this._flOn && this.authority) this._flinchCheck(total);
     if (this.minor) this._flinch(pid, total);
     if (this.state === 'fly' && !this.attack && this.flyDamage >= (this.def.fly?.dropDamage ?? 250)) this._startFall(4);
@@ -404,6 +405,8 @@ export class Monster {
     this.def.onRage?.(this, true);
   }
   _die() {
+    if (!this.alive || this.def.beforeDeath?.(this) === false) return;
+    this.def.onDeath?.(this);
     for (const off of this._offs) off?.();
     this._offs.length = 0;
     this.chain = this.chainNext = null; this.tired = false;

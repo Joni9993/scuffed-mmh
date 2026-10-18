@@ -7,6 +7,7 @@ import { monsters } from '../../src/game/monsters/index.js';
 import { createWorld } from '../../src/game/world/index.js';
 import { makeCtx, DT } from './p3helpers.js';
 import { time } from '../../src/core/time.js';
+import { beginEye } from '../../src/game/monsters/gockelok.js';
 import { MIGRATION } from '../../src/game/monsters/apexFlight.js';
 
 let world, clock;
@@ -66,10 +67,28 @@ describe('Glitchgrat through the real HuntNet protocol handlers', () => {
       guest.net.sendHit(remote, { dmg: 100, elemDmg: 0, partId: 'body', blunt: 0 });
       expect(m.hp).toBeLessThan(hp);
       expect(host.net.stats.hitsApplied).toBe(1);
-      for (let i = 0; i < 20 && m.alive; i++) guest.net.sendHit(remote, { dmg: 4000, elemDmg: 0, partId: 'body', blunt: 0 });
+      for (let i = 0; i < 20 && m.alive; i++) {
+        guest.net.sendHit(remote, { dmg: 4000, elemDmg: 0, partId: 'body', blunt: 0 });
+        if (m.gockelForm === 'reveal') {
+          expect(remote.alive).toBe(true);step(20);expect(remote.gockelForm).toBe('reveal');
+          beginEye(m);step(20);expect(remote.gockelForm).toBe('eye');
+        }
+      }
       expect(m.alive).toBe(false); expect(remote.alive).toBe(false);
     });
   }
+
+  it('Gockelok accepts guest seam hits and replicates owner-only copy visuals', () => {
+    const {host,guest,m,remote}=pair('gockelok');m.phase=2;
+    m.beginAttack('gockelok_nahtsignatur',{tgMul:1});m.attack.t=.7;
+    guest.net.sendHit(remote,{dmg:220,elemDmg:0,partId:'seam',blunt:0});
+    expect(m.attack).toBe(null);expect(m.recover).toBe(4);
+    const hp=guest.player.hp;
+    host.bus.emit('gockelCopies',{monster:m,copies:[{x:guest.player.pos.x,y:guest.player.pos.y,z:guest.player.pos.z,t:1.6}]});
+    expect(remote.remoteCopies.get('p0')).toHaveLength(1);
+    remote.def.tick(remote,2);
+    expect(guest.player.hp).toBe(hp);expect(remote.remoteCopies.size).toBe(0);
+  });
 
   it('migrates over different elevations on host and guest, landing in the same safe zone', () => {
     const { host, guest, m, remote, step } = pair('pyrostur');
