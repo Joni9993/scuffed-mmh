@@ -40,7 +40,16 @@ export function createCameraRig(camera, getGroundY = () => 0, collide = null) {
      * lockPos = anvisiertes Teil, lockCenter = Koerpermitte des Brockens (x/z). Die Kamera rahmt die Koerpermitte, nicht das
      * zappelnde Teil: Drehen, Schwanzschlaege und Kopfbewegungen bewegen die Kamera dadurch nicht mehr mit.
      */
+    /** Temporary cinematic override ({pos, look} world points, set every frame) – null hands control back. */
+    cine: null,
     update(dt, p) {
+      if (this.cine) {
+        const c = this.cine;
+        camera.position.set(c.pos.x, c.pos.y, c.pos.z);
+        if (p.shake) camera.position.add(p.shake);
+        camera.lookAt(c.look.x, c.look.y, c.look.z);
+        return;
+      }
       const { camInput } = p;
       const hasInput = Math.abs(camInput.dx) + Math.abs(camInput.dy) > 0.0001;
       if (p.lockPos) {

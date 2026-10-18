@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lambert, basic } from '../../render/ps1.js';
+import { buildEyeForm } from './gockelokEyeRig.js';
 
 export function buildGockelok({ scale = 2.2 } = {}) {
   const root = new THREE.Group(), g = new THREE.Group(); root.add(g); g.scale.setScalar(scale);
@@ -35,22 +36,30 @@ export function buildGockelok({ scale = 2.2 } = {}) {
   }
   const tail = joint('tail', body, 0, .25, -.65);
   part('tail', tail, '#365d67', (a) => { for (let i = -2; i <= 2; i++) { box(a, [.2, 1.1 - Math.abs(i) * .15, .25], [i * .19, .35, -.45 - Math.abs(i) * .08], i * -.2, -.55); box(a, [.21, .25, .7], [i * .18, .78, -.9], i * -.2, -.3); } });
-  const bug = joint('bug',body,0,0,0);
-  part('body',bug,'#596b75',a=>{
-    for(const side of [-1,1])for(let row=0;row<2;row++){
-      box(a,[1.4,.18,.22],[side*.95,.15,-.45+row*.8],side*.5);
-      box(a,[.18,1.2,.18],[side*1.55,-.5,-.45+row*.8],side*-.25);
-      feather(a,side*1.65,-1.08,-.25+row*.8,.45,side*.4);
-    }
-    for(let i=0;i<4;i++)box(a,[1.25,.09,.1],[0,.6-i*.23,.84],i%2?.12:-.12);
-  });
   const seam = joint('seam',g,1.35,.7,.4);
   const seamMesh=part('seam',seam,'#75f4e8',a=>{box(a,[.16,.7,.16],[0,0,0],.35);box(a,[.45,.08,.12],[-.25,.1,0]);},true);
-  const origin=joint('origin',body,0,.2,.35);
-  const core=part('body',origin,'#75e6db',a=>oval(a,[.43,.5,.4],[0,0,0]),true);
-  core.visible=false;
+  // True form ("Auge des Glitch"): a separate model; in eye form the rooster meshes hide and
+  // the hurtbox nodes are reparented onto eye anchors. Offsets mirror gockelok.js parts so each
+  // node's first sphere lands exactly on its anchor (low tendrils keep melee reach).
+  const roosterMeshes=Object.values(partMeshes).flat();
+  const eye=buildEyeForm(g,partMeshes);eye.group.visible=false;
+  const EYE_NODES={body:[0,.1,.3],neck:[0,.3,0],head:[0,0,.4],seam:[0,0,0],wingL:[0,-.25,-.2],wingR:[0,-.25,-.2],legL:[0,-.55,.1],legR:[0,-.55,.1],spurL:[0,0,-.2],spurR:[0,0,-.2],tail:[0,.4,-.5]};
+  const home=Object.fromEntries(Object.keys(EYE_NODES).map(k=>[k,{parent:nodes[k].parent,pos:nodes[k].position.clone(),rot:nodes[k].rotation.clone()}]));
+  let eyeOn=false;
+  const setEye=on=>{
+    if(on===eyeOn)return;eyeOn=on;
+    for(const k in EYE_NODES){const n=nodes[k],h=home[k];if(on)eye.anchors[k].add(n);else{h.parent.add(n);n.position.copy(h.pos);n.rotation.copy(h.rot);}}
+    for(const mesh of roosterMeshes)mesh.visible=!on;eye.group.visible=on;
+  };
   const extra={scale,comb,spurL:nodes.spurL,spurR:nodes.spurR,form:'rooster',phase:0,time:0,seamOpen:false,wingBroken:false};
-  return { root, nodes, partMeshes, extra, apply(p) {
+  return { root, nodes, partMeshes, extra, eye, apply(p) {
+    const trueForm=extra.form==='eye';setEye(trueForm);
+    if(trueForm){
+      body.scale.set(1,1,1);neck.scale.set(1,1,1);
+      for(const k in EYE_NODES){const n=nodes[k],o=EYE_NODES[k];n.rotation.set(0,0,0);n.position.set(-o[0]*n.scale.x,-o[1]*n.scale.y,-o[2]*n.scale.z);}
+      eye.update(p,extra,{combBroken:comb.scale.y<1,spurBroken:nodes.spurL.scale.z<1,wingBroken:!!extra.wingBroken});
+      return;
+    }
     const r = Math.PI / 180; body.position.y = 1.35 + p.bodyY / scale; body.rotation.set(p.bodyPitch * r, 0, p.bodyRoll * r);
     // A tall rooster must actually bring its beak to the ground when pecking.
     // Compress the neck and lean forward: comb/head hurtboxes follow these joints,
@@ -65,13 +74,7 @@ export function buildGockelok({ scale = 2.2 } = {}) {
     nodes.wingL.rotation.z = -.2 + (p.wing + (p.wingL || 0)) * r; nodes.wingR.rotation.z = .2 - p.wing * r;
     nodes.legL.rotation.x = -p.legL * r; nodes.legR.rotation.x = -p.legR * r; tail.rotation.set(p.tailPitch * r, p.tailYaw * r, 0);
     seamMesh.visible=extra.seamOpen;
-    const trueForm=extra.form==='eye';core.visible=trueForm;bug.visible=trueForm;
     const t=extra.time;
-    // Detached anatomy remains solid and readable; the original rooster is still recognizable.
-    body.scale.set(trueForm?1.22:1,trueForm ? .86 : 1,trueForm?1.25:1);
-    nodes.wingL.position.x=.55+(trueForm ? .55 : 0);nodes.wingR.position.x=-.55-(trueForm ? .55 : 0);
-    if(trueForm){bug.rotation.y=Math.sin(t*.8)*.12;neck.position.x=Math.sin(t*1.5)*.18;head.position.y+=.3;nodes.wingL.rotation.y=.35;nodes.wingR.rotation.y=-.35;tail.rotation.z=Math.sin(t)*.2;}
-    else {neck.position.x=0;nodes.wingL.rotation.y=0;nodes.wingR.rotation.y=0;tail.rotation.z=0;}
     comb.rotation.z+=Math.sin(t*7)*.035;wattle.rotation.z=Math.sin(t*5)*.06;
     if(extra.wingBroken)nodes.wingL.rotation.z+=.35;
   } };

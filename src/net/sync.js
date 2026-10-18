@@ -143,7 +143,6 @@ export class HuntNet {
       off.push(n.on(MSG.ATK, (d) => this.#onAtk(d)));
       off.push(n.on(MSG.END, (d) => { this.ended = true; hunt.netFinish(d.r, d.why); }));
       // Glitch-Konter eines Gastes auf einen Brocken-Angriff (Blendax-Blitz): der Host entscheidet, was der Brocken tut (def.onGlitchCounter)
-      off.push(hunt.bus.on('gockelEnter', e => n.sendHost(MSG.EV, { k: 'genter', m: e.monster.id })));
       off.push(hunt.bus.on('glitchCounter', (e) => { const lh = e?.player?.lastHit; if (e?.player?.local && lh?.attackId) n.sendHost(MSG.EV, { k: 'gcm', a: lh.attackId, m: lh.monsterId }); }));
     }
   }
@@ -184,7 +183,7 @@ export class HuntNet {
       case 'ko': if (this.isHost) hunt.netKo(from); break;
       case 'fst': if (this.isHost) { const m = this.#mon(d.m); if (m?.alive) m.def.onFoodStolen?.(m, d.f); } break; // Gast wurde bestohlen: Mampfaffe frisst das Futter
       case 'gcopy': { const m=this.#mon(d.m); if(this.peers.has(from) || from===this.net.hostId)m?.def.receiveCopies?.(m,from,d.c); break; }
-      case 'genter': if (this.isHost) { const m = this.#mon(d.m); if (m?.def.id === 'gockelok' && ['reveal','entry'].includes(m.gockelForm)) m.formTime = 16; } break;
+      // 'genter' (old guest skip request) is ignored on purpose: the host alone times the Gockelok cinematic
       case 'gcm': if (this.isHost) for (const m of hunt.monsters) if (m.alive && m.def.id === d.m && m.attack?.id === d.a) m.def.onGlitchCounter?.(m, d.a, this.peers.get(from)?.player); break;
       case 'gear': this.#onGear(from, d.g); break;
       case 'ia': hunt.interact?.onNet(d, from); break;
