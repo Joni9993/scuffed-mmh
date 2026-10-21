@@ -73,7 +73,7 @@ export function createHud(root) {
   });
   const cache = {};
   const set = (k, v, fn) => { if (cache[k] !== v) { cache[k] = v; fn(v); } };
-  let cine = null; // Gockelok cinematic overlay
+  let cine = null; // Optional cinematic preview overlay
   let bannerT = 0, centerT = 0, zoneT = 0, zoneShown = 0, zoneCand = 0, zoneCandT = 0; // [K] zone toast state
 
   const api = {
@@ -196,7 +196,7 @@ export function createHud(root) {
         cine.className = 'hud-cinema';
         cine.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:20';
         cine.innerHTML = '<i style="position:absolute;left:0;right:0;top:0;height:0;background:#000"></i><i style="position:absolute;left:0;right:0;bottom:0;height:0;background:#000"></i>'
-          + '<b style="position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);font:700 max(22px,7.5vmin)/1 monospace;letter-spacing:.35em;color:#8ff5ec;text-shadow:0 0 12px #2ad8cc,3px 0 0 rgba(255,40,80,.6),-3px 0 0 rgba(40,140,255,.6);white-space:nowrap;opacity:0"></b>'
+          + '<b style="position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);font:700 clamp(18px,5.8vmin,64px)/1 monospace;letter-spacing:.16em;color:#8ff5ec;text-shadow:0 0 12px #2ad8cc,3px 0 0 rgba(255,40,80,.6),-3px 0 0 rgba(40,140,255,.6);white-space:nowrap;max-width:94vw;text-align:center;opacity:0"></b>'
           + '<span style="position:absolute;left:50%;bottom:4vh;transform:translateX(-50%);font:600 max(13px,2.6vmin)/1.2 system-ui;color:#e9f4f2;white-space:nowrap;text-shadow:0 0 4px #000"></span>'
           + '<em style="position:absolute;right:3vmin;bottom:2.2vh;font:600 max(11px,1.8vmin)/1 monospace;color:#9fb8c0;font-style:normal"></em>'
           + '<u style="position:absolute;inset:0;background:#000;opacity:0;text-decoration:none"></u>';
@@ -209,7 +209,7 @@ export function createHud(root) {
       top.style.height = h; bot.style.height = h;
       if (title.textContent !== (s.title ?? '')) title.textContent = s.title ?? '';
       title.style.opacity = (s.titleK ?? 1).toFixed(2);
-      title.style.letterSpacing = (0.35 + (1 - (s.titleK ?? 1)) * 0.5).toFixed(2) + 'em';
+      title.style.letterSpacing = (0.16 + (1 - (s.titleK ?? 1)) * 0.12).toFixed(2) + 'em';
       if (sub.textContent !== (s.sub ?? '')) sub.textContent = s.sub ?? '';
       if (hint.textContent !== (s.hint ?? '')) hint.textContent = s.hint ?? '';
       fade.style.opacity = (s.fade ?? 0).toFixed(2);
@@ -233,18 +233,17 @@ export function createHud(root) {
       }
       const m = list[i];
       if (!m.alive) { a.style.display = 'none'; continue; }
-      const mp = m.def.mapPos?.(m, hunt.player.pos) ?? m.pos; // Gockelok: outside the arena the arrow points at the portal
-      _bv.set(mp.x, mp.y + 3, mp.z).project(hunt.camera);
+      _bv.set(m.pos.x, m.pos.y + 3, m.pos.z).project(hunt.camera);
       const behind = _bv.z > 1;
       let x = behind ? -_bv.x : _bv.x, y = behind ? -_bv.y : _bv.y;
       if (!behind && Math.abs(x) < 0.9 && Math.abs(y) < 0.86) { a.style.display = 'none'; continue; }
       const k = 0.88 / Math.max(Math.abs(x), Math.abs(y), 1e-3);
       x *= k; y *= k;
-      const d = Math.round(Math.hypot(mp.x - hunt.player.pos.x, mp.z - hunt.player.pos.z));
+      const d = Math.round(Math.hypot(m.pos.x - hunt.player.pos.x, m.pos.z - hunt.player.pos.z));
       const ang = Math.atan2(x, y); // 0 = nach oben
       a.style.display = 'block';
       a.style.transform = `translate(${((0.5 + x * 0.5) * 100).toFixed(1)}vw,${((0.5 - y * 0.5) * 100).toFixed(1)}vh) translate(-50%,-50%)`;
-      const txt = `<div style="transform:rotate(${ang.toFixed(2)}rad);font-size:3.2vmin">▲</div>${mp.portal ? 'Portal zum Auge' : m.gockelForm === 'eye' ? 'Auge des Glitch' : m.def.name} ${d} m`;
+      const txt = `<div style="transform:rotate(${ang.toFixed(2)}rad);font-size:3.2vmin">▲</div>${m.gockelForm === 'eye' ? 'Auge des Glitch' : m.def.name} ${d} m`;
       if (a._t !== txt) { a._t = txt; a.innerHTML = txt; }
     }
   }
@@ -334,8 +333,7 @@ export function createHud(root) {
           g.strokeStyle = '#ff8a2a'; g.beginPath(); g.arc(cx, cy, px, 0, 6.3); g.stroke();
           continue;
         }
-        const mp = m.def.mapPos?.(m, p.pos) ?? m.pos; // Gockelok: Portal-Position statt der fernen Arena
-        if (blink) { g.fillStyle = '#000'; g.fillRect(sx(mp.x) - px - 1, sz(mp.z) - px - 1, px * 2 + 2, px * 2 + 2); g.fillStyle = mp.portal ? '#67e9e2' : '#ff3b3b'; g.fillRect(sx(mp.x) - px, sz(mp.z) - px, px * 2, px * 2); }
+        if (blink) { g.fillStyle = '#000'; g.fillRect(sx(m.pos.x) - px - 1, sz(m.pos.z) - px - 1, px * 2 + 2, px * 2 + 2); g.fillStyle = '#ff3b3b'; g.fillRect(sx(m.pos.x) - px, sz(m.pos.z) - px, px * 2, px * 2); }
       } else if (!m.minor && m === hunt.mainMonster) {
         const f = mm.first.get(m), zid = w.zoneAt?.(f.x, f.z), zc = w.zones?.find((z) => z.id === zid) ?? f;
         g.font = `bold ${Math.round(S / (big ? 7 : 5))}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';

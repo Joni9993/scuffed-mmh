@@ -580,3 +580,66 @@ Weiterhin offene Abnahme: vollständige geübte Solojagden mit allen Waffen, mes
 8–12 Minuten Gesamtdauer, menschliches Urteil zu Härte/Bewegung/Spektakel und echte
 Android-Chrome-/iPhone-Safari-Geräte. Automatische Prüfungen ersetzen diese Abnahme nicht.
 Kein Merge nach `main` und kein Live-Deployment im Rahmen dieser Umsetzung.
+
+## Nachschärfung nach Spieler-Feedback (18. Oktober 2026)
+
+Feedback: weder Hahn noch Auge fordernd. Umgesetzt:
+
+| Wert | Drachen (Pyrostur / Felsengroll / Voltiris) | Hahn | Auge |
+|---|---|---|---|
+| LP | 22000 / 24000 / 23000 | 52000 gesamt, 36400 bis zur Enthüllung (30 %) | eigener Pool 42 % = 21840 |
+| Treffer Ø / Spitze | 152 / 134 / 121 · Spitze 175–190 | Ø ~150, Spitze 230 (Nahtsignatur 80 % Max-LP) | 175–260, Absturz 90 % Max-LP |
+| Nachlauf + recoverAfter | ~1 s + .2–.5 s | ~1 s + .3/.2/.12 s | ~.9 s + .1 s (Überlauf .05 s) |
+| Tempo / Ketten | bis 1.16 / chainMax 3–4 | 1.12/1.2/1.3 / chainMax 4, Ketten für fast jeden Angriff | 1.3 (Überlauf 1.45) / Ketten über alle Augen-Angriffe |
+
+Auge zusätzlich: neue Angriffe Speicherleck (dreifacher Blink-Einschlag), Nullsektor (200°-Löschstrahl),
+Überlauf (Arena-Gitter); arena-weite Störungen über allen Angriffen (rotierende Scanlinien 1–4, zielsuchende
+Splitter, schrumpfende Zone 27→15 m); Firewall bei 75/50/25 % des Augen-Pools, die nur eine zerrissene
+Realitätsnaht bricht; Speicherüberlauf nach 180 s (Tempo, Schaden x1.35, Zone 11 m).
+
+Enthüllung: echte Kamerasequenz (drei Einstellungen, Interagieren überspringt). K. o. im Auge: Erwachen am
+weiterhin offenen Portal an der Stelle des Hahns; Hineinlaufen oder Interagieren führt zurück. Die Arena liegt
+dafür 420 m östlich des Nests außerhalb der Karte, damit ihre Welt-Overrides die Oberwelt nicht berühren.
+
+## Kampflesbarkeit und kürzere Hahnform (21. Oktober 2026)
+
+Basis ist der GitHub-Stand `de7ec60`: Das schwebende Glitch-Auge, seine Arena und
+die Firewall bleiben erhalten. Die lokale Cutscene ist eine separat wählbare
+Entwicklervorschau; die GitHub-Sequenz bleibt im normalen Spiel aktiv.
+
+- Hahn: Grundwert 42.000 LP, Enthüllung bei 32 %. Damit sind solo 28.560 statt
+  36.400 Schaden bis zum Übergang nötig (rund 22 % weniger). Der Augen-Pool bleibt
+  unabhängig davon bei 21.840 LP (52 % des neuen Grundwertes).
+- Hahn: Hahnenwirbel, Krähenschnitt und gestaffelter Krähenfächer; kürzere,
+  phasenspezifische Ketten mit erkennbaren Abschlüssen. Wiederholte Starter werden
+  seltener. Sprung, Schnabelanker und schwere Abschlüsse geben echte Öffnungen.
+- Auge: Irislanze mit festgelegter Zielbahn, schließender Pupille und drei
+  zusammenlaufenden Laderingen. Der Nullsektor lädt an seinem tatsächlichen
+  Startwinkel und schwenkt danach kontinuierlich. Schwere Angriffe senken das Auge
+  für einen stationären Nahkampfkonter. Die Trefferzonen folgen der Augenhöhe.
+- Trefferanzeigen: schmale Kapselbahnen statt zu riesigen Kreisen zusammengefasster
+  Laser. Die vollständige Kontur zeigt den Gefahrenbereich, Füllung und Uhr den
+  Zeitpunkt. Bewegte Bahnstücke verwenden eigene Trefferzeiten; Tempo und Koop-
+  Wiedergabe verwenden dieselbe Zeitumrechnung wie die Schadensabfrage.
+- Arena: Scanlinien erhalten Aufladung, kurzen aktiven Schwenk und Ruhephase.
+  Ihre Anzeige berücksichtigt den Spielerradius. Splitter laden sichtbar vor dem
+  Start; die Sicherheitszone schrumpft langsam und lässt beim Verlassen 0,8 s
+  Reaktionszeit. Gitter und Absturz unterdrücken zusätzliche Scanlinien.
+- Firewall: eine geladene Irislanze stellt ein erreichbares Nahtfenster sicher.
+
+Vorschau über `npm run dev`, dann `/tools/gockelok-preview.html`: GitHub- und lokale
+Cutscene starten frische Testjagden. Hahnphasen, Auge und Einzelangriffe lassen sich
+getrennt testen. Pause, Einzelbild, Zeitlupe und „Aufladung ansehen“ erlauben eine
+genaue Sichtprüfung. Die Cutscene-Vorschau schreibt ihren Gesehen-Status nicht in
+den Spielstand. Die Entwicklerseite bleibt außerhalb des Produktionsbuilds.
+
+Prüfung: gezielte Regressionen für HP-Schwellen, festgelegte Zielrichtung,
+Schwenkbeginn, Firewall-Gegenmittel, Nahkampföffnungen, Trefferanzeigen,
+Ladeanimationen, Gefahrenbereinigung und Cutscene-Lebenszyklus. Zusätzlich reale
+Waffen-/Netzwerktests, Produktionsbuild und Sichtprüfung im Browser.
+Ergebnis: 1.574 Tests im abschließenden Gesamtlauf ohne das lange Fairness-Skript
+bestanden; das separat im vorangehenden Gesamtlauf abgeschlossene Fairness-Skript
+bestand alle 364 Prüfungen. Ein optionaler Metriktest ist deaktiviert. Der
+Produktionsbuild ist erfolgreich (bestehende Warnung zur Größe des Hauptbundles).
+Eine gemessene Jagddauer und die menschliche Bewertung des Kampfgefühls stehen
+weiterhin aus; „10× besser“ ist ein Gestaltungsziel, kein gemessener Testwert.

@@ -250,13 +250,12 @@ export class Hunt {
   }
 
   respawn(player) {
-    // Gockelok eye form: back on the ground where the rooster fell, next to the portal into the arena
-    const eye = this.monsters.find(m => m.alive && m.gockelForm === 'eye');
-    if (eye?.def.respawnPlayer?.(eye, player)) { this.hud.center('Am gefallenen Hahn – durch das Auge zurück in die Arena!', 2.4); return; }
     const c = this.world.campPoint;
     player.respawn(c.x, c.z);
     this.rig.snap(player.pos, player.rot);
-    this.hud.center('Zurück im Lager', 1.2);
+    const eye = this.monsters.find(m => m.alive && m.gockelForm === 'eye');
+    // Gockelok eye phase: wake up at the still open portal on the rooster's spot (it shows its own hint)
+    if (!eye?.def.returnPlayer?.(eye, player)) this.hud.center('Zurück im Lager', 1.2);
   }
 
   playerHit(player, monster, hp, ah) {
@@ -419,7 +418,6 @@ export class Hunt {
     if (this.panelOpen) this.input.reset(); // panel up: nothing reaches the player (also swallows stale key repeats)
     if (this.panelOpen && (this.player.state === 'ko' || this.result)) closeStation(); // knocked out: back to the world
     this.input.poll(dt);
-    // Gockelok cinematic (gockelokCutscene.js): hunters are frozen; only interact (skip) is read by the cinematic
     if (this.cineLock) { const skip = this.input.b.context.pressed; this.input.reset(); this.cineSkip = skip; }
     if (this.input.b.menu.pressed) { if (this.opts.coop) this.#toggleLeave(); else this.setPaused(!this.paused); } // [N] coop never pauses
     if (this.paused) return;

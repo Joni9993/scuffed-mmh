@@ -126,6 +126,34 @@ export class AttackInstance {
     return (this._fp = out);
   }
 
+  /** Exact ground lanes for opt-in boss tells. Keep a capsule a lane, never a giant disc.
+   * Motion is sampled over the hit's active interval, exactly as hitsAt() samples it.
+   * This is cached per replicated attack, so a host and guest see the same warning.
+   */
+  telegraphs() {
+    if (this._telegraphs) return this._telegraphs;
+    const out = [];
+    for (const [idx, h] of (this.def.hits ?? []).entries()) {
+      if (!(h.dmg > 0 || h.knock === 'pin')) continue;
+      const count = Math.max(2, h.fpSamples ?? (h.shape === 'capsule' ? 10 : 3)), kept = [];
+      for (let n = 0; n < count; n++) {
+        const step = (h.t1-h.t0)/(count-1), at = h.t0+step*n;
+        const s = this.sample(this.wall(at));
+        const base = { x: s.x, y: (s.groundY ?? this.origin.y) + s.air, z: s.z };
+        const a = h.shape === 'capsule' ? localToWorld({}, base, s.yaw, ...h.from) : localToWorld({}, base, s.yaw, ...h.at);
+        const b = h.shape === 'capsule' ? localToWorld({}, base, s.yaw, ...h.to) : a;
+        const r = groundReach(h.radius, (a.y + b.y) / 2 - (s.groundY ?? this.origin.y));
+        if (r <= 0) continue;
+        const t0=Math.max(h.t0,at-step/2), t1=Math.min(h.t1,at+step/2);
+        const same = kept.find(q => Math.hypot(q.ax-a.x,q.az-a.z,q.bx-b.x,q.bz-b.z) < .25 && Math.abs(q.r-r) < .1);
+        if(same){same.t0=Math.min(same.t0,t0);same.t1=Math.max(same.t1,t1);continue;}
+        kept.push({ idx, n: kept.length, ax:a.x, az:a.z, bx:b.x, bz:b.z, x:(a.x+b.x)/2, z:(a.z+b.z)/2, r, t0, t1 });
+      }
+      out.push(...kept);
+    }
+    return (this._telegraphs = out);
+  }
+
   /** Wall time of the first possible hit (telegraph length as the player experiences it). */
   firstHitTime() {
     let m = Infinity;

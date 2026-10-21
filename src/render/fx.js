@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { settings } from '../core/settings.js';
 import { setSnapScale, setGlobalJitter } from './ps1.js';
+import { createAttackMarker } from './attackMarker.js';
 
 const MAX_SPARKS = 320;
 const MAX_NUMBERS = 28;
@@ -39,6 +40,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
 
   // ---- ground markers
   const markers = new Map();
+  const attackMarkers = new Map();
   const ringGeo = new THREE.RingGeometry(0.88, 1, 24);
   ringGeo.rotateX(-Math.PI / 2);
   const discGeo = new THREE.CircleGeometry(1, 20);
@@ -317,7 +319,17 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       m.scale.setScalar(radius);
       m.visible = true;
     },
-    clearMarker(key) { const m = markers.get(key); if (m) m.visible = false; },
+    /** Ground capsule/disc with fixed boundary and hit-time countdown (gameplay info, even with nofx). */
+    attackMarker(key, shape, groundY, progress, active, color) {
+      const length = Math.hypot(shape.bx-shape.ax,shape.bz-shape.az), signature = `${length.toFixed(3)}:${shape.r.toFixed(3)}`;
+      let entry = attackMarkers.get(key);
+      if (entry && entry.signature !== signature) { entry.mesh.removeFromParent(); entry.mesh.userData.dispose(); attackMarkers.delete(key); entry=null; }
+      if (!entry) { entry={signature,mesh:createAttackMarker(length,shape.r)}; attackMarkers.set(key,entry); scene.add(entry.mesh); }
+      entry.mesh.position.set(shape.x,groundY+.09,shape.z);
+      entry.mesh.rotation.y=-Math.atan2(shape.bz-shape.az,shape.bx-shape.ax);
+      entry.mesh.userData.update(progress,active,color); entry.mesh.visible=true;
+    },
+    clearMarker(key) { const m = markers.get(key); if (m) m.visible = false; const a=attackMarkers.get(key); if(a)a.mesh.visible=false; },
 
     update(dt) {
       // sparks
@@ -398,6 +410,9 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       geo.dispose();
       for (const n of nums) n.el.remove();
       for (const m of markers.values()) scene.remove(m);
+      for (const {mesh} of attackMarkers.values()) { mesh.removeFromParent(); mesh.userData.dispose(); }
+      for (const m of markers.values()) m.material.dispose();
+      ringGeo.dispose(); discGeo.dispose();
       for (const bo of bolts) { scene.remove(bo.mesh); bo.mesh.geometry.dispose(); bo.mesh.material.dispose(); }
       for (const j of jets.values()) { scene.remove(j.mesh); j.mesh.material.dispose(); }
       for (const r of rings) { scene.remove(r.mesh); r.mesh.material.dispose(); }

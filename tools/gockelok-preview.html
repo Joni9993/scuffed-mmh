@@ -1,15 +1,47 @@
-<!doctype html><meta charset="utf-8"><title>Gockelok – lokale Abnahme</title>
-<style>body{margin:0;background:#111822;color:#eef;font:14px system-ui}nav{height:55px;box-sizing:border-box;padding:8px;display:flex;gap:8px;overflow:auto}button{white-space:nowrap;flex-shrink:0}button{padding:8px;background:#27414c;color:white;border:1px solid #7acac0;cursor:pointer}iframe{width:100%;height:calc(100vh - 55px);border:0}</style>
-<nav><button id="approach">Hahn ansehen</button><button id="phase">Phase 3</button><button id="eye">Enthüllung</button><button id="enter">Auge betreten</button><button id="break">Teilbrüche</button><button id="fight">Kämpfen</button><button id="copy">Fehlkopie</button></nav>
-<iframe src="/?scene=hunt&quest=gockelok&god=1&noambient=1&nofauna=1"></iframe>
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gockelok – Kampf & Cutscene vergleichen</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0c141c;color:#eef4f4;font:14px system-ui;display:flex;flex-direction:column;height:100vh}header{padding:12px 16px;border-bottom:1px solid #304753;display:flex;gap:18px;align-items:center;flex-wrap:wrap}h1{font-size:17px;margin:0}p{margin:4px 0;color:#a9bdc5;font-size:12px}nav{display:flex;flex-wrap:wrap;gap:7px;padding:8px 16px}button,select{font:inherit;padding:8px 11px;border:1px solid #395a67;border-radius:5px;background:#192d38;color:#eef4f4;cursor:pointer}button:hover{background:#294752}button:disabled,select:disabled{opacity:.4;cursor:wait}.compare{background:#214e52;border-color:#6dbab4}#status{color:#85d7cd;font-size:12px;margin-left:auto}iframe{width:100%;flex:1;min-height:220px;border:0;background:#071019}details{padding:0 16px 8px;color:#b0c0c8;font-size:12px}summary{cursor:pointer}kbd{border:1px solid #385361;padding:0 4px}label{display:flex;align-items:center;gap:6px}
+</style>
+<header><div><h1>Gockelok · Finale vergleichen</h1><p>GitHub-Auge bleibt erhalten. Die lokale Cutscene ist hier eine Vorschau zur Auswahl.</p></div><span id="status" role="status">Jagd wird geladen …</span></header>
+<nav aria-label="Cutscene-Vergleich"><button class="compare" data-action="github" disabled>▶ GitHub-Cutscene</button><button class="compare" data-action="local" disabled>▶ Lokale Cutscene · 8,5 s</button><button data-action="reset" disabled>Jagd neu starten</button><label><input type="checkbox" id="god" checked> Unverwundbar</label></nav>
+<nav aria-label="Kampf testen"><button data-action="rooster" disabled>Hahn · Phase 1</button><button data-action="phase2" disabled>Phase 2</button><button data-action="phase3" disabled>Phase 3</button><button data-action="eye" disabled>Auge testen</button><select id="attack" aria-label="Einzelnen Angriff auswählen" disabled><option>Angriffe werden geladen …</option></select><button data-action="attack" disabled>Angriff vorführen</button><button data-action="fight" disabled>Kampf freigeben</button><button data-action="freeze" disabled>Boss anhalten</button></nav>
+<nav aria-label="Zeitsteuerung"><button data-action="pause" disabled>⏸ Pause</button><button data-action="step" disabled>Ein Bild weiter</button><button data-action="charge" disabled>Aufladung ansehen</button><label>Tempo <select id="speed" disabled><option value="1">1× normal</option><option value="0.5">0,5× langsam</option><option value="0.25">0,25× Zeitlupe</option></select></label><output id="timeline" aria-live="off">—</output></nav>
+<details><summary>Steuerung & Hinweise</summary><p><kbd>W A S D</kbd> bewegen · Maus/Kamera wie im Spiel · Die Vergleichsknöpfe starten jeweils eine frische lokale Testjagd. Einzelangriffe halten den Boss anschließend wieder an. Es werden keine Spielstände verändert.</p></details>
+<iframe title="Lokale Finale-Testjagd" allow="autoplay"></iframe>
 <script type="module">
-const frame=document.querySelector('iframe');
-const get=()=>{const d=frame.contentWindow.__SH,h=d.hunt,m=h.monsters.find(m=>m.def.id==='gockelok');return {d,h,m,p:h.player};};
-document.querySelector('#approach').onclick=()=>{const {d,h,m,p}=get();m._previewAI??=m._ai;m._ai=()=>{};m._interrupt();m.setState('combat');m.recover=999;m.rot=0;p.spawnAt(m.pos.x+8,m.pos.z+16,Math.PI);h.rig.snap(p.pos,Math.PI);p.lock={monster:m,idx:m.lockPoints().findIndex(q=>q.partId==='body')};d.god();};
-document.querySelector('#phase').onclick=()=>{const {m}=get();m.hp=m.maxHp*.4;m.phase=2;m.phaseSpecial=null;m.recover=999;};
-document.querySelector('#eye').onclick=()=>{const {m}=get();m.applyDamage({dmg:m.maxHp,partId:'body'});};
-document.querySelector('#enter').onclick=()=>{const {m}=get();m.def.enterEye(m);m.recover=999;};
-document.querySelector('#break').onclick=()=>{const {m}=get();for(const id of ['comb','spur','wing'])m._breakPart(m.partById[id]);};
-document.querySelector('#fight').onclick=()=>{const {m}=get();if(m._previewAI)m._ai=m._previewAI;m.recover=0;};
-document.querySelector('#copy').onclick=()=>{const {m,p}=get();m.def.onHitPlayer(m,p,{hit:{copy:true}});};
+const frame=document.querySelector('iframe'),status=document.querySelector('#status'),select=document.querySelector('#attack'),god=document.querySelector('#god');
+const buttons=[...document.querySelectorAll('button[data-action]')];
+const speed=document.querySelector('#speed'),timeline=document.querySelector('#timeline'),pauseButton=buttons.find(b=>b.dataset.action==='pause');
+let generation=0,pending=null,timer=null,ready=false,paused=false,localSeen=false;
+const get=()=>{const d=frame.contentWindow?.__SH,h=d?.hunt,m=h?.monsters?.find(m=>m.def.id==='gockelok');if(!m||!h.player)throw Error('Testjagd ist noch nicht bereit.');return {d,h,m,p:h.player};};
+const setStatus=(message,error=false)=>{status.textContent=message;status.style.color=error?'#ff9b88':'#85d7cd';};
+function controls(on){ready=on;for(const b of buttons)b.disabled=!on;select.disabled=!on;speed.disabled=!on;}
+function pause(on){const {d}=get();paused=on;d.pause(on);pauseButton.textContent=on?'▶ Weiter':'⏸ Pause';}
+function freeze(m){m._previewAI??=m._ai;m._ai=function(dt){if(this.attack)this._runAttack(dt);};m._interrupt();m.queued=null;m.phaseSpecial=null;m.chainNext=null;m.recover=999;m.setState('combat');}
+function position({d,h,m,p}){m.rot=0;p.spawnAt(m.pos.x+5,m.pos.z+10,Math.PI);h.rig.snap(p.pos,Math.PI);p.lock={monster:m,idx:Math.max(0,m.lockPoints().findIndex(q=>q.partId==='body'))};d.god(god.checked);}
+function attacks(m){const list=Object.values(m.def.attacks).filter(a=>!a.internal&&(!a.cond||a.cond(m,m.ctx)));select.replaceChildren(...list.map(a=>{const o=document.createElement('option');o.value=a.id;o.textContent=(a.label??a.id.replace('gockelok_','')).replaceAll('_',' ');return o;}));}
+function run(action){const x=get(),{h,m}=x;clearTimeout(timer);if(['github','local'].includes(action)){h.gockelokCinematic=action;freeze(m);position(x);m.applyDamage({dmg:m.maxHp,partId:'body'});setStatus(action==='local'?'Lokale Cutscene läuft · erste Sichtung ohne Überspringen':'GitHub-Cutscene läuft · Interagieren zum Überspringen');frame.contentWindow.focus();return;}
+if(action==='reset'||action==='rooster'){freeze(m);position(x);attacks(m);setStatus('Hahn · Phase 1 · Boss angehalten');}
+if(action==='phase2'||action==='phase3'){if(m.gockelForm!=='rooster'){reload(action);return;}freeze(m);m.phase=action==='phase2'?1:2;m.hp=m.maxHp*(action==='phase2'?.68:.42);position(x);attacks(m);setStatus(`Hahn · Phase ${m.phase+1} · Boss angehalten`);}
+if(action==='eye'){freeze(m);if(m.gockelForm==='rooster')m.applyDamage({dmg:m.maxHp,partId:'body'});if(m.gockelForm!=='eye')m.def.enterEye(m);freeze(m);position(x);attacks(m);setStatus('Auge · Boss angehalten · Angriff auswählen oder Kampf freigeben');}
+if(action==='fight'){m._ai=m._previewAI??m._ai;m.recover=0;m.target=x.p;setStatus('Kampf läuft · Unverwundbarkeit oben umschaltbar');frame.contentWindow.focus();}
+if(action==='freeze'){freeze(m);setStatus('Boss angehalten');}
+if(action==='attack'){freeze(m);m.target=x.p;m.rot=Math.atan2(x.p.pos.x-m.pos.x,x.p.pos.z-m.pos.z);m.beginAttack(select.value,{teach:false,tgMul:1,tempoMul:1});setStatus('Angriff: '+select.selectedOptions[0]?.textContent);frame.contentWindow.focus();}
+if(action==='pause')pause(!paused);
+if(action==='step'){pause(true);x.d.step(1);}
+if(action==='charge'){pause(true);freeze(m);m.target=x.p;m.rot=Math.atan2(x.p.pos.x-m.pos.x,x.p.pos.z-m.pos.z);const inst=m.beginAttack(select.value,{teach:false,tgMul:1,tempoMul:1});x.d.timeScale(1);x.d.step(Math.floor(inst.firstHitTime()*.72*60));x.d.timeScale(Number(speed.value));setStatus('Aufladung angehalten · Weiter oder Einzelbild zum Treffer');}
+if(paused&&!['pause','step'].includes(action))x.d.step(1);
+}
+function reload(action='reset'){controls(false);pending=action;const token=++generation;clearTimeout(timer);setStatus('Frische Testjagd wird geladen …');frame.src='/?scene=hunt&quest=gockelok&god=1&noambient=1&nofauna=1&preview='+token;}
+frame.addEventListener('load',()=>{const token=generation,start=Date.now();const poll=()=>{if(token!==generation)return;try{const x=get();x.h.gockelokPreview=true;x.h.gockelokPreviewSeen=localSeen;x.d.timeScale(Number(speed.value));paused=false;pauseButton.textContent='⏸ Pause';controls(true);const action=pending??'reset';pending=null;run(action);}catch(error){if(Date.now()-start<30000){timer=setTimeout(poll,150);return;}controls(false);buttons.find(b=>b.dataset.action==='reset').disabled=false;setStatus('Laden fehlgeschlagen: '+error.message,true);}};poll();});
+for(const b of buttons)b.onclick=()=>{const action=b.dataset.action;try{if(['local','github','reset','rooster'].includes(action))reload(action);else if(ready)run(action);}catch(error){setStatus(error.message,true);}};
+god.onchange=()=>{try{get().d.god(god.checked);}catch{}};
+speed.onchange=()=>{try{get().d.timeScale(Number(speed.value));}catch{}};
+function track(){if(ready){try{const {m,h}=get();localSeen ||= !!h.gockelokPreviewSeen;timeline.textContent=(paused?'Pause · ':'')+(m.attack?`${m.attack.inst.def.label??m.attack.id.replace('gockelok_','')} · ${m.attack.t.toFixed(2)} s`:m.gockelForm==='reveal'?`Cutscene · ${m.formTime.toFixed(2)} s`:`${m.gockelForm==='eye'?'Auge':'Hahn'} · ${Number(speed.value).toLocaleString('de-DE')}×`);}catch{}}requestAnimationFrame(track);}track();
+reload();
 </script>
+</html>

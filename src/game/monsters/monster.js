@@ -609,7 +609,7 @@ export class Monster {
   _pickTarget() {
     const rv = this.ctx.revier?.rivalOf(this); // Revierstreit: erst gegen den anderen Brocken
     if (rv) { this.target = rv; return; }
-    const alive = this.ctx.players.filter((p) => p.alive);
+    const alive = this.ctx.players.filter((p) => p.alive && this.def.canTarget?.(this, p) !== false); // def.canTarget: Gockelok-Auge greift nur Pirscher in seiner Arena an
     if (!alive.length) { this.target = null; return; }
     if (this._b2) return this._pickTargetB2(alive);
     let best = null, bt = -1;
@@ -1282,13 +1282,18 @@ export class Monster {
       if (s.phase === 'telegraph') tele = a.inst.def.flashParts ?? [];
       const mk = a.inst.def.marker;
       if (a.inst.def.markerFromHits) { // rote Gefahrenzonen direkt aus den Trefferformen (Position + Radius = echte Hitbox), je Treffer bis kurz nach seinem Ende
-        const fps = a.inst.footprints(), keys = (this._fpKeys ??= new Set()), now = new Set();
+        const timed = !!a.inst.def.tell && !!this.ctx.fx.attackMarker;
+        const fps = timed ? a.inst.telegraphs() : a.inst.footprints(), keys = (this._fpKeys ??= new Set()), now = new Set();
         const flash = s.phase === 'telegraph' && Math.floor(this.time * 10) % 2 === 0;
         for (const f of fps) {
           const key = `${this.id}:f${f.idx}.${f.n}`;
           if (s.tau > f.t1 + 0.12 || s.tau < f.t0 - (a.inst.def.markerLead ?? Infinity)) continue;
           now.add(key);
-          this.ctx.fx.marker(key, { x: f.x, y: this.ctx.world.heightAt(f.x, f.z), z: f.z }, f.r, flash ? '#ff6a4a' : '#ff1a1a', s.tau >= f.t0);
+          if (timed) {
+            const lead = a.inst.def.markerLead ?? 1.4, start = a.inst.wall(Math.max(0, f.t0-lead)), impact = a.inst.wall(f.t0);
+            const progress = (a.t-start)/Math.max(.01,impact-start);
+            this.ctx.fx.attackMarker(key,f,this.ctx.world.heightAt(f.x,f.z),progress,s.tau>=f.t0,a.inst.def.tell?.color);
+          } else this.ctx.fx.marker(key, { x: f.x, y: this.ctx.world.heightAt(f.x, f.z), z: f.z }, f.r, flash ? '#ff6a4a' : '#ff1a1a', s.tau >= f.t0);
         }
         for (const k of keys) if (!now.has(k)) this.ctx.fx.clearMarker?.(k);
         this._fpKeys = now;

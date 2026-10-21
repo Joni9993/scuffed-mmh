@@ -24,7 +24,7 @@ const BEATS = [
 function head(m) { const n = m.nodes?.head; if (!n) return { x: m.pos.x, y: m.pos.y + 2, z: m.pos.z }; n.getWorldPosition(_v); return { x: _v.x, y: _v.y, z: _v.z }; }
 
 function start(m) {
-  const ctx = m.ctx, c = (m.cine = { t: -1, skippable: cineSeen(), ended: false, glow: null });
+  const ctx = m.ctx, c = (m.cine = { t: -1, skippable: ctx.gockelokPreview ? !!ctx.gockelokPreviewSeen : cineSeen(), ended: false, glow: null });
   if (ctx.scene && m.nodes?.head) { // corruption light on the comb: additive glow, no real light (no shader recompile mid-fight)
     const g = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff2a3c, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
     g.position.set(0, 0.35, 0.05); m.nodes.head.add(g); c.glow = g;
@@ -46,7 +46,7 @@ export function endCine(m) { releaseView(m); m.cine = null; }
 
 /** Camera choreography relative to the fall spot. Returns {pos, look}. */
 export function cineShot(m, t) {
-  const w = m.ctx.world, f = m.fallPos ?? m.pos, gy = w.heightAt(f.x, f.z), r = m.rot ?? 0;
+  const w = m.ctx.world, f = m.revealPos ?? m.fallPos ?? m.pos, gy = w.heightAt(f.x, f.z), r = m.rot ?? 0;
   const at = (ang, dist, y) => ({ x: f.x + Math.sin(ang) * dist, y: gy + y, z: f.z + Math.cos(ang) * dist });
   let pos, look;
   if (t < 2.2) { const u = t / 2.2; pos = at(r + 1.15 + u * 0.35, lerp(9.5, 8, u), lerp(2.6, 2, u)); look = { x: f.x, y: gy + lerp(2.2, 1.1, sm(u * 1.4)), z: f.z }; }
@@ -54,7 +54,10 @@ export function cineShot(m, t) {
   else if (t < 6.4) { const u = (t - OPEN_AT) / (6.4 - OPEN_AT); pos = at(r, lerp(6.5, 5, u), lerp(12, 10, u)); look = { x: f.x, y: gy, z: f.z }; }
   else { const u = sm((t - 6.4) / (CINE_LEN - 6.4)); pos = at(r, lerp(4.5, 0.6, u), lerp(9, 2.2, u)); look = { x: f.x, y: gy - 1.5, z: f.z }; }
   pos.y = Math.max(pos.y, w.heightAt(pos.x, pos.z) + 1);
-  return { pos, look };
+  const shot = t < 2.2 ? 0 : t < OPEN_AT ? 1 : t < 6.4 ? 2 : 3;
+  const snap = !m.cine || m.cine.shot !== shot;
+  if (m.cine) m.cine.shot = shot;
+  return { owner: m.id, pos, look, snap };
 }
 
 /** Rooster pose during the cinematic: collapse, lie still, sink into the opening eye. */
@@ -72,7 +75,10 @@ export function tickCine(m, dt, onAuthoritySkip) {
   const c = m.cine, t = m.formTime;
   for (const [bt, name, fn] of BEATS) if (c.t < bt && t >= bt) { if (name) ctx.bus.emit('sfx', { name, pos: m.pos }); fn?.(m, ctx); }
   c.t = t;
-  if (t >= CINE_LEN - 1) markCineSeen();
+  if (t >= CINE_LEN - 1) {
+    if (ctx.gockelokPreview) ctx.gockelokPreviewSeen = true;
+    else markCineSeen();
+  }
   for (const p of ctx.players) if (p.local) p.invuln = Math.max(p.invuln ?? 0, 0.5);
   if (c.ended) return;
   if (c.glow) { const life = 1 - sm((t - 0.5) / 1.1), flick = t > 0.5 && t < 1.6 ? (Math.sin(t * 61) > 0.2 ? 1 : 0.25) : 1; c.glow.material.opacity = 0.8 * life * flick; c.glow.visible = life > 0.01; }
