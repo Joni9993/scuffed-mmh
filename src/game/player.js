@@ -17,6 +17,7 @@ import { buildHunterRig } from './rig.js';
 import { stepLock } from '../input/lock.js';
 import { makeGear } from '../data/gearlook.js'; // [G]
 import { tickBuffs, clearBuffs, speedMul as buffSpeed, noFlinch } from './buffs.js'; // [KK] Krachkiste-Buffs
+import { itemDamageMul, inRuneAnchor } from './itemBuffs.js';
 
 const D2R = Math.PI / 180;
 const WALK = 4, RUN = 6, SPRINT = 8.5;
@@ -198,6 +199,7 @@ export class Player {
     const w = this.weapon;
     // [M] wind push (Fluegelboee): no damage, interrupts charging, ignores block / armour
     if (h.knock === 'push') {
+      if (this.windImmune || inRuneAnchor(this)) return 'ignored';
       const dx = this.pos.x - (h.sourcePos?.x ?? this.pos.x), dz = this.pos.z - (h.sourcePos?.z ?? this.pos.z), l = Math.hypot(dx, dz) || 1;
       this.push({ x: dx / l, z: dz / l }, h.push ?? 3);
       w.cancel();
@@ -213,6 +215,7 @@ export class Player {
     }
     const sa = w.superArmor();
     let dmg = h.dmgPct ? this.v.maxHp * h.dmgPct : h.dmg * (1 - protectReduction(this.protect * (this.status.rost ? 0.7 : 1))) * (h.dmgMul ?? 1); // Rost: Schutz -30 %; dmgPct: Anteil der Max-LP (Krachfaust-Urknall: ignoriert Schutz und Block)
+    if (!h.dmgPct) dmg *= itemDamageMul(this, h);
 
     const blk = w.blockDef();
     if (blk && h.sourcePos && !h.dmgPct) {
@@ -248,7 +251,7 @@ export class Player {
     if (sa === 'all') return 'hit';
     if (knock === 'pin') { this.#enter('pinned'); w.cancel(); return 'hit'; }
     if (knock === 'down') { this.#enter('down'); w.cancel(); this.#push(h, 3); return 'hit'; }
-    if (knock === 'flinch' && sa !== 'flinch' && !noFlinch(this)) { this.#enter('flinch'); w.cancel(); this.#push(h, 1); } // [KK] Blau: kein Zurückstolpern bei leichten Treffern
+    if (knock === 'flinch' && sa !== 'flinch' && !noFlinch(this) && !inRuneAnchor(this)) { this.#enter('flinch'); w.cancel(); this.#push(h, 1); } // [KK] Blau: kein Zurückstolpern bei leichten Treffern
     return 'hit';
   }
   /** [KT] returns 'block' so monsters / projectiles mark the hit as consumed. */
@@ -412,7 +415,7 @@ export class Player {
     if (st.mud && (st.mud.t -= dt) <= 0) this.clearStatus('mud');
     if (st.burn) {
       if ((st.burn.t -= dt) <= 0) this.clearStatus('burn');
-      else { this.#dot((st.burn.dps ?? 3) * dt); if (Math.random() < dt * 10) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, Math.random() < 0.5 ? '#ff7a1a' : '#ffd060', 1.5); }
+      else { this.#dot((st.burn.dps ?? 3) * dt * (this.itemBuffs?.frost?.t > 0 ? 1 - this.itemBuffs.frost.reduction : 1)); if (Math.random() < dt * 10) fx.spark({ x: this.pos.x, y: this.pos.y + 1.6, z: this.pos.z }, 1, Math.random() < 0.5 ? '#ff7a1a' : '#ffd060', 1.5); }
     }
     if (st.poison) {
       if ((st.poison.t -= dt) <= 0) this.clearStatus('poison');

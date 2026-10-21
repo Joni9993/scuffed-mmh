@@ -266,7 +266,7 @@ export class HuntMeta {
     queueMicrotask(() => h.app.goto('results', payload));
   }
 
-  dispose() { this.onboarding?.close(); this.hud.dispose(); }
+  dispose() { this.items.dispose(); this.onboarding?.close(); this.hud.dispose(); }
 }
 
 export function resolveLoadout(opts) {

@@ -46,7 +46,7 @@ const snipe = (m) => 1 + Math.min(2, (m._snipeT ?? 0) / 3);
 const hotInst = (inst) => (inst.params.tempoMul ?? 1) > 1.05;
 const hit = (t, at, radius, dmg, knock = 'down', extra) => ({ t0: t, t1: t + .13, shape: 'sphere', at, radius, dmg, knock, ...extra });
 const line = (t, from, to, radius, dmg, end = t + .13, extra) => ({ t0: t, t1: end, shape: 'capsule', from, to, radius, dmg, knock: 'down', ...extra });
-const FIRE = { status: GLUTBRAND };
+const FIRE = { element: 'fire', status: GLUTBRAND };
 const impact = (m, ctx) => { ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); ctx.fx.spark({ x: m.pos.x, y: m.pos.y + .5, z: m.pos.z }, 12, '#ffab65', 5); ctx.fx.shake(.22, .23); };
 const quake = (m, ctx) => { ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); ctx.bus.emit('sfx', { name: 'pyroRoar', pos: m.pos }); ctx.fx.spark({ x: m.pos.x, y: m.pos.y + .5, z: m.pos.z }, 30, '#ff7a2a', 9); ctx.fx.shake(.5, .45); };
 const prepareAdvance = (max, stop = 3.6, min = 0) => (a) => { a.len = Math.max(min, Math.min(max, Math.hypot(a.target.x - a.origin.x, a.target.z - a.origin.z) - stop)); };
@@ -168,12 +168,12 @@ const tail = attack('schlackenschweif', {
 });
 const vent = attack('seitenablass', {
   range: [0, 8.5], weight: (m) => 3 + (m.pressure ?? 0) / 25, noFace: true, cond: lateral, cooldown: 6, telegraph: .9, duration: 2.35, flashParts: ['valve', 'chest'], lockedByBreak: 'valve', audit: [0], vfx: 'steam',
-  hits: [line(.95, [-2, .9, 0], [-7.4, .9, 0], 1.25, 150, 1.12, { status: SCALD }), line(.95, [2, .9, 0], [7.4, .9, 0], 1.25, 150, 1.12, { status: SCALD })],
+  hits: [line(.95, [-2, .9, 0], [-7.4, .9, 0], 1.25, 150, 1.12, { element: 'fire', status: SCALD }), line(.95, [2, .9, 0], [7.4, .9, 0], 1.25, 150, 1.12, { element: 'fire', status: SCALD })],
   pose: track([[0, {}], [.6, { ...CROUCH, wing: 45, boiler: .9, bodyRoll: -12, jaw: 20 }], [.88, { ...CROUCH, wing: 55, boiler: 1, bodyRoll: -12 }], [1, { bodyY: -.3, bodyRoll: 16, wing: 20, jaw: 50, head: -12 }], [1.6, EXPOSE], [2.35, {}]]),
 });
 const leak = attack('leckablass', {
   range: [0, 7], weight: 5, noFace: true, cond: (m) => lateral(m) && localTarget(m).x > 0, cooldown: 6, telegraph: .9, duration: 2.35, flashParts: ['valve'], needsBroken: 'valve', audit: [0], vfx: 'steam',
-  hits: [line(.95, [2, .9, 0], [6.2, .9, 0], 1.15, 105, 1.12, { status: SCALD })], pose: vent.pose,
+  hits: [line(.95, [2, .9, 0], [6.2, .9, 0], 1.15, 105, 1.12, { element: 'fire', status: SCALD })], pose: vent.pose,
 });
 const breath = attack('ofenschneise', {
   lead: 1.1, aimYaw: true, range: [6, 24], weight: (m, d) => (d > 11 ? 6 : 3) * snipe(m), cooldown: 6, duration: 2.75, audit: [8, 15, 20], telegraph: 1, vfx: 'breath',

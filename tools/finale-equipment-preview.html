@@ -6,7 +6,7 @@
 <script type="module">
 const frame=document.querySelector('iframe'),weapon=document.querySelector('#weapon'),armor=document.querySelector('#armor'),spin=document.querySelector('#spin'),status=document.querySelector('#status');
 let ready=false;
-function show(){if(!ready)return;const scene=frame.contentWindow.__SH.app.scene;const sets=['pyrostur','felsengroll','voltiris','gockelok'],branches=['p','f','i',null];scene.show(sets.map((set,i)=>({gear:{weapon:{type:weapon.value,tier:7,branch:branches[i]},armor:{head:set+'_head',body:set+'_body',legs:set+'_legs'}},weaponOnly:!armor.checked,yaw:.22,spin:spin.checked?.3:0})),{cam:[0,1.6,10.5],look:[0,1.25,0],spacing:2.05});status.textContent='Bereit · nur lokale Modellvorschau';}
+function show(){if(!ready)return;const scene=frame.contentWindow.__SH.app.scene;const sets=['pyrostur','felsengroll','voltiris','gockelok'],branches=['p','f','i',null];scene.show(sets.map((set,i)=>({gear:{weapon:{type:weapon.value,tier:7,branch:branches[i]},armor:{head:set+'_head',body:set+'_body',legs:set+'_legs'}},weaponOnly:!armor.checked,yaw:weapon.value==='kt'&&!armor.checked?1.25:.22,spin:spin.checked?.3:0})),{cam:[0,1.6,10.5],look:[0,1.25,0],spacing:2.05});status.textContent='Bereit · nur lokale Modellvorschau';}
 frame.onload=()=>{const start=Date.now();const poll=()=>{try{if(!frame.contentWindow.__SH?.app?.scene?.show)throw Error();ready=true;show();}catch{if(Date.now()-start<30000)setTimeout(poll,100);else status.textContent='Vorschau konnte nicht geladen werden.';}};poll();};
 for(const el of [weapon,armor,spin])el.onchange=show;
 </script></html>

@@ -31,7 +31,7 @@ export function fireballDef({ from, aim, speed = 17, extra = 10, radius = 0.75, 
   const dx = aim.x - from.x, dy = aim.y - from.y, dz = aim.z - from.z, d = Math.hypot(dx, dy, dz) || 1;
   const L = d + extra;
   return {
-    kind: 'fire', mode: 'sweep', from: { ...from },
+    kind: 'fire', element: 'fire', mode: 'sweep', from: { ...from },
     to: { x: from.x + (dx / d) * L, y: from.y + (dy / d) * L, z: from.z + (dz / d) * L },
     dur: L / speed, arc: 0, radius, dmg, knock: 'flinch', status, key,
   };
@@ -110,7 +110,9 @@ export class ProjectileSet {
       if (!p.hitCapsules().some((c) => overlap(shape, c))) continue;
       const res = p.takeHit({
         dmg: def.dmg * (this.owner.dmgMul ?? 1), knock: def.knock ?? 'flinch', key: `${def.key}|${p.id}`,
-        sourcePos: pos, status: def.status, attackId: def.attackId ?? String(def.key).split('@')[0], monster: this.owner,
+        sourcePos: pos, status: def.status,
+        element: def.element ?? (def.kind === 'fire' || def.kind === 'magma' ? 'fire' : undefined),
+        attackId: def.attackId ?? String(def.key).split('@')[0], monster: this.owner,
       });
       if (res === 'hit' || res === 'block') {
         pr.hit.add(p.id);

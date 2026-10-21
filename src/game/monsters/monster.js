@@ -926,7 +926,7 @@ export class Monster {
         if (h.hit.occlude && this.ctx.world?.coverBetween?.(this.pos, p.pos)) continue;
         const res = p.takeHit({
           dmg: h.dmg * this.dmgMul * (this.def.hitDmgMul?.(this, h.hit) ?? 1), knock: h.knock, key: h.key + '|' + p.id, sourcePos: this.pos, attackId: inst.params.attackId, monster: this,
-          status: h.hit.status, push: h.hit.push, dmgPct: h.hit.dmgPct, noPerfect: h.hit.noPerfect,
+          status: h.hit.status, element: h.hit.element, push: h.hit.push, dmgPct: h.hit.dmgPct, noPerfect: h.hit.noPerfect,
         });
         if (res === 'hit' || res === 'block' || res === 'perfect') inst.hitSet.add(k); // perfect = Glitch-Konter: der Treffer ist verbraucht
         if (res === 'hit' && h.dmg > 0) this.ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });

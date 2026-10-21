@@ -2,6 +2,7 @@
 // roll-cancel only once the effect has landed (`applyAt`). Taking a hit cancels the use before it lands.
 import { ITEMS } from '../data/items.js';
 import { healVitals } from './vitals.js';
+import { addGlitchEnergy, GLITCH } from './glitch.js';
 
 const BUFFER = 0.25; // an item press during an attack is remembered this long
 
@@ -26,6 +27,27 @@ export class ItemSystem {
     this.buffs = []; // {kind:'stamina', t}
     this.speedBonus = 0; // Pilzpfanne
     this.baseCostMul = player.v.costMul ?? 1;
+    player.itemBuffs = {};
+    this.glitchCooldown = 0;
+    this.offDown = hunt.bus.on('playerDown', ({ player: down }) => { if (down === player) this.clear(); });
+  }
+
+  clear() {
+    this.heals.length = 0; this.buffs.length = 0;
+    this.player.itemBuffs = {};
+    this.player.v.costMul = this.baseCostMul;
+    this.buffer = 0;
+    this.#end();
+  }
+
+  dispose() { this.offDown?.(); this.clear(); }
+
+  #canCharge() {
+    const p = this.player;
+    if (this.glitchCooldown > 0) { this.hunt.toast?.(`Glitchdestillat: noch ${Math.ceil(this.glitchCooldown)} s`); return false; }
+    if (p.glitch?.active || (p.glitch?.energy ?? 0) >= GLITCH.MAX) { this.hunt.toast?.('Glitchdestillat: Energie bereits voll oder Glitch aktiv'); return false; }
+    if ((p.ctx?.mods?.player?.glitchGainMul ?? 1) <= 0) { this.hunt.toast?.('Glitch-Energie gesperrt'); return false; }
+    return true;
   }
 
   /** Hunt.onItem(player, action, slot) */
@@ -61,6 +83,7 @@ export class ItemSystem {
     if (def.effect?.type === 'tip' && this.player.weaponId !== 'bow' && this.player.weaponId !== 'lb') { this.hunt.toast?.('Spitzen gehen nur mit Bogen und Ratterbüchse'); return false; }
     // Essen stapelt nicht: ein Essens-Buff (Koch oder Grillsteak) bis zum Umkippen
     if (def.effect?.type === 'grill' && hasFoodBuff(this.player)) { this.hunt.toast?.('Schon gegessen – neues Essen erst nach dem Umkippen'); return false; }
+    if (def.effect?.type === 'glitchCharge' && !this.#canCharge()) return false;
     this.using = { id, def, t: 0, applied: false, ...t };
     this.player.itemUse = this.using; // read by Player (rooted)
     this.buffer = 0;
@@ -86,7 +109,13 @@ export class ItemSystem {
   }
 
   #tickBuffs(dt) {
+    this.glitchCooldown = Math.max(0, this.glitchCooldown - dt);
+    if (!this.player.alive) { this.clear(); return; }
     const v = this.player.v;
+    for (const [key, b] of Object.entries(this.player.itemBuffs)) {
+      b.t -= dt;
+      if (b.t <= 0) delete this.player.itemBuffs[key];
+    }
     for (let i = this.heals.length - 1; i >= 0; i--) {
       const h = this.heals[i];
       const amt = Math.min(h.left, h.rate * dt);
@@ -119,13 +148,26 @@ export class ItemSystem {
     }
     if (hunt.mods?.player?.healItems === false && (e.type === 'heal' || e.type === 'grill' || e.type === 'cool')) { hunt.fx.number(this.#top(), 'Kein Undo', 'heal'); return; } // Mutator Kein Undo
     if (e.type === 'grill' && hasFoodBuff(p)) { hunt.toast?.('Schon gegessen – neues Essen erst nach dem Umkippen'); return; } // nie stapeln (wird nicht verbraucht)
+    if (e.type === 'glitchCharge' && !this.#canCharge()) return;
     if (!this.inv.consume(id, 1)) return;
     switch (e.type) {
       case 'heal':
         this.heals.push({ left: e.hp, rate: e.hp / e.over });
+        for (const status of e.clear ?? []) p.clearStatus?.(status);
         if (e.bruise) p.v.bruise = 0;
         hunt.fx.number(this.#top(), `+${e.hp}`, 'heal');
         break;
+      case 'tonic':
+        p.itemBuffs[e.buff] = { t: e.secs, reduction: e.reduction, partMul: e.partMul };
+        for (const status of e.clear ?? []) p.clearStatus?.(status);
+        hunt.fx.number(this.#top(), `${def.name} · ${e.secs}s`, 'heal');
+        break;
+      case 'glitchCharge': {
+        const gained = addGlitchEnergy(p, e.amount, 'item');
+        this.glitchCooldown = e.cooldown;
+        hunt.fx.number(this.#top(), `Glitch +${Math.round(gained)}`, 'heal');
+        break;
+      }
       case 'stamina':
         p.v.costMul = this.baseCostMul * e.mul;
         this.buffs = this.buffs.filter((b) => b.kind !== 'stamina');

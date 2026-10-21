@@ -243,8 +243,8 @@ const flammenstoss = {
   cond: (m) => !!(m.partById.wingL?.broken || m.partById.wingR?.broken),
   marker: { at: 'self', radius: 6.5 }, markerUntil: 0.95,
   hits: [
-    { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.5, 2.8], radius: 2.0, dmg: 24, knock: 'flinch', status: { type: 'burn' } },
-    { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.6, 5.2], radius: 2.5, dmg: 24, knock: 'flinch', status: { type: 'burn' } },
+    { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.5, 2.8], radius: 2.0, dmg: 24, knock: 'flinch', element: 'fire', status: { type: 'burn' } },
+    { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.6, 5.2], radius: 2.5, dmg: 24, knock: 'flinch', element: 'fire', status: { type: 'burn' } },
   ],
   events: [{ t: 0.92, call: 'burst', all: true }],
   calls: {

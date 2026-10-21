@@ -55,7 +55,7 @@ export function createHazards(layout) {
         if (s.lavaT >= TICK) {
           s.lavaT -= TICK;
           // compensate Lumpen so lava really deals 10 HP/s; i-frames of a roll still protect
-          const res = p.takeHit({ dmg: (LAVA_DPS * TICK) / (1 - protectReduction(p.protect)), knock: 'none', key: 'lava', sourcePos: null });
+          const res = p.takeHit({ dmg: (LAVA_DPS * TICK) / (1 - protectReduction(p.protect)), element: 'fire', knock: 'none', key: 'lava', sourcePos: null });
           if (res === 'hit' && hunt.fx) {
             hunt.fx.flash('rgba(255,120,24,.32)', 0.3);
             hunt.fx.spark({ x: p.pos.x, y: p.pos.y + 0.3, z: p.pos.z }, 7, '#ff9a30', 3.5);

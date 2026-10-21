@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MUTATORS, MUTATOR_SHORT } from '../data/mutators.js';
 import { FOODS } from '../data/foods.js';
+import { itemBuffText, isSurveyed } from '../game/itemBuffs.js';
 import { COLORS as BUFF_COLORS, SYMBOL as BUFF_SYMBOL, BUFF_NAME, BUFF as BUFF_CFG, buffKey } from '../game/buffs.js'; // [KK] Krachkiste-Buffs
 
 /** [KK] kleine Buff-Symbole ▲■● (Stufe als Zahl, Restzeit als Balken) fuer HP-Leiste und Party-Liste */
@@ -41,6 +42,7 @@ export function createHud(root) {
       <div class="wstat"></div>
       <div class="hud-finale" style="display:none;font:700 1.6vmin/1.3 monospace;text-shadow:0 0 3px #000"></div>
       <div class="hud-buffs"></div><!-- [KK] Krachkiste-Buffs -->
+      <div class="hud-item-buffs" style="font:700 1.5vmin/1.4 monospace;color:#b5f2ea;text-shadow:0 0 3px #000"></div>
       <div class="hud-status"></div><!-- [M] -->
       <div class="hud-party"></div><!-- im Fluss unter allen Status-Zeilen: wächst mit, nie überlappend (bis 6 Pirscher) -->
     </div>
@@ -136,6 +138,7 @@ export function createHud(root) {
         if(finale){n.style.color=finale.color;n.textContent=`${finale.name} · ${finale.cooldown>0?Math.ceil(finale.cooldown)+' s':finale.ready?'BEREIT':Math.round(finale.charge*100)+' %'}`;}
       });
       set('buffs', buffSig(p), () => { refs.buffs.innerHTML = buffIcons(p); }); // [KK]
+      set('itemBuffs', itemBuffText(p), (text) => { q('.hud-item-buffs').textContent = text; });
       const stat = p.def.status?.(p.weapon);
       const sk = stat ? `${stat.text}|${stat.level}|${stat.max}|${stat.sauber}|${stat.slots?.join('') ?? ''}` : '';
       // [LB] Nachlade-Balken (Mitte unten, klein): gelbes Fenster + Zeiger
@@ -318,7 +321,7 @@ export function createHud(root) {
       if (!mm.first.has(m)) mm.first.set(m, { x: m.pos.x, z: m.pos.z });
       const d = Math.hypot(m.pos.x - p.pos.x, m.pos.z - p.pos.z);
       if (d < 30 || m.discovered || (m.state && m.state !== 'wander' && m.state !== 'sleep')) mm.seen.add(m);
-      if (mm.seen.has(m)) {
+      if (mm.seen.has(m) || isSurveyed(m, hunt)) {
         if (m.minor) { if (d < 45 || m.discovered) { g.fillStyle = m.def.neutral ? '#9ae06a' : '#ff9a3a'; g.fillRect(sx(m.pos.x) - 1, sz(m.pos.z) - 1, px - 1, px - 1); } continue; }
         if (minimapIcon(m) === 'flight') {
           const x = sx(m.pos.x), y = sz(m.pos.z), wing = big ? 6 : 4;

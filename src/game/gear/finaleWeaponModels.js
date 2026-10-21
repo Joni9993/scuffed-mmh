@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GearParts, gearMaterial, bar, spike } from '../../render/gearfx.js';
+import { dualBody, rangedBody, axeShaft, axeChunk } from './finaleMartialModels.js';
 
 export const FINALE_PALETTES = {
   p: { dark:'#261c1e', shell:'#862f24', edge:'#e6ad66', glow:'#ff5e24', light:'#ffda81' },
@@ -83,7 +84,8 @@ function blade(P,type,aspect,mirror) {
 /** Complete physical body: animated strings, muzzle sockets, samplers and morph roots stay in their existing rigs. */
 export function finaleBody(type,aspect,mirror=1) {
   const P=new GearParts(),c=FINALE_PALETTES[aspect];
-  if(type==='gs'||type==='db'){blade(P,type,aspect,mirror);return G(P);}
+  if(type==='db'){dualBody(P,c,aspect,mirror);return G(P);}
+  if(type==='gs'){blade(P,type,aspect,mirror);return G(P);}
   if(type==='bow') {
     for(const side of [-1,1])for(let j=0;j<5;j++) {
       const a=j/5,b=(j+1)/5;
@@ -96,16 +98,7 @@ export function finaleBody(type,aspect,mirror=1) {
     }
     anatomy(P,aspect,.04,0,.3,.7);return G(P);
   }
-  if(type==='lb') {
-    bar(P,[0,.48,0],[0,-.95,0],.075,.06,c.dark);
-    P.box(.14,.26,.16,c.shell,{y:.35});P.box(.11,.22,.1,c.dark,{y:.02,z:-.12,rx:-.2});
-    for(const side of [-1,1])bar(P,[0,-.6,0],[side*.55,-.78,0],.05,.025,c.edge);
-    for(const side of [-1,1])bar(P,[side*.55,-.78,0],[0,-.35,0],.009,.009,c.light);
-    for(let j=0;j<4;j++)P.box(.2+(aspect==='f'?.08:0),.1,.15,c.shell,{y:-.3-j*.15,z:.1,rz:aspect==='i'?(j%2?-.15:.15):0});
-    anatomy(P,aspect,0,-.4,.18,.7);
-    for(const side of [-1,1])bar(P,[side*.09,-.5,0],[side*.13,-.94,0],.035,.045,c.glow,{glow:.65});
-    return G(P);
-  }
+  if(type==='lb'){rangedBody(P,c,aspect);return G(P);}
   if(type==='kk') {
     bar(P,[0,.54,0],[0,-1.1,0],.05,.055,c.edge);
     P.box(.6,.55,.3,c.dark,{y:-1.17});
@@ -125,20 +118,12 @@ export function finaleBody(type,aspect,mirror=1) {
     }
     return G(P);
   }
-  // Axe shaft, its eight physical chunks receive a separate anatomy-matched form.
-  bar(P,[0,.58,0],[0,-1.4,0],.045,.05,c.dark);P.box(.11,.1,.11,c.edge,{y:.55});
-  anatomy(P,aspect,0,-.56,.03,.55);return G(P);
+  // All eight head chunks retain their existing axe/sword morph transforms.
+  axeShaft(P,c,aspect);return G(P);
 }
 
 export function finaleAxeBlock(aspect,index) {
-  const P=new GearParts(),c=FINALE_PALETTES[aspect];
-  P.box(aspect==='f'?.26:.21,.15,aspect==='f'?.14:.1,c.shell);
-  P.box(.21,.025,.11,c.glow,{y:.06,glow:.7});
-  if(aspect==='p') {P.cyl(.035,.035,.08,5,c.edge,{x:index%2?.07:-.07,y:.11});P.cyl(.022,.022,.085,5,c.dark,{x:index%2?.07:-.07,y:.115});}
-  else if(aspect==='f') {P.box(.17,.04,.16,c.dark,{y:-.06,rz:index%2?.1:-.1});}
-  else if(aspect==='i') {spike(P,[.04,0,-.03],[.13,.13,-.06],.055,c.edge,{glow:.4});}
-  else {spike(P,[.04,0,-.03],[.14,.11,-.03],.055,c.edge);P.box(.035,.035,.035,c.light,{x:-.08,y:.11,glow:.9});}
-  return G(P);
+  const P=new GearParts();axeChunk(P,FINALE_PALETTES[aspect],aspect,index);return G(P);
 }
 export function finaleCrest(type,aspect) {
   const P=new GearParts();anatomy(P,aspect,0,0,0,type==='kt'?.5:.7);return G(P);

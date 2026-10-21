@@ -47,7 +47,7 @@ function detonate(m, s) {
     if (!p.local || !p.alive) continue;
     if (Math.hypot(p.pos.x - s.x, p.pos.z - s.z) > (b.r ?? s.r) + (p.radius ?? .4)) continue;
     if (m.def.cover?.(m, { x: s.x, z: s.z }, p)) continue; // hard cover (Felsengroll pillars) shields from the blast
-    p.takeHit({ dmg: b.dmg * (m.dmgMul ?? 1), knock: b.knock ?? 'down', key: `${s.key}|blast|${p.id}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: b.attackId ?? s.attackId, monster: m, status: b.status });
+    p.takeHit({ dmg: b.dmg * (m.dmgMul ?? 1), knock: b.knock ?? 'down', key: `${s.key}|blast|${p.id}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: b.attackId ?? s.attackId, monster: m, element: b.element ?? (s.kind === 'fire' ? 'fire' : undefined), status: b.status });
   }
 }
 
@@ -69,7 +69,7 @@ export function tickHazards(m) {
       const next = s.next.get(p.id) ?? 0;
       if (time < next) continue;
       s.next.set(p.id, time + SCORCH.TICK);
-      const res = p.takeHit({ dmg: (s.dmg ?? SCORCH.DMG) * (m.dmgMul ?? 1), knock: 'none', key: `${s.key}|${p.id}|${Math.floor(time / SCORCH.TICK)}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: s.attackId ?? 'pyrostur_glutboden', monster: m, noPerfect: true, status: s.status === undefined ? GLUTBRAND : s.status ?? undefined });
+      const res = p.takeHit({ dmg: (s.dmg ?? SCORCH.DMG) * (m.dmgMul ?? 1), knock: 'none', key: `${s.key}|${p.id}|${Math.floor(time / SCORCH.TICK)}`, sourcePos: { x: s.x, y: p.pos.y, z: s.z }, attackId: s.attackId ?? 'pyrostur_glutboden', monster: m, element: s.kind === 'fire' ? 'fire' : undefined, noPerfect: true, status: s.status === undefined ? GLUTBRAND : s.status ?? undefined });
       if (res === 'hit') ctx.fx?.flash?.('rgba(255,90,20,.28)', .25);
     }
   }
@@ -84,7 +84,7 @@ export function tickHazards(m) {
       // Hunters inside the start radius met the blast itself; the wave only runs away from them.
       if (d < ring.r0 || Math.abs(d - r) > ring.width + (p.radius ?? .4)) continue;
       if (m.def.cover?.(m, { x: ring.x, z: ring.z }, p)) continue; // pillar between centre and hunter: no hit
-      const res = p.takeHit({ dmg: ring.dmg * (m.dmgMul ?? 1), knock: ring.knock, key: `${ring.key}|${p.id}`, sourcePos: { x: ring.x, y: p.pos.y, z: ring.z }, attackId: ring.attackId ?? 'pyrostur_druckwelle', monster: m, status: ring.status ?? undefined });
+      const res = p.takeHit({ dmg: ring.dmg * (m.dmgMul ?? 1), knock: ring.knock, key: `${ring.key}|${p.id}`, sourcePos: { x: ring.x, y: p.pos.y, z: ring.z }, attackId: ring.attackId ?? 'pyrostur_druckwelle', monster: m, element: ring.kind === 'fire' ? 'fire' : undefined, status: ring.status ?? undefined });
       if (res === 'hit' || res === 'block' || res === 'perfect') ring.hit.add(p.id);
       if (res === 'hit') ctx.bus.emit('sfx', { name: 'monsterHit', pos: p.pos });
     }

@@ -6,6 +6,7 @@ export const FOODS = {
   glutgulasch: { id: 'glutgulasch', name: 'Glutgulasch', desc: '+10 % Angriff. Brennt beidseitig.', cost: { schrott: 80, glutbrocken: 1 }, effect: { atk: 0.1 } },
   pilzpfanne: { id: 'pilzpfanne', name: 'Pilzpfanne', desc: '+15 % Gift-/Brenn-Resistenz, Items 20 % schneller.', cost: { schrott: 60, wabbelpilz: 1 }, effect: { resist: 0.15, itemSpeed: 0.2 } },
   mampfer_ragout: { id: 'mampfer_ragout', name: 'Mampfer-Ragout', desc: '+30 Max-HP. Schmeckt nach Wiese, Sonne und schlechtem Gewissen.', cost: { schrott: 60, rohfleisch: 2 }, effect: { maxHp: 30 } }, // [L]
+  dschungelcurry: { id: 'dschungelcurry', name: 'Dschungelcurry', desc: '+8 % Angriff und +15 Max-Puste. Kokos löscht den Feuerpilz. Meistens.', cost: { schrott: 100, kokosnuss: 1, feuerpilz: 1, dschungelkraut: 1 }, effect: { atk: 0.08, maxStamina: 15 } },
 };
-export const FOOD_ORDER = ['eintopf', 'pustebrei', 'glutgulasch', 'pilzpfanne', 'mampfer_ragout'];
+export const FOOD_ORDER = ['eintopf', 'pustebrei', 'glutgulasch', 'pilzpfanne', 'mampfer_ragout', 'dschungelcurry'];
 export const getFood = (id) => FOODS[id] ?? null;

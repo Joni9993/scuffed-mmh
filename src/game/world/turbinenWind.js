@@ -1,6 +1,7 @@
 // Turbinenkrone (Rostwerke Zone 4): Windboeen. Rein deterministisch aus Hunt-Seed + Hunt-Zeit (Koop: alle Clients identisch).
 // Zyklus k: Dauer 8-14 s, am Ende liegt die Boee (2-3 s); davor WIND_WARN s Ankuendigung. Schub ~2,5 m/s, kein Schaden.
 import { createRng } from '../../core/rng.js';
+import { inRuneAnchor } from '../itemBuffs.js';
 
 export const WIND_ZONE = 4;
 export const WIND_SPEED = 2.5; // m/s Schub
@@ -40,7 +41,7 @@ export function createWindSchedule(seed = 1) {
 
 /** Schub (m/s-Vektor) fuer einen Pirscher; null wenn nicht betroffen (nicht Zone 4, windImmune, keine Boee). */
 export function windPush(state, player, zoneAt) {
-  if (!state || state.gust <= 0 || !player || player.windImmune || player.alive === false) return null;
+  if (!state || state.gust <= 0 || !player || player.windImmune || player.alive === false || inRuneAnchor(player)) return null;
   if (zoneAt(player.pos.x, player.pos.z) !== WIND_ZONE) return null;
   return { x: state.dx * WIND_SPEED * state.gust, z: state.dz * WIND_SPEED * state.gust };
 }

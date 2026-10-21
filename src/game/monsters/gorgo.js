@@ -3,6 +3,7 @@ import { lambert, basic } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
+import { inRuneAnchor } from '../itemBuffs.js';
 
 // Gorgo, der Schlackwurm (JR 5, GDD 15.5): ~18 m langer Wurm aus Kopf + 6 Segmenten. Gräbt sich ein (unverwundbar, Schlacke-Hügel),
 // jagt unter der Erde (Jagd-Durchbruch: 2x, Phase 2: 3x hintereinander mit Bodenwarnung unter dem Ziel), spuckt Lava-Brocken (Fächer),
@@ -315,7 +316,7 @@ function suctionTick(m, dt) {
   const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
   const mx = s.x + fx * MOUTH, mz = s.z + fz * MOUTH;
   for (const p of m.ctx.players) {
-    if (!p.local || !p.alive || p.suctionImmune) continue;
+    if (!p.local || !p.alive || p.suctionImmune || inRuneAnchor(p, m.ctx)) continue;
     if (p.state === 'roll') { rolled.add(p.id); continue; }
     if (rolled.has(p.id)) continue; // Rolle bricht den Sog für diesen Angriff
     const dx = p.pos.x - s.x, dz = p.pos.z - s.z, d = Math.hypot(dx, dz);

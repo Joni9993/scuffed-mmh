@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { lambert } from '../render/ps1.js';
 import { applyMonsterHit } from './combat.js';
+import { ITEMS } from '../data/items.js';
 
 const THROW_TIME = 0.6;
 const FLASH_R = 3.6, STINK_R = 3.6, TRAP_R = 2.0, BOMB_R = 4.0;
@@ -27,6 +28,7 @@ export class Effects {
     hunt.scene?.add(this.group);
     const box = new THREE.BoxGeometry(0.3, 0.3, 0.3);
     this.geo = { box, disc: new THREE.CylinderGeometry(1, 1, 0.06, 10), cuke: new THREE.CylinderGeometry(0.16, 0.16, 0.5, 6) };
+    this.geo.ring = new THREE.RingGeometry(0.96, 1, 32);
   }
 
   spawn(kind, params = {}) {
@@ -46,11 +48,13 @@ export class Effects {
       if (e.update(dt) === false) {
         this.list.splice(i, 1);
         if (e.mesh) this.group.remove(e.mesh);
+        e.dispose?.();
       }
     }
   }
 
   dispose() {
+    for (const e of this.list) e.dispose?.();
     this.hunt.scene?.remove(this.group);
     for (const g of Object.values(this.geo)) g.dispose();
     this.list.length = 0;
@@ -67,6 +71,7 @@ function thrown(fx, p, { color, onLand }) {
   let t = 0;
   return {
     mesh,
+    dispose() { mesh.material.dispose(); },
     update(dt) {
       t += dt;
       const k = Math.min(1, t / THROW_TIME);
@@ -79,6 +84,45 @@ function thrown(fx, p, { color, onLand }) {
 }
 
 const KINDS = {
+  venom: (fx, p) => thrown(fx, p, {
+    color: '#a8c030',
+    onLand(h, at) {
+      const cfg = ITEMS.giftbombe.effect;
+      h.fx.spark({ ...at, y: at.y + 0.5 }, 28, '#a8c030', 5);
+      h.bus.emit('sfx', { name: 'break', pos: at });
+      if (auth(h)) for (const m of monstersNear(h.monsters, at, cfg.radius)) {
+        if (!m.invulnerable) m.applyStatus?.('poison', { buildup: cfg.poison });
+      }
+    },
+  }),
+
+  survey: (fx, p) => thrown(fx, p, {
+    color: '#40f0d0',
+    onLand(h, at) {
+      const e = beacon(fx, at, p.owner, 'surveyZones', ITEMS.leuchtsignal.effect, '#40f0d0');
+      fx.list.push(e); fx.group.add(e.mesh);
+      h.bus.emit('sfx', { name: 'ui', pos: at });
+    },
+  }),
+
+  runeanchor: (fx, p) => beacon(fx, p.pos, p.owner, 'runeZones', ITEMS.runenanker.effect, '#bda0ff'),
+
+  heavybomb: (fx, p) => {
+    const h = fx.hunt, cfg = ITEMS.donnerknallgurke.effect;
+    const mat = lambert({ color: '#ffe14d', emissive: '#000000' });
+    const mesh = new THREE.Mesh(fx.geo.cuke, mat);
+    mesh.scale.set(1.8, 1.6, 1.8); mesh.rotation.z = Math.PI / 2;
+    mesh.position.set(p.pos.x, p.pos.y + 0.3, p.pos.z);
+    let t = cfg.fuse;
+    return { mesh, dispose() { mat.dispose(); }, update(dt) {
+      t -= dt;
+      const blink = Math.floor(t * (t < 1 ? 14 : 5)) % 2;
+      mat.emissive.setRGB(blink ? 0.9 : 0, blink ? 0.5 : 0, 0);
+      if (t > 0) return true;
+      explode(h, p.pos, p.owner, cfg);
+      return false;
+    } };
+  },
   flash: (fx, p) => thrown(fx, p, {
     color: '#fff4a0',
     onLand(h, at) {
@@ -183,6 +227,31 @@ const KINDS = {
   },
 };
 
+// A beacon belongs to the world, including on guests. Replacing the owner's old beacon
+// prevents camp refills from covering the whole arena. Expiry removes gameplay and visuals together.
+function beacon(fx, at, owner, key, cfg, color) {
+  const h = fx.hunt, zones = (h[key] ??= []);
+  for (const old of zones) if (old.owner === owner) old.active = false;
+  const zone = { x: at.x, y: at.y, z: at.z, r: cfg.radius, owner, active: true };
+  zones.push(zone);
+  const mat = lambert({ color, emissive: color, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+  const mesh = new THREE.Group(); mesh.position.set(at.x, at.y + 0.08, at.z);
+  const ring = new THREE.Mesh(fx.geo.ring, mat); ring.rotation.x = -Math.PI / 2;
+  // The signal's full 35 m radius is gameplay only; a small pulse marks its source.
+  const r = key === 'runeZones' ? cfg.radius : 1.5;
+  ring.scale.setScalar(r); mesh.add(ring);
+  const post = new THREE.Mesh(fx.geo.cuke, mat); post.scale.set(0.5, 2, 0.5); post.position.y = 0.5; mesh.add(post);
+  let t = cfg.duration;
+  return { mesh, dispose() {
+    zone.active = false;
+    const i = zones.indexOf(zone); if (i >= 0) zones.splice(i, 1);
+    mat.dispose();
+  }, update(dt) {
+    t -= dt; mat.opacity = Math.min(0.7, t * 0.35) * (0.85 + Math.sin(t * 5) * 0.15);
+    return zone.active && t > 0;
+  } };
+}
+
 function cloud(h, at, secs) {
   let t = secs, acc = 0;
   return {
@@ -238,16 +307,16 @@ export function blastBuild(h, player, monster, hp, res, st) {
 }
 
 /** Knallgurke: 120 damage + 50 stun build-up on monsters in radius (head part carries the stun). */
-export function explode(h, at, owner = 'p1') {
+export function explode(h, at, owner = 'p1', { damage = BOMB_DMG, stun = BOMB_STUN, radius = BOMB_R } = {}) {
   h.fx.spark({ x: at.x, y: at.y + 0.5, z: at.z }, 50, '#ffb040', 9);
   h.fx.shake?.(0.4, 0.3);
   h.bus.emit('sfx', { name: 'heavy', pos: at });
   if (!auth(h)) return;
-  for (const m of monstersNear(h.monsters, at, BOMB_R)) {
+  for (const m of monstersNear(h.monsters, at, radius)) {
     const part = m.parts?.find((p) => p.stunPart) ?? m.parts?.[0];
     if (!part) continue;
-    const res = { dmg: BOMB_DMG, elemDmg: 0, crit: false, weak: false, zone: part.factor, blunt: BOMB_STUN, stunEligible: !!part.stunPart, wucht: 0, partId: part.id, hitstop: 0, shake: 0, attackerId: owner };
+    const res = { dmg: damage, elemDmg: 0, crit: false, weak: false, zone: part.factor, blunt: stun, stunEligible: !!part.stunPart, wucht: 0, partId: part.id, hitstop: 0, shake: 0, attackerId: owner };
     applyMonsterHit(m, res, h);
-    h.fx.number({ x: m.pos.x, y: m.pos.y + 2.5, z: m.pos.z }, BOMB_DMG, 'crit');
+    h.fx.number({ x: m.pos.x, y: m.pos.y + 2.5, z: m.pos.z }, damage, 'crit');
   }
 }

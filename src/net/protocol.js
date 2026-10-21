@@ -136,7 +136,7 @@ export function encodeHit(monsterId, res, attackerId, id = ++_hid) {
   if (res.rostBuild) o.r = Math.min(100, Math.round(res.rostBuild));
   if (res.poisonBuild) o.g = Math.min(100, r1(res.poisonBuild)); // Giftspitze
   if (res.stunBuild) o.s = Math.min(100, r1(res.stunBuild)); // Bummspitze
-  if (res.partDmgMul && res.partDmgMul !== 1) o.q = r1(res.partDmgMul); // Kroll-Ast: Teil-HP-Schaden
+  if (res.partDmgMul && res.partDmgMul !== 1) o.q = Math.round(res.partDmgMul * 1000) / 1000; // preserve 1.15 tonics and equipment combinations
   return o;
 }
 export function decodeHit(o) {

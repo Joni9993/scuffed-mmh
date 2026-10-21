@@ -63,3 +63,23 @@ seltene Kerne werden hauptsächlich für die Brustteile benötigt.
   Speichern aller 28 Waffen, Schmiede-Anzeige, Modellunterschiede und Ressourcen.
 - Produktionsbuild erfolgreich; bestehende Warnung zur Hauptbundle-Größe bleibt.
   Modelle im Browser geprüft. Längere Endgame-Spieltests zur Balance bleiben offen.
+
+## Eigenständige Waffenformen (21.10.2026)
+
+Katana, Krachkiste, Zwillingsklingen, Ratterbüchse und Glitchaxt besitzen nun je
+vier vollständige Konstruktionen. Das Katana erhält auch eine passende Scheide;
+Klinge und Aura verschwinden beim Ziehen/Einstecken gemeinsam. Die Krachkisten
+sind Druckorgel, Steingong, Prismen-Stimmgabel und Krähen-Iris. Sampler, Membran
+und bewegliche Flügel bleiben an ihren funktionalen Gelenken. Axtblöcke behalten
+beide Morphformen. Die Katana-Vorschau zeigt die breite Klingenseite.
+
+Graustufen-Rastertests prüfen die tatsächlich projizierten Dreiecksflächen aller
+Familien gegeneinander, zusätzlich zu Geometriebudgets, Griffen und Animationen.
+Plattmacher und Bogen behalten ihre bisherigen Entwürfe.
+
+Neue Jagdwerkzeuge und der vollständige Audit der 29 Sammelressourcen stehen in
+[RESOURCE_CRAFTING_AUDIT.md](RESOURCE_CRAFTING_AUDIT.md). Abschließende Prüfung:
+1.678 Regressionstests und 20 zusätzliche Element-/Koop-Tests bestanden,
+ein optionaler Metriktest übersprungen; langer `p3fairness`-Lauf nicht wiederholt.
+Produktionsbuild erfolgreich. Modelle aller fünf überarbeiteten Waffenarten
+im Browser verglichen; längere praktische Balance-Tests stehen weiterhin aus.

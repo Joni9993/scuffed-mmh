@@ -528,7 +528,7 @@ const feuerruelpser = {
   cue: cue('droehn', FOODS.feuerpilz.color), audit: [3.5, 6],
   cond: (m) => hasBuff(m, 'feuerpilz'),
   markerFromHits: true,
-  hits: [[2.5, 1.6, 1.0], [5.0, 2.2, 1.2], [7.5, 2.8, 1.4]].map(([z, r, t0]) => ({ t0, t1: t0 + 0.12, shape: 'sphere', at: [0, 1.5, z], radius: r + 0.6, dmg: 26, knock: 'flinch', status: { type: 'burn' } })),
+  hits: [[2.5, 1.6, 1.0], [5.0, 2.2, 1.2], [7.5, 2.8, 1.4]].map(([z, r, t0]) => ({ t0, t1: t0 + 0.12, shape: 'sphere', at: [0, 1.5, z], radius: r + 0.6, dmg: 26, knock: 'flinch', element: 'fire', status: { type: 'burn' } })),
   events: [{ t: 0.95, call: 'rulps', all: true }],
   calls: {
     rulps(m, ctx, inst, age = 0) {
