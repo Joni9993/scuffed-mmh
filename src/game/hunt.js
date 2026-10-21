@@ -36,6 +36,7 @@ import { openStation, closeStation } from '../ui/stations.js';
 import { attachGlitch, GLITCH } from './glitch.js';
 import { newTrain, trainRefill, trainHit, trainTick } from './training.js';
 import { atkMul as buffAtk } from './buffs.js'; // [KK] Krachkiste-Angriffs-Buff
+import { createFinaleArsenal } from './gear/finaleAbilities.js';
 
 const MAX_KO = 3;
 
@@ -143,6 +144,7 @@ export class Hunt {
     this.bus.on('partBreak', ({ monster, part }) => this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5));
     this.bus.on('glitchCounter', () => this.hud.center('Glitch-Konter!', 1));
     this.glitchSys = attachGlitch(this); // Glitch-Energie / -Modus (GDD 16.2)
+    this.finaleArsenal = createFinaleArsenal(this);
     this.bus.on('glitchReady', (e) => { if (e?.player?.local) this.hud.center('GLITCH BEREIT!', 1.6); });
     this.bus.on('glitchStart', (e) => {
       const lp = e?.player;
@@ -262,7 +264,7 @@ export class Hunt {
     const st = player.stats;
     // [W] ah.elems = extra per-hit elements (fire arrow tips)
     const elems = ah.elems ? Object.fromEntries([...new Set([...Object.keys(st.elems), ...Object.keys(ah.elems)])].map((k) => [k, (st.elems[k] ?? 0) + (ah.elems[k] ?? 0)])) : st.elems;
-    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) * (player.counterBuffUntil > this.time ? 1 + player.counterBuff.atk : 1) * buffAtk(player) }; // x1,3 im Glitch-Modus; Überladung // [KT] Schliff // [KK] Angriffs-Buff Rot
+    const attacker = { power: st.power, critChance: st.crit, elems, glitch: ah.glitch, sauber: ah.sauber, dmgMul: player.dmgMul * (player.v.hp < player.v.maxHp*.5 ? 1+(player.lowHealthAtk??0) : 1) * (this.mods.player.dmgMul ?? 1) * (player.def.dmgMul?.(player.weapon) ?? 1) * (player.glitchDmgMul ?? 1) * (player.counterBuffUntil > this.time ? 1 + player.counterBuff.atk : 1) * buffAtk(player) }; // x1,3 im Glitch-Modus; Überladung // [KT] Schliff // [KK] Angriffs-Buff Rot
     const res = resolvePlayerHit(attacker, ah.hit, hp.part, this.rng, { sleeping: monster.sleeping || monster.eating }); // [L] eating predator = sneak hit
     if (st.bluntMul) res.blunt *= st.bluntMul; // [P] Barrotz-Brecher
     if (st.partDmgMul) res.partDmgMul = st.partDmgMul; // Kroll-Ast: Teil-HP-Schaden
@@ -284,7 +286,7 @@ export class Hunt {
     this.stats.damage += res.dmg;
     this.stats.hits++;
     if (this.training) this.#trainHit(res.dmg);
-    this.bus.emit('hit', { player, monster, part: hp.part.id, ...res });
+    this.bus.emit('hit', { player, monster, part: hp.part.id, motionValue:ah.hit.mv, ...res });
   }
 
   // Hooks for the meta agent (items, gathering, carving). Default: nothing.
@@ -445,6 +447,7 @@ export class Hunt {
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.reapDead(dt);
     this.projectiles.update(dt); // [W]
+    this.finaleArsenal?.update(dt);
     this.world.update(dt, this);
     this.ambientFauna?.update(dt); // [L]
     this.meta.late(dt); // [P]
@@ -490,6 +493,7 @@ export class Hunt {
 
   dispose() {
     this.disposed = true;
+    this.finaleArsenal?.dispose();
     for (const m of this.monsters) m.def.dispose?.(m);
     music.setScene(null);
     closeStation(); // restores nothing visible (touch is hidden below) but clears the module-level panel state

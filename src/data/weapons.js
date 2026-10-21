@@ -1,4 +1,4 @@
-// Pure weapon stat data (GDD 8.1). tier = 1..7 (7 = Glitch-Transzendenz, final convergence of both tier-6 branches). Tier 3 has two branches ('a' = Jaggo, 'b' = Barrotz);
+// Pure weapon stat data (GDD 8.1). tier = 1..7 (7 = three final dragon branches and Ur convergence). Tier 3 has two branches ('a' = Jaggo, 'b' = Barrotz);
 // tiers[2] itself equals branch 'a', so the phase-1 API `weaponStats(type, tier)` keeps working.
 // Extra stat fields (optional, read by weapons/combat code if they care): bluntMul (stumpf+), poisonMul (Gift-Aufbau +), partDmgMul (Teil-HP-Schaden, Kroll-Ast); elems.blast = Sprengung (Krachfaust-Ast x: Treffer laden das Teil auf, ab 100 knallt es, siehe hunt.js).
 export const WEAPON_TYPES = {
@@ -136,28 +136,49 @@ export const WEAPON_TYPES = {
 };
 export const WEAPON_ORDER = ['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb'];
 
-// Final rewards retain each weapon's role; no new damage channel or mandatory ultimate action.
+// Final-map branches share the seven weapon move sets, but have their own boss trophies and combat traits.
+export const FINALE_BRANCHES = ['p', 'f', 'i'];
+export const FINALE_TRAITS = {
+  p: { id: 'kesselherz', name: 'Kesselherz', desc: 'Treffer sammeln Hitze. Ein voller Kessel explodiert nach 0,65 s am festgelegten Trefferort. 4 s Abklingzeit.' },
+  f: { id: 'weltenbruch', name: 'Weltenbruch', desc: 'Treffer laden eine Bebenladung. Ein schwerer oder Schwachstellentreffer entlädt sie als teilbrechendes Beben. 5 s Abklingzeit.' },
+  i: { id: 'prismennachhall', name: 'Prismennachhall', desc: 'Perfektes Ausweichen oder ein Katana-Konter lädt drei Nachhalltreffer für die nächsten 8 s. Jeder folgt nach 0,35 s.' },
+  u: { id: 'nahtschneider', name: 'Nahtschneider', desc: 'Fünf Treffer öffnen nach 0,6 s einen Realitätsriss. Schwachstellen zählen doppelt; ein Glitch-Konter lädt sofort auf. 6 s Abklingzeit.' },
+};
 const TRANSCENDENT = {
   gs: ['Ur-Hack: Glitch-Transzendenz', 228], db: ['Pixelsporne: Glitch-Transzendenz', 200],
   bow: ['Weltensehne: Glitch-Transzendenz', 216], kt: ['Kammspalter: Glitch-Transzendenz', 208],
   ga: ['Nullzeiger: Glitch-Transzendenz', 212], kk: ['Kikerikiste: Glitch-Transzendenz', 220],
   lb: ['Ur-Ratter: Glitch-Transzendenz', 208],
 };
+const DRAGON_NAMES = {
+  p: { gs: 'Pyrostur-Kesselzahn', db: 'Pyrostur-Glutrachen', bow: 'Pyrostur-Schlackensehne', kt: 'Pyrostur-Ascheschneider', ga: 'Pyrostur-Druckspalter', kk: 'Pyrostur-Glutorgel', lb: 'Pyrostur-Ventilratter' },
+  f: { gs: 'Felsengroll-Weltenkeule', db: 'Felsengroll-Schollenspalter', bow: 'Felsengroll-Monolithbogen', kt: 'Felsengroll-Gratschneider', ga: 'Felsengroll-Kontinentalbruch', kk: 'Felsengroll-Bebenorgel', lb: 'Felsengroll-Belagerungsratter' },
+  i: { gs: 'Voltiris-Prismenspalter', db: 'Voltiris-Flimmerzwillinge', bow: 'Voltiris-Frequenzsehne', kt: 'Voltiris-Nullphasenschneide', ga: 'Voltiris-Phasenspalter', kk: 'Voltiris-Resonanzmatrix', lb: 'Voltiris-Impulsratter' },
+};
 for (const [type, [name, power]] of Object.entries(TRANSCENDENT)) {
-  WEAPON_TYPES[type].tiers.push({ name, power, crit: .15, elems: { shock: 40, blast: 32 }, partDmgMul: 1.25,
-    ...(type === 'bow' ? { poisonMul: 1.5 } : {}), desc: 'Drei Drachen und ein Huhn. Der Quellcode hat aufgegeben.' });
+  const ur = { name, power, crit: .15, elems: { shock: 40, blast: 32 }, partDmgMul: 1.25, finaleAspect: 'u', ability: FINALE_TRAITS.u,
+    ...(type === 'bow' ? { poisonMul: 1.5 } : {}), desc: 'Drei Drachen und ein Huhn. Der Quellcode hat aufgegeben.' };
+  const dragon = (id, mul, crit, elems, extra) => ({
+    id, name: DRAGON_NAMES[id][type], power: Math.round(power * mul), crit, elems, partDmgMul: 1.15,
+    ...(type === 'bow' ? { poisonMul: 1.5 } : {}), ...extra, finaleAspect: id, ability: FINALE_TRAITS[id], desc: FINALE_TRAITS[id].desc,
+  });
+  WEAPON_TYPES[type].tiers.push({ ...ur, branches: [{ ...ur, id: null },
+    dragon('p', .96, .1, { fire: 48 }, {}),
+    dragon('f', .98, .05, { blast: 36 }, { partDmgMul: 1.4, bluntMul: 1.12 }),
+    dragon('i', .92, .2, { shock: 45 }, {}),
+  ] });
 }
 
-/** Stats of (type, tier, branch). branch only matters at tier 3 (default 'a'). */
+/** Stats of (type, tier, branch). Tier seven defaults to the backward-compatible Ur convergence. */
 export function weaponStats(type, tier = 1, branch = null) {
   const t = WEAPON_TYPES[type];
   const idx = Math.min(Math.max(1, tier), t.tiers.length) - 1;
   const base = t.tiers[idx];
   let stats = base;
-  if (base.branches) stats = base.branches.find((b) => b.id === (branch ?? 'a')) ?? base.branches[0];
+  if (base.branches) stats = base.branches.find((b) => b.id === (idx === 6 ? branch ?? null : branch ?? 'a')) ?? base.branches[0];
   const { branches, ...rest } = base; // eslint-disable-line no-unused-vars
   const { id, ...own } = stats; // eslint-disable-line no-unused-vars
-  return { type, typeName: t.name, tier: idx + 1, branch: base.branches ? (id ?? 'a') : null, ...rest, ...own, elems: { ...(own.elems ?? {}) } };
+  return { type, typeName: t.name, tier: idx + 1, branch: base.branches ? (idx === 6 ? id ?? null : id ?? 'a') : null, ...rest, ...own, elems: { ...(own.elems ?? {}) } };
 }
 
 // ---- Upgrade costs (Schmiede). `schrott` + material counts. Tier 4 may come from either tier-3 branch.
@@ -192,16 +213,22 @@ export const WEAPON_UPGRADES = {
     lb: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 3, voltaro_kamm: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [LB]
     kk: { cost: { schrott: 2500, voltaro_herz: 1, voltaro_spule: 4, voltaro_fell: 2, funkenstein: 3 }, x: { cost: { schrott: 3000, krachfaust_kruste: 1, krachfaust_faustplatte: 1, krachfaust_runenherz: 1 } } }, // [KK]
   },
-  7: { cost: { schrott: 6000, glitchgrat_erz: 8, pyrostur_schuppe: 3, felsengroll_panzer: 3, voltiris_horn: 3, gockel_sporn: 2, gockel_feder: 3, ur_gockelei: 1 } },
+  7: {
+    cost: { schrott: 6000, glitchgrat_erz: 8, pyrostur_schuppe: 3, felsengroll_panzer: 3, voltiris_horn: 3, gockel_sporn: 2, gockel_feder: 3, ur_gockelei: 1 },
+    p: { cost: { schrott: 4200, glitchgrat_erz: 6, pyrostur_schuppe: 5, pyrostur_kesselsack: 2, pyrostur_rubin: 1, drachen_herz: 1 } },
+    f: { cost: { schrott: 4200, glitchgrat_erz: 6, felsengroll_panzer: 5, felsengroll_schweif: 2, felsengroll_kern: 1, drachen_herz: 1 } },
+    i: { cost: { schrott: 4200, glitchgrat_erz: 6, voltiris_flimmerfeder: 5, voltiris_antenne: 2, voltiris_kristall: 1, drachen_herz: 1 } },
+  },
 };
 export const MAX_WEAPON_TIER = 7;
 export const TIER5_BRANCHES = ['k', 'g', 'v'];
 
 /** What can this weapon become next? -> [{tier, branch, name, cost, stats}] (0 entries when maxed). */
 export function upgradeOptions(type, tier, branch = null) {
+  if (tier === 7 && FINALE_BRANCHES.includes(branch)) return [{ tier: 7, branch: null, name: weaponStats(type, 7).name, cost: WEAPON_UPGRADES[7].cost, stats: weaponStats(type, 7) }];
   if (tier >= MAX_WEAPON_TIER) return [];
   const next = tier + 1;
-  if (next === 7) return [{ tier: 7, branch: null, name: weaponStats(type, 7).name, cost: WEAPON_UPGRADES[7].cost, stats: weaponStats(type, 7) }];
+  if (next === 7) return [...FINALE_BRANCHES, null].map(b => ({ tier: 7, branch: b, name: weaponStats(type, 7, b).name, cost: b ? WEAPON_UPGRADES[7][b].cost : WEAPON_UPGRADES[7].cost, stats: weaponStats(type, 7, b) }));
   if (next === 2) return [{ tier: 2, branch: null, name: weaponStats(type, 2).name, cost: WEAPON_UPGRADES[2].cost, stats: weaponStats(type, 2) }];
   if (next === 3) {
     return ['a', 'b'].map((b) => ({ tier: 3, branch: b, name: weaponStats(type, 3, b).name, cost: WEAPON_UPGRADES[3][type][b].cost, stats: weaponStats(type, 3, b) }));

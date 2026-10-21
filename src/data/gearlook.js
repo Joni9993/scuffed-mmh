@@ -3,16 +3,17 @@ import { DEFAULT_ARMOR, SLOTS, getPiece } from './armor.js';
 import { WEAPON_TYPES, MAX_WEAPON_TIER } from './weapons.js';
 
 /** Order of the code letters (a..f). Append only (wire format). */
-export const GEAR_SETS = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust'];
+export const GEAR_SETS = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust', 'pyrostur', 'felsengroll', 'voltiris', 'gockelok'];
 /** Visual escalation: 0 = rags ... 4 = Brathalos, 5 = Kroll/Gorgo, 6 = Voltaro, 7 = Blendax/Mampfaffe, 8 = Krachfaust (alle >= 4: Aura/Glühen). */
-export const SET_TIER = { lumpen: 0, fellkluft: 1, knochenkram: 1, jaggo: 2, barrotz: 3, brathalos: 4, kroll: 5, gorgo: 5, voltaro: 6, blendax: 7, mampfaffe: 7, krachfaust: 8 };
+export const SET_TIER = { lumpen: 0, fellkluft: 1, knochenkram: 1, jaggo: 2, barrotz: 3, brathalos: 4, kroll: 5, gorgo: 5, voltaro: 6, blendax: 7, mampfaffe: 7, krachfaust: 8, pyrostur: 9, felsengroll: 9, voltiris: 9, gockelok: 10 };
 const WCHAR = { gs: 'g', db: 'd', bow: 'b', kt: 'k', kk: 'h', ga: 'x', lb: 'l' };
 const WTYPE = { g: 'gs', d: 'db', b: 'bow', k: 'kt', h: 'kk', x: 'ga', l: 'lb' };
-/** Waffen-Ast je Stufe: 3 = a|b (Jaggo/Barrotz), 5 = k|g|v (Kroll/Gorgo/Voltaro), 6 = v|x (Funkenfürst | Sprenger), sonst null. */
+/** Waffen-Ast: 3=a|b, 5=k|g|v, 6=v|x, 7=p|f|i (Drachen) oder null (Ur). */
 export function gearBranch(tier, branch) {
   if (tier === 3) return branch === 'b' ? 'b' : 'a';
   if (tier === 5) return branch === 'g' || branch === 'v' ? branch : 'k';
   if (tier === 6) return branch === 'x' ? 'x' : 'v';
+  if (tier === 7) return ['p', 'f', 'i'].includes(branch) ? branch : null;
   return null;
 }
 

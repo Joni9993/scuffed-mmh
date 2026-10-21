@@ -11,6 +11,7 @@ import { makeGear } from '../data/gearlook.js'; // [G]
 import { SHOP_STOCK, buy, sell, sellPrice } from '../meta/shop.js';
 import { esc, costChips, delta, reasonText, itemDetail, weaponTag, pieceSkillsHtml } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
+import { ARMORY_MAX } from '../meta/save.js';
 
 const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}${glow[k] ? ' glow' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
 
@@ -18,9 +19,10 @@ const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) =>
 // Layout (fits 568x320 without scrolling to the button): left = tabs + selectable tree/grid (scrolls on its own),
 // right = big rotatable preview + pinned info (compare current vs new, costs, "Schmieden").
 const TREE = [{ tier: 1, branch: null }, { tier: 2, branch: null }, { tier: 3, branch: 'a' }, { tier: 3, branch: 'b' }, { tier: 4, branch: null },
-  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }, { tier: 6, branch: 'x' }, { tier: 7, branch: null }];
-const BR_LABEL = { a: ' Jaggo', b: ' Barrotz', k: ' Kroll', g: ' Gorgo', v: ' Voltaro', x: ' Krachfaust' };
-const BRANCHED = (t) => t === 3 || t === 5 || t === 6; // Stufe7 führt beide finalen Äste zusammen.
+  { tier: 5, branch: 'k' }, { tier: 5, branch: 'g' }, { tier: 5, branch: 'v' }, { tier: 6, branch: 'v' }, { tier: 6, branch: 'x' },
+  { tier: 7, branch: 'p' }, { tier: 7, branch: 'f' }, { tier: 7, branch: 'i' }, { tier: 7, branch: null }];
+const BR_LABEL = { a: ' Jaggo', b: ' Barrotz', k: ' Kroll', g: ' Gorgo', v: ' Voltaro', x: ' Krachfaust',p:' Pyrostur',f:' Felsengroll',i:' Voltiris' };
+const BRANCHED = (t) => t === 3 || t === 5 || t === 6 || t === 7;
 const nodeKey = (n) => `${n.tier}${n.branch ?? ''}`;
 
 export function createSchmiede(ctx) {
@@ -28,7 +30,8 @@ export function createSchmiede(ctx) {
   let pv = null, keepScroll = 0, host = null, typeOpen = false, scrollSel = true; // keepScroll: Scrollposition der linken Liste über Re-Render; scrollSel: gewählten Knoten ins Bild holen
 
   const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k === 'rust' ? 'Rost' : k === 'blast' ? 'Sprengung' : k} ${v}`).join(', ') || '–';
-  const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${nxt.bluntMul ? '<span>Stumpf +30%</span>' : ''}${nxt.partDmgMul ? '<span>Teilbruch +25%</span>' : ''}${nxt.poisonMul ? '<span>Gift-Aufbau +</span>' : ''}${nxt.elems?.blast ? '<span>Treffer laden auf, ab 100 knallt es</span>' : ''}</div>${nxt.desc ? `<div class="note">${esc(nxt.desc)}</div>` : ''}`;
+  const bonus = (label,mul) => mul>1 ? `<span>${label} +${Math.round((mul-1)*100)}%</span>` : '';
+  const statRow = (cur, nxt) => `<div class="stats"><span>Kraft ${nxt.power} ${delta(cur.power, nxt.power)}</span><span>Krit ${Math.round(nxt.crit * 100)}% ${delta(cur.crit * 100, nxt.crit * 100)}</span><span>Element ${elemTxt(nxt)}</span>${bonus('Stumpf',nxt.bluntMul)}${bonus('Teilbruch',nxt.partDmgMul)}${bonus('Gift-Aufbau',nxt.poisonMul)}${nxt.elems?.blast ? '<span>Sprengung: Treffer laden auf, ab 100 knallt es</span>' : ''}</div>${nxt.ability ? `<div class="note"><b>${esc(nxt.ability.name)}</b><br>${esc(nxt.ability.desc)}</div>` : ''}${nxt.desc && nxt.desc!==nxt.ability?.desc ? `<div class="note">${esc(nxt.desc)}</div>` : ''}`;
 
   /** tree node state for the selected weapon: 'cur' | 'done' | 'next' | 'far' */
   function nodeState(n, w, opts) {
@@ -59,11 +62,16 @@ export function createSchmiede(ctx) {
     const nodeBtn = (n) => {
       const st = nodeState(n, w, opts), name = weaponStats(wsel, n.tier, n.branch).name;
       const mark = st === 'cur' ? '★' : st === 'done' ? '✓' : st === 'next' ? '▶' : '·';
-      return `<button class="rowbtn tn ${st}${st === 'next' && opts.find((o) => o.tier === n.tier && o.branch === n.branch)?.ok ? ' glow' : ''}${wnode === nodeKey(n) ? ' sel' : ''}" data-a="wnode" data-k="${nodeKey(n)}"><span class="mk">${mark}</span><span class="nm">${esc(name)}${n.branch && BRANCHED(n.tier) ? `<br><small>${BR_LABEL[n.branch].trim()}</small>` : ''}</span></button>`;
+      const family=n.tier===7&&!n.branch?'Ur-Konvergenz':n.branch&&BRANCHED(n.tier)?BR_LABEL[n.branch].trim():'';
+      return `<button class="rowbtn tn ${st}${st === 'next' && opts.find((o) => o.tier === n.tier && o.branch === n.branch)?.ok ? ' glow' : ''}${wnode === nodeKey(n) ? ' sel' : ''}" data-a="wnode" data-k="${nodeKey(n)}"><span class="mk">${mark}</span><span class="nm">${esc(name)}${family ? `<br><small>${esc(family)}</small>` : ''}</span></button>`;
     };
     // eine Zeile pro Stufe, Äste nebeneinander
     const tiers = [...new Set(TREE.map((n) => n.tier))];
-    const tree = tiers.map((t) => { const ns = TREE.filter((n) => n.tier === t); return `<div class="trow"><span class="tlv">${t}</span><div class="tcells c${ns.length}">${ns.map(nodeBtn).join('')}</div></div>`; }).join('');
+    const tree = tiers.map((t) => {
+      const ns = TREE.filter((n) => n.tier === t);
+      if(t===7)return `<div class="trow"><span class="tlv">7</span><div class="tcells c3">${ns.filter(n=>n.branch).map(nodeBtn).join('')}</div></div><div class="trow"><span class="tlv">↳</span><div class="tcells">${nodeBtn(ns.find(n=>!n.branch))}</div></div>`;
+      return `<div class="trow"><span class="tlv">${t}</span><div class="tcells c${ns.length}">${ns.map(nodeBtn).join('')}</div></div>`;
+    }).join('');
     // right
     const node = TREE.find((n) => nodeKey(n) === wnode);
     const nst = nodeState(node, w, opts), nxt = weaponStats(wsel, node.tier, node.branch);
@@ -73,10 +81,10 @@ export function createSchmiede(ctx) {
     else if (nst === 'cur') act = s.loadout.weapon === wsel ? '<button class="btn small on" data-a="noop">Ausgerüstet</button>' : '<button class="btn small go" data-a="equipw">Ausrüsten</button>';
     else if (nst === 'done') act = '<div class="note">Schon überholt.</div>';
     else act = '<div class="note">Erst die Stufe davor schmieden.</div>';
-    const info = `<div class="fi-h"><b>${esc(nxt.name)}</b> <small>Stufe ${nxt.tier}${nst === 'cur' ? ' · aktuell' : ''}</small></div>${statRow(cur, nxt)}${act}`;
+    const info = `<div class="fi-h"><b>${esc(nxt.name)}</b> <small>${esc(weaponTag(nxt,nxt.tier))}${nst === 'cur' ? ' · aktuell' : ''}</small></div>${statRow(cur, nxt)}${act}`;
     // Waffenlager dieses Typs: weitere Exemplare (z. B. anderes Element), Tauschen = diese wird aktiv (Baum + Tragen), Neue Stufe 1 bauen
     const store = ownedWeaponList(s, wsel).filter((x) => !x.active);
-    const lager = `<div class="sub">Deine ${esc(WEAPON_TYPES[wsel].name)}-Waffen <small>· ★ = aktiv (Baum oben)</small></div>
+    const lager = `<div class="sub">Deine ${esc(WEAPON_TYPES[wsel].name)}-Waffen <small>· ★ = aktiv · Lager ${(s.armory??[]).length}/${ARMORY_MAX}</small></div>
       <div class="row srow"><span class="nm"><b>★ ${esc(cur.name)}</b><br><small>${esc(weaponTag(cur, w.tier))}</small></span></div>
       ${store.map((x) => { const st = weaponStats(x.type, x.tier, x.branch); return `<div class="row srow"><span class="nm"><b>${esc(st.name)}</b><br><small>${esc(weaponTag(st, x.tier))}</small></span><button class="sm" data-a="wswap" data-i="${x.idx}">Nehmen</button><button class="sm" data-a="wscrap" data-i="${x.idx}" title="Verschrotten">Schrott +${scrapValue(x)}</button></div>`; }).join('')}
       <div class="note">Anderes Element/Ast? Neue Stufe-1-Waffe bauen und eigenen Ast schmieden – die aktive kommt ins Lager.</div>

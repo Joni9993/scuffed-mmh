@@ -1,52 +1,52 @@
 import * as THREE from 'three';
-import { GearParts, gearMaterial, bar, spike } from '../../render/gearfx.js';
+import { finaleBody, finaleAxeBlock, finaleCrest, finaleMaterial, FINALE_PALETTES } from './finaleWeaponModels.js';
 
-// Ornament positions are weapon-local. The existing grip/muzzle/blade animation roots remain intact.
-const TRIM = {
-  gs: { x: .26, y: -.55, z: .13, s: 1.15 }, db: { x: .13, y: -.24, z: .1, s: .60 },
-  bow: { x: .24, y: -.42, z: .09, s: .75 }, kt: { x: .10, y: .09, z: .04, s: .7 },
-  ga: { x: .10, y: .08, z: .10, s: .85 }, kk: { x: .27, y: -.35, z: .21, s: .9 },
-  lb: { x: .16, y: -.32, z: .17, s: .65 },
-};
+const ASPECTS=new Set(['p','f','i']);
+export const finaleAspect = branch => ASPECTS.has(branch)?branch:'u';
 
-/** One merged feather/spur/pixel ornament per held piece, using the existing PS1/gear shader. */
-export function addTranscendence(root, type, mirror = 1) {
-  if (!root || root.userData.transcendence) return root;
-  const p = TRIM[type] ?? TRIM.gs, P = new GearParts();
-  const GOLD = '#e5bd64', BONE = '#f2e8bd', INK = '#28283f', PIXEL = '#8cffe1';
-  P.box(.12, .36, .12, GOLD, { y: .01 });
-  for (let i = 0; i < 3; i++) {
-    const x = .11 + i * .09, y = -.02 - i * .09;
-    // Layered block feathers and curved, blunt rooster spur: cheap polygons with a clear trophy silhouette.
-    bar(P, [0, y, 0], [x, y - .23 - i * .025, -.02], .055, .025, i % 2 ? BONE : INK);
-    P.box(.055, .065, .045, PIXEL, { x: x * .7, y: y - .16, z: .035, glow: .75 });
+/** Replace the physical body while retaining the weapon's real animation rig and sockets.
+ * The same geometry is used in hand, on the back, in previews and on remote hunters. */
+export function addTranscendence(root,type,mirror=1,aspect='u') {
+  if(!root||root.userData.transcendence)return root;
+  const material=finaleMaterial(aspect),oldGeometries=new Set();
+  const replace=(mesh,geometry)=>{if(!mesh){geometry.dispose();return;}oldGeometries.add(mesh.geometry);mesh.geometry=geometry;};
+  let body;
+  if(type==='ga') {
+    const g=root.userData.ga;
+    replace(g.shaft,finaleBody(type,aspect));
+    for(const [i,b] of g.blocks.entries()) {
+      const geometry=finaleAxeBlock(aspect,i);replace(b.mesh,geometry);replace(b.ghost,geometry);
+    }
+    body=g.shaft;
+  } else if(type==='kt') {
+    // A sheathed blade must hide all its boss details too, hence the existing bladeG pivot.
+    body=new THREE.Mesh(finaleBody(type,aspect),material);body.name='finale-katana-edge';root.userData.kt.bladeG.add(body);
+  } else {
+    body=type==='kk'?root.userData.kk.main:root.children.find(o=>o.isMesh&&!o.material?.transparent);
+    replace(body,finaleBody(type,aspect,mirror));
   }
-  spike(P, [-.04, -.14, 0], [-.18, -.31, .035], .07, GOLD);
-  spike(P, [-.15, -.27, .025], [-.22, -.19, .045], .045, BONE);
-  // Offset pixel stair, concentrated on the trim so the weapon's hit silhouette stays readable.
-  for (let i = 0; i < 4; i++) P.box(.035, .035, .035, i % 2 ? GOLD : PIXEL, { x: -.07 - i * .035, y: .14 + i * .045, z: .025, glow: .65 });
-  const mat = gearMaterial(.85); mat.userData.ps1.uJit.value = .032;
-  const ornament = new THREE.Mesh(P.merge(), mat); ornament.name = 'ur-feather-pixel-trim';
-  ornament.position.set(p.x * mirror, p.y, p.z); ornament.scale.set(p.s * mirror, p.s, p.s); root.add(ornament);
-  root.userData.transcendence = { ornament, material: mat, type };
-  // Use the rig's existing bounded emitter. No extra points pool, lights or fullscreen effect.
-  root.userData.fx = [{ kind: 'ember', cols: [GOLD, BONE], rate: 2, at: [p.x * mirror, p.y, p.z] },
-    { kind: 'shock', cols: [PIXEL], rate: 1, at: [p.x * mirror, p.y - .2, p.z] }];
-  root.userData.glowBase = Math.max(root.userData.glowBase ?? 0, .75);
+  for(const geometry of oldGeometries)geometry.dispose();
+  const ornament=new THREE.Mesh(finaleCrest(type,aspect),material);ornament.name='finale-'+aspect+'-crest';
+  ornament.position.set(type==='bow'?.08:0,type==='kk'?-.86:type==='kt'?-.1:-.23,type==='kt'?.08:.06);
+  if(mirror<0)ornament.scale.x=-1;root.add(ornament);
+  const c=FINALE_PALETTES[aspect];
+  root.userData.transcendence={type,aspect,ornament,material,body};root.userData.finaleAspect=aspect;
+  root.userData.fx=[{kind:aspect==='p'?'fire':aspect==='f'?'ember':'shock',cols:[c.glow,c.light],rate:2,at:[0,type==='bow'?0:-.65,.08]},
+    {kind:'ember',cols:[c.edge],rate:1,at:[0,-.2,.05]}];
+  root.userData.glowBase=.8;
   return root;
 }
 
-/** Decorate the real weapon definition: combat, sockets, dual offhand, bow string and axe morph all survive. */
-export function withTranscendence(def, type) {
-  if (def.transcendenceReady) return def;
-  const baseBuild = def.buildMesh;
-  def.buildMesh = (opts = {}) => {
-    if (opts.tier !== 7) return baseBuild(opts);
-    const mesh = baseBuild({ ...opts, tier: 6, branch: 'v' });
-    addTranscendence(mesh, type);
-    if (mesh.userData.offhand) addTranscendence(mesh.userData.offhand, type, -1);
+/** Preserve the seven existing control schemes, including axe morphs, sheathing, samplers and strings. */
+export function withTranscendence(def,type) {
+  if(def.transcendenceReady)return def;
+  const baseBuild=def.buildMesh;
+  def.buildMesh=(opts={})=>{
+    if(opts.tier!==7)return baseBuild(opts);
+    const aspect=finaleAspect(opts.branch),mesh=baseBuild({...opts,tier:6,branch:'v'});
+    addTranscendence(mesh,type,1,aspect);
+    if(mesh.userData.offhand)addTranscendence(mesh.userData.offhand,type,-1,aspect);
     return mesh;
   };
-  def.transcendenceReady = true;
-  return def;
+  def.transcendenceReady=true;return def;
 }

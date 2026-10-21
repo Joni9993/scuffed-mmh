@@ -579,7 +579,80 @@ const krachfaust = {
   },
 };
 
-const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax, mampfaffe, krachfaust };
+// Final trophies use new structural silhouettes, still merged into the six animated joints.
+const PY=['#351b21','#8d3026','#d45e2a','#ffb74c','#ffe1a1'];
+const pyrostur={
+  head(c){const P=c.P.head;
+    P.box(.63,.38,.6,PY[0],{y:.32});P.box(.46,.12,.13,PY[2],{y:.3,z:.36,rx:.2});
+    for(const o of [-1,1]){bar(P,[o*.23,.48,-.1],[o*.37,.86,-.2],.1,.045,PY[1]);spike(P,[o*.37,.86,-.2],[o*.49,.96,-.42],.07,PY[2]);
+      P.box(.16,.04,.04,PY[4],{x:o*.15,y:.36,z:.32,glow:1,rz:o*.15});
+      for(let i=0;i<3;i++)P.box(.09,.035,.16,PY[3],{x:o*.3,y:.15+i*.075,z:.04,glow:.8});}
+    spike(P,[0,.45,.27],[0,.68,.35],.1,PY[1]);
+  },
+  body(c){const P=c.P.torso;
+    P.box(.89,.64,.56,PY[0],{y:.52});P.box(.34,.4,.12,PY[2],{y:.55,z:.34});
+    for(let i=0;i<4;i++)P.box(.24,.045,.05,PY[i%2?3:4],{y:.38+i*.11,z:.415,glow:1});
+    for(const o of [-1,1]){bar(P,[o*.22,.78,-.24],[o*.28,1.1,-.38],.09,.07,PY[1]);P.box(.12,.025,.12,PY[3],{x:o*.28,y:1.09,z:-.38,glow:1});
+      for(let i=0;i<3;i++)tri(P,[o*.09,.8-i*.2,-.28],[o*(.48+i*.04),.7-i*.2,-.38],[o*(.32+i*.05),-.12-i*.1,-.5],i%2?PY[1]:PY[0]);}
+    arms(c,(a,o)=>{a.box(.46,.18,.46,PY[1],{x:o*.06,y:.13});for(let i=0;i<3;i++)spike(a,[o*(.05+i*.08),.21,-.09],[o*(.17+i*.13),.46,-.23-i*.09],.1,PY[0]);
+      a.box(.31,.29,.33,PY[0],{y:-.54});for(let i=0;i<2;i++)a.box(.29,.035,.035,PY[3],{y:-.46-i*.12,z:.18,glow:.8});});
+  },
+  legs(c){legs(c,(P,o)=>{for(let i=0;i<3;i++)P.box(.38,.16,.4,PY[i%2?1:0],{y:-.26-i*.18,rx:-.12});P.box(.4,.17,.53,PY[0],{y:-.77,z:.07});
+    P.box(.12,.23,.04,PY[3],{y:-.35,z:.25,glow:.75});for(let i=-1;i<=1;i++)spike(P,[i*.1,-.77,.29],[i*.12,-.83,.49],.065,PY[2]);});},
+};
+const FG=['#25282d','#53585a','#93958b','#cf9461','#ffcb77'];
+const felsengroll={
+  head(c){const P=c.P.head;P.box(.68,.52,.65,FG[0],{y:.3});P.box(.76,.16,.68,FG[1],{y:.58});
+    for(let i=-1;i<=1;i++)P.box(.15,.2,.22,FG[2],{x:i*.25,y:.72,z:-.06});P.box(.54,.07,.04,'#12161b',{y:.34,z:.34});
+    P.box(.38,.025,.05,FG[4],{y:.34,z:.355,glow:.8});for(const o of[-1,1])P.box(.16,.26,.18,FG[1],{x:o*.3,y:.13,z:.2});
+  },
+  body(c){const P=c.P.torso;for(let i=0;i<4;i++)P.box(.96-i*.025,.16,.66,FG[i%2?0:1],{y:.25+i*.17,rx:i*.025});
+    P.box(.26,.26,.08,FG[2],{y:.55,z:.38,rz:PI/4});P.box(.06,.26,.09,FG[3],{y:.55,z:.43,glow:.7});
+    for(const o of[-1,1]){P.box(.12,.9,.16,FG[1],{x:o*.36,y:.45,z:-.35});P.box(.17,.18,.2,FG[2],{x:o*.36,y:.99,z:-.35});}
+    arms(c,(a,o)=>{a.box(.57,.3,.65,FG[1],{x:o*.08,y:.14,rz:o*.12});for(let i=0;i<3;i++)a.box(.15,.14,.2,FG[2],{x:o*(-.1+i*.17),y:.35,z:-.08});
+      for(let i=0;i<3;i++)a.box(.38,.13,.42,FG[i%2?1:0],{y:-.35-i*.15});a.box(.14,.2,.04,FG[3],{x:o*.08,y:-.51,z:.24,glow:.5});});
+  },
+  legs(c){legs(c,P=>{P.box(.45,.27,.47,FG[1],{y:-.24});P.box(.41,.33,.44,FG[0],{y:-.51});P.box(.49,.2,.65,FG[1],{y:-.77,z:.1});
+    P.box(.26,.21,.07,FG[2],{y:-.24,z:.28});for(let i=-1;i<=1;i++)P.box(.07,.045,.1,FG[3],{x:i*.13,y:-.64,z:.34,glow:.5});});},
+};
+const VI=['#17263c','#3c4d72','#84e9ee','#bd7fff','#f1fbff'];
+const prism=(P,x,y,z,h,w,glow=0)=>{spike(P,[x,y-h*.25,z],[x,y+h*.75,z],w,VI[2],{glow});spike(P,[x,y-h*.25,z],[x,y-h*.65,z],w,VI[3],{glow:glow*.6});};
+const voltiris={
+  head(c){const P=c.P.head;P.box(.52,.33,.49,VI[0],{y:.33});P.box(.54,.065,.05,VI[2],{y:.35,z:.27,glow:1});
+    for(const o of[-1,1]){prism(P,o*.28,.63,-.12,.74,.1,.6);bar(P,[o*.25,.2,.1],[o*.36,.45,-.32],.045,.025,VI[3],{glow:.6});}
+    P.box(.15,.14,.06,VI[4],{y:.53,z:.25,rz:PI/4,glow:.8});
+  },
+  body(c){const P=c.P.torso;P.box(.75,.6,.46,VI[0],{y:.52});P.box(.32,.34,.08,VI[1],{y:.55,z:.28,rz:PI/4});
+    prism(P,0,.55,.36,.44,.085,1);for(const o of[-1,1])for(let i=0;i<3;i++){
+      const x=o*(.36+i*.16),y=.82+i*.1;tri(P,[o*.19,.69,-.22],[x,y,-.55-i*.08],[o*(.35+i*.07),.13-i*.12,-.4],i%2?VI[3]:VI[1],{glow:.2});
+      bar(P,[o*.24,.72,-.24],[x,y,-.55-i*.08],.023,.01,VI[2],{glow:1});}
+    arms(c,(a,o)=>{a.box(.32,.13,.37,VI[1],{y:.1});prism(a,o*.14,.25,-.04,.4,.065,.8);a.box(.27,.34,.29,VI[0],{y:-.5});
+      bar(a,[o*.09,-.35,.16],[o*.11,-.65,.16],.025,.015,VI[2],{glow:1});});
+  },
+  legs(c){legs(c,(P,o)=>{P.box(.33,.54,.35,VI[0],{y:-.4});P.box(.35,.14,.45,VI[1],{y:-.78,z:.06});prism(P,o*.1,-.22,.2,.3,.065,.8);
+    for(let i=0;i<3;i++)P.box(.06,.035,.12,VI[i%2?3:2],{x:o*.18,y:-.48-i*.1,z:.03-i*.04,glow:.8});});},
+};
+const UR=['#1a2034','#42314f','#d7b76a','#8cffe1','#e671cd','#f0e4be'];
+const urFeather=(P,x,y,z,len,side)=>{tri(P,[x-.04,y,z],[x+side*.16,y-len*.15,z+.03],[x+side*.1,y-len,z],UR[1]);
+  bar(P,[x,y,z+.01],[x+side*.1,y-len,z+.01],.018,.01,UR[2]);};
+const gockelok={
+  head(c){const P=c.P.head;P.box(.58,.33,.57,UR[0],{y:.32});for(let i=-2;i<=2;i++)P.box(.12,.25+(2-Math.abs(i))*.08,.16,UR[2],{x:i*.13,y:.64,z:-.08,rz:-i*.12});
+    P.box(.39,.18,.06,UR[1],{y:.33,z:.31});P.box(.28,.115,.07,UR[3],{y:.33,z:.34,glow:1});P.box(.045,.13,.08,UR[0],{y:.33,z:.38});
+    for(const o of[-1,1])for(let i=0;i<3;i++)urFeather(P,o*(.24+i*.055),.48,-.13-i*.08,.45+i*.1,o);
+  },
+  body(c){const P=c.P.torso;P.box(.84,.59,.5,UR[0],{y:.5});P.box(.33,.28,.07,UR[2],{y:.58,z:.3,rz:PI/4});
+    P.box(.21,.13,.08,UR[3],{y:.58,z:.35,glow:1});P.box(.035,.12,.09,UR[0],{y:.58,z:.4});
+    for(const o of[-1,1])for(let i=0;i<4;i++)urFeather(P,o*(.1+i*.11),.84,-.29,.9+i*.07,o);
+    for(let i=0;i<5;i++)P.box(.055,.07,.055,i%2?UR[3]:UR[4],{x:-.32+i*.14,y:.18+(i%2)*.12,z:-.37,glow:1});
+    arms(c,(a,o)=>{a.box(.42,.14,.43,UR[2],{y:.13});for(let i=0;i<3;i++)urFeather(a,o*(.07+i*.08),.2,-.09,.45+i*.09,o);
+      a.box(.3,.28,.33,UR[0],{y:-.55});a.box(.25,.025,.035,UR[3],{y:-.52,z:.185,glow:.9});spike(a,[o*.1,-.63,-.04],[o*.26,-.32,-.25],.08,UR[5]);});
+  },
+  legs(c){legs(c,(P,o)=>{P.box(.36,.5,.36,UR[0],{y:-.39});P.box(.37,.09,.4,UR[2],{y:-.21});P.box(.41,.16,.49,UR[0],{y:-.78,z:.05});
+    spike(P,[o*.12,-.65,-.12],[o*.26,-.38,-.35],.09,UR[2]);P.box(.27,.025,.04,UR[3],{y:-.61,z:.21,glow:1});
+    for(let i=0;i<2;i++)P.box(.055,.055,.055,UR[i?4:3],{x:o*.19,y:-.34-i*.15,z:.12,glow:1});});},
+};
+
+const SETS = { lumpen, fellkluft, knochenkram, jaggo, barrotz, brathalos, kroll, gorgo, voltaro, blendax, mampfaffe, krachfaust,pyrostur,felsengroll,voltiris,gockelok };
 export const ARMOR_BUILDERS = SETS;
 export const SLOT_JOINTS = { head: ['head'], body: ['torso', 'armR', 'armL'], legs: ['legL', 'legR'] };
 

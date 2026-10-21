@@ -39,6 +39,7 @@ export function createHud(root) {
       <div class="bar gl"><i class="fill"></i></div><!-- Glitch-Energie -->
       <div class="hud-glitch"><i class="fill"></i><span><b>GLITCH</b><b class="gt"></b></span></div>
       <div class="wstat"></div>
+      <div class="hud-finale" style="display:none;font:700 1.6vmin/1.3 monospace;text-shadow:0 0 3px #000"></div>
       <div class="hud-buffs"></div><!-- [KK] Krachkiste-Buffs -->
       <div class="hud-status"></div><!-- [M] -->
       <div class="hud-party"></div><!-- im Fluss unter allen Status-Zeilen: wächst mit, nie überlappend (bis 6 Pirscher) -->
@@ -129,6 +130,11 @@ export function createHud(root) {
           set('glt', Math.ceil(gs.t * 10), (x) => { refs.glTime.textContent = (x / 10).toFixed(1) + 's'; refs.glModeFill.style.width = Math.max(0, (gs.t / 8) * 100).toFixed(0) + '%'; });
         }
       }
+      const finale=p.finaleStatus;
+      set('finale',finale?`${finale.name}:${Math.round(finale.charge*20)}:${Math.ceil(finale.cooldown)}:${finale.ready}`:'',()=>{
+        const n=q('.hud-finale');n.style.display=finale?'':'none';
+        if(finale){n.style.color=finale.color;n.textContent=`${finale.name} · ${finale.cooldown>0?Math.ceil(finale.cooldown)+' s':finale.ready?'BEREIT':Math.round(finale.charge*100)+' %'}`;}
+      });
       set('buffs', buffSig(p), () => { refs.buffs.innerHTML = buffIcons(p); }); // [KK]
       const stat = p.def.status?.(p.weapon);
       const sk = stat ? `${stat.text}|${stat.level}|${stat.max}|${stat.sauber}|${stat.slots?.join('') ?? ''}` : '';

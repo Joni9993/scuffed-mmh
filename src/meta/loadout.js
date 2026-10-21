@@ -32,20 +32,20 @@ export function armorSkills(armor) {
 
 /** Gameplay numbers from skill levels (see player/hunt integration in game/loadout.js). */
 export function skillEffects(skills = {}) {
-  const lvl = (id) => skills[id] ?? 0;
+  const lvl = (id) => Math.max(0,Math.min(SKILLS[id]?.max??3,skills[id]??0));
   return {
     maxStamina: 15 * lvl('zaehe_socke'),
     flinkfuss: Math.min(2, lvl('flinkfuss')),
     flinchImmune: lvl('dickschaedel') >= 2,
     downImmune: lvl('dickschaedel') >= 3,
-    crit: 0.08 * lvl('wuchtkopf'),
-    fireResist: 1 - 0.8 ** lvl('hitzefell'),
+    crit: 0.08 * lvl('wuchtkopf') + .04*lvl('prismenpakt'),
+    fireResist: 1 - (0.8 ** lvl('hitzefell'))*(1-.12*lvl('kesselherz')),
     // Rostwerke-Macken (GDD 15.8)
     rustDurMul: 1 - (0.5 * lvl('panzerhaut')) / 3, // Status Rost: Dauer-Faktor (0.5 bei 3 Teilen)
     protectMul: 1 + (0.1 * lvl('panzerhaut')) / 3, // Schutz-Faktor (+10 % bei 3 Teilen)
     suctionImmune: lvl('wuehler') >= 2, // Gorgo-Sog
     windImmune: lvl('wuehler') >= 2, // Turbinen-Wind
-    counterBuff: lvl('ueberladung') > 0 ? { atk: Math.round(5 * lvl('ueberladung')) / 100, dur: 8 } : null, // nach Glitch-Konter
+    counterBuff: lvl('ueberladung')+lvl('urcode') > 0 ? { atk:(5*lvl('ueberladung')+6*lvl('urcode'))/100,dur:8 } : null,
     shockResist: 1 - 0.8 ** lvl('erdung'),
     // Smaragdkueste-Macke Blendschutz (Blendax-Set): Sekunden, die von Weiss und Betaeubung abgehen
     blendCut: 0.3 * lvl('blendschutz'),
@@ -54,6 +54,12 @@ export function skillEffects(skills = {}) {
     // Macke Schleimhaut (Krachfaust-Set): Zündschnur des Glitch-Schleims +0,4 s je Stufe, Explosionsschaden -15 % je Stufe
     schleimFuse: 0.4 * lvl('schleimhaut'),
     schleimDmg: 1 - 0.15 * lvl('schleimhaut'),
+    finaleArmor:{heat:lvl('kesselherz'),stone:lvl('weltenpanzer'),prism:lvl('prismenpakt'),reality:lvl('urcode')},
+    lowHealthAtk:.04*lvl('kesselherz'),
+    guardStamMul:1-.08*lvl('weltenpanzer'),
+    partDmgMul:1+.08*lvl('weltenpanzer'),
+    perfectStamina:4*lvl('prismenpakt'),
+    realityStatusMul:1-.05*lvl('urcode'),
   };
 }
 

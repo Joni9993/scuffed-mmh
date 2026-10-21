@@ -572,7 +572,8 @@ describe('Krachfaust: Daten', () => {
     expect(got.length === undefined ? Object.keys(got).length : got.length).toBeGreaterThan(0);
     const set = ARMOR_SETS.krachfaust;
     expect(set.prot).toBe(50); expect(set.skills).toEqual(['schleimhaut', 'zaehe_socke']);
-    expect(SET_ORDER.at(-1)).toBe('krachfaust');
+    expect(SET_ORDER[11]).toBe('krachfaust'); // old wire/order indices stay stable as finale trophies append
+    expect(SET_ORDER.slice(12)).toEqual(['pyrostur','felsengroll','voltiris','gockelok']);
     for (const sl of ['head', 'body', 'legs']) for (const id of Object.keys(set.pieces[sl].cost)) expect(id === 'schrott' || ITEMS[id], id).toBeTruthy();
     const b = BESTIARY.find((x) => x.id === 'krachfaust');
     expect(b.entries.length).toBe(9);

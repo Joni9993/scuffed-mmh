@@ -19,7 +19,7 @@ describe('Glitch-Transzendenz final seven-weapon reward', () => {
       const previous = weaponStats(type, 6, branch), final = weaponStats(type, 7);
       expect(WEAPON_TYPES[type].tiers).toHaveLength(7); expect(final.power).toBeGreaterThan(previous.power);
       expect(final.branch).toBeNull(); expect(final.crit).toBeGreaterThanOrEqual(previous.crit);
-      expect(upgradeOptions(type, 6, branch)).toHaveLength(1); expect(upgradeOptions(type, 7)).toHaveLength(0);
+      expect(upgradeOptions(type, 6, branch)).toHaveLength(4); expect(upgradeOptions(type, 7)).toHaveLength(0);
       const save = defaultSave(); save.weapons[type] = { tier: 6, branch };
       const old = JSON.stringify(save); expect(upgradeWeapon(save, type).ok).toBe(false); expect(JSON.stringify(save)).toBe(old);
       save.schrott = cost.schrott; save.box = Object.fromEntries(Object.entries(cost).filter(([k]) => k !== 'schrott'));
@@ -38,16 +38,16 @@ describe('Glitch-Transzendenz final seven-weapon reward', () => {
     expect(sanitize(JSON.parse(JSON.stringify(save))).weapons).toEqual(save.weapons);
     expect(sanitize(JSON.parse(JSON.stringify(save))).armory).toEqual(save.armory);
   });
-  it('keeps each real weapon rig, animation hooks and sockets while adding one bounded trim mesh', () => {
+  it('keeps each real weapon rig, animation hooks and sockets with bounded boss geometry', () => {
     for (const type of WEAPON_ORDER) {
       const def = getWeapon(type), previous = def.buildMesh({ tier: 6, branch: 'v' }), final = def.buildMesh({ tier: 7 });
       expect(final.userData.transcendence.type).toBe(type);
-      expect(countMeshes(final) - countMeshes(previous)).toBe(1);
+      expect(countMeshes(final) - countMeshes(previous)).toBeLessThanOrEqual(type === 'ga' ? 9 : 3);
       for (const key of ['muzzle', 'twoHand', 'bow', 'katana', 'ga', 'lb']) if (previous.userData[key]) expect(final.userData[key]).toBeTruthy();
       expect(final.userData.twoHand).toEqual(previous.userData.twoHand);
       const trim = final.userData.transcendence;
       expect(trim.material.userData.ps1.uJit.value).toBe(.032);
-      expect(trim.ornament.geometry.attributes.position.count).toBeLessThan(900);
+      expect(trim.ornament.geometry.attributes.position.count).toBeLessThan(8000);
       expect(final.userData.fx.reduce((n, s) => n + s.rate, 0)).toBeLessThanOrEqual(3);
       if (type === 'db') expect(final.userData.offhand.userData.transcendence.type).toBe('db');
       // Building another weapon must not overwrite the first weapon's geometry or uniform.

@@ -92,7 +92,7 @@ export class Player {
   setWeapon(id, tier = 1, branch = null) {
     this.weaponId = id;
     this.def = getWeapon(id);
-    this.stats = weaponStats(id, tier);
+    this.stats = weaponStats(id, tier, branch);
     this.dmgMul = 1;
     const self = this;
     this.weapon = new WeaponState(this.def, {
@@ -219,7 +219,7 @@ export class Player {
       const dx = h.sourcePos.x - this.pos.x, dz = h.sourcePos.z - this.pos.z;
       const diff = Math.abs(angleDiff(this.rot, yawOf(dx, dz)));
       if (diff <= blk.arc * D2R && this.v.exhaust <= 0) {
-        spendStamina(this.v, dmg * blk.staminaMul);
+        spendStamina(this.v, dmg * blk.staminaMul * (this.guardStamMul ?? 1));
         w.addWucht(blk.wucht);
         dmg *= blk.pass;
         if (!this.god) damageVitals(this.v, dmg);

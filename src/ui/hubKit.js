@@ -4,7 +4,8 @@ import { iconHtml } from './hubIcons.js';
 import { RECIPES, RECIPE_ORDER } from '../data/recipes.js';
 import { ARMOR_PIECES, SKILLS, getPiece } from '../data/armor.js';
 import { armorSkills } from '../meta/loadout.js';
-import { WEAPON_ORDER, WEAPON_UPGRADES, weaponStats } from '../data/weapons.js';
+import { WEAPON_ORDER, WEAPON_TYPES, upgradeOptions } from '../data/weapons.js';
+import { ARMORY_MAX } from '../meta/save.js';
 import { FOODS, FOOD_ORDER } from '../data/foods.js';
 
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -37,7 +38,7 @@ export function el(tag, cls = '', html = '') {
 
 export const REASONS = {
   mats: 'Dir fehlt Material.', schrott: 'Zu wenig Schrott.', full: 'Die Truhe ist voll (99).', owned: 'Hast du schon.', maxed: 'Mehr geht nicht.',
-  branch: 'Wähle einen Ast.', has_meal: 'Du hast schon gegessen.', armory_full: 'Waffenlager voll (20). Erst etwas verschrotten.', bar_full: 'Item-Leiste voll (8).', locked: 'Noch gesperrt.', not_owned: 'Gehört dir nicht.',
+  branch: 'Wähle einen Ast.', has_meal: 'Du hast schon gegessen.', armory_full: `Waffenlager voll (${ARMORY_MAX}). Erst etwas verschrotten.`, bar_full: 'Item-Leiste voll (8).', locked: 'Noch gesperrt.', not_owned: 'Gehört dir nicht.',
   none: 'Nichts da.', unknown: 'Unbekannt.',
 };
 export const reasonText = (r) => REASONS[r.reason] ?? 'Geht nicht.';
@@ -47,11 +48,14 @@ let usesIdx = null;
 function buildUses() {
   const u = {}, add = (id, label, name) => { const m = (u[id] ??= {}); (m[label] ??= new Set()).add(name); };
   for (const rid of RECIPE_ORDER) for (const id of Object.keys(RECIPES[rid].cost)) add(id, 'Basteln', ITEMS[rid]?.name ?? rid);
-  const wl = (type, tier, branch) => weaponStats(type, tier, branch).name;
   for (const type of WEAPON_ORDER) {
-    for (const id of Object.keys(WEAPON_UPGRADES[2].cost)) if (id !== 'schrott') add(id, 'Waffen', wl(type, 2));
-    for (const b of ['a', 'b']) for (const id of Object.keys(WEAPON_UPGRADES[3][type][b].cost)) if (id !== 'schrott') add(id, 'Waffen', wl(type, 3, b));
-    for (const id of Object.keys(WEAPON_UPGRADES[4].cost)) if (id !== 'schrott') add(id, 'Waffen', wl(type, 4));
+    for (const [index, stats] of WEAPON_TYPES[type].tiers.entries()) {
+      for (const branch of stats.branches?.map(b=>b.id) ?? [null]) {
+        for (const option of upgradeOptions(type,index+1,branch)) {
+          for (const id of Object.keys(option.cost)) if(id!=='schrott')add(id,'Waffen',option.name);
+        }
+      }
+    }
   }
   for (const p of Object.values(ARMOR_PIECES)) for (const id of Object.keys(p.cost ?? {})) if (id !== 'schrott') add(id, 'Rüstung', p.setName);
   for (const fid of FOOD_ORDER) for (const id of Object.keys(FOODS[fid].cost)) if (id !== 'schrott') add(id, 'Kochtopf', FOODS[fid].name);
@@ -90,7 +94,8 @@ export function itemInfoBox(id, countTxt = '', extra = '') {
 // ---- Waffen-Kurzinfo (Schmiede / Truhe / Camp-Truhe): „Stufe 3 · Feuer 25"
 const ELEM_DE = { fire: 'Feuer', shock: 'Schock', rust: 'Rost', rost: 'Rost', poison: 'Gift', blast: 'Sprengung' };
 export const elemShort = (st) => Object.entries(st.elems ?? {}).filter(([, v]) => v > 0).map(([k, v]) => `${ELEM_DE[k] ?? k} ${v}`).join(', ');
-export const weaponTag = (st, tier) => `St.${tier}${elemShort(st) ? ' · ' + elemShort(st) : ''}`;
+export const FINALE_FAMILY_NAMES = { p:'Pyrostur',f:'Felsengroll',i:'Voltiris',u:'Ur-Konvergenz' };
+export const weaponTag = (st, tier) => `St.${tier}${st.finaleAspect ? ' · '+FINALE_FAMILY_NAMES[st.finaleAspect] : ''}${elemShort(st) ? ' · ' + elemShort(st) : ''}`;
 
 // ---- Macken eines Rüstungsteils erklären (Schmiede rechts, Truhe/Camp-Truhe beim Anlegen)
 /** HTML-Zeilen: je Macke des Teils Name, Stufe nach dem Anlegen (/max) und Wirkung. armorNow = aktuell getragene Teile {slot:id}. */

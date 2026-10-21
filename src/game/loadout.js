@@ -4,6 +4,7 @@ import { weaponStats } from '../data/weapons.js';
 import { armorProtection, armorSkills, skillEffects, foodEffects } from '../meta/loadout.js';
 
 const EISEN_T = { burn: 10, poison: 12, verwirrt: 3, itemlock: 1 }; // Standarddauern der Zustände, die Eisenmagen kürzt
+const REALITY_T={...EISEN_T,mud:25,rost:20};
 
 export function applyLoadout(player, lo, { reapply = false } = {}) {
   const w = lo.weapon;
@@ -13,6 +14,7 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
   const food = foodEffects(lo.food);
 
   stats.crit += sk.crit;
+  stats.partDmgMul=(stats.partDmgMul??1)*sk.partDmgMul;
   player.stats = stats;
   player.weaponTier = w.tier; player.weaponBranch = w.branch;
   if (w.branch && player.def.tierMesh) player.rebuildWeaponMesh(w.tier, w.branch); // [KT] branch-specific mesh (katana)
@@ -23,6 +25,8 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
   player.resist = { fire: Math.min(0.9, sk.fireResist), shock: Math.min(0.9, sk.shockResist), status: food.resist };
   player.suctionImmune = sk.suctionImmune; player.windImmune = sk.windImmune; // Wühler (Gorgo-Sog / Turbinen-Wind lesen das)
   player.counterBuff = sk.counterBuff; // Überladung: { atk, dur } nach Glitch-Konter (hunt.js wendet an)
+  player.finaleArmor=sk.finaleArmor;
+  player.lowHealthAtk=sk.lowHealthAtk;player.guardStamMul=sk.guardStamMul;player.perfectStamina=sk.perfectStamina;
   player.itemSpeed = food.itemSpeed;
 
   const v = player.v;
@@ -56,11 +60,15 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
         const r = player.resist;
         if (type === 'blend') { // Macke Blendschutz: -0,3 s Weiss und -0,3 s Betaeubung je Stufe (Stufe 3: Weiss 0,1 s, keine Betaeubung)
           const cut = player._sk.blendCut ?? 0;
-          return addStatus(type, { ...opts, white: Math.max(0.1, 1 - cut), stun: 1 - cut < 0.15 ? 0 : Math.max(0.2, (opts.stun ?? 1) - cut) }); // opts.stun: Blendax 2 s Betäubung
+          const reality=player._sk.realityStatusMul;
+          return addStatus(type, { ...opts, white: Math.max(0.1, (1-cut)*reality), stun: 1 - cut < 0.15 ? 0 : Math.max(0.2, ((opts.stun ?? 1)-cut)*reality) }); // opts.stun: Blendax 2 s Betäubung
         }
         if (type === 'schleim' && player._sk.schleimFuse > 0) opts = { ...opts, t: (opts.t ?? 2) + player._sk.schleimFuse }; // Schleimhaut: Zündschnur länger
         if (player._sk.eisenCut > 0 && EISEN_T[type]) opts = { ...opts, t: (opts.t ?? EISEN_T[type]) * (1 - player._sk.eisenCut) }; // Eisenmagen: Dauer -15 % je Stufe
         if ((type === 'rust' || type === 'rost') && opts.t && player._sk.rustDurMul < 1) opts = { ...opts, t: opts.t * player._sk.rustDurMul }; // Panzerhaut
+        if(player._sk.realityStatusMul<1 && ['burn','poison','verwirrt','itemlock','mud','rust','rost','shock'].includes(type)){
+          const duration=opts.t??REALITY_T[type];if(duration)opts={...opts,t:duration*player._sk.realityStatusMul};
+        }
         const k = (type === 'burn' ? 1 - r.fire : 1) * (type === 'burn' || type === 'poison' ? 1 - r.status : 1);
         return addStatus(type, opts.t ? { ...opts, t: opts.t * k } : opts);
       };

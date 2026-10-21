@@ -19,6 +19,10 @@ export const SKILLS = {
   eisenmagen: { id: 'eisenmagen', name: 'Eisenmagen', max: 3, desc: (l) => `Gift, Brennen, Verwirrung, Item-Sperre: Dauer −${15 * l} %` },
   schleimhaut: { id: 'schleimhaut', name: 'Schleimhaut', max: 3, desc: (l) => `Glitch-Schleim: Zündschnur +${(0.4 * l).toFixed(1).replace('.', ',')} s, Explosion −${15 * l} % Schaden` },
   erdung: { id: 'erdung', name: 'Erdung', max: 3, desc: (l) => `Schock-Resistenz ${Math.round(100 * (1 - 0.8 ** l))} %` },
+  kesselherz: { id:'kesselherz',name:'Kesselherz',max:3,desc:l=>`Unter 50 % LP +${4*l} % Angriff; ${12*l} % Feuer-Resistenz` },
+  weltenpanzer: { id:'weltenpanzer',name:'Weltenpanzer',max:3,desc:l=>`+${8*l} % Teilschaden; Block-Puste −${8*l} %` },
+  prismenpakt: { id:'prismenpakt',name:'Prismenpakt',max:3,desc:l=>`+${4*l} % Krit; perfekte Rolle erstattet ${4*l} Puste` },
+  urcode: { id:'urcode',name:'Ur-Code',max:3,desc:l=>`Glitch-Konter: 8 s +${6*l} % Angriff; Gift/Brand/Blindheit −${5*l} % Dauer` },
 };
 
 const set = (id, name, prot, skills, pieces) => ({ id, name, prot, skills, pieces });
@@ -88,8 +92,29 @@ export const ARMOR_SETS = {
     body: piece('Krachfaust-Tempelpanzer', { schrott: 3000, krachfaust_kruste: 5, krachfaust_schleim: 2, krachfaust_faustplatte: 1, tempelstein: 2 }, { schleimhaut: 1, zaehe_socke: 1 }),
     legs: piece('Krachfaust-Trümmerstiefel', { schrott: 2600, krachfaust_kruste: 3, krachfaust_schleim: 2, tempelstein: 1 }, { schleimhaut: 1, zaehe_socke: 1 }),
   }),
+  // Final-map trophies: three distinct dragon disciplines, then the secret finale's reality armour.
+  pyrostur: set('pyrostur','Pyrostur · Kesselherz',60,['kesselherz'],{
+    head:piece('Kesselherz-Drachenkrone',{schrott:3200,pyrostur_schuppe:3,pyrostur_kesselsack:1,glitchgrat_erz:2},{kesselherz:1}),
+    body:piece('Kesselherz-Ofenmantel',{schrott:3800,pyrostur_schuppe:5,pyrostur_fluegel:2,pyrostur_rubin:1,glitchgrat_erz:3},{kesselherz:1}),
+    legs:piece('Kesselherz-Aschesporne',{schrott:3200,pyrostur_schuppe:3,pyrostur_kesselsack:2,glitchgrat_erz:2},{kesselherz:1}),
+  }),
+  felsengroll: set('felsengroll','Felsengroll · Weltenpanzer',64,['weltenpanzer'],{
+    head:piece('Weltenpanzer-Bollwerk',{schrott:3300,felsengroll_panzer:3,felsengroll_schlacke:1,glitchgrat_erz:2},{weltenpanzer:1}),
+    body:piece('Weltenpanzer-Festung',{schrott:3900,felsengroll_panzer:5,felsengroll_schweif:2,felsengroll_kern:1,glitchgrat_erz:3},{weltenpanzer:1}),
+    legs:piece('Weltenpanzer-Fundamente',{schrott:3300,felsengroll_panzer:3,felsengroll_schlacke:2,glitchgrat_erz:2},{weltenpanzer:1}),
+  }),
+  voltiris: set('voltiris','Voltiris · Prismenpakt',60,['prismenpakt'],{
+    head:piece('Prismenpakt-Strahlenvisier',{schrott:3300,voltiris_flimmerfeder:3,voltiris_horn:1,glitchgrat_erz:2},{prismenpakt:1}),
+    body:piece('Prismenpakt-Flügelgewand',{schrott:3900,voltiris_flimmerfeder:5,voltiris_antenne:2,voltiris_kristall:1,glitchgrat_erz:3},{prismenpakt:1}),
+    legs:piece('Prismenpakt-Lichtläufer',{schrott:3300,voltiris_flimmerfeder:3,voltiris_horn:2,glitchgrat_erz:2},{prismenpakt:1}),
+  }),
+  gockelok: set('gockelok','Gockelok · Ur-Code',68,['urcode'],{
+    head:piece('Ur-Code-Augenkrone',{schrott:4500,gockel_kamm:2,gockel_feder:3,glitchgrat_erz:3},{urcode:1}),
+    body:piece('Ur-Code-Realitätsmantel',{schrott:5500,gockel_feder:5,gockel_sporn:2,ur_gockelei:1,glitchgrat_erz:4},{urcode:1}),
+    legs:piece('Ur-Code-Nullschritt',{schrott:4500,gockel_feder:3,gockel_sporn:3,glitchgrat_erz:3},{urcode:1}),
+  }),
 };
-export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust'];
+export const SET_ORDER = ['lumpen', 'fellkluft', 'knochenkram', 'jaggo', 'barrotz', 'brathalos', 'kroll', 'gorgo', 'voltaro', 'blendax', 'mampfaffe', 'krachfaust','pyrostur','felsengroll','voltiris','gockelok'];
 
 export const pieceId = (set, slot) => `${set}_${slot}`;
 const index = {};
