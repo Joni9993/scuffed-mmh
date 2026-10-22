@@ -435,7 +435,7 @@ export class Monster {
   startAttack(params, elapsed = 0) {
     const def = this.def.attacks[params.attackId];
     if (!def) return null;
-    const inst = new AttackInstance(def, { ...params, rage: params.rage ?? this.rage });
+    const inst = new AttackInstance(def, { ...params, rage: params.rage ?? this.rage }, def.followGround ? this.ctx.world : null);
     this.attack = { inst, t: elapsed, id: params.attackId };
     this.cds[def.id] = def.cooldown ?? 3;
     if (this.authority) this.ctx.bus.emit('monsterAttack', { monsterId: this.id, ...params, rage: inst.rage });
@@ -575,7 +575,8 @@ export class Monster {
     const ch = this.chain; this.chain = null;
     if (!ch) return;
     const list = this.def.chains?.[id], tgt = this.target;
-    if (!ch.broken && list && ch.idx < (this.def.chainMax ?? 2) && this.state === 'combat' && !this.tired && this.stamina > 0 && this.stunT <= 0 && this.stagT <= 0 && tgt?.alive) {
+    const chainMax = typeof this.def.chainMax === 'function' ? this.def.chainMax(this) : this.def.chainMax;
+    if (!ch.broken && list && ch.idx < (chainMax ?? 2) && this.state === 'combat' && !this.tired && this.stamina > 0 && this.stunT <= 0 && this.stagT <= 0 && tgt?.alive) {
       const dist = Math.hypot(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z);
       const opts = list.filter((o) => {
         if (o.atk === null) return true;

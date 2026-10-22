@@ -1,5 +1,6 @@
 import { buildGockelok } from './gockelokRig.js';
 import { gockelAttacks } from './gockelokAttacks.js';
+import { roosterAim, roosterCombat, roosterAttackEnd, roosterChains, trackRoosterTargets } from './gockelokRoosterAI.js';
 import { spendStamina } from '../vitals.js';
 import { applyCopy, clearCopy, tickCopies, receiveCopies, clearRemoteCopies } from './gockelokCopy.js';
 import { enterEye, eyeReturn, eyeRespawn, disposeEye, tickEye, tickPortal, disposePortal } from './gockelokEye.js';
@@ -63,7 +64,7 @@ function collapse(m) {
 export const gockelok={
   // A shorter rooster fight, with the original GitHub eye pool preserved (42000 × .52 = 21840).
   id:'gockelok',name:'Gockelok, der Ur-Hahn',hp:42000,scale:2.2,bodyRadius:1.8,eyePool:EYE_POOL,
-  walk:5.5,run:14,turn:3.5,detect:45,prefer:3.5,noFlee:true,noRage:true,stamina:true,flinchDmg:2300,
+  walk:5.5,run:16,turn:3.5,detect:45,prefer:3.5,noFlee:true,noRage:true,stamina:true,flinchDmg:2300,
   speedFactor:m=>m?.gockelForm==='eye'?1.4:[1.25,1.35,1.4][m?.phase??0],
   build:()=>buildGockelok(),attacks:gockelAttacks,teachAttack:'gockelok_maschinenpicken',
   parts:[
@@ -77,19 +78,13 @@ export const gockelok={
     {id:'tail',label:'Sichelgefieder',factor:.85,elem,spheres:[{node:'tail',offset:[0,.4,-.5],r:.65}]},
   ],
   phases:[{at:.8,name:'DIE BLUTKRONE',special:'gockelok_sprungsporne',enter:m=>{m.cds={};}},{at:.56,name:'UNTER DEN FEDERN',special:'gockelok_nahtsignatur',enter:m=>{m.cds={};}}],
-  chainMax:3,
+  chainMax:m=>m.gockelForm==='rooster'?4:3,
   recoverAfter:m=>m?.gockelForm==='eye' ? .45 : ([.45,.35,.25][m?.phase??0]??.25),
-  attackTempo:m=>m.gockelForm==='eye' ? (enraged(m)?1.12:1.05) : ([1.05,1.12,1.18][m.phase]??1.18),
+  attackTempo:m=>m.gockelForm==='eye' ? (enraged(m)?1.12:1.05) : ([1.14,1.24,1.32][m.phase]??1.32),
   dmgFactor:m=>enraged(m)?1.35:1,
   // Small attack families end in recognisable punish windows instead of endless interchangeable strings.
   chains:{
-    gockelok_maschinenpicken:[{atk:'gockelok_scharrhieb',w:3},{atk:'gockelok_flankenwechsel',w:3,cond:m=>m.phase>0},{atk:null,w:4}],
-    gockelok_scharrhieb:[{atk:'gockelok_spornstich',w:3,cond:m=>m.phase>0},{atk:'gockelok_schnabelanker',w:2},{atk:null,w:4}],
-    gockelok_flankenwechsel:[{atk:'gockelok_versetzter_schnabel',w:3},{atk:'gockelok_sprungsporne',w:3},{atk:'gockelok_hahnenwirbel',w:2}],
-    gockelok_spornstich:[{atk:'gockelok_hahnenwirbel',w:3},{atk:null,w:5}],
-    gockelok_jagdlauf:[{atk:'gockelok_maschinenpicken',w:3},{atk:'gockelok_schnabelanker',w:3},{atk:null,w:3}],
-    gockelok_versetzter_schnabel:[{atk:'gockelok_risssprung',w:3,cond:m=>m.phase>1},{atk:null,w:4}],
-    gockelok_kraehenschnitt:[{atk:'gockelok_jagdlauf',w:3,cond:(m,d)=>d>8},{atk:null,w:4}],
+    ...roosterChains,
     // Eye alternates positioning, a aimed laser, and one arena pattern; heavy attacks always release pressure.
     gockelok_frames:[{atk:'gockelok_irislanze',w:3},{atk:'gockelok_speicherleck',w:2},{atk:null,w:5}],
     gockelok_speicherleck:[{atk:'gockelok_irislanze',w:3},{atk:null,w:5}],
@@ -98,6 +93,7 @@ export const gockelok={
     gockelok_fehlerkaskade:[{atk:'gockelok_irislanze',w:3},{atk:null,w:5}],
   },
   aimTarget(m,def,target) {
+    if(m.gockelForm==='rooster')return roosterAim(m,def,target);
     if(def?.noFace)return null;
     return {yaw:Math.atan2(target.pos.x-m.pos.x,target.pos.z-m.pos.z)};
   },
@@ -144,11 +140,11 @@ export const gockelok={
       const a=m._chooseAttack(d);if(a)m.beginAttack(a.id);
       return true;
     }
-    return false;
+    return roosterCombat(m,dt);
   },
   onHitPlayer(m,p,h) {if(h.hit.staminaDrain)spendStamina(p.v,h.hit.staminaDrain);if(h.hit.copy)applyCopy(m,p);},
   onGlitchCounter(m,id,p) {clearCopy(m,p);if(m.attack?.inst.def.seam && m.seamCooldown<=0 && (m.gockelForm!=='eye' || seamOpen(m)))collapse(m);},
-  onAttackEnd(m,id) {m.lastGockelAttack=id;m.seamDamage=0;if(m.gockelForm==='eye' && ['gockelok_irislanze','gockelok_nullsektor','gockelok_ueberlauf','gockelok_raumbruch'].includes(id) && !m.chainNext){m.crashOpening=1.7;m.recover=Math.max(m.recover,1.7);}if(m.partById.wing.broken && id.includes('sprung'))m.recover=Math.max(m.recover,2);if(id==='gockelok_absturz'){m.recover=3;m.crashOpening=3;m.seamCooldown=Math.max(m.seamCooldown,3);}},
+  onAttackEnd(m,id) {if(m.gockelForm==='rooster')roosterAttackEnd(m);m.lastGockelAttack=id;m.seamDamage=0;if(m.gockelForm==='eye' && ['gockelok_irislanze','gockelok_nullsektor','gockelok_ueberlauf','gockelok_raumbruch'].includes(id) && !m.chainNext){m.crashOpening=1.7;m.recover=Math.max(m.recover,1.7);}if(m.partById.wing.broken && id.includes('sprung'))m.recover=Math.max(m.recover,2);if(id==='gockelok_absturz'){m.recover=3;m.crashOpening=3;m.seamCooldown=Math.max(m.seamCooldown,3);}},
   onBreak(m,p) {
     if(p.id==='comb')m.extra.comb.scale.y=.25;
     if(p.id==='spur'){m.extra.spurL.scale.z=.2;m.extra.spurR.scale.z=.2;}
@@ -156,6 +152,7 @@ export const gockelok={
   },
   hitDmgMul:(m,h)=>m.partById.wing.broken && h.copy ? .85:1,
   tick(m,dt) {
+    if(m.gockelForm==='rooster')trackRoosterTargets(m,dt);
     m.formTime+=dt;m.crashOpening=Math.max(0,(m.crashOpening??0)-dt);m.seamCooldown=Math.max(0,m.seamCooldown-dt);
     if(m.authority && m.gockelForm==='rooster' && m.hp<=m.maxHp*EYE_HP)reveal(m);
     const localCine=m.ctx.gockelokCinematic==='local';

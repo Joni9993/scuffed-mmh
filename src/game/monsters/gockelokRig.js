@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lambert, basic } from '../../render/ps1.js';
+import { createRoosterFx } from './gockelokRoosterFx.js';
 
 export function buildGockelok({ scale = 2.2 } = {}) {
   const root = new THREE.Group(), g = new THREE.Group(); root.add(g); g.scale.setScalar(scale);
@@ -30,6 +31,13 @@ export function buildGockelok({ scale = 2.2 } = {}) {
   for (const [name, s] of [['legL', 1], ['legR', -1]]) {
     const leg = joint(name, body, s * .38, -.45, .05);
     part('legs', leg, '#93815a', (a) => { oval(a,[.26,.4,.29],[0,-.15,-.04]); box(a, [.17, .65, .17], [0, -.36, 0], 0, -.15); box(a, [.18, .45, .18], [0, -.7, .05], 0, .2); for (let i = -1; i <= 1; i++) { box(a, [.1,.11,.55],[i*.16,-.85,.24],i*.12,0); box(a,[.07,.10,.23],[i*.18,-.87,.59],0,.25); } box(a,[.10,.1,.35],[0,-.84,-.21]); });
+    part('legs', leg, '#dfd5ac', a => {
+      for (let j = -1; j <= 1; j++) {
+        const claw = new THREE.ConeGeometry(.055, .42, 4);
+        claw.rotateX(Math.PI / 2 + .3); claw.rotateY(j * .18);
+        claw.translate(j * .2, -.89, .83); a.push(claw);
+      }
+    });
     const spur = joint(name === 'legL' ? 'spurL' : 'spurR', leg, 0, -.45, -.1);
     part('spur', spur, '#f1efcf', (a) => box(a, [.17, .15, .7], [0, 0, -.27], 0, -.25));
   }
@@ -56,6 +64,7 @@ export function buildGockelok({ scale = 2.2 } = {}) {
   const crowCharge=new THREE.Mesh(new THREE.TorusGeometry(.48,.055,4,28),new THREE.MeshBasicMaterial({color:0xffbd64,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
   crowCharge.name='Kraehenschnitt-Ladung';crowCharge.position.set(0,-.03,.95);head.add(crowCharge);crowCharge.visible=false;
   const extra={scale,comb,spurL:nodes.spurL,spurR:nodes.spurR,form:'rooster',phase:0,time:0,seamOpen:false,wingBroken:false};
+  const roosterFx = createRoosterFx(root);
   return { root, nodes, partMeshes, extra, apply(p) {
     const trueForm=extra.form==='eye';
     // Restore authored offsets before applying motion. Eye hurtbox remapping must never cancel a crouch or a wing bank.
@@ -80,6 +89,7 @@ export function buildGockelok({ scale = 2.2 } = {}) {
     seamMesh.visible=extra.seamOpen;
     core.visible=false;bug.visible=false;
     const t=extra.time;
+    roosterFx.update(extra);
     // True form: the rooster is gone entirely; only the Eye of the Glitch remains.
     for(const mesh of roosterMeshes)mesh.visible=!trueForm;
     eye.group.visible=trueForm;
@@ -106,6 +116,24 @@ export function buildGockelok({ scale = 2.2 } = {}) {
       if(crow&&charge>0){neck.scale.x*=1+charge*.3;neck.scale.z*=1+charge*.25;tail.rotation.x-=charge*.2;}
       if(extra.attackId==='gockelok_flankenwechsel'){body.rotation.z+=(extra.attackInst?.side??1)*Math.sin(Math.min(1,(extra.attackTau??0)/1.2)*Math.PI)*.2;}
       if(extra.attackId==='gockelok_hahnenwirbel')tail.rotation.y+=Math.sin((extra.attackTau??0)*Math.PI)*.45;
+      const id = extra.attackId ?? '', tau = extra.attackTau ?? 0;
+      if(id==='gockelok_krallensprung') {
+        const k = Math.max(0, Math.min(1, (tau - .42) / .56));
+        const flight = Math.sin(k * Math.PI);
+        nodes.legL.rotation.z = .10 + flight * .18;
+        nodes.legR.rotation.z = -.10 - flight * .18;
+        tail.rotation.x -= flight * .35;
+        nodes.wingL.rotation.y = -flight * .40; nodes.wingR.rotation.y = flight * .40;
+      } else {
+        nodes.legL.rotation.z = nodes.legR.rotation.z = 0;
+      }
+      if(id==='gockelok_federhagel') {
+        // Broad shoulder recoil on each real release, not a static glowing bird.
+        const beats = extra.attackInst?.def.hits ?? [];
+        let recoil = 0;
+        for(const h of beats) if(tau>=h.t0 && tau<h.t0+.18) recoil=Math.max(recoil,1-(tau-h.t0)/.18);
+        body.rotation.x -= recoil * .16; tail.rotation.x += recoil * .25;
+      }
 
     }
     comb.rotation.z+=Math.sin(t*7)*.035;wattle.rotation.z=Math.sin(t*5)*.06;

@@ -20,9 +20,10 @@ export const RAGE_TELEGRAPH = 0.8;
  * Rage: telegraph shortened by 20 % (never below 0.5 s), rest plays 1.2x faster. def.tempo (default 1) speeds up the whole attack (telegraph never below 0.5 s).
  */
 export class AttackInstance {
-  constructor(def, params) {
+  constructor(def, params, terrain = null) {
     this.def = def;
     this.params = params;
+    this.terrain = terrain;
     this.origin = { x: params.origin.x, y: params.origin.y ?? 0, z: params.origin.z };
     this.yaw0 = params.yaw ?? (params.dir ? yawOf(params.dir.x, params.dir.z) : 0);
     this.dir = { x: Math.sin(this.yaw0), z: Math.cos(this.yaw0) };
@@ -61,6 +62,10 @@ export class AttackInstance {
     let s;
     if (this.def.motion) s = this.def.motion(tau, this);
     s = { x: this.origin.x, z: this.origin.z, yaw: this.yaw0, air: 0, ...s };
+    // Grounded lunges must carry their hit shapes to the same height as the
+    // rendered monster. The terrain is shared deterministic world data on host
+    // and guest; target positions and the horizontal path remain committed.
+    if (this.def.followGround) s.groundY = this.terrain?.heightAt(s.x, s.z) ?? this.origin.y;
     s.tau = tau;
     s.phase = tau < this.def.telegraph ? 'telegraph' : t >= this.duration ? 'done' : 'active';
     return s;

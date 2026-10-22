@@ -1,5 +1,6 @@
 import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
+import { roosterAttacks } from './gockelokRoosterAttacks.js';
 
 const ball = (t, x, z, r, dmg, extra = {}) => ({ t0: t, t1: t + .16, shape: 'sphere', at: [x, 1, z], radius: r, dmg, knock: 'down', ...extra });
 const line = (t, x, z, xx, zz, r, dmg, extra = {}) => ({ t0: t, t1: t + .18, shape: 'capsule', from: [x, 1, z], to: [xx, 1, zz], radius: r, dmg, knock: 'flinch', noCollapse: true, ...extra });
@@ -18,52 +19,7 @@ function move(id, tg, hits, recovery = 1.0, extra = {}) {
     telegraph: tg, duration: end, hits, markerFromHits: true, markerLead: 1.65, tell:{kind:'physical',label:id.toUpperCase(),color:'#ffad52'}, flashParts: ['head'], cue: { color: '#ffb65b', tone: 'knurr' },
     pose: pose(tg, end, extra.kind), cond: m => m.gockelForm === 'rooster', ...extra };
 }
-const peck = move('maschinenpicken', .8, [ball(.8, 0, 3.5, 1.3, 95), ball(1.55, 0, 3.8, 1.4, 105), ball(2.35, 0, 4, 1.5, 130)], 1.0, { range: [0, 7], weight: 4, cooldown: 3,
-  pose: mTrack([[0, {}], [.6, { head: -25, neck: -.3 }], [.85, { head: 35, neck: .65, bodyPitch: 16 }], [1.25, { head: -25, neck: -.3 }], [1.6, { head: 35, neck: .65, bodyPitch: 16 }], [2, { head: -25, neck: -.3 }], [2.4, { head: 35, neck: .65, bodyPitch: 16 }], [3, { head: 32, neck: .6, bodyPitch: 15 }], [3.51, {}]]) });
-const anchor = move('schnabelanker', 1.25, [ball(1.25, 0, 4.4, 1.8, 185)], 2.0, { range: [0, 8], seam: [0.15, 1.25], cooldown: 8 });
-const scratch = move('scharrhieb', .7, [line(.7, -2, 1, 2.5, 3.3, .8, 115)], 1.0, { range: [0, 6], kind: 'jump', flashParts: ['legs'], cooldown: 3 });
-const spur = move('spornstich', .8, [line(.8, -.8, 1, -.8, 5.5, .7, 150)], 1.1, { range: [0, 7], kind: 'jump', flashParts: ['spur'], cooldown: 4 });
-const wing = move('fluegelfeger', 1.0, [line(1.0, -4, -2, -3, 4, 1.2, 125)], 1.0, { noFace: true, kind: 'wing', flashParts: ['wing'], range: [0, 8], cooldown: 4 });
-const flank = move('flankenwechsel', 1.2, [ball(1.2, 0, 3.5, 1.5, 135)], 1.0, {
-  prepare(a) { a.side = a.r(0) < .5 ? -1 : 1; },
-  motion(t,a) { const x = a.side * 4 * smooth(clamp01((t-.1)/.45)); return { x:a.origin.x+x*Math.cos(a.yaw0), z:a.origin.z-x*Math.sin(a.yaw0) }; },
-});
-const chase = move('jagdlauf', 1.1, [ball(1.1, 0, 2.5, 1.7, 160, {t1:1.55})], 1.3, { range:[6,40], weight:(m,d)=>d>11?11:5, cooldown: 4,
-  prepare(a) { a.length = Math.min(22, Math.max(0, Math.hypot(a.target.x-a.origin.x,a.target.z-a.origin.z)-2.5)); },
-  motion(t,a) { const k=smooth(clamp01((t-1.1)/.45)); return {x:a.origin.x+a.dir.x*a.length*k,z:a.origin.z+a.dir.z*a.length*k}; },
-  pose:mTrack([[0,{}],[.8,{bodyPitch:15,head:20,wing:30}],[1.1,{legL:50,legR:-50,bodyPitch:18}],[1.25,{legL:-50,legR:50,bodyPitch:18}],[1.4,{legL:50,legR:-50,bodyPitch:18}],[1.6,{bodyY:-.5,head:35,neck:.6,bodyPitch:20,wing:45}],[2.4,{bodyY:-.3,head:30,neck:.6,bodyPitch:15}],[2.85,{}]]),
-});
-function jump(broken = false) {
-  const h=[ball(1.8,0,0,broken?3:4,175)]; if (!broken) h.push(line(2.65,-2,0,2,4,.9,140));
-  return move(broken?'sprungsporne_bruch':'sprungsporne',1.8,h,broken?2:1.2,{phase:1,range:[3,30],kind:'jump',flashParts:['spur','wing'],cooldown:7, ...(broken?{needsBroken:'spur'}:{lockedByBreak:'spur'}),
-    prepare(a) { const d=Math.hypot(a.target.x-a.origin.x,a.target.z-a.origin.z); a.length=Math.min(d,18); },
-    motion(t,a) { const k=smooth(clamp01((t-.5)/1.3)); return {x:a.origin.x+a.dir.x*a.length*k,z:a.origin.z+a.dir.z*a.length*k,air:t<1.8?Math.sin(clamp01((t-.5)/1.3)*Math.PI)*5:0}; },
-  });
-}
-function shout(broken=false) {
-  const tg=broken?2.2:1.8;
-  return move(broken?'kikeriki_heiser':'kikeriki',tg,[ball(tg,0,0,broken?8:12,broken?110:165,{...corrupt,staminaDrain:broken?30:60})],1.5,{phase:1,range:[0,18],seam:[.15,tg],cooldown:12,flashParts:['comb'],kind:'wing',...(broken?{needsBroken:'comb'}:{lockedByBreak:'comb'})});
-}
-const echo=move('versetzter_schnabel',.9,[ball(.9,0,3.5,1.5,130),ball(2,0,6,2,150,corrupt)],1.2,{phase:1,seam:[1,2],cooldown:5});
-const rift=move('risssprung',2,[ball(2,0,0,4,190,corrupt)],1.6,{phase:2,range:[5,40],seam:[.15,1.7],kind:'jump',cooldown:7,
-  prepare(a) { const d=Math.min(24,Math.hypot(a.target.x-a.origin.x,a.target.z-a.origin.z)); a.landing={x:a.origin.x+a.dir.x*d,z:a.origin.z+a.dir.z*d}; },
-  motion(t,a) { const k=smooth(clamp01((t-1.55)/.45)); return {x:a.origin.x+(a.landing.x-a.origin.x)*k,z:a.origin.z+(a.landing.z-a.origin.z)*k,air:Math.sin(k*Math.PI)*3}; },
-});
-const signature=move('nahtsignatur',2.3,[line(2.3,-7,2,7,2,2,230,{...corrupt,dmgPct:.8,group:'split'}),line(2.3,0,-3,0,13,2,230,{...corrupt,dmgPct:.8,group:'split'})],2,{phase:2,seam:[.1,2.3],cooldown:14,kind:'wing'});
-
-// A phase-two counter to standing at the flank: two clearly separated wing beats, then exhaustion.
-const whirl=move('hahnenwirbel',1.1,[line(1.1,-4,-3,-4,4,1.3,150),line(2.05,4,-3,4,4,1.3,165,corrupt)],1.65,{
-  phase:1,range:[0,8],weight:4,cooldown:8,noFace:true,kind:'wing',flashParts:['wing'],seam:[1.25,2.05],
-  pose:mTrack([[0,{}],[.85,{wing:75,bodyRoll:-28,head:-20}],[1.2,{wing:-40,bodyRoll:30}],[1.7,{wing:75,bodyRoll:28,head:-20}],[2.15,{wing:-40,bodyRoll:-30}],[2.45,{wing:20,bodyY:-.45,head:35,neck:.6}],[3.86,{}]]),
-});
-// A distant hunter gets one committed lane in phase two, then a staggered fork in phase three.
-const crow=move('kraehenschnitt',1.35,[line(1.35,0,2,0,30,1.15,175,corrupt)],1.45,{
-  phase:1,range:[8,40],weight:(m,d)=>d>12?9:4,cooldown:6,flashParts:['comb'],kind:'wing',seam:[.2,1.35],tell:{kind:'laser',label:'KRÄHENSCHNITT',color:'#ffad52'},
-  pose:mTrack([[0,{}],[.9,{head:-48,neck:-.35,wing:55,bodyPitch:-15}],[1.3,{head:-52,neck:-.3,wing:65}],[1.45,{head:38,neck:.65,bodyPitch:22,wing:25}],[2.1,{head:35,neck:.6,bodyY:-.35}],[2.96,{}]]),
-});
-const crowFan=move('kraehenfaecher',1.5,[line(1.5,0,2,0,30,1.15,175,corrupt),line(2.5,0,2,-11,27,1.15,170,corrupt),line(2.5,0,2,11,27,1.15,170,corrupt)],1.7,{
-  phase:2,range:[8,40],weight:5,cooldown:10,flashParts:['comb'],kind:'wing',seam:[1.65,2.5],tell:{kind:'laser',label:'KRÄHENFÄCHER',color:'#ffad52'},
-});
+const rooster = roosterAttacks(move,ball,line,corrupt);
 
 // ---- Wahre Form: Auge des Glitch. Kurze Strafenster, grosse Treffer fast toedlich; die Firewall faellt nur ueber Naht-Fenster.
 const seamW = base => m => (m.eyeShield ? base * 3 : base);
@@ -95,4 +51,4 @@ const irisLance=trueMove('irislanze',1.8,[line(1.8,0,2,0,32,1.05,225,{t1:2.2})],
 const overflow=trueMove('ueberlauf',2.0,[-10,-3.3,3.3,10].map(x=>line(2.0,x,-22,x,22,1.35,205)).concat([-8,2,12].map(z=>line(3.4,-22,z,22,z,1.35,205,corrupt))),.9,
   {cooldown:14,weight:5,audit:[6],tell:{kind:'grid',label:'ÜBERLAUF',color:'#ff965c'},cond:m=>m.gockelForm==='eye' && m.hp<m.maxHp*(m.def?.eyePool??.42)*.7});
 const vary=(a)=>{const weight=a.weight;a.weight=(m,d)=>{const base=typeof weight==='function'?weight(m,d):weight;return base*(m.lastGockelAttack===a.id ? .18 : 1);};return a;};
-export const gockelAttacks=Object.fromEntries([peck,anchor,scratch,spur,wing,flank,chase,jump(),jump(true),shout(),shout(true),echo,whirl,crow,crowFan,rift,signature,frames,rollback,fracture,cascade,crash,leak,sweep,irisLance,overflow].map(vary).map(a=>[a.id,a]));
+export const gockelAttacks=Object.fromEntries([...rooster,frames,rollback,fracture,cascade,crash,leak,sweep,irisLance,overflow].map(vary).map(a=>[a.id,a]));
