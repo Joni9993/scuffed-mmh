@@ -193,6 +193,7 @@ export function fireShot(w, level, { quick = false } = {}) {
   }
   bumpBase(w);
   w.data.shots++;
+  p?.ctx?.bus?.emit('weaponTechnique', { player: p, technique: 'bowShot' + level });
   w.data.log.push(rec);
   if (w.data.log.length > 40) w.data.log.shift();
   w.data.lastShot = rec;

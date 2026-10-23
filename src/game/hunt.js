@@ -38,6 +38,10 @@ import { newTrain, trainRefill, trainHit, trainTick } from './training.js';
 import { atkMul as buffAtk } from './buffs.js'; // [KK] Krachkiste-Angriffs-Buff
 import { createFinaleArsenal } from './gear/finaleAbilities.js';
 import { itemPartMul } from './itemBuffs.js';
+import { createWeaponSchool } from '../ui/weaponSchool.js';
+import { createTeamplay } from './teamplay.js';
+import { createHuntTactics } from '../ui/huntTactics.js';
+import { partTactic } from '../data/partTactics.js';
 
 const MAX_KO = 3;
 
@@ -142,7 +146,10 @@ export class Hunt {
       if (this.bosses.includes(monster) && state === 'notice') this.hud.banner(monster.def.name, 3);
       if (state === 'enrage') this.hud.center('Rotglut!', 1.5);
     });
-    this.bus.on('partBreak', ({ monster, part }) => this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5));
+    this.bus.on('partBreak', ({ monster, part }) => {
+      this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5);
+      this.tactics?.notice(partTactic(monster, monster.partById[part]).after);
+    });
     this.bus.on('glitchCounter', () => this.hud.center('Glitch-Konter!', 1));
     this.glitchSys = attachGlitch(this); // Glitch-Energie / -Modus (GDD 16.2)
     this.finaleArsenal = createFinaleArsenal(this);
@@ -168,6 +175,9 @@ export class Hunt {
     this.meta = new HuntMeta(this, lo);
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
     if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); this.applyCoopScale(); }
+    this.teamplay = createTeamplay(this);
+    this.tactics = createHuntTactics(this);
+    if (this.training) this.school = createWeaponSchool(this);
   }
 
   /** [B] 2 packs (2-3 Jagglinge) in each of zone 1 (Wackelwiese) and zone 2 (Knochengrube); never near camp / spawns / the Brocken. */
@@ -288,7 +298,7 @@ export class Hunt {
     this.stats.damage += res.dmg;
     this.stats.hits++;
     if (this.training) this.#trainHit(res.dmg);
-    this.bus.emit('hit', { player, monster, part: hp.part.id, motionValue:ah.hit.mv, ...res });
+    this.bus.emit('hit', { player, monster, part: hp.part.id, motionValue:ah.hit.mv, sauber: !!ah.sauber, ...res });
   }
 
   // Hooks for the meta agent (items, gathering, carving). Default: nothing.
@@ -326,7 +336,7 @@ export class Hunt {
     for (const name of this.opts.coop ? ['hub', 'lobby', 'title'] : ['hub', 'title']) { try { return this.app.goto(name, this.training && name === 'hub' ? { fromTraining: true } : undefined); } catch { /* scene missing */ } }
   }
   #trainHit(dmg) { trainHit(this.train, this.time, dmg); }
-  #trainTick(dt) { trainRefill(this.player, dt); trainTick(this.train, this.time); }
+  #trainTick(dt) { trainRefill(this.player, dt, this.school?.fillWucht ?? true, !this.school?.active); trainTick(this.train, this.time); }
   #toggleLeave() {
     if (this.leaveEl) { this.leaveEl.remove(); this.leaveEl = null; return; }
     if (this.result) return;
@@ -419,6 +429,7 @@ export class Hunt {
   }
 
   update(dt) {
+    if (this.school?.menuOpen) { this.input.reset(); return; }
     if (this.panelOpen) this.input.reset(); // panel up: nothing reaches the player (also swallows stale key repeats)
     if (this.panelOpen && (this.player.state === 'ko' || this.result)) closeStation(); // knocked out: back to the world
     this.input.poll(dt);
@@ -449,6 +460,8 @@ export class Hunt {
     for (const m of this.monsters) { if (m.authority) m.update(dt); else m.tickRemote(dt); } // [N]
     this.reapDead(dt);
     this.projectiles.update(dt); // [W]
+    this.school?.update(dt);
+    this.teamplay?.update();
     this.finaleArsenal?.update(dt);
     this.world.update(dt, this);
     this.ambientFauna?.update(dt); // [L]
@@ -476,6 +489,7 @@ export class Hunt {
     this._lastRender = now;
     this.fx.updateNumbers(dt);
     this.hud.update(this, dt);
+    this.tactics?.update();
     this.meta.render(); // [P]
     const lp = this.player.lockPoint();
     if (lp) {
@@ -495,6 +509,7 @@ export class Hunt {
 
   dispose() {
     this.disposed = true;
+    this.school?.dispose(); this.teamplay?.dispose(); this.tactics?.dispose();
     this.finaleArsenal?.dispose();
     for (const m of this.monsters) m.def.dispose?.(m);
     music.setScene(null);

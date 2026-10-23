@@ -229,6 +229,7 @@ export class Player {
         this.ctx.fx.number(this.#top(), Math.round(dmg), 'hurt');
         this.ctx.fx.spark(this.#front(), 6, '#9fd8ff', 3);
         this.ctx.bus.emit('sfx', { name: 'block', pos: this.pos });
+        this.ctx.bus.emit('playerBlock', { player: this, key: h.key });
         this.ctx.fx.shake(0.1, 0.12);
         if (this.v.hp <= 0 && !this.god) this.#ko();
         return 'block';
@@ -469,6 +470,7 @@ export class Player {
 
   // ---- moves
   #onMoveStart(m, w) {
+    this.ctx.bus.emit('weaponMove', { player: this, moveId: m.id });
     // aim assist (max 35 degrees toward lock target) or snap to stick direction
     const lp = this.lockPoint();
     if (lp) {

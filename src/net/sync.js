@@ -11,7 +11,7 @@ import { labelSprite } from '../render/labels.js';
 import { applyHitStatus } from '../game/combat.js';
 import { statusHitFx } from '../game/statusFx.js';
 import { monsters as MONDEFS } from '../game/monsters/index.js';
-import { encodeKkBar, decodeKkBar } from '../game/buffs.js'; // [KK]
+import { encodeKkBar, decodeKkBar, decodeKk } from '../game/buffs.js'; // [KK]
 import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
 
 export const RATE_P = 15;   // Hz  Pirscher
@@ -62,6 +62,9 @@ export class HuntNet {
   sendSteal(monsterId, kind) { if (this.isGuest) this.net.sendHost(MSG.EV, { k: 'fst', m: monsterId, f: String(kind).slice(0, 16) }); }
   /** Gast: eigener Pirscher ist umgekippt -> Host zählt. */
   sendKo() { this.net.sendHost(MSG.EV, { k: 'ko' }); }
+  /** Team feedback is decided by the host; guests can only request a validated ping. */
+  broadcastTeam(event) { if (this.isHost) this.net.sendAll(MSG.EV, { k: 'teamEvent', event }); }
+  requestTeamPing(ping) { if (this.isGuest) this.net.sendHost(MSG.EV, { k: 'teamPing', ping }); }
   /** [G] camp chest: my outfit changed mid-hunt -> compact gear code to everybody (remote rigs follow). */
   sendGear(code) { this.net.sendAll(MSG.EV, { k: 'gear', g: String(code).slice(0, 8) }); }
   /** Rostwerke-Interactables: Gast -> Host (Wunsch), Host -> alle (Ausfuehrung/Zustand). */
@@ -181,6 +184,8 @@ export class HuntNet {
   #onEv(d, from) {
     const hunt = this.hunt;
     switch (d.k) {
+      case 'teamPing': if (this.isHost && this.peers.has(from)) hunt.teamplay?.ping(d.ping, from); break;
+      case 'teamEvent': if (this.isGuest && from === this.net.hostId) hunt.teamplay?.receive(d.event); break;
       case 'ko': if (this.isHost) hunt.netKo(from); break;
       case 'fst': if (this.isHost) { const m = this.#mon(d.m); if (m?.alive) m.def.onFoodStolen?.(m, d.f); } break; // Gast wurde bestohlen: Mampfaffe frisst das Futter
       case 'gcopy': { const m=this.#mon(d.m); if(this.peers.has(from) || from===this.net.hostId)m?.def.receiveCopies?.(m,from,d.c); break; }
@@ -188,7 +193,7 @@ export class HuntNet {
       case 'gcm': if (this.isHost) for (const m of hunt.monsters) if (m.alive && m.def.id === d.m && m.attack?.id === d.a) m.def.onGlitchCounter?.(m, d.a, this.peers.get(from)?.player); break;
       case 'gear': this.#onGear(from, d.g); break;
       case 'ia': hunt.interact?.onNet(d, from); break;
-      case 'kk': if (this.peers.has(from)) onKkEvent(hunt, d); break; // [KK] Buff-Radius wird beim Empfaenger geprueft
+      case 'kk': if (this.peers.has(from)) { onKkEvent(hunt, d); if (this.isHost) hunt.teamplay?.support(from, decodeKk(d)); } break; // [KK] Buff-Radius wird beim Empfaenger geprueft
       case 'kkb': { // [KK] Leiste eines Mitspielers (Sample-Kragen)
         const peer = this.peers.get(from), bar = decodeKkBar(d);
         if (peer && bar) kkState(peer.player.weapon).bar = bar;
@@ -383,7 +388,7 @@ export class HuntNet {
     if (d.k === 'arrow') { this.#mirrorArrow(d.p, from); return; }
     if (!this.hunt.spawnEffect) return;
     this._inFx = true;
-    try { this.hunt.spawnEffect(d.k, d.p); } finally { this._inFx = false; }
+    try { this.hunt.spawnEffect(d.k, this.isHost && d.p ? { ...d.p, owner: from } : d.p); } finally { this._inFx = false; }
   }
   /** Remote hunters' arrows: visual only (their client resolves the hits and sends them as `hit`). */
   #mirrorArrow(a, from) {

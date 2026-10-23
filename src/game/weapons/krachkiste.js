@@ -219,7 +219,7 @@ export function playBar(p, { finale = false, auto = false } = {}) {
   if (ctx) {
     receiveKk(ctx, ev, auto ? { heal: () => {} } : undefined);
     kkPlayFx(ctx, ev, { finale });
-    ctx.bus?.emit('kkPlay', { player: p, ev: encodeKk(ev), finale });
+    ctx.bus?.emit('kkPlay', { player: p, ev: encodeKk(ev), decoded: ev, finale });
     if (plan.remix) ctx.fx?.number?.(topOf(p), 'REMIX!', 'weak');
   }
   if (!auto) {

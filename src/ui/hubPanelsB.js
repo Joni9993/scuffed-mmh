@@ -18,6 +18,7 @@ import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { GearPreview, previewSlot } from './gearPreview.js';
 import { BESTIARY, CONDITIONS, KIND_LABEL, ELEM_NOTES, unlockedEntries, nextUnlock, weaknessOf } from '../data/compendium.js';
+import { partTactic } from '../data/partTactics.js';
 import { makeGear } from '../data/gearlook.js';
 
 const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}${glow[k] ? ' glow' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
@@ -217,6 +218,8 @@ export function createSpiegel(ctx) {
   }
   // Schwachstellen-Kasten (aus den Trefferzonen berechnet)
   function weakHtml(b) {
+    const def = monsters[b.id];
+    const tactics = (def?.parts ?? []).filter(p => p.breakHp).map(p => `<br><small><b>${esc(p.label)}:</b> ${esc(partTactic({ def }, p).before)}</small>`).join('');
     const w = weaknessOf(monsters[b.id]), st = (n) => (n ? '★'.repeat(n) + '☆'.repeat(3 - n) : '✗');
     const el = w.elems.map((e) => `<span class="chip${e.stars >= 2 ? ' ok' : ''}">${e.name} ${st(e.stars)}</span>`).join(' ');
     const best = w.elems.filter((e) => e.stars > 0).sort((a, c) => c.value - a.value)[0];
@@ -225,7 +228,7 @@ export function createSpiegel(ctx) {
       ${best ? `<br><small>Am meisten zieht <b>${best.name}</b> – ${best.where.length >= 4 ? 'wirkt fast überall' : 'vor allem an: ' + esc(best.where.join(', '))}.</small>` : '<br><small>Elemente prallen ab – hier zählt rohe Kraft.</small>'}
       ${ELEM_NOTES[b.id] ? `<br><small>${esc(ELEM_NOTES[b.id])}</small>` : ''}
       ${line('Weiche Stellen', w.soft)}${line('Zäh (wenig Schaden)', w.hard)}${line('Brechbar', w.breakable)}${line('Stumpf betäubt an', w.stun)}
-      <br><small>Gift und Rost wirken bei jedem Brocken (Status-Aufbau).</small></span></div>`;
+      <br><small>Gift und Rost wirken bei jedem Brocken (Status-Aufbau).</small>${tactics ? `<br><small><b>Teilbruch-Plan</b></small>${tactics}` : ''}</span></div>`;
   }
   const markSeen = (id) => { const b = BESTIARY.find((x) => x.id === id); if (!b) return; const n = unlockedEntries(b, fightsOf(id)).length; if ((ctx.save.bookSeen?.[id] ?? 0) < n) { ctx.save.bookSeen = { ...(ctx.save.bookSeen ?? {}), [id]: n }; return true; } return false; };
 

@@ -222,12 +222,14 @@ export class Monster {
     const st = this.st;
     switch (type) {
       case 'blind': {
+        const airborne = this.state === 'fly';
         st.blind = opts.t ?? BLIND_TIME;
         this._interrupt();
         this.queued = null;
         if (this.state === 'fly') this._startFall(4);
         this.ctx.fx.number({ x: this.pos.x, y: this.pos.y + this.def.scale * 2.4 + this.air, z: this.pos.z }, 'Blind!', 'weak');
         this.def.onStatus?.(this, 'blind');
+        if (airborne) this.ctx.bus.emit('monsterOpening', { monster: this, kind: 'flash', attackerId: opts.attackerId });
         return true;
       }
       case 'trap': {
@@ -239,6 +241,7 @@ export class Monster {
         this.vel.set(0, 0, 0);
         this.ctx.fx.number({ x: this.pos.x, y: this.pos.y + this.def.scale * 2.4, z: this.pos.z }, 'Klebt!', 'weak');
         this.def.onStatus?.(this, 'trap');
+        this.ctx.bus.emit('monsterOpening', { monster: this, kind: 'trap', attackerId: opts.attackerId });
         return true;
       }
       case 'poison': {
@@ -269,7 +272,7 @@ export class Monster {
         if (fresh) this.ctx.fx.number({ x: this.pos.x, y: this.pos.y + this.def.scale * 2.4 + this.air, z: this.pos.z }, 'Verbrüht!', 'weak');
         return true;
       }
-      case 'stun': { const b = opts.buildup ?? 0; if (b <= 0) return false; this._addStun(b); return true; }
+      case 'stun': { const b = opts.buildup ?? 0; if (b <= 0) return false; this._addStun(b, opts.attackerId); return true; }
       case 'stink': {
         st.stink = opts.t ?? STINK_TIME;
         st.stinkFrom = opts.pos ? { x: opts.pos.x, z: opts.pos.z } : null;
@@ -289,7 +292,7 @@ export class Monster {
     }
   }
 
-  _addStun(n) {
+  _addStun(n, attackerId = null) {
     if (n <= 0 || this.stunT > 0) return false;
     this.stun += n;
     if (this.stun >= this.stunThreshold) {
@@ -299,7 +302,7 @@ export class Monster {
       this._interrupt();
       this.queued = null;
       if (this.state === 'fly') this._startFall(STUN_TIME);
-      this.ctx.bus.emit('monsterStun', { monster: this });
+      this.ctx.bus.emit('monsterStun', { monster: this, attackerId });
       return true;
     }
     return false;
@@ -324,12 +327,13 @@ export class Monster {
         part.hp -= total * (this.st.rustT > 0 ? RUST_PART_MUL : 1) * (res.partDmgMul ?? 1) * (this.def.partHpMul?.(this, part) ?? 1); // partDmgMul: Kroll-Ast-Waffen; def.partHpMul: Mampfaffe harter Schaedel
         const jit = clamp(1 - part.hp / part.breakHp, 0, 1) * (part.jitter ?? 0.05);
         for (const m of part.mats) m.userData.ps1.uJit.value = jit;
-        if (part.hp <= 0) { this._breakPart(part); ev.broke = true; }
+        if (part.hp <= 0) { this._breakPart(part, res.attackerId); ev.broke = true; }
       }
-      if (res.blunt > 0 && part.stunPart && this._addStun(res.blunt)) ev.stunned = true;
+      if (res.blunt > 0 && part.stunPart && this._addStun(res.blunt, res.attackerId)) ev.stunned = true;
     }
     if (this.state === 'fly') this.flyDamage += total; // only reachable by arrows (bow) while high up
     this.def.onDamage?.(this, res, ev);
+    this.ctx.bus.emit('monsterDamaged', { monster: this, part: part?.id, res });
     // rage triggers
     this.burst.push({ t: this.time, dmg: total });
     if (!this.minor && this.authority && !this.def.noRage) { // noRage: Trainingspuppe
@@ -371,7 +375,8 @@ export class Monster {
     this.recover = Math.max(this.recover, 0.4);
     this._interrupt();
   }
-  _breakPart(part) {
+  _breakPart(part, attackerId = null) {
+    const threatened = this.attack && this.target?.alive && this.target.v?.hp / this.target.v?.maxHp < .3 ? this.target.id : null;
     part.broken = true;
     part.factor = Math.max(0, part.baseFactor - 0.1) + this._fb;
     for (const m of part.mats) m.userData.ps1.uJit.value = 0.01;
@@ -387,7 +392,7 @@ export class Monster {
     const p = part.sph[0].node.getWorldPosition(new THREE.Vector3());
     this.ctx.fx.spark(p, 24, '#ffffff', 6);
     this.ctx.fx.shake(0.35, 0.3);
-    this.ctx.bus.emit('partBreak', { monster: this, part: part.id });
+    this.ctx.bus.emit('partBreak', { monster: this, part: part.id, attackerId, threatened });
     this.ctx.bus.emit('sfx', { name: 'break', pos: p });
   }
   _enrage() {

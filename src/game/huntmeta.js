@@ -33,7 +33,7 @@ export class HuntMeta {
     this.hud.onSlot((i) => this.inv.select(i));
     this.hud.onDone(() => this.proceed());
     hunt.toast = (t, id) => this.hud.toast(t, id);
-    if (typeof document !== 'undefined' && hunt.app?.ui) this.onboarding = showOnboarding(hunt.app.ui, p.weaponId);
+    if (!hunt.training && typeof document !== 'undefined' && hunt.app?.ui) this.onboarding = showOnboarding(hunt.app.ui, p.weaponId);
 
     this.rng = createRng(hunt.opts.lootSeed ?? hashSeed(`${hunt.seed}:${Date.now()}`));
     this.corpses = [];
@@ -262,7 +262,7 @@ export class HuntMeta {
     }
     const result = h.result ?? 'fail';
     this.phase = 'leaving';
-    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, carves: this.carveCount, debug: !!this.loadout.debug };
+    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, teamMoments: h.teamplay?.summary(), carves: this.carveCount, debug: !!this.loadout.debug };
     queueMicrotask(() => h.app.goto('results', payload));
   }
 

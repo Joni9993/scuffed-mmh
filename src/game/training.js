@@ -9,10 +9,11 @@ export const DPS_WINDOW = 10; // s
 export const newTrain = () => ({ dps: 0, combo: 0, best: 0, log: [], lastHit: -99 });
 
 /** Leisten dauernd voll: HP, Puste, Wucht (langsam), Glitch-Energie (schnell). */
-export function trainRefill(p, dt) {
+export function trainRefill(p, dt, fillWucht = true, fillStamina = true) {
   const v = p.v;
-  v.hp = v.maxHp; v.bruise = 0; v.stamina = v.maxStamina; v.exhaust = 0;
-  if (p.weapon && p.weapon.wucht < 100) p.weapon.wucht = Math.min(100, p.weapon.wucht + TRAIN_WUCHT_RATE * dt);
+  v.hp = v.maxHp; v.bruise = 0;
+  if (fillStamina) { v.stamina = v.maxStamina; v.exhaust = 0; }
+  if (fillWucht && p.weapon && p.weapon.wucht < 100) p.weapon.wucht = Math.min(100, p.weapon.wucht + TRAIN_WUCHT_RATE * dt);
   if (!p.glitch?.active) addGlitchEnergy(p, TRAIN_GLITCH_RATE * dt, 'training');
 }
 

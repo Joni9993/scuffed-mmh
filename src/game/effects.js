@@ -129,7 +129,7 @@ const KINDS = {
       h.fx.spark({ x: at.x, y: at.y + 0.5, z: at.z }, 36, '#fffbd0', 9);
       h.fx.flash?.('rgba(255,255,220,.35)', 0.25);
       h.bus.emit('sfx', { name: 'break', pos: at });
-      if (auth(h)) for (const m of monstersNear(h.monsters, at, FLASH_R, { air: 3 })) m.applyStatus?.('blind', { duration: 4, pos: at });
+      if (auth(h)) for (const m of monstersNear(h.monsters, at, FLASH_R, { air: 3 })) m.applyStatus?.('blind', { duration: 4, pos: at, attackerId: p.owner });
     },
   }),
 
@@ -195,7 +195,7 @@ const KINDS = {
         if (!auth(h)) return true;
         for (const m of monstersNear(h.monsters, p.pos, TRAP_R)) {
           if (m.minor) continue;
-          if (m.applyStatus?.('trap', { duration: 6, pos: p.pos })) {
+          if (m.applyStatus?.('trap', { duration: 6, pos: p.pos, attackerId: p.owner })) {
             h.fx.spark({ x: p.pos.x, y: p.pos.y + 0.6, z: p.pos.z }, 20, '#d0a050', 5);
             h.bus.emit('sfx', { name: 'block', pos: p.pos });
             return false;

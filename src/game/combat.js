@@ -67,7 +67,7 @@ export function applyMonsterHit(monster, result, ctx) {
 export function applyHitStatus(monster, result) {
   if (result.rostBuild > 0) monster.applyStatus?.('rost', { amount: result.rostBuild });
   if (result.poisonBuild > 0) monster.applyStatus?.('poison', { buildup: result.poisonBuild });
-  if (result.stunBuild > 0) monster.applyStatus?.('stun', { buildup: result.stunBuild });
+  if (result.stunBuild > 0) monster.applyStatus?.('stun', { buildup: result.stunBuild, attackerId: result.attackerId });
 }
 
 /** Pick the best part (highest factor) among overlapping parts. */

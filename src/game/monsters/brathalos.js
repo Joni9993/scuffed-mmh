@@ -193,7 +193,7 @@ const feuer = {
       const o = inst.origin, yaw = inst.yaw0;
       const from = { x: o.x + Math.sin(yaw) * 3.2, y: o.y + BEAK_HEIGHT, z: o.z + Math.cos(yaw) * 3.2 };
       const aim = { x: inst.target.x, y: inst.target.y + 1.0, z: inst.target.z };
-      const fan = inst.rage ? [-0.3, 0, 0.3] : [0];
+      const fan = inst.rage && !m.partById.head.broken ? [-0.3, 0, 0.3] : [0];
       const base = Math.atan2(aim.x - from.x, aim.z - from.z);
       const hd = Math.hypot(aim.x - from.x, aim.z - from.z);
       fan.forEach((da, i) => {
@@ -225,7 +225,7 @@ const teppichBall = (i) => (m, ctx, inst, age = 0) => {
   ctx.bus.emit('sfx', { name: 'roar', pos: from, low: true });
 };
 const feuerteppich = {
-  id: 'brathalos_feuerteppich', range: [6, 30], weight: 3, cooldown: 9, telegraph: 0.8, flashParts: ['head'], duration: 2.7, hits: [], stam: 14, audit: [8, 14],
+  id: 'brathalos_feuerteppich', range: [6, 30], weight: (m) => m.partById.head.broken ? 6 : 3, cooldown: 9, telegraph: 0.8, flashParts: ['head'], duration: 2.7, hits: [], stam: 14, audit: [8, 14],
   cue: { color: '#ff4020', tone: 'droehn' },
   events: [{ t: 0.95, call: 'b0', all: true }, { t: 1.2, call: 'b1', all: true }, { t: 1.45, call: 'b2', all: true }],
   calls: { b0: teppichBall(0), b1: teppichBall(1), b2: teppichBall(2) },

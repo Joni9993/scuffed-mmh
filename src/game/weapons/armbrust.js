@@ -108,6 +108,7 @@ export function fireBolt(w, { free = false, rattern = false } = {}) {
     emit(w, 'swing');
   }
   d.shots++; d.log.push(rec); if (d.log.length > 40) d.log.shift();
+  p?.ctx?.bus?.emit('weaponTechnique', { player: p, technique: rattern ? 'lbRattern' : 'lbShot' });
   if (!gl && !free && d.mag[d.ammo] <= 0) d.wantReload = true; // leer -> naechster A-Druck laedt (siehe onUpdate)
   return rec;
 }
@@ -129,6 +130,7 @@ function finishReload(w, sauber) {
   const d = st(w);
   d.mag[d.ammo] = AMMO[d.ammo].mag;
   d.sauberMag = !!sauber;
+  if (sauber) w.hooks.player?.ctx?.bus?.emit('weaponTechnique', { player: w.hooks.player, technique: 'lbReload' });
 }
 export const reloadWindowOpen = (w) => { const r = st(w).rel; return !!r && r.kind === 'reload' && r.t >= LB.reload.win[0] && r.t <= LB.reload.win[1]; };
 function reloadTick(w, dt) {
@@ -176,6 +178,7 @@ function placeMine(w) {
   const x = (p?.pos.x ?? 0) + Math.sin(p?.rot ?? 0) * 1.2, z = (p?.pos.z ?? 0) + Math.cos(p?.rot ?? 0) * 1.2;
   const y = p?.ctx?.world?.heightAt?.(x, z) ?? 0;
   d.mines.push({ x, y, z, id: 'mine_' + (d.mineId = (d.mineId | 0) + 1) });
+  p?.ctx?.bus?.emit('weaponTechnique', { player: p, technique: 'lbMine' });
   emit(w, 'swing');
 }
 function mineTick(w, dt) {

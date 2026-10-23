@@ -39,6 +39,7 @@ export const resultsScene = {
       <div class="st-body">
         <div class="note">${win ? 'Geschafft. Der Brocken sieht das anders, aber der hat auch keine Stimme.' : `${esc(opts.reason || 'Pech')}. Gesammeltes behältst du trotzdem.`}</div>
         <div class="rs-sec"><div class="sub">Auszeichnungen</div>${awards.map((a) => `<div class="note"><b>${esc(a.title)}</b> – ${esc(a.text)}</div>`).join('')}</div>
+        ${opts.teamMoments?.length ? `<div class="rs-sec"><div class="sub">Gemeinsam geschafft</div>${opts.teamMoments.map(e => `<div class="note"><b>${esc(e.title)}</b> · ${mmss(e.at)}<br>${esc(e.text)}</div>`).join('')}</div>` : ''}
         ${rewards?.schrott ? `<div class="rs-big">${iconHtml('schrott')} +${rewards.schrott} Schrott</div>` : ''}
         ${sum?.overflowSchrott ? `<div class="note">Truhe voll: Überschuss für ${sum.overflowSchrott} Schrott verkauft.</div>` : ''}
         ${list('Zerlegt', p.carved)}${list('Teilbruch-Bonus', p.breaks)}${list('Auftragsbonus', p.reward)}${list('Gesammelt', p.gathered)}

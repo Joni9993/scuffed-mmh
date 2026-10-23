@@ -169,7 +169,7 @@ function breakArmor(m, why) {
 // ---- 1. Rammsturm: scharrt 0,9 s, rennt 15 m geradeaus (30 Schaden, wirft um). Rotglut: dreht und rennt nochmal.
 const RAMM_LEN = 15;
 const ramm = {
-  id: 'barrotz_ramm', range: [7, 26], weight: 4, cooldown: 5, telegraph: 0.9, flashParts: ['legs', 'head'], duration: 3.1, stam: 18, cue: { color: '#ff8a30', tone: 'droehn' },
+  id: 'barrotz_ramm', range: [7, 26], weight: (m) => m.partById.tail.broken ? 7 : 4, cooldown: 5, telegraph: 0.9, flashParts: ['legs', 'head'], duration: 3.1, stam: 18, cue: { color: '#ff8a30', tone: 'droehn' },
   marker: { at: 'landing', radius: 2.4 }, markerUntil: 2.1,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z;
@@ -306,6 +306,14 @@ feger.motion = (tau, a) => {
 };
 feger.stam = 4;
 feger.cue = { color: '#c070ff', tone: 'klick' };
+feger.lockedByBreak = 'tail';
+// Broken club: the remaining tail still sweeps, but the outer danger ring disappears.
+// Separate immutable attack data keeps host and guest hitboxes identical.
+const stummelfeger = {
+  ...feger, id: 'barrotz_stummelfeger', lockedByBreak: undefined, needsBroken: 'tail', range: [0, 5.5], audit: [2, 3.5],
+  marker: { ...feger.marker, radius: feger.marker.radius * .65 },
+  hits: feger.hits.map(h => ({ ...h, from: [...h.from], to: [h.to[0], h.to[1], h.to[2] * .65], radius: h.radius * .8 })),
+};
 
 // ---- 6. Doppel-Stampfer: hebt den Kopf, Stampfer 1 (Front), kurzer Halte-Cue (Kopf bleibt oben), Stampfer 2 (Ring um den Körper). Delay-Hit.
 const stampfWelle = (rx, rz, n = 14) => (m, ctx) => {
@@ -388,13 +396,13 @@ export const barrotz = {
   ],
   attacks: {
     barrotz_ramm: ramm, barrotz_hammer: hammer, barrotz_waelzer: waelzer, barrotz_spritzer: spritzer, barrotz_feger: feger,
-    barrotz_doppelstampfer: doppel, barrotz_hoerner: hoerner, barrotz_kopfstoss: kopfstoss,
+    barrotz_doppelstampfer: doppel, barrotz_hoerner: hoerner, barrotz_kopfstoss: kopfstoss, barrotz_stummelfeger: stummelfeger,
   },
   // Brocken 2.0
   teachAttack: 'barrotz_hammer', stamina: true, flinchDmg: true,
   chains: {
-    barrotz_hammer: [{ atk: 'barrotz_feger', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_doppelstampfer', w: 3 }, { atk: null, w: 3 }],
-    barrotz_kopfstoss: [{ atk: 'barrotz_feger', w: 2, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_kopfstoss', w: 3 }, { atk: null, w: 2 }],
+    barrotz_hammer: [{ atk: 'barrotz_feger', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_stummelfeger', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_doppelstampfer', w: 3 }, { atk: null, w: 3 }],
+    barrotz_kopfstoss: [{ atk: 'barrotz_feger', w: 2, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_stummelfeger', w: 2, cond: (m) => targetBehind(m, 1.6) }, { atk: 'barrotz_kopfstoss', w: 3 }, { atk: null, w: 2 }],
     barrotz_waelzer: [{ atk: 'barrotz_spritzer', w: 1 }],
     barrotz_spritzer: [{ atk: 'barrotz_ramm', w: 3 }, { atk: null, w: 1 }],
     barrotz_ramm: [{ atk: 'barrotz_hoerner', w: 3 }, { atk: null, w: 2 }],
