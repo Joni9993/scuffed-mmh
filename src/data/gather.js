@@ -120,6 +120,12 @@ export const GATHER_ITEM_NAMES = {
 export const GATHER_TIME = 0.8; // seconds of holding the context button
 export const GATHER_RANGE = 2.3; // metres
 
+/** A missing or corrupt counter must never turn a point into an unlimited source. */
+export function canGather(point) {
+  return Number.isInteger(point.usesLeft) && Number.isInteger(point.maxUses)
+    && point.usesLeft > 0 && point.usesLeft <= point.maxUses;
+}
+
 export function dropTable(kind, zone) {
   const k = GATHER_KINDS[kind];
   return k.dropsByZone?.[zone] ?? k.drops;

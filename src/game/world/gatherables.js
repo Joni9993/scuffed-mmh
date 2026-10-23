@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { basic } from '../../render/ps1.js';
 import { createRng, hashSeed } from '../../core/rng.js';
-import { GATHER_KINDS, GATHER_TIME, GATHER_RANGE, GATHER_ITEM_NAMES, rollGather } from '../../data/gather.js';
+import { GATHER_KINDS, GATHER_TIME, GATHER_RANGE, GATHER_ITEM_NAMES, canGather, rollGather } from '../../data/gather.js';
 import { colored, put, merge, bakeShade, recolor, faceColors } from './props.js';
 import { distToCracks } from './layout.js';
 
@@ -189,7 +189,7 @@ export function createGatherables({ layout, seed = 1, bus = null, points: given 
   const applyDim = (p) => {
     const zm = p.zm;
     if (!zm) return;
-    const dim = p.usesLeft <= 0;
+    const dim = !canGather(p);
     const a = zm.colorAttr.array, o = zm.orig;
     for (let i = p.vstart; i < p.vstart + p.vcount; i++) {
       const r = o[i * 3], g = o[i * 3 + 1], b = o[i * 3 + 2];
@@ -216,7 +216,7 @@ export function createGatherables({ layout, seed = 1, bus = null, points: given 
 
   function setState(pointId, usesLeft) {
     const p = byId.get(pointId);
-    if (!p) return false;
+    if (!p || !Number.isInteger(usesLeft) || !Number.isInteger(p.maxUses) || p.maxUses < 0) return false;
     p.usesLeft = Math.max(0, Math.min(p.maxUses, usesLeft));
     applyDim(p);
     return true;
@@ -240,7 +240,7 @@ export function createGatherables({ layout, seed = 1, bus = null, points: given 
     for (let i = 0; i < N; i++) {
       const p = points[i];
       let k = 0;
-      if (p.usesLeft > 0) { const s = Math.sin(st.t * 2.6 + phase[i]); k = s > 0.55 ? (s - 0.55) / 0.45 : 0; k = 0.12 + k * 0.88; }
+      if (canGather(p)) { const s = Math.sin(st.t * 2.6 + phase[i]); k = s > 0.55 ? (s - 0.55) / 0.45 : 0; k = 0.12 + k * 0.88; }
       spCol[i * 3] = base[i].r * k; spCol[i * 3 + 1] = base[i].g * k; spCol[i * 3 + 2] = base[i].b * k;
     }
     sg.attributes.color.needsUpdate = true;
@@ -252,7 +252,7 @@ export function createGatherables({ layout, seed = 1, bus = null, points: given 
     let best = null, bd = GATHER_RANGE;
     if (pl.alive !== false && pl.state === 'free') {
       for (const p of points) {
-        if (p.usesLeft <= 0) continue;
+        if (!canGather(p)) continue;
         const d = Math.hypot(p.pos.x - pl.pos.x, p.pos.z - pl.pos.z);
         if (d < bd && Math.abs(p.pos.y - pl.pos.y) < 2.5) { bd = d; best = p; }
       }

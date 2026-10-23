@@ -4,7 +4,7 @@ import { SnapBuffer } from './interp.js';
 import { Player } from '../game/player.js';
 import { weapons } from '../game/weapons/index.js';
 import { clamp } from '../core/math.js';
-import { rollGather } from '../data/gather.js';
+import { canGather, rollGather } from '../data/gather.js';
 import { decodeGear, makeGear } from '../data/gearlook.js'; // [G]
 import { PLAYER_COLORS } from '../meta/save.js';
 import { labelSprite } from '../render/labels.js';
@@ -355,7 +355,7 @@ export class HuntNet {
     if (d.c) { // host: arbitrate a claim
       if (!this.isHost) return;
       const reply = (x) => this.net.session.send(MSG.GATHER, { id: pt.id, ...x }, [from]);
-      if (pt.usesLeft <= 0) { reply({ u: 0, deny: 1 }); return; }
+      if (!canGather(pt)) { reply({ u: 0, deny: 1 }); return; }
       const items = rollGather(hunt.seed, pt.id, pt.kind, pt.zone, pt.maxUses - pt.usesLeft);
       world.setGatherState(pt.id, pt.usesLeft - 1);
       this.stats.gathersGranted = (this.stats.gathersGranted ?? 0) + 1;
@@ -370,6 +370,7 @@ export class HuntNet {
       hunt.fx?.number({ x: hunt.player.pos.x, y: hunt.player.pos.y + 2.3, z: hunt.player.pos.z }, 'Schon leer!', 'hurt');
       return;
     }
+    if (!Number.isInteger(d.u) || d.u < 0 || d.u > pt.maxUses) return;
     if (pt.usesLeft > d.u) world.setGatherState(pt.id, d.u);
     if (d.it) { // my claim was granted: items + the usual local feedback
       hunt.bus.emit('gathered', { pointId: pt.id, items: d.it, usesLeft: d.u, remote: true });

@@ -101,7 +101,7 @@ export function placeGlitchgratPoints(L, seed) {
           kind,
           pos: { x: spot.x, y: L.heightAt(spot.x, spot.z), z: spot.z },
           zone,
-          uses,
+          usesLeft: uses,
           maxUses: uses,
         });
       }

@@ -117,7 +117,7 @@ describe('glitchgrat', () => {
     for (const seed of [1, 42, 891]) {
       const world = createWorld('glitchgrat', { seed });
       const ore = world.gatherPoints.filter((p) => p.kind === 'graterz');
-      expect(ore.reduce((n, p) => n + p.uses, 0)).toBeGreaterThanOrEqual(8);
+      expect(ore.reduce((n, p) => n + p.usesLeft, 0)).toBeGreaterThanOrEqual(8);
       const nav = getNav(world), camp = world.campPoint;
       for (const p of ore) expect(nav.find(camp.x, camp.z, p.pos.x, p.pos.z)).not.toBeNull();
       world.dispose();
