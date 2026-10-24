@@ -7,6 +7,7 @@ import { esc } from '../ui/hubKit.js';
 import { settings } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
 import { pickAwards } from '../meta/awards.js';
+import { teamReportHtml } from '../ui/teamReport.js';
 import '../ui/hub.css';
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -30,6 +31,7 @@ export const resultsScene = {
     }
     const awards = pickAwards({ ...opts.stats, time: opts.time }, opts.coopStats, { tierAward: sum?.glitch?.award });
     const win = result === 'win';
+    const shared = opts.report?.players?.length > 1;
     const p = rewards?.parts ?? {};
     const el = document.createElement('div');
     el.className = 'screen';
@@ -38,6 +40,10 @@ export const resultsScene = {
         <span class="st-npc">${esc(quest?.name ?? '')}${opts.time ? ` · ${mmss(opts.time)}` : ''}</span></div>
       <div class="st-body">
         <div class="note">${win ? 'Geschafft. Der Brocken sieht das anders, aber der hat auch keine Stimme.' : `${esc(opts.reason || 'Pech')}. Gesammeltes behältst du trotzdem.`}</div>
+        ${opts.reportMissing ? '<div class="note">Der gemeinsame Jagdbericht konnte nicht übertragen werden. Deine persönliche Beute ist davon nicht betroffen.</div>' : ''}
+        ${shared ? '<nav class="results-tabs" aria-label="Jagdbericht"><button type="button" data-report-tab="team" aria-pressed="true">Die Truppe</button><button type="button" data-report-tab="loot" aria-pressed="false">Deine Beute</button></nav>' : ''}
+        ${shared ? `<section data-report-view="team">${teamReportHtml(opts.report, opts.playerId)}</section>` : ''}
+        <section data-report-view="loot"${shared ? ' hidden' : ''}>
         <div class="rs-sec"><div class="sub">Auszeichnungen</div>${awards.map((a) => `<div class="note"><b>${esc(a.title)}</b> – ${esc(a.text)}</div>`).join('')}</div>
         ${opts.teamMoments?.length ? `<div class="rs-sec"><div class="sub">Gemeinsam geschafft</div>${opts.teamMoments.map(e => `<div class="note"><b>${esc(e.title)}</b> · ${mmss(e.at)}<br>${esc(e.text)}</div>`).join('')}</div>` : ''}
         ${rewards?.schrott ? `<div class="rs-big">${iconHtml('schrott')} +${rewards.schrott} Schrott</div>` : ''}
@@ -55,8 +61,16 @@ export const resultsScene = {
         ${win && sum?.firstClear && quest?.id === 'voltiris' ? '<div class="rs-sec"><div class="sub">EIL-DEKRET AUS DEM ROSTNEST</div><div class="note">Die drei Herrscher sind gefallen. Auf dem Weltenkamm erwacht etwas viel Älteres. Das Auftragsbrett ruft zur letzten Jagd: Das Kikeriki des Untergangs.</div></div>' : ''}
         ${win && quest?.id === 'gockelok' ? '<div class="rs-sec"><div class="sub">ENDE GUT. HAHN KAPUTT.</div><div class="note">Ihr habt den Ursprung des Glitches besiegt. Das Rostnest schläft wieder. Irgendwo kräht ein sehr viel kleinerer Hahn. In der Schmiede wartet die Glitch-Transzendenz – für alle sieben Waffen.</div></div>' : ''}
         ${!Object.keys(rewards?.items ?? {}).length && !rewards?.schrott ? '<div class="note">Mit leeren Händen. Mindestens sauber.</div>' : ''}
+        </section>
       </div><div class="rs-foot"><button class="btn red" data-a="hub">Weiter</button> <!-- [T] --></div></div>`;
-    el.addEventListener('click', (e) => { if (e.target.closest('[data-a="hub"]')) { sfx.play('ui'); app.goto('hub'); } });
+    el.addEventListener('click', (e) => {
+      const tab = e.target.closest('[data-report-tab]')?.dataset.reportTab;
+      if (tab) {
+        for (const section of el.querySelectorAll('[data-report-view]')) section.hidden = section.dataset.reportView !== tab;
+        for (const button of el.querySelectorAll('[data-report-tab]')) button.setAttribute('aria-pressed', String(button.dataset.reportTab === tab));
+      }
+      if (e.target.closest('[data-a="hub"]')) { sfx.play('ui'); app.goto('hub'); }
+    });
     app.ui.appendChild(el);
     this.el = el;
     document.body.classList.toggle('scan', settings.scanlines);

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { MUTATORS } from '../data/mutators.js';
+import { INPUT_NOTICES } from '../game/inputFeedback.js';
+import { settings } from '../core/settings.js';
 import { FOODS } from '../data/foods.js';
 import { itemBuffText, isSurveyed } from '../game/itemBuffs.js';
 import { COLORS as BUFF_COLORS, SYMBOL as BUFF_SYMBOL, BUFF_NAME, BUFF as BUFF_CFG, buffKey } from '../game/buffs.js'; // [KK] Krachkiste-Buffs
@@ -58,6 +60,7 @@ export function createHud(root) {
     <div class="hud-banner"></div>
     <div class="hud-zone"></div>
     <div class="hud-center"></div>`;
+  const inputNote = document.createElement('div'); inputNote.className = 'hud-input-feedback'; inputNote.setAttribute('role', 'status'); el.appendChild(inputNote);
   root.appendChild(el);
   const q = (s) => el.querySelector(s);
   const refs = {
@@ -79,16 +82,25 @@ export function createHud(root) {
   refs.mut.addEventListener('click', () => currentHunt?.showModifiers());
   const set = (k, v, fn) => { if (cache[k] !== v) { cache[k] = v; fn(v); } };
   let cine = null; // Optional cinematic preview overlay
+  let noteT = 0, lastNoteAt = -Infinity;
   let bannerT = 0, centerT = 0, zoneT = 0, zoneShown = 0, zoneCand = 0, zoneCandT = 0; // [K] zone toast state
 
   const api = {
     el,
+    feedback(action, reason) {
+      if (!settings.inputFeedback || !INPUT_NOTICES[reason] || performance.now() - lastNoteAt < 800) return;
+      lastNoteAt = performance.now(); noteT = 1.1;
+      inputNote.textContent = INPUT_NOTICES[reason]; inputNote.classList.add('show');
+      const button = root.querySelector(`[data-act="${action}"]`), bar = reason === 'stamina' ? refs.st : action === 'glitch' ? refs.gl : null;
+      for (const node of [button, bar].filter(Boolean)) { node.classList.remove('input-blocked'); void node.offsetWidth; node.classList.add('input-blocked'); }
+    },
     banner(text, secs = 3) { refs.banner.classList.remove('mut'); refs.banner.textContent = text; refs.banner.classList.add('show'); bannerT = secs; },
     center(text, secs = 2, mon = false) { refs.center.classList.toggle('mon', !!mon); refs.center.textContent = text; refs.center.classList.add('show'); centerT = secs; },
     update(hunt, dt = 0.016) {
       currentHunt = hunt;
       const p = hunt.player;
       if (!p) return;
+      noteT -= dt; if (noteT <= 0) inputNote.classList.remove('show');
       const v = p.v;
       if (!cache.mutInit) { // aktive Mutatoren: dauerhaft klein + 3 s Banner beim Start
         cache.mutInit = true;

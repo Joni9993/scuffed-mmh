@@ -109,11 +109,11 @@ export const session = new Session();
  * sein als der Raum-Host. Die Sitzung bleibt beim Verlassen der Jagd bestehen (dispose schließt sie NICHT).
  * Vertrag für HuntNet: isHost, isGuest, myId, hostId, members, sendAll, sendHost, on, onLeave, onLost, rtt, rttOf, dispose.
  */
-export function createHuntChannel(sess, { hostId, members, onDispose } = {}) {
+export function createHuntChannel(sess, { hostId, members, roundId, onDispose } = {}) {
   const ids = members ?? sess.members.map((m) => m.id);
   const offs = [];
   const ch = {
-    session: sess, hostId, members: ids, myId: sess.myId,
+    session: sess, hostId, roundId, members: ids, myId: sess.myId,
     isHost: sess.myId === hostId, isGuest: sess.myId !== hostId,
     others: () => ids.filter((i) => i !== sess.myId),
     sendAll(type, d) { const o = ch.others(); if (o.length) sess.send(type, d, o); },

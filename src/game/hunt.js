@@ -40,6 +40,8 @@ import { createFinaleArsenal } from './gear/finaleAbilities.js';
 import { itemPartMul } from './itemBuffs.js';
 import { createWeaponSchool } from '../ui/weaponSchool.js';
 import { createTeamplay } from './teamplay.js';
+import { createHuntReport } from './huntReport.js';
+import { specialHint } from './inputFeedback.js';
 import { createHuntTactics } from '../ui/huntTactics.js';
 
 const MAX_KO = 3;
@@ -134,11 +136,12 @@ export class Hunt {
     music.setScene(opts.music ?? (this.world.id === 'rostwerke' ? 'rost' : this.world.id === 'smaragdkueste' ? 'smaragd' : 'hunt')); // Rostwerke: eigener Industrial-Stil (?music=rost zum Vorhören)
     this.bus.on('glitchCounter', () => { this.musicChainT = this.time; });
     this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) { this.musicWon = true; music.stinger(); music.setIntensity(0); } });
-    this.bus.on('playerDown', () => this.#onPlayerDown());
     this.bus.on('glitchCounter', (e) => { if (!e?.player || e.player.local) this.stats.perfect++; });
     // Macke „Überladung" (Voltaro-Set): nach Glitch-Konter dur s +atk Angriff
     this.bus.on('glitchCounter', (e) => { const p = e?.player ?? this.player; if (p?.local && p.counterBuff) p.counterBuffUntil = this.time + p.counterBuff.dur; });
     this.bus.on('playerDown', (e) => { if (!e?.player || e.player.local) this.stats.kos++; });
+    this.bus.on('playerDown', () => this.#onPlayerDown());
+    this.bus.on('inputBlocked', e => this.hud.feedback(e.action, e.reason));
     this.bus.on('monsterDead', ({ monster }) => { if (this.#allBossesDead(monster)) this.#onBossDead(); });
     this.bus.on('revierAlly', () => this.hud.center('Sie verbünden sich!', 2.2));
     this.bus.on('revierRetreat', () => this.hud.center('Einer zieht sich zurück!', 2.2));
@@ -171,6 +174,7 @@ export class Hunt {
     this.groundingZones = []; // Erdungsstab: [{ x, z, r, until }] (until in hunt.time), Voltaro ignoriert Pirscher darin
     this.interact = createInteractables(this);
     this.meta = new HuntMeta(this, lo);
+    this.report = createHuntReport(this);
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
     if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); this.applyCoopScale(); }
     this.teamplay = createTeamplay(this);
@@ -439,6 +443,7 @@ export class Hunt {
 
   #applyUiSettings() {
     document.body.classList.toggle('scan', this.app.settings.scanlines && !this.opts.nofx);
+    document.body.classList.toggle('calm-effects', !!this.app.settings.calmEffects);
   }
 
   update(dt) {
@@ -517,6 +522,7 @@ export class Hunt {
       const v = _lockV.set(a.x, a.y, a.z).project(this.camera);
       if (v.z < 1) setLbReticle(v.x * 0.5 + 0.5, -v.y * 0.5 + 0.5);
     }
+    this.input.specialHint = specialHint(this.player);
     this.app.touch?.update();
     this.app.renderer.render(this.scene, this.camera);
   }
@@ -524,6 +530,7 @@ export class Hunt {
   dispose() {
     this.disposed = true;
     this.school?.dispose(); this.teamplay?.dispose(); this.tactics?.dispose();
+    this.report?.dispose();
     this.finaleArsenal?.dispose();
     for (const m of this.monsters) m.def.dispose?.(m);
     music.setScene(null);
@@ -543,11 +550,13 @@ export class Hunt {
     this.app.touch?.setVisible(false);
     this.input.reset();
     this.input.contextLabel = null; this.input.lockOn = false; this.input.glitchReady = false;
+    this.input.specialHint = '';
     this.glitchSys?.detach();
     time.reset();
     this._detachCues?.();
     this.bus.clear();
     this.scene.traverse((o) => { o.geometry?.dispose?.(); });
     document.body.classList.remove('scan');
+    document.body.classList.remove('calm-effects');
   }
 }

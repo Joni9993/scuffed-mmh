@@ -53,6 +53,8 @@ body.scan #stage::after {
   text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; will-change: transform; white-space: nowrap;
 }
 .dmg.remote { opacity: .7; transform-origin: center; }
+.dmg.remote.quiet{font-size:max(8px,1.8vmin);font-weight:400;text-shadow:1px 1px 0 #000}
+.calm-effects #glitchfx .gl-scan,.calm-effects #glitchfx .gl-tear{opacity:.25;animation:none}.calm-effects #glitchfx .gl-frame{animation:none;box-shadow:inset 0 0 0 .8vmin #5ad8ff99,inset 0 0 3vmin #ff2bd633}
 .dmg.weak { color: #ffe14d; font-size: max(9px, 3.1vmin); }
 .dmg.crit { color: #ff9a3a; font-size: max(9px, 3.1vmin); }
 .dmg.hurt { color: #ff6b6b; }
@@ -152,12 +154,13 @@ body.touch #touch { display: block; }
 .tv { position: absolute; left: 50%; top: 50%; width: var(--vis, 48px); height: var(--vis, 48px); transform: translate(-50%, -50%); border-radius: 50%;
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden;
   background: rgba(40,40,140,.55); border: 2px solid rgba(244,240,208,.7); color: var(--ink); font-size: var(--fs, 11px);
-  line-height: 1; text-shadow: 1px 1px 0 #000; opacity: .82; pointer-events: none; transition: none; }
+  line-height: 1; text-shadow: 1px 1px 0 #000; opacity: var(--touch-opacity,.82); pointer-events: none; transition: none; }
 .tv span { display: block; max-width: 86%; line-height: 1; text-align: center; white-space: normal; overflow-wrap: anywhere; text-wrap: balance; }
 .tbtn.down .tv, .tmenu.down .tv { opacity: 1; background: rgba(120,150,255,.9); transform: translate(-50%, -50%) scale(.92); }
 .btn-a .tv { background: rgba(168,42,42,.62); font-size: calc(var(--fs, 14px) * 1.25); }
 .btn-a.down .tv { background: rgba(255,90,90,.92); }
 .btn-b .tv { background: rgba(150,90,20,.62); }
+.t-hint{display:none;font:700 8px/1.1 system-ui,sans-serif;max-width:90%}.finisher-ready .tv{border-color:#ffe797;background:#726015e8;gap:2px}.finisher-ready .t-hint{display:block}.input-blocked{animation:input-block .6s ease-out}.hud-input-feedback{position:absolute;left:50%;bottom:27%;transform:translateX(-50%);max-width:38vw;padding:7px 10px;border:1px solid #bfa978;background:#201a13e8;color:#ffecbf;font:600 12px/1.3 system-ui,sans-serif;text-align:center;opacity:0;pointer-events:none}.hud-input-feedback.show{opacity:1}@keyframes input-block{0%,45%{outline:3px solid #ffc66b;outline-offset:2px}100%{outline-color:transparent}}@media(prefers-reduced-motion:reduce){.input-blocked{animation-duration:.01s}}
 .btn-item .tv { background: rgba(30,100,60,.62); justify-content: flex-end; padding-bottom: 8%; font-size: 8px; }
 .btn-item .tv span { max-width: 88%; position: relative; }
 .btn-lock .tv { gap: 2px; }

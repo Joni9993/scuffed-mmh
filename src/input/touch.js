@@ -6,6 +6,7 @@
  */
 import { settings } from '../core/settings.js';
 import { solveLayout, STICK_ZONE, stickStep } from './touchLayout.js';
+import { customLayout } from './customLayout.js';
 
 const BUTTONS = [
   { act: 'attack', key: 'attack', label: 'A', cls: 'btn-a' },
@@ -29,7 +30,7 @@ export function attachTouch(input, root) {
   const el = document.createElement('div');
   el.id = 'touch';
   el.innerHTML = `<div class="stick-base"><div class="stick-knob"></div></div>` +
-    BUTTONS.map((b) => `<button type="button" class="tbtn ${b.cls}" data-act="${b.act}" aria-label="${b.label || b.act}"><span class="tv">${b.act === 'lock' ? '<span class="l1">Lock</span><span class="l2">aus</span>' : `<span>${b.label}</span>`}</span></button>`).join('') +
+    BUTTONS.map((b) => `<button type="button" class="tbtn ${b.cls}" data-act="${b.act}" aria-label="${b.label || b.act}"><span class="tv">${b.act === 'lock' ? '<span class="l1">Lock</span><span class="l2">aus</span>' : `<span>${b.label}</span>${b.act === 'special' ? '<small class="t-hint"></small>' : ''}`}</span></button>`).join('') +
     `<button type="button" class="tmenu" data-act="menu" aria-label="Pause / Menü"><span class="tv"><span>II</span></span></button>`;
   root.appendChild(el);
   // safe-area probe (CSS env() -> numbers)
@@ -64,6 +65,8 @@ export function attachTouch(input, root) {
     const town = document.body.classList.contains('town');
     const ins = insets();
     layout = solveLayout(w, h, { size: settings.btnSize, mirror: !!settings.leftHand, insets: ins, mode: town ? 'town' : 'hunt' });
+    if (!town) layout = customLayout(layout, w, h, ins, settings.touchOffsets).layout;
+    el.style.setProperty('--touch-opacity', String(settings.touchOpacity ?? .82));
     for (const [k, b] of Object.entries(layout.buttons)) {
       const node = el$[k];
       if (!node) continue;
@@ -89,7 +92,7 @@ export function attachTouch(input, root) {
     lastCtx = lastItem = lastGl = null; // re-fit labels
     lastKey = key();
   }
-  const key = () => `${window.innerWidth}x${window.innerHeight}|${settings.btnSize}|${settings.leftHand}|${document.body.classList.contains('town')}`;
+  const key = () => `${window.innerWidth}x${window.innerHeight}|${settings.btnSize}|${settings.leftHand}|${document.body.classList.contains('town')}|${settings.touchOpacity}|${JSON.stringify(settings.touchOffsets)}`;
   window.addEventListener('resize', relayout);
   window.addEventListener('orientationchange', () => setTimeout(relayout, 120));
 
@@ -181,6 +184,8 @@ export function attachTouch(input, root) {
     /** per-frame label sync */
     update() {
       if (key() !== lastKey) relayout();
+      const hint = input.specialHint || '', special = el$.special, caption = special.querySelector('.t-hint');
+      if (caption.textContent !== hint) { caption.textContent = hint; special.classList.toggle('finisher-ready', !!hint); special.setAttribute('aria-label', hint || 'B · Spezial'); }
       const c = input.contextLabel || null;
       ctxBtn.style.display = c ? '' : 'none';
       const gr = !!input.glitchReady && !!layout.buttons.glitch?.visible;

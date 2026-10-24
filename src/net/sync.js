@@ -13,6 +13,7 @@ import { statusHitFx } from '../game/statusFx.js';
 import { monsters as MONDEFS } from '../game/monsters/index.js';
 import { encodeKkBar, decodeKkBar, decodeKk } from '../game/buffs.js'; // [KK]
 import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
+import { settings } from '../core/settings.js';
 
 export const RATE_P = 15;   // Hz  Pirscher
 export const NEUTRAL_R = 75; // [L] neutral animals farther than this from every hunter are not replicated
@@ -39,6 +40,7 @@ export class HuntNet {
     this.hits = new Dedupe();
     this.stats = { txP: 0, txM: 0, rxP: 0, rxM: 0, hitsSent: 0, hitsApplied: 0, hitsDup: 0, dmgApplied: 0, dmgSent: 0 };
     this.accP = 0; this.accM = 0;
+    this.accReport = 0; this.finalReportIds = new Set(); this.reportWaiters = [];
     this.offs = [];
     this._fxHooked = false; this._inFx = false;
     this.ended = false;
@@ -70,7 +72,39 @@ export class HuntNet {
   /** Rostwerke-Interactables: Gast -> Host (Wunsch), Host -> alle (Ausfuehrung/Zustand). */
   sendIa(d) { if (this.isHost) this.net.sendAll(MSG.EV, { k: 'ia', ...d }); else this.net.sendHost(MSG.EV, { k: 'ia', ...d }); }
   /** Host: Jagd ist entschieden -> alle. */
-  sendEnd(result, reason) { this.ended = true; this.net.sendAll(MSG.END, { r: result, why: reason ?? '', tl: Math.round(this.hunt.timeLeft) }); }
+  sendEnd(result, reason) {
+    this.ended = true;
+    this.submitReport(true);
+    this.net.sendAll(MSG.EV, { k: 'reportRequest', round: this.net.roundId });
+    this.net.sendAll(MSG.END, { r: result, why: reason ?? '', tl: Math.round(this.hunt.timeLeft), round: this.net.roundId });
+    if (!this.hunt.report) return;
+    this._reportTimer = setTimeout(() => this.finishReport(), 1500);
+    this.maybeFinishReport();
+  }
+  submitReport(final = false) {
+    const stats = this.hunt.report?.local(final); if (!stats) return;
+    if (this.isHost) { this.hunt.report.accept(this.myId, stats, final); if (final) this.finalReportIds.add(this.myId); }
+    else this.net.sendHost(MSG.EV, { k: 'reportStats', stats, final, round: this.net.roundId });
+  }
+  maybeFinishReport() {
+    if (this.isHost && this.ended && [...this.peers.keys()].every(id => this.finalReportIds.has(id))) this.finishReport();
+  }
+  finishReport() {
+    if (!this.isHost || !this.hunt.report || this.hunt.report.final) return;
+    clearTimeout(this._reportTimer);
+    const report = this.hunt.report.snapshot(true);
+    this.net.sendAll(MSG.EV, { k: 'reportFinal', report, round: this.net.roundId });
+    this.reportWaiters.splice(0).forEach(fn => fn(report));
+  }
+  waitForReport() {
+    if (this.hunt.report?.final) return Promise.resolve(this.hunt.report.final);
+    return new Promise(resolve => {
+      let timer;
+      const done = report => { clearTimeout(timer); this.reportWaiters = this.reportWaiters.filter(fn => fn !== done); resolve(report); };
+      this.reportWaiters.push(done);
+      timer = setTimeout(() => done(this.isGuest ? null : this.hunt.report?.snapshot(false)), 1800);
+    });
+  }
   get rtt() { return this.net.rtt; }
 
   // ---------- Fernspieler
@@ -96,6 +130,8 @@ export class HuntNet {
     hunt.scene.remove(p.mesh, p.rig.shadow);
     hunt.players.splice(hunt.players.indexOf(p), 1);
     this.peers.delete(id);
+    hunt.report?.departed(id);
+    this.maybeFinishReport();
     hunt.hud?.center?.(`${peer.name} ist weg`, 2);
     hunt.applyCoopScale?.(); // [N] HP-Anteil bleibt, Max-HP sinkt
   }
@@ -142,9 +178,9 @@ export class HuntNet {
       off.push(hunt.bus.on('revierAlly', () => n.sendAll(MSG.EV, { k: 'ally' }))); // Revierstreit: Bündnis-Banner auch bei Gästen
       off.push(hunt.bus.on('revierRetreat', () => n.sendAll(MSG.EV, { k: 'retreat' })));
     } else {
-      off.push(n.on(MSG.M, (d) => this.#onM(d)));
-      off.push(n.on(MSG.ATK, (d) => this.#onAtk(d)));
-      off.push(n.on(MSG.END, (d) => { this.ended = true; hunt.netFinish(d.r, d.why); }));
+      off.push(n.on(MSG.M, (d, from) => { if (from === n.hostId) this.#onM(d); }));
+      off.push(n.on(MSG.ATK, (d, from) => { if (from === n.hostId) this.#onAtk(d); }));
+      off.push(n.on(MSG.END, (d, from) => { if (from !== n.hostId || d.round !== n.roundId) return; this.ended = true; this.submitReport(true); hunt.netFinish(d.r, d.why); }));
       // Glitch-Konter eines Gastes auf einen Brocken-Angriff (Blendax-Blitz): der Host entscheidet, was der Brocken tut (def.onGlitchCounter)
       off.push(hunt.bus.on('gockelEnter', e => n.sendHost(MSG.EV, { k: 'genter', m: e.monster.id })));
       off.push(hunt.bus.on('glitchCounter', (e) => { const lh = e?.player?.lastHit; if (e?.player?.local && lh?.attackId) n.sendHost(MSG.EV, { k: 'gcm', a: lh.attackId, m: lh.monsterId }); }));
@@ -175,7 +211,7 @@ export class HuntNet {
       const kind = h.res.weak ? 'weak' : h.res.crit ? 'crit' : 'hit';
       if (hp) hunt.fx.number({ x: hp.pos.x, y: hp.pos.y + 0.6, z: hp.pos.z }, h.res.dmg, kind, true);
       if (hp) this.net.sendAll(MSG.EV, encodeDn(m.id, h.res.partId, h.res.dmg, kind, from)); // Mitspieler sehen die Zahl (nicht der Angreifer selbst)
-      if (hp) { hunt.fx.spark(hp.pos, 6, '#ffffff', 4); statusHitFx(hunt.fx, m, hp.pos); }
+      if (hp) { hunt.fx.spark(hp.pos, settings.combatClarity ? 2 : 6, '#ffffff', 4); if (!settings.combatClarity) statusHitFx(hunt.fx, m, hp.pos); }
       return ev;
     });
     if (r === null) this.stats.hitsDup++;
@@ -184,6 +220,17 @@ export class HuntNet {
   #onEv(d, from) {
     const hunt = this.hunt;
     switch (d.k) {
+      case 'reportStats':
+        if (d.round !== this.net.roundId) break;
+        if (this.isHost && this.peers.has(from) && this.hunt.report?.accept(from, d.stats, !!d.final)) {
+          if (d.final) this.finalReportIds.add(from);
+          this.maybeFinishReport();
+        }
+        break;
+      case 'reportRequest': if (this.isGuest && from === this.net.hostId && d.round === this.net.roundId) this.submitReport(true); break;
+      case 'reportFinal':
+        if (this.isGuest && from === this.net.hostId && d.round === this.net.roundId && this.hunt.report?.receive(d.report)) this.reportWaiters.splice(0).forEach(fn => fn(this.hunt.report.final));
+        break;
       case 'teamPing': if (this.isHost && this.peers.has(from)) hunt.teamplay?.ping(d.ping, from); break;
       case 'teamEvent': if (this.isGuest && from === this.net.hostId) hunt.teamplay?.receive(d.event); break;
       case 'ko': if (this.isHost) hunt.netKo(from); break;
@@ -212,7 +259,7 @@ export class HuntNet {
         const hp = m?.hurtParts().find((q) => q.part.id === dn.partId);
         const at = hp ? hp.pos : m?.pos;
         if (at) hunt.fx.number({ x: at.x, y: at.y + (hp ? 0.6 : 2), z: at.z }, dn.dmg, dn.kind, true);
-        if (hp) statusHitFx(hunt.fx, m, hp.pos);
+        if (hp && !settings.combatClarity) statusHitFx(hunt.fx, m, hp.pos);
         break;
       }
       case 'bye': if (from === this.net.hostId && this.isGuest) this.#hostGone(); else this.#removeRemote(from); break; // participant left the hunt (still in the room)
@@ -441,6 +488,7 @@ export class HuntNet {
   // ---------- pro Sim-Schritt
   update(dt) {
     const hunt = this.hunt, t = nowS();
+    if (!hunt.result) { this.accReport += dt; if (this.accReport >= 1) { this.accReport = 0; this.submitReport(); } }
     if (!this._fxHooked) { this.#hookFx(); this.#hookArrows(); }
     // eigener Pirscher
     this.accP += dt;
@@ -503,6 +551,8 @@ export class HuntNet {
   }
 
   dispose() {
+    clearTimeout(this._reportTimer);
+    this.reportWaiters.splice(0).forEach(fn => fn(this.hunt.report?.final));
     for (const f of this.offs) f();
     this.offs = [];
     this.net.sendAll(MSG.EV, { k: 'bye' });

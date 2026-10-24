@@ -314,6 +314,7 @@ export class Monster {
     const part = this.partById[res.partId];
     if (part && this.def.partActive?.(this, part) === false) return null;
     const total = res.dmg; // res.dmg already INCLUDES elemDmg (combat.resolvePlayerHit); elemDmg is informational only
+    const appliedDamage = Math.max(0, Math.min(this.hp, total));
     const wasSleeping = this.sleeping;
     this.hp = Math.max(0, this.hp - total);
     this.hitFlash = 0.12;
@@ -333,7 +334,7 @@ export class Monster {
     }
     if (this.state === 'fly') this.flyDamage += total; // only reachable by arrows (bow) while high up
     this.def.onDamage?.(this, res, ev);
-    this.ctx.bus.emit('monsterDamaged', { monster: this, part: part?.id, res });
+    this.ctx.bus.emit('monsterDamaged', { monster: this, part: part?.id, res, appliedDamage });
     // rage triggers
     this.burst.push({ t: this.time, dmg: total });
     if (!this.minor && this.authority && !this.def.noRage) { // noRage: Trainingspuppe

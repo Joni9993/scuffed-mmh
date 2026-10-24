@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { settings } from '../core/settings.js';
 import { setSnapScale, setGlobalJitter } from './ps1.js';
 import { createAttackMarker } from './attackMarker.js';
+import { showNumber, numberSlot } from './readability.js';
 
 const MAX_SPARKS = 320;
 const MAX_NUMBERS = 28;
@@ -36,7 +37,6 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
     layer.appendChild(el);
     nums.push({ el, age: 99, x: 0, y: 0, z: 0, vx: 0 });
   }
-  let numHead = 0;
 
   // ---- ground markers
   const markers = new Map();
@@ -183,24 +183,25 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
     /** kind: 'hit' (white) | 'weak' (yellow) | 'crit' | 'hurt' (red, player) | 'heal' */
     number(p, text, kind = 'hit', remote = false) {
       const mode = settings.dmgNumbers;
-      if (mode === 'off' || mode === false || (remote && mode !== 'all')) return; // 'own': nur eigene; remote = Treffer von Mitspielern
-      const n = nums[numHead]; numHead = (numHead + 1) % MAX_NUMBERS;
+      if (!showNumber(text, remote, mode)) return;
+      const index = numberSlot(nums, remote, settings.combatClarity); if (index < 0) return;
+      const n = nums[index]; n.remote = remote;
       n.age = 0; n.x = p.x; n.y = p.y; n.z = p.z; n.vx = (Math.random() - 0.5) * 0.8;
       n.el.textContent = text;
-      n.el.className = 'dmg ' + kind + (remote ? ' remote' : '');
+      n.el.className = 'dmg ' + kind + (remote ? ' remote' : '') + (remote && settings.combatClarity ? ' quiet' : '');
       n.el.style.display = 'block';
     },
 
     shake(amount = 0.2, dur = 0.2) {
       if (nofx) return;
-      trauma = Math.min(1, Math.max(trauma, amount));
+      trauma = Math.min(1, Math.max(trauma, amount * (settings.calmEffects ? .4 : 1)));
       shakeT = Math.max(shakeT, dur);
     },
 
     flash(color = 'rgba(255,40,40,.35)', dur = 0.15) {
       if (nofx || !flashEl) return;
       flashEl.style.background = color;
-      flashEl.style.opacity = '1';
+      flashEl.style.opacity = settings.calmEffects ? '.4' : '1';
       flashEl.style.transition = 'none';
       requestAnimationFrame(() => { flashEl.style.transition = `opacity ${dur}s`; flashEl.style.opacity = '0'; });
     },
@@ -384,9 +385,9 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
       // glitch
       if (glitchT > 0) {
         glitchT -= dt;
-        setSnapScale(2.2);
-        setGlobalJitter(0.035);
-        if (rgbShift) rgbShift.setAttribute('dx', String(Math.round((Math.random() - 0.3) * 14)));
+        setSnapScale(settings.calmEffects ? 1.25 : 2.2);
+        setGlobalJitter(settings.calmEffects ? 0.01 : 0.035);
+        if (rgbShift) rgbShift.setAttribute('dx', String(Math.round((Math.random() - 0.3) * (settings.calmEffects ? 4 : 14))));
         if (glitchT <= 0) { setSnapScale(1); setGlobalJitter(0); canvas?.classList.remove('glitch'); }
       }
     },
@@ -401,7 +402,7 @@ export function createFx({ scene, camera, layer = document.getElementById('fxlay
         v.set(n.x + n.vx * n.age, n.y + rise, n.z).project(camera);
         if (v.z > 1) { n.el.style.display = 'none'; continue; }
         n.el.style.transform = `translate(${((v.x * 0.5 + 0.5) * w) | 0}px,${((-v.y * 0.5 + 0.5) * h) | 0}px) translate(-50%,-50%)`;
-        n.el.style.opacity = String(Math.min(1, (1 - n.age) * 2.5));
+        n.el.style.opacity = String(Math.min(1, (1 - n.age) * 2.5) * (n.remote && settings.combatClarity ? .5 : 1));
       }
     },
 

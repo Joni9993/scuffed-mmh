@@ -1,3 +1,4 @@
+import { cleanTouchOffsets } from '../input/customLayout.js';
 const KEY = 'scuffedhunter.settings.v1';
 export const RES_STEPS = [360, 480, 640, 800];
 export const DMG_MODES = ['all', 'own', 'off'];
@@ -12,6 +13,11 @@ try {
 } catch { /* storage may be unavailable */ }
 if (settings.resV !== 2) { settings.resV = 2; if (settings.autoRes !== false) settings.res = 640; } // older saves: new readable default
 settings.dmgNumbers = normDmgMode(settings.dmgNumbers);
+settings.touchOffsets = cleanTouchOffsets(settings.touchOffsets);
+settings.touchOpacity = Number.isFinite(settings.touchOpacity) ? Math.max(.4, Math.min(1, settings.touchOpacity)) : .82;
+settings.combatClarity = settings.combatClarity !== false;
+settings.calmEffects = !!settings.calmEffects;
+settings.inputFeedback = settings.inputFeedback !== false;
 if (settings.stickMode !== 'fixed') settings.stickMode = 'follow';
 if (!['N', 'M', 'W'].includes(settings.camDist)) settings.camDist = 'M';
 if (!RES_STEPS.includes(settings.res)) settings.res = 640;

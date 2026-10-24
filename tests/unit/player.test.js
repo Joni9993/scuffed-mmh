@@ -33,6 +33,25 @@ function make() {
 }
 beforeEach(() => time.reset());
 
+describe('Blocked input feedback', () => {
+  it('reports a roll only after its buffer expires with insufficient stamina', () => {
+    const { ctx, p, step } = make(), notes = [];
+    ctx.bus.on('inputBlocked', e => notes.push(e));
+    p.v.stamina = 0; p.v.sinceSpend = 0;
+    ctx.input.press('roll', 30); step(3);
+    expect(notes).toHaveLength(0); step(12);
+    expect(notes).toHaveLength(1); expect(notes[0]).toMatchObject({ action: 'roll', reason: 'stamina' });
+    expect(p.state).not.toBe('roll'); step(60); expect(notes).toHaveLength(1);
+  });
+  it('does not display a blocked-roll warning when the queued roll actually starts', () => {
+    const { ctx, p, step } = make(), notes = [];
+    ctx.bus.on('inputBlocked', e => notes.push(e));
+    p.state = 'flinch'; p.stateT = .25;
+    ctx.input.press('roll', 30); step(10);
+    expect(p.state).toBe('roll'); expect(notes).toHaveLength(0);
+  });
+});
+
 describe('Glitchgrat frost footing', () => {
   function traverse(ground, roll = false) {
     const result = make();

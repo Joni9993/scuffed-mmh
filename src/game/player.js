@@ -12,6 +12,7 @@ import {
 import { protectReduction } from './combat.js';
 import { slimeBlast, SLIME_R, SLIME_DMG } from './effects.js'; // Krachfaust: Glitch-Schleim am Pirscher
 import { initGlitch, tickGlitch, activateGlitch, glitchVisual, glitchDmgMul } from './glitch.js';
+import { blockedInput, rollBlockReason } from './inputFeedback.js';
 import { REST, sampleTrack, mirrorPose } from './anim.js';
 import { buildHunterRig } from './rig.js';
 import { stepLock } from '../input/lock.js';
@@ -170,12 +171,14 @@ export class Player {
   /** Lock is a toggle (tap on/off); next/prev cycle the part. Runs every step in every state so taps are never lost. */
   #stepLock(input) {
     const b = input.b;
+    const wasLocked = !!this.lock;
     this.lock = stepLock(this.lock, {
       toggle: b.lock.pressed, next: !!b.lockNext?.pressed, prev: !!b.lockPrev?.pressed,
       acquire: () => this.#pickLockTarget(),
       valid: (m) => m.alive && Math.hypot(m.pos.x - this.pos.x, m.pos.z - this.pos.z) <= 70,
       parts: (m) => m.lockPoints().length,
     });
+    if (b.lock.pressed && !wasLocked && !this.lock) blockedInput(this, 'lock', 'target');
   }
 
   // ---- hit reception
@@ -539,11 +542,14 @@ export class Player {
     this.glitchT = Math.max(0, this.glitchT - dt);
     this.glitchCd = Math.max(0, this.glitchCd - dt);
     if (this.local) {
+      const hadGlitch = this.glitchBuf > 0;
       if (this.glitchBuf > 0 && this.alive && activateGlitch(this)) this.glitchBuf = 0;
       this.glitchBuf = Math.max(0, (this.glitchBuf ?? 0) - dt);
+      if (hadGlitch && !this.glitchBuf && !this.glitch.active) blockedInput(this, 'glitch', 'energy');
       tickGlitch(this, dt);
     }
     this.sinceRoll += dt;
+    const hadRoll = this.rollBuf > 0;
     this.rollBuf = Math.max(0, this.rollBuf - dt);
     this.flash = Math.max(0, this.flash - dt);
     if (this.local && input.b.roll.pressed) this.rollBuf = 0.18;
@@ -580,6 +586,7 @@ export class Player {
         this.#friction(dt);
         break;
     }
+    if (hadRoll && !this.rollBuf && this.state !== 'roll') blockedInput(this, 'roll', rollBlockReason(this));
     this.#integrate(dt);
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.#animate(dt, speed);

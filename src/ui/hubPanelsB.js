@@ -17,6 +17,7 @@ import { settings, saveSettings, nextRes, normDmgMode, nextDmgMode } from '../co
 import { sfx } from '../audio/sfx.js';
 import { music } from '../audio/music.js';
 import { deathlog, prettyAttack } from '../meta/deathlog.js';
+import { openTouchEditor } from './touchEditor.js';
 import { esc, costChips, reasonText } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { GearPreview, previewSlot } from './gearPreview.js';
@@ -336,18 +337,23 @@ export function createSpiegel(ctx) {
 // ============================================================ Optionen
 export function createOptionen(ctx) {
   let code = '', confirm = false;
+  let closeEditor = null;
   let off = null;
   return {
     after(body) { bindInstall(body); if (!off) off = onInstallChange(() => ctx.rerender()); },
-    dispose() { off?.(); off = null; },
+    dispose() { closeEditor?.(); off?.(); off = null; },
     render() {
       const on = (b) => (b ? 'an' : 'aus');
       return `<div class="row"><span class="nm">Auflösung</span><button class="btn small" data-a="res">${settings.autoRes ? 'Auto' : settings.res + ' px'}</button></div>
         <div class="row"><span class="nm">Scanlines</span><button class="btn small" data-a="scan">${on(settings.scanlines)}</button></div>
         <div class="row"><span class="nm">Schadenszahlen</span><button class="btn small" data-a="dmg">${{ all: 'Alle', own: 'Eigene', off: 'Aus' }[normDmgMode(settings.dmgNumbers)]}</button></div>
+        <div class="row"><span class="nm">Eigene Treffer betonen</span><button class="btn small" data-a="clarity">${on(settings.combatClarity)}</button></div>
+        <div class="row"><span class="nm">Ruhigere Bildschirm-Effekte</span><button class="btn small" data-a="calm">${on(settings.calmEffects)}</button></div>
+        <div class="row"><span class="nm">Hinweise bei blockierten Eingaben</span><button class="btn small" data-a="feedback">${on(settings.inputFeedback)}</button></div>
         <div class="row"><span class="nm">Steuerungs-Tipps in der Jagd</span><button class="btn small" data-a="tips">${on(!settings.tipsSeen)}</button></div>
         <div class="row"><span class="nm">Kamera-Abstand</span><span class="seg">${[['N', 'nah'], ['M', 'mittel'], ['W', 'weit']].map(([k, l]) => `<button class="btn small ${settings.camDist === k ? 'on' : ''}" data-a="camd" data-v="${k}">${l}</button>`).join('')}</span></div>
         <div class="sub">Layout (Touch)</div>
+        <div class="row"><span class="nm">Tasten verschieben & Deckkraft</span><button class="btn small" data-a="touchEdit">Anpassen</button></div>
         <div class="row"><span class="nm">Tastengröße</span><span class="seg">${['S', 'M', 'L'].map((k) => `<button class="btn small ${settings.btnSize === k ? 'on' : ''}" data-a="bsz" data-v="${k}">${k}</button>`).join('')}</span></div>
         <div class="row"><span class="nm">Linkshänder (spiegeln)</span><button class="btn small" data-a="lefty">${on(settings.leftHand)}</button></div>
         <div class="row"><span class="nm">Joystick</span><button class="btn small" data-a="stk">${settings.stickMode === 'fixed' ? 'bleibt fest' : 'folgt Daumen'}</button></div>
@@ -370,6 +376,7 @@ export function createOptionen(ctx) {
     },
     click(a, ds) {
       const app = ctx.app;
+      if (a === 'touchEdit') { closeEditor = openTouchEditor(app); return false; }
       if (ctx.adapter?.hunt && (a === 'import' || a === 'reset' || a === 'export' || a === 'copy')) return false; // never touch the save mid-hunt
       if (a !== 'reset') confirm = false;
       if (a === 'res') { // Auto -> 360 -> 480 -> 640 -> 800 -> Auto
@@ -388,6 +395,9 @@ export function createOptionen(ctx) {
       else if (a === 'lefty') { settings.leftHand = !settings.leftHand; saveSettings(); app.touch?.relayout(); }
       else if (a === 'hap') { settings.haptics = !settings.haptics; saveSettings(); if (settings.haptics) navigator.vibrate?.(15); }
       else if (a === 'dmg') { settings.dmgNumbers = nextDmgMode(settings.dmgNumbers); saveSettings(); }
+      else if (a === 'clarity') { settings.combatClarity = !settings.combatClarity; saveSettings(); }
+      else if (a === 'calm') { settings.calmEffects = !settings.calmEffects; document.body.classList.toggle('calm-effects', settings.calmEffects); saveSettings(); }
+      else if (a === 'feedback') { settings.inputFeedback = !settings.inputFeedback; saveSettings(); }
       else if (a === 'export') { code = exportCode(ctx.save); ctx.toast('Code erzeugt. Gut aufbewahren.'); }
       else if (a === 'copy') { try { navigator.clipboard?.writeText(code || exportCode(ctx.save)); ctx.toast('Kopiert.'); } catch { ctx.toast('Kopieren ging nicht – markiere den Code.', true); } }
       else if (a === 'import') {

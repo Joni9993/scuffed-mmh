@@ -252,7 +252,7 @@ export class HuntMeta {
     saveStore.update((s) => applyHuntLeave(s, { used: this.inv.used(), gathered: this.inv.gathered(), chest: this.chest.result() }));
   }
 
-  proceed() {
+  async proceed() {
     if (this.phase === 'leaving') return;
     const h = this.hunt;
     if (h.training) { // Übungsplatz: keine Belohnung, keine Statistik, kein Ergebnis-Bildschirm -> direkt zurück an die Puppe
@@ -262,7 +262,9 @@ export class HuntMeta {
     }
     const result = h.result ?? 'fail';
     this.phase = 'leaving';
-    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, teamMoments: h.teamplay?.summary(), carves: this.carveCount, debug: !!this.loadout.debug };
+    const report = h.net ? (h.net.ended ? await h.net.waitForReport() : null) : h.report?.snapshot(true);
+    if (h.disposed) return;
+    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, teamMoments: h.teamplay?.summary(), report, reportMissing: !!h.net?.ended && !report, playerId: h.player.id, carves: this.carveCount, debug: !!this.loadout.debug };
     queueMicrotask(() => h.app.goto('results', payload));
   }
 
