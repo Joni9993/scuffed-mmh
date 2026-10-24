@@ -6,6 +6,7 @@ import { projPos } from '../../src/game/monsters/mprojectiles.js';
 const def = { ...brathalos, hp: 1e7, fly: { ...brathalos.fly, firstGap: 1e9, gapMin: 1e9, gapMax: 1e9 } };
 function collect(m, ctx, secs, dist = 7) {
   const out = [];
+  ctx.players.forEach((q) => { q.god = true; }); // mit Biss/Kranz stirbt der stehende Pirscher sonst nach wenigen Sekunden
   ctx.bus.on('monsterAttack', (e) => out.push(e));
   for (let i = 0; i < secs / DT; i++) { ctx.players.forEach((q) => q.pos.set(0, 0, dist)); m.update(DT); }
   return out;

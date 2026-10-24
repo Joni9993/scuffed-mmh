@@ -5,6 +5,7 @@ import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
 import { AttackInstance } from './attack.js';
 import { wrapAngle, stepAngle, yawOf } from '../../core/math.js';
+import { capTired, trackTarget, leadAim } from './kurve.js';
 
 const R = Math.PI / 180;
 const IDLE_YAW = 26, GUARD_YAW = 6, IDLE_BEND = 62, GUARD_BEND = 100; // Grad: Boxer-Haltung / Deckung
@@ -281,6 +282,19 @@ const seitrammer = {
   id: 'kroll_seitrammer', range: [2, 10], weight: 4, cooldown: 4.5, telegraph: 0.6, flashParts: ['beine'], duration: 2.3, stam: 9, cue: { color: '#ff8a30', tone: 'droehn' }, audit: [2, 5],
   marker: { at: 'landing', radius: 2.4 }, markerUntil: 1.7,
   prepare(a) {
+    // Kurve Okt 2026: dreht in der Ansage die Flanke zum Pirscher und rammt AUF ihn zu (vorher quer zur Blickrichtung: bei frontal stehendem Ziel ging der Ramm ins Leere).
+    // Nahe Ziele (< 1,5 m) und blockierte Strecken fallen auf den alten Seitenramm zurück.
+    a.yawT = a.yaw0;
+    const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz);
+    if (d > 1.5) {
+      const ux = dx / d, uz = dz / d, len = safeLen(a.origin.x, a.origin.z, ux, uz, RAMM_LEN);
+      if (len >= 6) {
+        const ang = Math.atan2(dx, dz), side = wrapAngle(ang - a.yaw0) >= 0 ? 1 : -1; // Flanke, die dem Ziel näher liegt
+        a.side = side; a.sx = ux; a.sz = uz; a.len = len; a.yawT = ang - side * Math.PI / 2; // lokales ±x zeigt dann zum Ziel
+        a.landing = { x: a.origin.x + ux * len, z: a.origin.z + uz * len };
+        return;
+      }
+    }
     a.side = sideDir(a);
     const run = (side) => {
       const sx = Math.cos(a.yaw0) * side, sz = -Math.sin(a.yaw0) * side; // lokales +x = Welt (cos, -sin)
@@ -299,7 +313,7 @@ const seitrammer = {
   motion(tau, a) {
     const k = clamp01((tau - 0.6) / 0.85);
     const e = k * 0.75 + smooth(k) * 0.25;
-    return { x: a.origin.x + a.sx * a.len * e, z: a.origin.z + a.sz * a.len * e };
+    return { x: a.origin.x + a.sx * a.len * e, z: a.origin.z + a.sz * a.len * e, yaw: a.yaw0 + wrapAngle(a.yawT - a.yaw0) * smooth(clamp01(tau / 0.55)) };
   },
   pose: mTrack([
     [0, {}], [0.3, { bodyY: -0.2, legL: 25, legR: -25, bodyRoll: 4, neck: 0.3, jaw: 20 }], [0.58, { bodyY: -0.3, legL: -25, legR: 25, bodyRoll: 6, neck: 0.3, jaw: 20 }],
@@ -503,6 +517,8 @@ const doppelsprung = {
 
 // Grundtempo (Rostwerke = schwerer als Schotterklamm); Dampf/Druck/Sprung/Griff/Konter setzen eigenes Tempo
 for (const a of [zange, seitrammer, wirbel]) if (a.tempo === undefined) a.tempo = 1.3;
+// Kurve Okt 2026: Scheren/Ramme zielen auf die Stelle, an der der Pirscher gleich steht (Umkreisen lohnt nicht mehr; Umkehren/Rollen entkommt)
+zange.lead = 0.55; griff.lead = 0.6; seitrammer.lead = 0.7;
 deckung.tempo = 1;
 
 const inPhase2 = (m) => m.phase >= 1;
@@ -538,6 +554,7 @@ export const kroll = {
   },
   // Brocken 2.0
   teachAttack: 'kroll_zange', stamina: true, flinchDmg: true,
+  aimTarget: leadAim,
   chains: {
     kroll_zange: [{ atk: 'kroll_griff', w: 4 }, { atk: 'kroll_seitrammer', w: 3 }, { atk: 'kroll_wirbel', w: 3 }, { atk: 'kroll_dampf', w: 2 }, { atk: null, w: 3 }],
     kroll_seitrammer: [{ atk: 'kroll_griff', w: 4 }, { atk: 'kroll_zange', w: 3 }, { atk: 'kroll_dampf', w: 1 }, { atk: null, w: 1 }], // Seitrammer -> Griff / Zange
@@ -579,6 +596,7 @@ export const kroll = {
     m.extra.eyeMat.color.set(m.st.blind > 0 ? '#2a2018' : m.rage ? '#ff3020' : '#ffb030');
     m.extra.coreM.color.set(m.attack?.id === 'kroll_dampf' ? '#ffffff' : '#ff7a2a');
     if (!m.authority) return;
+    trackTarget(m, dt); capTired(m, 3.2); // Kurve Okt 2026: Vorhalten (aimTarget) + Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     if (m.phase >= 1) for (const k in m.cds) if (m.cds[k] > 0) m.cds[k] -= dt * P2_CD;
     m.heat = Math.max(0, m.heat - m.maxHp * HEAT_DECAY * dt);
     const inst = m.attack?.inst;

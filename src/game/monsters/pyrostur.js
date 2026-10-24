@@ -1,6 +1,7 @@
 // Pyrostur, the furnace elder: an apex predator built on pressure and fire.
 // Every impact is an animated, deterministic AttackInstance; lingering fire and shock rings
 // come only from replicated attack events (pyrosturHazards.js). Design: docs/PYROSTUR_ELDER_REWORK.md
+import { capTired } from './kurve.js';
 import { compileTrack } from '../anim.js';
 import { MREST } from './monster.js';
 import { smooth, clamp01 } from './common.js';
@@ -412,6 +413,7 @@ export const pyrostur = {
   },
   tick(m, dt) {
     tickHazards(m);
+    capTired(m, 3.2); // Kurve Okt 2026: Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     updatePyrosturFx(m);
     const a = m.attack, tau = a?.inst.sample(a.t).tau ?? 0;
     // An interrupted aerial attack (wing break, flinch) drops him; he never stays hanging.
