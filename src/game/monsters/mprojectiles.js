@@ -45,9 +45,18 @@ export function kokosDef({ from, to, dur = 1.1, arc = 6, splash = 1.4, dmg = 16,
   return { kind: 'kokos', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.5, splash, hold: 0.2, dmg, knock: 'flinch', key };
 }
 
+/** Geröllbrocken (Jaggo, Barrotz, Mampfaffe): hoher Bogenwurf, Aufschlag-Marker, Splash-Treffer (Anti-Kite, docs/ANTIKITE.md). */
+export function geroellDef({ from, to, dur = 1.1, arc = 5, splash = 1.6, dmg = 12, knock = 'flinch', key }) {
+  return { kind: 'geroell', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.5, splash, hold: 0.22, dmg, knock, key };
+}
+/** Blendax-Rauschpaket (Hacker-Neongrün): schneller Bogenwurf, Splash-Treffer. */
+export function glitchDef({ from, to, dur = 0.9, arc = 4, splash = 1.8, dmg = 20, knock = 'flinch', key }) {
+  return { kind: 'glitch', mode: 'impact', from: { ...from }, to: { ...to }, dur, arc, radius: 0.4, splash, hold: 0.2, dmg, knock, key };
+}
+
 const geoBox = new THREE.BoxGeometry(1, 1, 1);
 const mats = {};
-const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' ? '#39ff14' : kind === 'volt' ? '#8de4df' : kind === 'magma' ? '#ff5a12' : kind === 'rock' ? '#6d665d' : '#5a3e22' }));
+const matFor = (kind) => (mats[kind] ??= basic({ color: kind === 'fire' ? '#ff7a1a' : kind === 'kokos' ? '#8a5a2a' : kind === 'slime' || kind === 'glitch' ? '#39ff14' : kind === 'geroell' ? '#8a7a60' : kind === 'volt' ? '#8de4df' : kind === 'magma' ? '#ff5a12' : kind === 'rock' ? '#6d665d' : '#5a3e22' }));
 
 export class ProjectileSet {
   constructor(ctx, owner) {
@@ -58,7 +67,7 @@ export class ProjectileSet {
   spawn(def, age = 0) {
     const pr = { def, age, hit: new Set(), mesh: null, prev: projPos(def, age) };
     if (this.ctx.scene) {
-      const s = def.kind === 'magma' || def.kind === 'rock' ? 1.1 : def.kind === 'volt' ? 0.55 : def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' ? 0.95 : 0.45;
+      const s = def.kind === 'magma' || def.kind === 'rock' || def.kind === 'geroell' ? 1.1 : def.kind === 'volt' ? 0.55 : def.kind === 'fire' ? 0.7 : def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'glitch' ? 0.95 : 0.45;
       pr.mesh = new THREE.Mesh(geoBox, matFor(def.kind));
       pr.mesh.scale.setScalar(s);
       this.ctx.scene.add(pr.mesh);
@@ -80,17 +89,19 @@ export class ProjectileSet {
         if (def.kind === 'fire') pr.mesh.scale.setScalar(0.65 + Math.sin(pr.age * 40) * 0.08);
         if (def.kind === 'volt') pr.mesh.scale.set(0.35 + Math.sin(pr.age * 55) * 0.08, 0.35, 1.5);
         if (def.kind === 'kokos' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, '#c8902c', 0.8);
-        if (def.kind === 'slime' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#39ff14' : '#d8ffd0', 0.8);
+        if ((def.kind === 'slime' || def.kind === 'glitch') && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#39ff14' : '#d8ffd0', 0.8);
       }
       if ((def.kind === 'fire' || def.kind === 'magma') && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#ff8a20' : '#ffd060', 1.2);
       if (def.kind === 'volt' && pr.age <= def.dur) ctx.fx?.spark?.(pos, 1, Math.random() < 0.5 ? '#8de4df' : '#ffffff', 1.2);
       if (def.mode === 'impact') {
-        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'magma' || def.kind === 'rock' || def.kind === 'volt' ? '#ff2a2a' : '#b06a20';
+        const mk = `${this.owner.id}|${def.key}`, mc = def.kind === 'kokos' || def.kind === 'slime' || def.kind === 'magma' || def.kind === 'rock' || def.kind === 'volt' || def.kind === 'geroell' || def.kind === 'glitch' ? '#ff2a2a' : '#b06a20';
         const mr = def.kind === 'kokos' ? def.splash + 0.4 : def.splash; // Kokos: Marker = echte Reichweite (Splash + Pirscher-Radius 0,4)
         if (pr.age <= def.dur) ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, false);
         else if (!pr.landed) {
           pr.landed = true; ctx.fx?.marker?.(mk, { x: def.to.x, y: def.to.y, z: def.to.z }, mr, mc, true); ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.3, z: def.to.z }, 10, '#7a5230', 4);
           if (def.kind === 'slime') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 16, '#39ff14', 5); ctx.bus?.emit('sfx', { name: 'slimeSplat', pos: def.to }); }
+          if (def.kind === 'geroell') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 12, '#b8a888', 5); ctx.bus?.emit('sfx', { name: 'heavy', pos: def.to }); }
+          if (def.kind === 'glitch') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 14, '#39ff14', 5); ctx.bus?.emit('sfx', { name: 'glitchTp', pos: def.to }); }
           if (def.kind === 'kokos') { ctx.fx?.spark?.({ x: def.to.x, y: def.to.y + 0.4, z: def.to.z }, 14, '#f4ead0', 5); ctx.bus?.emit('sfx', { name: 'coconut', pos: def.to }); }
         }
         if (done) ctx.fx?.clearMarker?.(mk);

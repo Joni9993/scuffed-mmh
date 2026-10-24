@@ -180,7 +180,7 @@ describe('Barrotz', () => {
     expect(ids).toEqual(['head', 'legs', 'body', 'tail']);
     expect(barrotz.parts[0].breakHp).toBe(800);
     expect(barrotz.parts[0].factor).toBe(0.5);
-    expect(Object.keys(barrotz.attacks).length).toBe(9); // damaged tail has its own deterministic short sweep
+    expect(Object.keys(barrotz.attacks).length).toBe(10); // damaged tail has its own deterministic short sweep; + Brockenwurf (Anti-Kite)
   });
   it('head plate breaks at 800: factor 0.5 -> 0.9, plate mesh gone, partBreak emitted', () => {
     const { ctx, m } = make(barrotz);

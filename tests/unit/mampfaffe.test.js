@@ -433,7 +433,7 @@ describe('Angriffe im Einzelnen', () => {
     p.clearStatus(); p.pos.x += 9;
     run(m, ctx, 0.5);
     expect(p.status.itemlock).toBeUndefined(); expect(p.status.poison).toBeUndefined();
-    run(m, ctx, 10);
+    run(m, ctx, 10, () => { m.recover = 99; }); // passiv bleiben: sonst wirft die KI (Obstsalve, Beben, nächste Wolke) neue Angriffe
     expect(m.extra.clouds.length).toBe(0);
   });
   it('Flimmersprung: Teleport an die Landemarke (<= 9 m), Mesh flackert vorher, Treffer r 3,4 mit down, Verwirrung durch den Treffer', () => {
