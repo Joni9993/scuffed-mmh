@@ -22,7 +22,7 @@ Gepostet wird der Basis-Auftrag + Wochenschlüssel (`weekly: '2026-W43'`), Gäst
 
 ## Koop
 Der Host postet `{ questId, tier, weekly, mutators }`. `cleanPostGlitch` (Raum-Host) klemmt die Stufe auf 0-10 und nimmt bei Stufe > 0 die Mutatoren **aus der Tabelle**, nie aus der Nachricht; Wochen-Glitch max. 5 bekannte IDs (`MAX_TIER_MUTATORS`), freie Auswahl weiter max. 2.
-Der Hunt baut den Auftrag mit `glitchQuest()` aus (Auftrag, tier, weekly). Beitreten ohne Freischaltung geht; Freischaltung, Splitter und Bestzeit bekommt jeder lokal bei Sieg.
+Der Hunt baut den Auftrag über `resolveHuntQuest()` mit `glitchQuest()` aus. Szenenoptionen verwenden `glitchTier` für die Schwierigkeit und `tier` ausschließlich für die Waffe. Das Brett-/Netzprotokoll behält `tier` als Glitch-Stufe und wird beim Szenenwechsel übersetzt. Beitreten ohne Freischaltung geht; Freischaltung, Splitter und Bestzeit bekommt jeder lokal bei Sieg.
 
 ## Save
 Version 3, Migration 2 -> 3 setzt Defaults (`glitch`, `oc`). Alte Siege zählen: Stufe 1 ist sofort offen. Tests: `tests/unit/glitchTiers.test.js`.

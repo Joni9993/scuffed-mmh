@@ -29,8 +29,8 @@ export function attachTouch(input, root) {
   const el = document.createElement('div');
   el.id = 'touch';
   el.innerHTML = `<div class="stick-base"><div class="stick-knob"></div></div>` +
-    BUTTONS.map((b) => `<div class="tbtn ${b.cls}" data-act="${b.act}"><div class="tv">${b.act === 'lock' ? '<span class="l1">Lock</span><span class="l2">aus</span>' : `<span>${b.label}</span>`}</div></div>`).join('') +
-    `<div class="tmenu" data-act="menu"><div class="tv"><span>II</span></div></div>`;
+    BUTTONS.map((b) => `<button type="button" class="tbtn ${b.cls}" data-act="${b.act}" aria-label="${b.label || b.act}"><span class="tv">${b.act === 'lock' ? '<span class="l1">Lock</span><span class="l2">aus</span>' : `<span>${b.label}</span>`}</span></button>`).join('') +
+    `<button type="button" class="tmenu" data-act="menu" aria-label="Pause / Menü"><span class="tv"><span>II</span></span></button>`;
   root.appendChild(el);
   // safe-area probe (CSS env() -> numbers)
   const probe = document.createElement('div');
@@ -123,7 +123,7 @@ export function attachTouch(input, root) {
     } else {
       ptrs.set(e.pointerId, { kind: 'cam', x: e.clientX, y: e.clientY });
     }
-  });
+  }, { passive: false });
 
   document.addEventListener('pointermove', (e) => {
     const p = ptrs.get(e.pointerId);
@@ -145,7 +145,7 @@ export function attachTouch(input, root) {
       const dy = e.clientY - p.y0;
       if (Math.abs(dy) > Math.max(16, vmin() * 3.6)) { p.swiped = true; buzz(5); input.press(dy < 0 ? 'lockNext' : 'lockPrev', 30); } // swipe up = next part, down = previous
     }
-  });
+  }, { passive: false });
 
   // Item strip slots: select on pointerup (a 2nd finger's click is dropped by Chrome while another finger holds the stick).
   // The native touch click is swallowed, the synthetic one (flagged) goes through to hubHuntHud's click handler.

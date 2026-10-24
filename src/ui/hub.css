@@ -231,10 +231,10 @@ small { opacity: .7; font-size: .88em; }
 
 /* ===== Auftragsbrett 2.0: Reiter + Liste links + Auftrag rechts, eigener/offene Posten oben ===== */
 .st-panel[data-station="auftragsbrett"] .st-body { display: flex; flex-direction: column; overflow: hidden; }
-.qtop { flex: none; margin-bottom: 6px; } .qtop .sub { margin: 0 0 4px; }
+.qtop { flex: none; max-height: 40%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; margin-bottom: 6px; } .qtop .sub { margin: 0 0 4px; }
 .qpost { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 4px; background: rgba(60, 50, 140, .35); border: 1px solid #6a6ad0; }
 .qpost.mine { border: 2px solid #7dff7d; background: rgba(31, 122, 42, .25); }
-.qpost .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .qpost .btn { margin: 0; }
+.qpost .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; } .qpost .btn { flex: none; margin: 0; }
 .qhead { flex: none; display: flex; align-items: center; gap: 10px; } .qhead .tabs { margin: 0 0 6px; flex-wrap: nowrap; } .qhead .tab { padding: 2px 12px; }
 .qrank { flex: 1; min-width: 0; text-align: right; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qb { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 10px; }
@@ -251,6 +251,14 @@ small { opacity: .7; font-size: .88em; }
 .qdesc { line-height: 1.4; opacity: .9; }
 .qmut { text-align: left; font: inherit; color: inherit; padding: 6px 8px; background: rgba(16, 16, 64, .7); border: 1px solid #3a3a8a; border-left: 3px solid #ffd84a; }
 .qmut.tapline { cursor: pointer; min-height: 44px; } .qmut b { float: right; color: #ffd84a; }
+.qmut details + details { border-top: 1px solid #ffffff26; }
+.qmut summary { min-height: 44px; padding: 12px 4px; cursor: pointer; touch-action: manipulation; }
+.qmut details p { margin: 0; padding: 0 4px 12px; line-height: 1.5; }
+.qpost-rules summary { min-height: 44px; padding: 12px 0; cursor: pointer; touch-action: manipulation; white-space: normal; }
+.modifier-rules { margin: 12px 0; }
+.modifier-rules > div { padding: 12px 0; border-bottom: 1px solid #ffffff26; }
+.modifier-rules dt { color: #ffd870; font-weight: bold; }
+.modifier-rules dd { margin: 6px 0 0; line-height: 1.5; }
 .qact { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; } .qact .btn { flex: 1; margin: 0; }
 .qlockmsg { margin-top: auto; padding: 8px; text-align: center; background: rgba(138, 42, 42, .35); border: 1px solid #8a2a2a; }
 .qdet .muts { grid-template-columns: repeat(2, 1fr); }

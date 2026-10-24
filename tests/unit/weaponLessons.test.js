@@ -16,6 +16,8 @@ describe('Waffenschule: executable curriculum', () => {
     expect(def.moves[fin.rule.moves[0]].consumeWucht).toBe(true);
     for (const s of c.steps) {
       expect(s.how.length).toBeGreaterThan(20); expect(s.why.length).toBeGreaterThan(20);
+      expect(s.cue, `${id}/${s.id}: visible reminder`).toBeTruthy();
+      expect(s.cue.length).toBeLessThanOrEqual(62);
       for (const move of s.rule.moves ?? []) expect(def.moves[move], `${id}/${s.id}/${move}`).toBeTruthy();
       if (s.rule.prefix) expect(Object.keys(def.moves).some(k => k.startsWith(s.rule.prefix))).toBe(true);
     }

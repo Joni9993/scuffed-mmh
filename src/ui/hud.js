@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MUTATORS, MUTATOR_SHORT } from '../data/mutators.js';
+import { MUTATORS } from '../data/mutators.js';
 import { FOODS } from '../data/foods.js';
 import { itemBuffText, isSurveyed } from '../game/itemBuffs.js';
 import { COLORS as BUFF_COLORS, SYMBOL as BUFF_SYMBOL, BUFF_NAME, BUFF as BUFF_CFG, buffKey } from '../game/buffs.js'; // [KK] Krachkiste-Buffs
@@ -49,7 +49,7 @@ export function createHud(root) {
     <div class="hud-tr">
       <div class="hud-timer">20:00</div>
       <div class="hud-ko">Umgekippt 0/3</div>
-      <div class="hud-mut" style="display:none"></div>
+      <button type="button" class="hud-mut ui-hit" style="display:none" aria-label="Aktive Jagdregeln und Modifikatoren anzeigen"></button>
       <div class="hud-train" style="display:none;font:700 1.9vmin/1.35 monospace;color:#ffe9a0;text-shadow:0 0 3px #000,0 0 3px #000;text-align:right;white-space:nowrap"></div>
       <canvas class="mini ui-hit" width="64" height="64"></canvas>
     </div>
@@ -75,6 +75,8 @@ export function createHud(root) {
     g.imageSmoothingEnabled = false;
   });
   const cache = {};
+  let currentHunt = null;
+  refs.mut.addEventListener('click', () => currentHunt?.showModifiers());
   const set = (k, v, fn) => { if (cache[k] !== v) { cache[k] = v; fn(v); } };
   let cine = null; // Optional cinematic preview overlay
   let bannerT = 0, centerT = 0, zoneT = 0, zoneShown = 0, zoneCand = 0, zoneCandT = 0; // [K] zone toast state
@@ -84,6 +86,7 @@ export function createHud(root) {
     banner(text, secs = 3) { refs.banner.classList.remove('mut'); refs.banner.textContent = text; refs.banner.classList.add('show'); bannerT = secs; },
     center(text, secs = 2, mon = false) { refs.center.classList.toggle('mon', !!mon); refs.center.textContent = text; refs.center.classList.add('show'); centerT = secs; },
     update(hunt, dt = 0.016) {
+      currentHunt = hunt;
       const p = hunt.player;
       if (!p) return;
       const v = p.v;
@@ -92,7 +95,7 @@ export function createHud(root) {
         const ids = hunt.mods?.ids ?? [];
         if (ids.length && !hunt.training) {
           refs.mut.style.display = '';
-          refs.mut.innerHTML = ids.map((i) => `<b title="${MUTATORS[i]?.desc ?? ''}">${MUTATOR_SHORT[i] ?? MUTATORS[i]?.name ?? i}</b>`).join('');
+          refs.mut.textContent = `${hunt.quest.glitchTier ? `Glitch ${hunt.quest.glitchTier}` : hunt.quest.weekly ? 'Wochen-Glitch' : `${ids.length} Modifikatoren`} ⓘ`;
           api.banner(`${hunt.quest?.glitchTier ? `Glitch-Stufe ${hunt.quest.glitchTier}` : hunt.quest?.weekly ? 'Wochen-Glitch' : 'Mutatoren'}: ${ids.map((i) => MUTATORS[i]?.name ?? i).join(' + ')}`, 3);
           refs.banner.classList.add('mut');
         }

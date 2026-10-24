@@ -1,7 +1,7 @@
 // Übungsplatz prüfen: ?scene=hunt&quest=training lädt, Puppe sichtbar, Glitch nach <= 6 s bereit. SH_URL=... node tools/training-e2e.mjs [out.png]
 import { open } from './pw-lib.mjs';
 const { browser, page, errors } = await open('scene=hunt&quest=training&weapon=gs&seed=1');
-await page.evaluate(() => document.querySelector('[data-a="ok"]')?.click());
+await page.evaluate(() => document.querySelector('[data-school="free"]')?.click());
 const r = await page.evaluate(() => {
   const SH = window.__SH, p = SH.player, h = SH.hunt, m = h.mainMonster;
   p.v.hp = 20; p.v.stamina = 0;

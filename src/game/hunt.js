@@ -13,13 +13,12 @@ import { computeAim } from './weapons/bow.js';
 import { setLbReticle, lbGlitchActive } from '../ui/lbGlitchOverlay.js';
 import { Player } from './player.js';
 import { resolveMods } from '../data/mutators.js';
-import { glitchQuest } from '../data/glitchTiers.js';
+import { resolveHuntQuest } from './huntQuest.js';
 import { Monster } from './monsters/monster.js';
 import { getMonsterDef } from './monsters/index.js';
 import { spawnPack } from './monsters/jaggling.js';
 import { applyCoopScale } from './monsters/coopScale.js';
 import { createWorld } from './world/index.js';
-import { getQuest } from '../data/quests.js';
 import { resolvePlayerHit, applyMonsterHit } from './combat.js';
 import { sfx } from '../audio/sfx.js';
 import * as cues from './cues.js';
@@ -57,7 +56,7 @@ export class Hunt {
     this.opts = opts;
     this.input = app.input;
     this.bus = createBus();
-    const gq = glitchQuest(getQuest(opts.quest ?? 'jaggo'), opts); // Glitch-Stufe (opts.tier) / Wochen-Glitch (opts.weekly): feste Mutatoren, Beute-Faktor
+    const gq = resolveHuntQuest(opts);
     this.seed = Number(gq.quest.fixedSeed ?? opts.seed ?? 1); // Feldstudie/Wochen-Glitch: Datum = Seed
     this.rng = createRng(this.seed);
     this.quest = gq.quest;
@@ -342,10 +341,11 @@ export class Hunt {
     if (this.result) return;
     const ov = document.createElement('div');
     ov.className = 'screen ui-hit';
-    ov.innerHTML = '<div class="panel"><h2>Jagd verlassen?</h2><button class="btn" data-a="go">Weiter</button><button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">Verlassen</button></div>';
+    ov.innerHTML = `<div class="panel"><h2>Jagd verlassen?</h2><button class="btn" data-a="go">Weiter</button>${this.mods.ids.length ? '<button class="btn" data-a="mods">Jagdregeln</button>' : ''}<button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">Verlassen</button></div>`;
     ov.addEventListener('click', (e) => {
       const a = e.target.dataset?.a;
       if (a === 'go') this.#toggleLeave();
+      if (a === 'mods') this.showModifiers();
       if (a === 'opt') this.#optionsFrom(ov);
       if (a === 'quit') this.#leave();
     });
@@ -385,16 +385,29 @@ export class Hunt {
     if (v) {
       const ov = document.createElement('div');
       ov.className = 'screen ui-hit';
-      ov.innerHTML = `<div class="panel"><h2>Pause</h2><button class="btn" data-a="go">Weiter</button><button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">${this.training ? 'Zurück ins Dorf' : 'Aufgeben'}</button></div>`;
+      ov.innerHTML = `<div class="panel"><h2>Pause</h2><button class="btn" data-a="go">Weiter</button>${this.mods.ids.length ? '<button class="btn" data-a="mods">Jagdregeln</button>' : ''}<button class="btn" data-a="opt">Optionen</button><button class="btn red" data-a="quit">${this.training ? 'Zurück ins Dorf' : 'Aufgeben'}</button></div>`;
       ov.addEventListener('click', (e) => {
         const a = e.target.dataset?.a;
         if (a === 'go') this.setPaused(false);
         if (a === 'opt') this.#optionsFrom(ov);
+        if (a === 'mods') this.showModifiers();
         if (a === 'quit') this.abandon();
       });
       this.app.ui.appendChild(ov);
       this.pauseEl = ov;
     } else { this.pauseEl?.remove(); this.pauseEl = null; }
+  }
+
+  showModifiers() {
+    if (this.panelOpen || this.result) return;
+    const wasPaused = this.paused;
+    if (!this.opts.coop) this.paused = true;
+    const menu = this.pauseEl ?? this.leaveEl;
+    if (menu) menu.style.display = 'none';
+    this.openPanel('jagdregeln', { quest: this.quest, ids: this.mods.ids, timeLimit: this.timeLimit, coop: !!this.opts.coop }, () => {
+      this.paused = wasPaused;
+      if (menu?.isConnected) menu.style.display = '';
+    });
   }
 
   /** Pause / leave menu -> options panel (same panel as the town); the menu comes back when it closes. */
@@ -489,6 +502,7 @@ export class Hunt {
     this._lastRender = now;
     this.fx.updateNumbers(dt);
     this.hud.update(this, dt);
+    this.school?.render();
     this.tactics?.update();
     this.meta.render(); // [P]
     const lp = this.player.lockPoint();

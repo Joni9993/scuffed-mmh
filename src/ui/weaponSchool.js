@@ -8,7 +8,7 @@ import './weaponSchool.css';
 export function createWeaponSchool(h) {
   const root = document.createElement('div'); root.className = 'weapon-school'; h.app.ui.appendChild(root);
   const saved = settings.weaponSchool && typeof settings.weaponSchool === 'object' ? settings.weaponSchool : {};
-  let progress = newLessonProgress(h.player.weaponId), active = false, menuOpen = false, lastView = '', pulse = null, pulseN = 0, wait = 1;
+  let progress = newLessonProgress(h.player.weaponId), active = false, menuOpen = false, briefing = false, lastView = '', pulse = null, pulseN = 0, wait = 1;
   let message = '', messageUntil = 0;
   const course = () => WEAPON_LESSONS[progress.weapon];
   const step = () => course().steps[progress.index];
@@ -20,7 +20,6 @@ export function createWeaponSchool(h) {
     if (!completed(progress.weapon).includes(step().id)) {
       saved[progress.weapon] = [...completed(progress.weapon), step().id]; settings.weaponSchool = saved; saveSettings();
     }
-    message = 'Geschafft! Du kannst weiter üben oder die nächste Lektion starten.'; messageUntil = Infinity;
     h.bus.emit('sfx', { name: 'charge', pos: h.player.pos, level: 3 });
     clearPulse(); render(true);
   }
@@ -34,8 +33,8 @@ export function createWeaponSchool(h) {
     if (!wasDone && progress.done) success();
   }
   const offs = ['weaponMove', 'weaponTechnique', 'hit', 'counter', 'kkPlay'].map(type => h.bus.on(type, e => event(type, e)));
-  function setMenu(on) {
-    menuOpen = on; h.input.reset(); h.app.touch?.setVisible(!on); clearPulse(); lastView = ''; render(true);
+  function setMenu(on, lesson = false) {
+    menuOpen = on; briefing = lesson; h.input.reset(); h.app.touch?.setVisible(!on); clearPulse(); lastView = ''; render(true);
   }
   function prepare(index) {
     clearPulse(); const p = h.player, m = h.mainMonster;
@@ -51,7 +50,7 @@ export function createWeaponSchool(h) {
     if (step().setup === 'switch') { p.weapon.data.mode = 'schwert'; p.weapon.data.druck = 8; }
     const dist = ['bow', 'lb'].includes(p.weaponId) ? 10 : 2.5;
     p.spawnAt(m.pos.x + Math.sin(m.rot) * dist, m.pos.z + Math.cos(m.rot) * dist, m.rot + Math.PI);
-    h.rig.snap(p.pos, p.rot); wait = 1.2; active = true; setMenu(false);
+    h.rig.snap(p.pos, p.rot); wait = 1.2; active = true; setMenu(true, true);
   }
   function switchWeapon(id) {
     if (!WEAPON_LESSONS[id]) return;
@@ -60,10 +59,19 @@ export function createWeaponSchool(h) {
     progress = newLessonProgress(id); active = false; message = ''; lastView = ''; render(true);
   }
   function render(force = false) {
-    const c = course(), s = step(), n = progress.index, r = s.rule;
-    const signal = pulse ? (pulse.left <= .18 ? 'JETZT' : `Schlag in ${pulse.left.toFixed(1)} s`) : 'Nächster Übungsschlag …';
-    const sig = `${menuOpen}|${active}|${progress.weapon}|${n}|${progress.count}|${progress.done}|${pulse ? Math.ceil(pulse.left * 10) : 0}|${message}|${h.player.weapon.sauberOpen}|${h.player.weapon.data.blitzT > 0}`;
-    if (!force && sig === lastView) return; lastView = sig;
+    const c = course(), s = step(), n = progress.index;
+    const sig = `${menuOpen}|${briefing}|${active}|${progress.weapon}|${n}|${progress.done}`;
+    // Keep tappable DOM nodes alive during countdowns and charge signals (including a held iOS tap).
+    if (!force && sig === lastView) { updateCoach(); return; } lastView = sig;
+    if (menuOpen && briefing) {
+      root.innerHTML = `<div class="school-backdrop ui-hit"><section class="school-menu school-briefing allow-scroll" role="dialog" aria-modal="true" aria-label="Anleitung zur Lektion">
+        <div class="school-eyebrow">${esc(c.name)} · LEKTION ${n + 1}/${c.steps.length}</div><h2>${esc(s.title)}</h2>
+        <p class="school-how">${esc(s.how)}</p><h3>Warum / Tipp</h3><p>${esc(s.why)}</p>
+        <p>Beim Üben bleibt nur der kurze Hinweis sichtbar. Über „Anleitung“ kannst du hier jederzeit nachlesen.</p>
+        <footer><button data-school="practice">${progress.done ? 'Weiter üben' : 'Jetzt üben'} →</button><button data-school="retry">Neu aufstellen</button><button data-school="open">Kurs / Waffe</button></footer>
+      </section></div>`;
+      return;
+    }
     if (menuOpen) {
       root.innerHTML = `<div class="school-backdrop ui-hit"><section class="school-menu allow-scroll" role="dialog" aria-label="Waffenschule">
         <div class="school-eyebrow">ROSTNEST · WAFFENSCHULE</div><h2>Deine Waffe. Dein Rhythmus.</h2>
@@ -78,15 +86,24 @@ export function createWeaponSchool(h) {
       return;
     }
     if (!active) { root.innerHTML = '<button class="school-open ui-hit" data-school="open">Waffenschule öffnen</button>'; return; }
-    const live = h.player.weapon.sauberOpen || h.player.weapon.data.blitzT > 0;
-    root.innerHTML = `<section class="school-coach ui-hit ${progress.done ? 'complete' : ''}">
-      <header><span>${c.name} · ${n + 1}/${c.steps.length}</span><button data-school="open" aria-label="Kurs und Waffe wählen">Kurs / Waffe</button></header>
-      <h3>${progress.done ? '✓ ' : ''}${s.title}</h3><p>${esc(s.how)}</p>
-      ${s.defense && !progress.done ? `<div class="school-signal ${pulse?.left <= .18 ? 'now' : ''}" aria-live="off">${signal}${pulse?.left <= .18 ? s.defense === 'counter' ? ' · B!' : s.defense === 'dodge' ? ' · Rollen!' : ' · Block halten!' : ''}</div>` : ''}
-      ${live && !progress.done ? '<div class="school-signal now">JETZT: loslassen / sauber schalten!</div>' : ''}
-      <div class="school-status" role="status">${progress.done ? message : message && h.time < messageUntil ? message : `Ziel: ${progress.count}/${r.count ?? 1} · ${r.state === 'position' ? 'Lock + Abstand' : 'Technik erfolgreich ausführen'}`}</div>
-      <footer><button data-school="why">Warum / Tipp</button><button data-school="retry">Neu versuchen</button>${progress.done ? `<button class="next" data-school="next">${n + 1 < c.steps.length ? 'Weiter →' : 'Kurs abschließen ✓'}</button>` : ''}</footer>
+    root.innerHTML = `<section class="school-coach ${progress.done ? 'complete' : ''}">
+      <div class="school-reminder"><header><span>${n + 1}/${c.steps.length} · ${esc(s.title)}</span><span class="school-status" role="status"></span></header>
+      <div class="school-signal" aria-live="off"></div></div>
+      <button class="ui-hit" data-school="why" aria-label="Anleitung und Tipps zur aktuellen Lektion">Anleitung</button>
+      ${progress.done ? `<button class="next ui-hit" data-school="next">${n + 1 < c.steps.length ? 'Weiter →' : 'Fertig ✓'}</button>` : ''}
     </section>`;
+    updateCoach();
+  }
+  function updateCoach() {
+    const status = root.querySelector('.school-status'), prompt = root.querySelector('.school-signal');
+    if (!status || !prompt) return;
+    const s = step(), live = h.player.weapon.sauberOpen || h.player.weapon.data.blitzT > 0;
+    status.textContent = progress.done ? '✓' : `${progress.count}/${s.rule.count ?? 1}`;
+    prompt.classList.toggle('now', !progress.done && (!!live || !!pulse && pulse.left <= .18));
+    prompt.textContent = progress.done ? 'Geschafft! Weiter üben oder nächste Lektion.'
+      : live ? (s.setup === 'switch' ? 'JETZT: B kurz tippen!' : 'JETZT: A loslassen!')
+      : s.defense && pulse ? (pulse.left <= .18 ? s.defense === 'counter' ? 'JETZT: B kurz tippen!' : s.defense === 'dodge' ? 'JETZT: zur Seite rollen!' : 'JETZT: B halten!' : `Schlag in ${pulse.left.toFixed(1)} s · ${s.cue}`)
+      : message && h.time < messageUntil ? message : s.cue;
   }
   root.addEventListener('click', e => {
     const weapon = e.target.closest('[data-school-weapon]')?.dataset.schoolWeapon;
@@ -96,10 +113,11 @@ export function createWeaponSchool(h) {
     switch (e.target.closest('[data-school]')?.dataset.school) {
       case 'open': setMenu(true); break;
       case 'continue': if (active) setMenu(false); else prepare(0); break;
+      case 'practice': wait = 1.2; setMenu(false); break;
       case 'free': active = false; setMenu(false); break;
       case 'retry': prepare(progress.index); break;
       case 'next': if (progress.index + 1 < course().steps.length) prepare(progress.index + 1); else { active = false; setMenu(true); } break;
-      case 'why': message = step().why; messageUntil = h.time + 18; render(true); break;
+      case 'why': setMenu(true, true); break;
       case 'leave': h.abandon(); break;
     }
   });
@@ -107,6 +125,7 @@ export function createWeaponSchool(h) {
   return {
     get menuOpen() { return menuOpen; }, get active() { return active; }, get progress() { return progress; },
     get fillWucht() { return !active || !!step().wucht; },
+    render() { root.hidden = !!h.paused || !!h.panelOpen || !!h.cineLock; },
     update(dt) {
       if (!active || menuOpen || h.panelOpen || h.paused) return;
       const p = h.player, s = step(), m = h.mainMonster;
@@ -130,7 +149,7 @@ export function createWeaponSchool(h) {
             const result = Math.hypot(p.pos.x - at.x, p.pos.z - at.z) <= 3
               ? p.takeHit({ dmg: 10, knock: 'none', sourcePos: m.pos, key: 'school:' + ++pulseN, attackId: 'training_strike', monster: m }) : 'miss';
             event('trainingDefense', { player: p, result });
-            if (!progress.done) { message = result === 'block' ? 'Sauber geblockt.' : result === 'perfect' ? 'Perfekt ausgewichen! Noch einmal mit demselben Timing.' : 'Noch einmal: zur Puppe schauen, den Countdown lesen und die Technik timen.'; messageUntil = h.time + 2; }
+            if (!progress.done) { message = result === 'block' ? 'Geblockt! Noch einmal.' : result === 'perfect' ? 'Perfekt! Noch einmal mit demselben Timing.' : 'Noch einmal: zur Puppe schauen und das JETZT-Signal abwarten.'; messageUntil = h.time + 2; }
           }
         }
       }

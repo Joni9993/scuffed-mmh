@@ -58,8 +58,8 @@ body.scan #stage::after {
 .dmg.hurt { color: #ff6b6b; }
 .dmg.heal { color: #7dff7d; }
 .dmg.mheal { color: #5dff9a; font-size: max(11px, 3.2vmin); text-shadow: 2px 0 #00ffe5, -2px 0 #1b8a3c, 0 2px 0 #000; }
-.hud-mut { font: 700 max(8px, 1.7vmin)/1.3 monospace; color: #ffd870; text-shadow: 0 0 3px #000, 0 0 3px #000; text-align: right; opacity: .9; max-width: 30vmin; }
-.hud-mut b { font-weight: 700; margin-left: .8vmin; }
+.hud-mut { position: absolute; top: 0; right: 52px; min-height: 44px; padding: 6px 10px; border: 1px solid #9d8657; border-radius: 4px; background: #161528e8; font: 700 11px/1.3 system-ui,sans-serif; color: #ffd870; white-space: nowrap; cursor: pointer; }
+.hud-mut:focus-visible { outline: 2px solid #fff0a5; }
 .lockmark.mheal { --c: #4dff8a; animation: mflick .12s steps(2) 6; }
 @keyframes mflick { 50% { opacity: .25; filter: hue-rotate(60deg); } }
 .hud-banner.mut { color: #ffd870; }
@@ -119,6 +119,8 @@ body.scan #stage::after {
 .hud-party .pn { overflow: hidden; text-overflow: ellipsis; max-width: 16vmin; }
 .hud-party .party-bar { flex: none; }
 .hud-tr { position: absolute; right: calc(var(--sar) + 2vmin); top: calc(var(--sat) + 1.6vmin); display: grid; justify-items: end; gap: .6vmin; }
+body.touch .hud-tr { padding-top: 50px; }
+body:not(.touch) .hud-mut { position: static; grid-row: 3; }
 .hud-timer { font-size: max(9px, 2.6vmin); }
 .hud-ko { font-size: max(8px, 2vmin); opacity: .85; }
 .hud-ko.bad { color: #ff6b6b; }
@@ -145,6 +147,7 @@ body.touch #touch { display: block; }
 .stick-knob { position: absolute; left: 50%; top: 50%; width: 9vmin; height: 9vmin; border-radius: 50%; background: rgba(90,216,255,.55);
   border: 2px solid rgba(0,0,0,.6); transform: translate(-50%,-50%); }
 .tbtn, .tmenu { position: absolute; border-radius: 50%; pointer-events: auto; touch-action: none; cursor: default; background: transparent;
+  padding: 0; border: 0; appearance: none; -webkit-appearance: none;
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .tv { position: absolute; left: 50%; top: 50%; width: var(--vis, 48px); height: var(--vis, 48px); transform: translate(-50%, -50%); border-radius: 50%;
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden;

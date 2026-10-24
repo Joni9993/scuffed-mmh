@@ -77,6 +77,22 @@ export const WEAPON_LESSONS = {
 // Every weapon teaches the shared defensive foundation before its specific techniques.
 for (const course of Object.values(WEAPON_LESSONS)) course.steps.splice(1, 0, evade);
 
+// Short reminders stay on screen while practising. Full instructions are read before the attempt.
+const CUES = {
+  gs: { chain: 'A → A → A im Rhythmus; mit dem Aufwärtshaken treffen.', charge: 'A halten → beim dritten, goldenen Signal loslassen.', guard: 'Zur Puppe schauen. B beim Übungsschlag halten.', tackle: 'B kurz tippen → danach A halten.', finisher: 'Wucht voll: B kurz tippen.', glitch: 'Glitch → A halten und loslassen. Dreimal treffen.' },
+  db: { chain: 'A im Rhythmus tippen; mit dem dritten Schnitt treffen.', rage: 'B kurz → im Rausch mit A dreimal treffen.', jump: 'Rollen → sofort A → treffen.', finisher: 'Wucht voll: B mindestens 0,3 s halten.', glitch: 'Glitch → mit A drei eigene Treffer landen.' },
+  bow: { shot: 'Kopf locken → aus 8–16 m A tippen. Dreimal treffen.', draw: 'A mindestens 0,9 s halten → loslassen. Zweimal.', dodgeDraw: 'Rollen → sofort A halten → loslassen.', finisher: 'Wucht voll: B kurz tippen; Ziel im Blick halten.', glitch: 'Glitch → mit A dreimal treffen.' },
+  kt: { chain: 'A im Rhythmus tippen; mit dem dritten Schnitt treffen.', draw: 'A halten → nach etwa 0,6 s beim Goldsignal loslassen.', counter: 'Zur Puppe schauen. Bei JETZT B kurz tippen.', finisher: 'Wucht voll: B mindestens 0,3 s halten.', glitch: 'Glitch → mit A dreimal treffen.' },
+  kk: { samples: 'Mit A drei Treffer und damit Samples sammeln.', play: 'Ein Sample mit A sammeln → B kurz beim Team tippen.', charge: 'A halten → nach etwa 0,8 s beim Goldsignal loslassen.', finisher: 'Wucht voll: Samples sammeln → B mindestens 0,3 s halten.', glitch: 'Glitch → mit A dreimal treffen.' },
+  ga: { pressure: 'In der Axt mit A treffen, bis 25 Druck erreicht sind.', sword: 'Ab 25 Druck B kurz → im Schwert mit A dreimal treffen.', switch: 'Druck leer werden lassen → beim weißen Blitz B kurz.', discharge: '25 Druck sammeln → B kurz ins Schwert → B halten.', finisher: 'Wucht voll: B halten für die Kernschmelze.', glitch: 'Glitch → mit A dreimal treffen.' },
+  lb: { shots: 'Aus 6–14 m A halten und fünf Bolzen abfeuern.', reload: 'Magazin leeren → A loslassen → im gelben Feld A neu drücken.', mine: 'B kurz tippen, um eine Mine zu legen.', hop: 'Rollen → sofort A für den Hüpfschuss.', finisher: 'Wucht voll: B mindestens 0,3 s halten.', glitch: 'Glitch → A halten und dreimal treffen.' },
+};
+for (const [id, course] of Object.entries(WEAPON_LESSONS)) {
+  // lock/evade are shared objects across courses.
+  for (const step of course.steps) step.cue = step.id === 'lock' ? 'Lock antippen → zur markierten Position laufen.'
+    : step.id === 'evade' ? 'Beim Signal JETZT zur Seite rollen. Zweimal perfekt.' : CUES[id][step.id];
+}
+
 /** Pure progress tracker: replayable steps, no automatic skipping, duplicates cannot farm a completed step. */
 export function newLessonProgress(weapon, index = 0) { return { weapon, index, count: 0, done: false }; }
 export function recordLesson(progress, event, payload = {}) {

@@ -51,6 +51,15 @@ describe('touch layout solver', () => {
     expect(L.buttons.attack.cx + L.buttons.attack.hit / 2).toBeLessThanOrEqual(844 - 59);
     expect(L.buttons.attack.cy + L.buttons.attack.hit / 2).toBeLessThanOrEqual(390 - 34);
   });
+  it('Pause stays above the entire map column, even as modifier/training rows grow', () => {
+    for (const [w, h] of VIEWPORTS) for (const insets of INSETS) {
+      const L = solveLayout(w, h, { insets });
+      const pause = L.buttons.menu;
+      expect(pause.cy - pause.hit / 2).toBeGreaterThanOrEqual(insets.t ?? 0);
+      expect(pause.cy + pause.hit / 2 + 6).toBeLessThanOrEqual(L.mini.y + 0.01);
+      expect(hitButton(L, pause.cx, pause.cy)).toBe('menu');
+    }
+  });
   it('hit test returns exactly one owner, hit area is bigger than the visual', () => {
     const L = solveLayout(844, 390, {});
     const a = L.buttons.attack;

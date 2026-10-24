@@ -22,6 +22,7 @@ for (const id of ['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb']) {
   if (!(await page.locator('.school-menu').count())) await page.locator('[data-school="open"]').click();
   await page.locator(`[data-school-weapon="${id}"]`).click();
   await page.locator('[data-school-step="0"]').click();
+  await page.locator('[data-school="practice"]').click();
   const r = await page.evaluate(() => {
     const S = window.__SH, h = S.hunt, p = S.player;
     S.press('lock', 50); S.step(10);
@@ -31,6 +32,7 @@ for (const id of ['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb']) {
   await page.locator('[data-school="open"]').click();
   const finIndex = await page.evaluate(id => import('/src/data/weaponLessons.js').then(m => m.WEAPON_LESSONS[id].steps.findIndex(s => s.wucht)), id);
   await page.locator(`[data-school-step="${finIndex}"]`).click();
+  await page.locator('[data-school="practice"]').click();
   const fin = await page.evaluate(id => {
     const S = window.__SH; S.press('B', ['gs', 'bow'].includes(id) ? 100 : 400); S.step(70);
     return { complete: S.hunt.school.progress.done, move: S.player.weapon.moveId };
@@ -43,6 +45,7 @@ for (const id of ['gs', 'db', 'bow', 'kt', 'kk', 'ga', 'lb']) {
   for (const s of steps.filter(s => !['lock', 'finisher', 'counter', 'reload'].includes(s.id))) {
     if (!(await page.locator('.school-menu').count())) await page.locator('[data-school="open"]').click();
     await page.locator(`[data-school-weapon="${id}"]`).click(); await page.locator(`[data-school-step="${s.i}"]`).click();
+    await page.locator('[data-school="practice"]').click();
     const r = await page.evaluate(({ id, step }) => {
       const S = window.__SH, h = S.hunt, p = S.player;
       p.lock = { monster: h.mainMonster, idx: 0 };
@@ -97,6 +100,7 @@ check('practice leaves saved equipment and inventory untouched', await page.eval
 await page.locator('[data-school="open"]').click(); await page.locator('[data-school-weapon="kt"]').click();
 const ctr = await page.evaluate(() => import('/src/data/weaponLessons.js').then(m => m.WEAPON_LESSONS.kt.steps.findIndex(s => s.id === 'counter')));
 await page.locator(`[data-school-step="${ctr}"]`).click();
+await page.locator('[data-school="practice"]').click();
 const counter = await page.evaluate(() => {
   const S = window.__SH; let fired = false;
   for (let i = 0; i < 900 && !S.hunt.school.progress.done; i++) {
@@ -112,6 +116,7 @@ await page.screenshot({ path: join(out, '02-katana-konter.png') });
 await page.locator('[data-school="open"]').click(); await page.locator('[data-school-weapon="lb"]').click();
 const reloadIdx = await page.evaluate(() => import('/src/data/weaponLessons.js').then(m => m.WEAPON_LESSONS.lb.steps.findIndex(s => s.id === 'reload')));
 await page.locator(`[data-school-step="${reloadIdx}"]`).click();
+await page.locator('[data-school="practice"]').click();
 const reload = await page.evaluate(() => {
   const S = window.__SH; S.press('A', 4000); S.step(260);
   S.input.set('attack', false, 'dbg'); S.step(4);

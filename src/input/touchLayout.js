@@ -87,12 +87,12 @@ export function solveLayout(w, h, opt = {}) {
   if (stripRight - sw < 4 + ins.l) { cols = 3; sw = 3 * SLOT + 2 * SG; sh = 3 * SLOT + 2 * SG; }
   const strip = { x: stripRight - sw, y: bottomEdge - sh, w: sw, h: sh, cols };
 
-  // pause/menu button: small (36 visual, 44 hit), directly BELOW the minimap column (timer / KO / minimap, right aligned) so it can never overlap them
+  // Reserve a fixed toolbar ABOVE the HUD column. Dynamic rules/training rows can never cover Pause.
   const colW = 16.4 * vm, colRight = w - ins.r - 2 * vm, colTop = ins.t + 1.6 * vm;
   const colH = Math.max(7 * vm, 26) + colW; // timer + KO rows above the square minimap
-  const mini = { x: colRight - colW, y: colTop, w: colW, h: colH };
+  const mini = { x: colRight - colW, y: colTop + 50, w: colW, h: colH };
   const menuHit = MIN_HIT, menuVis = 36;
-  const menu = { cx: colRight - menuHit / 2, cy: colTop + colH + 6 + menuHit / 2, vis: menuVis, hit: menuHit, visible: mode === 'hunt' };
+  const menu = { cx: colRight - menuHit / 2, cy: colTop + menuHit / 2, vis: menuVis, hit: menuHit, visible: mode === 'hunt' };
 
   // stick zone: 40 % of the width, but never wider than the free space left of the leftmost control (min 30 %)
   const leftmost = mode === 'hunt' ? bar.cx - barHit / 2 : Math.min(roll.cx - hitO / 2, A.cx - hitA / 2);

@@ -1,9 +1,9 @@
 // Station panels B: Kochtopf, Auftragsbrett, Spiegel, Optionen.
-import { MUTATORS, MUTATOR_ORDER, MAX_MUTATORS, resolveMods, rewardLabel } from '../data/mutators.js';
+import { MUTATORS, MUTATOR_ORDER, MAX_MUTATORS, cleanMutatorIds, resolveMods, rewardLabel } from '../data/mutators.js';
 import { FOODS, FOOD_ORDER } from '../data/foods.js';
 import { questList } from '../data/quests.js';
 import { registerFieldStudy, getBestTime, FIELDSTUDY_ID } from '../meta/fieldstudy.js';
-import { MAX_TIER, isTierQuest, tierInfo, tierQuestIds, WEEKLY_BONUS, splitterForWin, WEEKLY_TIER, SPLITTER_FACTOR } from '../data/glitchTiers.js';
+import { MAX_TIER, isTierQuest, tierInfo, tierQuestIds, WEEKLY_BONUS, splitterForWin, WEEKLY_TIER, SPLITTER_FACTOR, cleanPostGlitch } from '../data/glitchTiers.js';
 import { tierUnlocked, tierClearedOf, bestTime, monstersClearedAt } from '../meta/endgame.js';
 import { weeklyQuest } from '../meta/weekly.js';
 import { monsters } from '../game/monsters/index.js';
@@ -60,7 +60,7 @@ export function createLocalBoard({ name, start }) {
   const emit = () => subs.forEach((f) => f());
   return {
     getPosted: () => (post ? [post] : []),
-    post(questId, mutators = [], extra = {}) { post = { id: 'local', quest: questId, mutators, tier: extra.tier ?? 0, weekly: extra.weekly ?? null, host: name(), members: [{ name: name(), ready: false, me: true }], joined: true, mine: true }; emit(); },
+    post(questId, mutators = [], extra = {}) { const rules = cleanPostGlitch(questId, { ...extra, mutators }, cleanMutatorIds); post = { id: 'local', quest: questId, ...rules, host: name(), members: [{ name: name(), ready: false, me: true }], joined: true, mine: true }; emit(); },
     join() {},
     unpost() { post = null; emit(); },
     setReady(b) {
@@ -74,7 +74,7 @@ export function createLocalBoard({ name, start }) {
 
 export function startSolo(app, store, questId, mutators = [], extra = {}) {
   const save = store.get();
-  app.goto('hunt', { quest: questId, mutators, tier: extra.tier ?? 0, weekly: extra.weekly ?? null, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
+  app.goto('hunt', { quest: questId, mutators, glitchTier: extra.tier ?? 0, weekly: extra.weekly ?? null, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
 }
 
 // Aufbau: oben (falls vorhanden) dein Auftrag bzw. offene Aufträge im Raum, darunter Reiter Jagd | Rotglut | Sammeln | ★ Woche.
@@ -91,7 +91,7 @@ export function createBrett(ctx) {
   const mutHtml = (ids) => ids.map((i) => MUTATORS[i]).filter(Boolean).map((m) => `${esc(m.name)}${rewardLabel(m) ? ` (${rewardLabel(m)})` : ''}`).join(' · ');
   const allQuests = () => [weeklyQuest(), registerFieldStudy(), ...questList()];
   const tierSel = {}; // Brocken -> zuletzt gewählte Glitch-Stufe (nur Sitzung)
-  const names = (ids) => ids.map((i) => MUTATORS[i]?.name).filter(Boolean).map(esc).join(' · ');
+  const rulesHtml = (ids, label) => `<div class="qmut"><small>${label} · Antippen für die Wirkung</small>${ids.map(id => MUTATORS[id]).filter(Boolean).map(m => `<details><summary>${esc(m.name)}</summary><p>${esc(m.desc)}</p></details>`).join('')}</div>`;
   /** gewählte Stufe: 0 ... freigeschaltet (nie mehr als der Spielstand erlaubt) */
   const tierOf = (s, q) => (isTierQuest(q) ? Math.max(0, Math.min(tierUnlocked(s, q.monster), tierSel[q.monster] ?? 0)) : 0);
   const isOpen = (s, q) => !questLock(s, q) && (!q.monster || !!monsters[q.monster]);
@@ -148,9 +148,9 @@ export function createBrett(ctx) {
         <button class="sm${un > tierClearedOf(s, q.monster) && tier < un ? ' glow' : ''}" data-a="tup" data-k="${q.monster}" aria-label="Stufe hoch"${tier >= un ? ' disabled' : ''}>+</button></div>`;
     }
     const wkInfo = isWk ? `<div class="note">Erster Sieg der Woche: +${WEEKLY_BONUS} Splitter extra. Sonst ◆${splitterForWin(WEEKLY_TIER)} pro Sieg.${s.glitch?.weekly === q.weekly ? ' Diese Woche schon geholt.' : ''}</div>` : '';
-    const mutLine = isWk ? `<div class="qmut"><small>Wochen-Mutatoren:</small> ${names(q.mutators)}</div>`
-      : tier ? `<div class="qmut"><small>Stufe ${tier} · ${tierInfo(tier).mutators.length} Mutatoren:</small> ${names(tierInfo(tier).mutators)}</div>`
-      : fixed ? `<div class="qmut"><small>Feste Mutatoren:</small> ${mutHtml(fixed)}</div>`
+    const mutLine = isWk ? rulesHtml(q.mutators, 'Wochen-Mutatoren')
+      : tier ? rulesHtml(tierInfo(tier).mutators, `Stufe ${tier} · ${tierInfo(tier).mutators.length} Mutatoren`)
+      : fixed ? rulesHtml(fixed, 'Feste Mutatoren')
       : `<button class="qmut tapline" data-a="mutopen"><small>Mutatoren:</small> ${chosen.length ? mutHtml(chosen) : 'keine'} <b>✎</b></button>`;
     const fsLine = isFs ? `<div class="note">Bestzeit diese Woche: ${getBestTime(q.fieldStudy) ? mmss(getBestTime(q.fieldStudy)) : '–'}</div>` : '';
     const mine = adapter.getPosted().find((p) => p.joined);
@@ -164,9 +164,9 @@ export function createBrett(ctx) {
     const one = (p) => {
       const q = allQuests().find((x) => x.id === p.quest);
       const me = p.members.find((m) => m.me), alone = p.members.length <= 1;
-      const mu = p.mutators?.length ? p.mutators : q?.mutators ?? [], gl = p.tier > 0 || p.weekly;
+      const mu = p.mutators?.length ? p.mutators : q?.mutators ?? [];
       const title = `${esc(q?.name ?? p.quest)}${p.tier > 0 ? ` · Glitch ${p.tier}` : p.weekly ? ' · Wochen-Glitch' : ''}`;
-      return `<div class="qpost${p.joined ? ' mine' : ''}"><span class="nm"><b>${title}</b> <small>von ${esc(p.host)} · ${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(', ')}${mu.length ? ` · ${gl ? names(mu) : mutHtml(mu)}` : ''}</small></span>
+      return `<div class="qpost${p.joined ? ' mine' : ''}"><div class="nm"><b>${title}</b> <small>von ${esc(p.host)} · ${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(', ')}</small>${mu.length ? `<details class="qpost-rules"><summary>${mu.length} Modifikatoren · Wirkung anzeigen</summary>${rulesHtml(mu, 'Aktive Regeln')}</details>` : ''}</div>
         ${p.joined ? `${p.mine ? '<button class="btn small" data-a="unpost">Zurückziehen</button>' : ''}<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>`
           : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
     };
