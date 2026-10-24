@@ -3,6 +3,8 @@ import { esc } from './hubKit.js';
 import './huntTactics.css';
 
 export function createHuntTactics(h) {
+  // Defensive guard: no DOM, text notifications or extra buttons during a real hunt.
+  if (!h.training) return { notice() {}, update() {}, dispose() {} };
   const root = document.createElement('div'); root.className = 'hunt-tactics'; h.app.ui.appendChild(root);
   root.innerHTML = '<section class="tactics-panel"><div class="tactics-part"></div><div class="tactics-actions ui-hit"><button data-ping="focus">Dieses Teil!</button><button data-ping="trap">Falle hier</button><button data-ping="glitch">Glitch bereit</button></div></section><aside class="team-notice" role="status" aria-live="polite"></aside><aside class="break-notice" role="status"></aside>';
   const q = s => root.querySelector(s), partEl = q('.tactics-part'), actions = q('.tactics-actions'), noticeEl = q('.team-notice'), breakEl = q('.break-notice');
@@ -23,7 +25,7 @@ export function createHuntTactics(h) {
   return {
     notice(text) { if (text) { breakEl.textContent = text; breakEl.classList.add('show'); breakUntil = h.time + 6; } },
     update() {
-      root.hidden = !!h.training || !!h.cineLock || !!h.panelOpen || !!h.paused;
+      root.hidden = !h.training || !!h.school?.active || !!h.school?.menuOpen || !!h.cineLock || !!h.panelOpen || !!h.paused;
       if (root.hidden) return;
       const l = h.player.lock, points = l?.monster.lockPoints() ?? [], point = points.length ? points[l.idx % points.length] : null;
       const m = l?.monster, part = point && m.partById[point.partId];

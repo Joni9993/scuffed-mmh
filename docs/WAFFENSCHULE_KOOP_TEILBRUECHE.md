@@ -1,5 +1,7 @@
 # Waffenschule, Koop-Momente und taktische Teilbrüche
 
+**Korrektur vom 24.10.2026:** Die normalen Jagden haben wieder das schlanke mobile HUD. Die neue Teilkarte, ausführliche Bruch-Erklärungen, Koop-Textbanner und zusätzliche Signalbuttons werden dort nicht mehr eingeblendet. Waffenschule und Übungshinweise bleiben im Trainingsbereich; Teilbruch-Mechaniken, Kompendium und gemeinsame Momente im Ergebnisbericht bleiben erhalten. Die Jagd-Screenshots unten dokumentieren den inzwischen zurückgenommenen Overlay-Entwurf.
+
 ## Waffenschule am Übungsplatz
 
 Im Rostnest die **Trainingspuppe** ansprechen. Der Übungsplatz öffnet direkt die Waffenschule. Alle sieben Waffen können unabhängig vom eigenen Fortschritt als Stufe-1-Übungswaffen ausprobiert werden. Die ausgerüstete Waffe und der Materialbestand im Spielstand werden dadurch nicht verändert.
@@ -42,7 +44,7 @@ Der Host entscheidet und überträgt das Ergebnis an die Gäste. Die letzten zw�
 
 ## Teilbrüche als Jagdplan
 
-Beim Lock zeigt eine kompakte Karte den Zustand des ausgewählten Teils: **intakt → angeschlagen → kurz vor Bruch → gebrochen/abgetrennt**. Sie erklärt bereits vor dem Bruch den taktischen Nutzen und die Gegenreaktion. Nach einem Bruch erscheint die Konsequenz nochmals als Hinweis. Im Kompendium stehen dieselben Teilbruch-Pläne bei den Schwachstellen bereits bekannter Brocken.
+Die Zustandskarte und ausführlichen Hinweise gehören ausschließlich in den Trainingsbereich. Während normaler Jagden gibt es keine dauerhafte Teilkarte und keinen zusätzlichen Bruch-Erklärungstext. Die schon vorher vorhandene kurze Meldung „Teil gebrochen!“ bleibt. Im Kompendium stehen die Teilbruch-Pläne bei den Schwachstellen bereits bekannter Brocken.
 
 Neue Kampfänderungen:
 

@@ -41,7 +41,6 @@ import { itemPartMul } from './itemBuffs.js';
 import { createWeaponSchool } from '../ui/weaponSchool.js';
 import { createTeamplay } from './teamplay.js';
 import { createHuntTactics } from '../ui/huntTactics.js';
-import { partTactic } from '../data/partTactics.js';
 
 const MAX_KO = 3;
 
@@ -146,10 +145,7 @@ export class Hunt {
       if (this.bosses.includes(monster) && state === 'notice') this.hud.banner(monster.def.name, 3);
       if (state === 'enrage') this.hud.center('Rotglut!', 1.5);
     });
-    this.bus.on('partBreak', ({ monster, part }) => {
-      this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5);
-      this.tactics?.notice(partTactic(monster, monster.partById[part]).after);
-    });
+    this.bus.on('partBreak', ({ monster, part }) => this.hud.center(`${monster.partById[part].label} gebrochen!`, 1.5));
     this.bus.on('glitchCounter', () => this.hud.center('Glitch-Konter!', 1));
     this.glitchSys = attachGlitch(this); // Glitch-Energie / -Modus (GDD 16.2)
     this.finaleArsenal = createFinaleArsenal(this);
@@ -176,7 +172,8 @@ export class Hunt {
     // [N] coop: remote pirscher, monster sync, events (opts.net comes from the lobby)
     if (opts.net) { opts.coop = true; this.net = new HuntNet(this, opts.net, opts); this.applyCoopScale(); }
     this.teamplay = createTeamplay(this);
-    this.tactics = createHuntTactics(this);
+    // Detailed teaching overlays belong on the practice ground, never in the mobile hunt HUD.
+    if (this.training) this.tactics = createHuntTactics(this);
     if (this.training) this.school = createWeaponSchool(this);
   }
 
