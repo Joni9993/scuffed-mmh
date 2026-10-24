@@ -33,7 +33,7 @@ const sum = (hits) => hits.reduce((n, e) => n + e.dmg, 0);
 
 // ---------------------------------------------------------------------------
 describe('Felsengroll: fortress tempo', () => {
-  it('attacks in a heavy ~10-14 per minute rhythm (not Pyrostur\'s 20), also in the last state', () => {
+  it('attacks in a heavy ~11-16 per minute rhythm (not Pyrostur\'s 20+), also in the last state', () => {
     const rows = [];
     for (const phase of [0, 2]) for (const seed of [11, 37]) {
       const h = hunt({ phase, seed, enduring: true });
@@ -53,7 +53,7 @@ describe('Felsengroll: fortress tempo', () => {
       rows.push({ phase, seed, starts: h.attacks.length, perMin: +rate.toFixed(2) });
     }
     log('Tempo:', rows);
-    for (const r of rows) { expect(r.perMin, JSON.stringify(r)).toBeGreaterThanOrEqual(9); expect(r.perMin, JSON.stringify(r)).toBeLessThanOrEqual(15.5); }
+    for (const r of rows) { expect(r.perMin, JSON.stringify(r)).toBeGreaterThanOrEqual(9); expect(r.perMin, JSON.stringify(r)).toBeLessThanOrEqual(17); } // Kurve Okt 2026: Obergrenze 15,5 -> 17 (Ketten brechen seltener ab, Pause 1,6 s statt 2,3 s)
   }, 120000);
 
   it('is territorial: at range he answers with quakes, boulders or a roll instead of walking in', () => {

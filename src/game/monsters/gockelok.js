@@ -1,3 +1,4 @@
+import { capTired } from './kurve.js';
 import { buildGockelok } from './gockelokRig.js';
 import { gockelAttacks } from './gockelokAttacks.js';
 import { roosterAim, roosterCombat, roosterAttackEnd, roosterChains, trackRoosterTargets } from './gockelokRoosterAI.js';
@@ -152,6 +153,7 @@ export const gockelok={
   },
   hitDmgMul:(m,h)=>m.partById.wing.broken && h.copy ? .85:1,
   tick(m,dt) {
+    capTired(m,3.2); // Kurve Okt 2026: Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     if(m.gockelForm==='rooster')trackRoosterTargets(m,dt);
     m.formTime+=dt;m.crashOpening=Math.max(0,(m.crashOpening??0)-dt);m.seamCooldown=Math.max(0,m.seamCooldown-dt);
     if(m.authority && m.gockelForm==='rooster' && m.hp<=m.maxHp*EYE_HP)reveal(m);

@@ -9,6 +9,7 @@ import { basic, lambert } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
+import { capTired } from './kurve.js';
 import { localToWorld, yawOf } from '../../core/math.js';
 import { time } from '../../core/time.js';
 import { slimeBlast, SLIME_R, SLIME_DMG } from '../effects.js';
@@ -23,7 +24,7 @@ const cue = (tone, color = NEON) => ({ color, tone, noShift: true });
 export const KRACH = {
   FUSE: 2.2, FUSE_WUT: 1.5, PLAYER_FUSE: 2.0, PLAYER_FUSE_WUT: 1.4, ABSORB_R: 1.3, MAX_SLIMES: 24,
   URK_PCT: 0.7, URK_R: 52, URK_CHARGE: [1.5, 6.5], URK_SILENCE: 5.5, URK_BOOM: 6.5, URK_END: 7.1,
-  RUNE_TINT: '#b8ff1a', STUN_HEAD: 3,
+  RUNE_TINT: '#b8ff1a', STUN_HEAD: 3, TIRED: 3.0, TIRED_WUT: 2.2,
 };
 
 // ---- Texturen (16 px): blauschwarzer Obsidian-Panzer mit hellen Plattenkanten, Platten/Stachel, finsteres Gesicht, gelbgrüne Schleimhaut mit dunklem Schuppenmuster
@@ -715,6 +716,65 @@ const knoechel = {
   ]),
 };
 
+// ---- Kurve Okt 2026: Die Fäuste landen 6-11 m vor dem Rumpf, wer am Körper klebt (Nahkämpfer, Messung "stand") stand in einer toten Zone und wurde nur vom Schwanz getroffen.
+// Drei neue Angriffe schließen sie: Bauchklatscher (Nahbereich, Anti-Rollen), Schulterwalze (Rempler durch die Nähe), Zornmarsch (nur Runenwut: vier Stampfer in Folge).
+// ---- Bauchklatscher: richtet sich auf, lässt sich mit der ganzen Brust fallen; Druckzone r 4,3 um die Brust (deckt Rumpf-Nähe bis 7 m), klebt Schleim, Pfützen im Ring (Wegrollen landet im Schleim)
+const klatscher = {
+  id: 'krachfaust_klatscher', range: [0, 7.5], weight: (m, d) => (d < 5.6 ? 10 : 3), cooldown: 3, telegraph: 0.7, flashParts: ['body', 'prankeL', 'prankeR'], duration: 2.0, markerFromHits: true, punishRoll: true,
+  cue: cue('brumm', NEON_PEAK), audit: [2, 4.5, 7], stam: 8,
+  hits: [{ t0: 0.95, t1: 1.1, shape: 'sphere', at: [0, 0.4, 2.6], radius: 4.3, dmg: 66, knock: 'down', slimeOnHit: true }],
+  events: [{ t: 0.97, call: 'bam', all: true }],
+  calls: {
+    bam(m, ctx, inst, age = 0) {
+      const c = atLocal(inst, 0.97, 0, 2.6), a0 = inst.r(2) * 6.28;
+      for (let i = 0; i < 4; i++) { const a = a0 + (i / 4) * 6.28; addSlime(m, c.x + Math.cos(a) * 5.6, c.z + Math.sin(a) * 5.6, { age, small: true }); }
+      const at = { x: c.x, y: ctx.world.heightAt(c.x, c.z) + 0.3, z: c.z };
+      ctx.fx.spark(at, 30, NEON, 9); ctx.fx.spark(at, 12, NEON_PEAK, 6); ctx.fx.ring?.(at, 1, 5, { color: NEON, life: 0.45 }); ctx.fx.shake?.(0.9, 0.45);
+      ctx.bus.emit('sfx', { name: 'heavy', pos: at });
+    },
+  },
+  motion: motionFwd(0.7, 1.0, 1.4),
+  pose: mTrack([
+    [0, { ...Z }], [0.3, { wing: 0.6, bodyPitch: -10, legL: -60, legR: -60, bodyY: 0.1 }], [0.7, { wing: 1, bodyPitch: -24, head: -26, jaw: 40, bodyY: 0.5, legL: -120, legR: -120 }],
+    [0.97, { wing: 0, bodyPitch: 28, head: 18, jaw: 5, bodyY: -0.6, legL: 60, legR: 60 }, 'lin'], [1.5, { bodyPitch: 14, bodyY: -0.3, legL: 40, legR: 40 }], [2.0, { ...Z }],
+  ]),
+};
+
+// ---- Schulterwalze: dreht die Schulter vor und rammt 6,5 m weit; Kapsel wandert mit (deckt 0,4-11 m vor ihm), seitlich rollen
+const schulter = {
+  id: 'krachfaust_schulter', range: [0, 11], weight: (m, d) => (d < 8 ? 6 : 2.5), cooldown: 3.5, telegraph: 0.6, flashParts: ['body', 'prankeL'], duration: 2.0, markerFromHits: true,
+  cue: cue('knurr', NEON_PEAK), audit: [3, 6, 10], stam: 10,
+  hits: [{ t0: 0.8, t1: 1.25, shape: 'capsule', from: [0, 1.5, 0.4], to: [0, 1.5, 5.2], radius: 2.3, dmg: 60, knock: 'down' }],
+  events: [{ t: 0.8, call: 'go', all: true }],
+  calls: { go: (m, ctx) => { ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 0.5, z: m.pos.z }, 16, NEON, 6); ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos }); ctx.fx.shake?.(0.3, 0.4); } },
+  motion: motionFwd(0.65, 1.2, 6.5),
+  pose: mTrack([
+    [0, { ...Z }], [0.35, { bodyRoll: -14, bodyPitch: 4, legL: -40, legR: 30, spread: 0.2, bodyY: -0.2 }], [0.65, { bodyRoll: -20, bodyPitch: 8, legL: -60, legR: 40, spread: 0.3, bodyY: -0.3 }],
+    [0.9, { bodyRoll: 10, bodyPitch: 12, legL: 30, legR: -30, spread: 0.35, bodyY: -0.3 }, 'lin'], [1.3, { bodyRoll: 6, bodyPitch: 8, spread: 0.3 }], [2.0, { ...Z }],
+  ]),
+};
+
+// ---- Zornmarsch (nur Runenwut, folgt dem Brüllen): vier Stampfer im Marschtritt auf den Pirscher zu, der letzte reißt den Boden auf; jeder Tritt lässt Schleim liegen
+const ZM = [0.9, 1.25, 1.6, 2.0];
+const zornmarsch = {
+  id: 'krachfaust_zornmarsch', range: [0, 16], weight: 4, cooldown: 7, telegraph: 0.7, flashParts: ['legs', 'prankeL', 'prankeR'], duration: 3.0, markerFromHits: true, cond: wut,
+  cue: cue('droehn', NEON_HI), audit: [4, 8, 14], stam: 12,
+  hits: [
+    { t0: ZM[0], t1: ZM[0] + 0.14, shape: 'sphere', at: [-1.9, 0.3, 3.0], radius: 2.0, dmg: 44, knock: 'flinch' },
+    { t0: ZM[1], t1: ZM[1] + 0.14, shape: 'sphere', at: [1.9, 0.3, 5.0], radius: 2.0, dmg: 44, knock: 'flinch' },
+    { t0: ZM[2], t1: ZM[2] + 0.14, shape: 'sphere', at: [-1.9, 0.3, 7.0], radius: 2.0, dmg: 44, knock: 'flinch' },
+    { t0: ZM[3], t1: ZM[3] + 0.16, shape: 'sphere', at: [0, 0.3, 8.8], radius: 3.2, dmg: 72, knock: 'down', slimeOnHit: true },
+  ],
+  events: ZM.map((t, i) => ({ t: t + 0.02, call: 'm' + i, all: true })),
+  calls: Object.fromEntries(ZM.map((t, i) => ['m' + i, slam(t + 0.02, i === 3 ? 0 : (i % 2 ? 1.9 : -1.9), [3.0, 5.0, 7.0, 8.8][i], { tag: 'm' + i, small: i < 3 })])),
+  motion: motionFwd(0.75, 2.0, 3.6),
+  pose: mTrack([
+    [0, { ...Z }], [0.4, { legL: -50, legR: -50, bodyPitch: -10, wing: 0.4, bodyY: 0.15 }], [0.8, { legL: -70, legR: -30, bodyPitch: -12, wing: 0.3 }],
+    ...ZM.flatMap((t, i) => { const L = i % 2 === 0; return [[t, { legL: L ? 40 : -45, legR: L ? -45 : 40, bodyPitch: 12, bodyY: -0.35, bodyRoll: L ? 6 : -6 }, 'lin'], [t + 0.18, { legL: L ? -40 : -80, legR: L ? -80 : -40, bodyRoll: 0, bodyPitch: -2, bodyY: 0.1 }]]; }),
+    [2.5, { legL: 30, legR: 30, bodyPitch: 6 }], [3.0, { ...Z }],
+  ]),
+};
+
 // ---- Runenwut (Phase-Special bei 40 %): Brüllen, Brust trommeln, die Runen springen auf Neongrün. Brüll-Kugel r 9 pinnt (Glitch-Konter möglich)
 const runenwut = {
   id: 'krachfaust_runenwut', internal: true, range: [0, 99], weight: 0, cooldown: 30, telegraph: 1.0, flashParts: ['body', 'head'], duration: 2.6,
@@ -927,9 +987,14 @@ function visuals(m, dt) {
 }
 
 function brain(m, dt) {
-  if (m.extra.urkRun && !m.alive) m.extra.urkRun = false;
+  const e = m.extra;
+  if (e.urkRun && !m.alive) e.urkRun = false;
+  capTired(m, wut(m) ? KRACH.TIRED_WUT : KRACH.TIRED, e.keepTired); // Keuchen kürzen (Fenster kürzer), außer nach dem Urknall (Finish-Fenster)
+  if (!m.tired) e.keepTired = false;
 }
 
+// Ketten aus der toten Zone: Fäuste landen 6-11 m vor dem Rumpf, wer am Körper steht (< 3,8 m), bekommt Klatscher/Schulter/Schwanz statt eines Fausthiebs ins Leere
+const FAR = (m, d) => d >= 3.8;
 const maskOf = (m) => pillarsOf(m).reduce((s, p) => s | (p.broken ? 1 << p.id : 0), 0);
 
 export const krachfaust = {
@@ -958,6 +1023,7 @@ export const krachfaust = {
   attacks: {
     krachfaust_schleimfaust: schleimfaust, krachfaust_riesenhaken: riesenhaken, krachfaust_ueberschlag: ueberschlag, krachfaust_trommel: trommel, krachfaust_kopfstoss: kopfstoss, krachfaust_sprungstampfer: stampfer,
     krachfaust_pochen: pochen, krachfaust_hammer: hammer, krachfaust_hornschlag: hornschlag, krachfaust_schwanzwirbel: schwanz, krachfaust_sprungfaust: sprungfaust, krachfaust_knoechellauf: knoechel,
+    krachfaust_klatscher: klatscher, krachfaust_schulter: schulter, krachfaust_zornmarsch: zornmarsch,
     krachfaust_runenwut: runenwut, [URK]: urknall,
   },
   teachAttack: 'krachfaust_schleimfaust',
@@ -975,18 +1041,22 @@ export const krachfaust = {
   ],
   // Ketten: Zweibeiner-Schwünge münden oft in den Vierbeiner-Fang (Überschlag) oder einen Gap-Closer; Rush endet im Faustschlag-Nahkampf
   chains: {
-    krachfaust_schleimfaust: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_riesenhaken', w: 4 }, { atk: 'krachfaust_trommel', w: 3 }, { atk: 'krachfaust_pochen', w: 2 }, { atk: 'krachfaust_hornschlag', w: 2 }],
-    krachfaust_riesenhaken: [{ atk: 'krachfaust_ueberschlag', w: 4 }, { atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
-    krachfaust_ueberschlag: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_pochen', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
-    krachfaust_trommel: [{ atk: 'krachfaust_riesenhaken', w: 4 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_schleimfaust', w: 2 }],
-    krachfaust_hammer: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_ueberschlag', w: 3 }, { atk: 'krachfaust_hornschlag', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }],
-    krachfaust_hornschlag: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_pochen', w: 2 }, { atk: 'krachfaust_riesenhaken', w: 3 }],
-    krachfaust_schwanzwirbel: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }, { atk: 'krachfaust_hammer', w: 2 }],
-    krachfaust_kopfstoss: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_sprungfaust', w: 2 }, { atk: 'krachfaust_trommel', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }],
-    krachfaust_sprungfaust: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3 }, { atk: 'krachfaust_hornschlag', w: 2 }],
-    krachfaust_sprungstampfer: [{ atk: 'krachfaust_schleimfaust', w: 3 }, { atk: 'krachfaust_hammer', w: 3 }, { atk: 'krachfaust_schwanzwirbel', w: 2 }],
-    krachfaust_pochen: [{ atk: 'krachfaust_knoechellauf', w: 4 }, { atk: 'krachfaust_sprungfaust', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_hammer', w: 2 }],
-    krachfaust_knoechellauf: [{ atk: 'krachfaust_hammer', w: 4 }, { atk: 'krachfaust_riesenhaken', w: 4 }, { atk: 'krachfaust_trommel', w: 3 }],
+    krachfaust_schleimfaust: [{ atk: 'krachfaust_hammer', w: 4, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 4, cond: FAR }, { atk: 'krachfaust_trommel', w: 3, cond: FAR }, { atk: 'krachfaust_pochen', w: 2, cond: FAR }, { atk: 'krachfaust_hornschlag', w: 2, cond: FAR }, { atk: 'krachfaust_klatscher', w: 4 }, { atk: 'krachfaust_schulter', w: 3 }],
+    krachfaust_riesenhaken: [{ atk: 'krachfaust_ueberschlag', w: 4 }, { atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_hammer', w: 3, cond: FAR }, { atk: 'krachfaust_schwanzwirbel', w: 2 }, { atk: 'krachfaust_klatscher', w: 3 }],
+    krachfaust_ueberschlag: [{ atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_pochen', w: 3, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 3, cond: FAR }, { atk: 'krachfaust_schwanzwirbel', w: 2 }, { atk: 'krachfaust_klatscher', w: 4 }],
+    krachfaust_trommel: [{ atk: 'krachfaust_riesenhaken', w: 4, cond: FAR }, { atk: 'krachfaust_hornschlag', w: 3, cond: FAR }, { atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_schleimfaust', w: 2, cond: FAR }, { atk: 'krachfaust_klatscher', w: 3 }],
+    krachfaust_hammer: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_ueberschlag', w: 3 }, { atk: 'krachfaust_hornschlag', w: 3, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 3, cond: FAR }, { atk: 'krachfaust_klatscher', w: 3 }, { atk: 'krachfaust_schulter', w: 3 }],
+    krachfaust_hornschlag: [{ atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_hammer', w: 3, cond: FAR }, { atk: 'krachfaust_pochen', w: 2, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 3, cond: FAR }, { atk: 'krachfaust_klatscher', w: 3 }],
+    krachfaust_schwanzwirbel: [{ atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_riesenhaken', w: 3, cond: FAR }, { atk: 'krachfaust_hammer', w: 2, cond: FAR }, { atk: 'krachfaust_klatscher', w: 4 }, { atk: 'krachfaust_schulter', w: 3 }],
+    krachfaust_kopfstoss: [{ atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_sprungfaust', w: 2 }, { atk: 'krachfaust_trommel', w: 3, cond: FAR }, { atk: 'krachfaust_hammer', w: 3, cond: FAR }, { atk: 'krachfaust_klatscher', w: 3 }],
+    krachfaust_sprungfaust: [{ atk: 'krachfaust_hammer', w: 4, cond: FAR }, { atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 3, cond: FAR }, { atk: 'krachfaust_hornschlag', w: 2, cond: FAR }, { atk: 'krachfaust_klatscher', w: 4 }, { atk: 'krachfaust_schulter', w: 3 }],
+    krachfaust_sprungstampfer: [{ atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_hammer', w: 3, cond: FAR }, { atk: 'krachfaust_schwanzwirbel', w: 2 }, { atk: 'krachfaust_klatscher', w: 4 }],
+    krachfaust_pochen: [{ atk: 'krachfaust_knoechellauf', w: 4 }, { atk: 'krachfaust_sprungfaust', w: 3 }, { atk: 'krachfaust_kopfstoss', w: 3 }, { atk: 'krachfaust_hammer', w: 2, cond: FAR }, { atk: 'krachfaust_schulter', w: 3 }],
+    krachfaust_knoechellauf: [{ atk: 'krachfaust_hammer', w: 4, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 4, cond: FAR }, { atk: 'krachfaust_trommel', w: 3, cond: FAR }, { atk: 'krachfaust_klatscher', w: 4 }],
+    krachfaust_klatscher: [{ atk: 'krachfaust_schulter', w: 4 }, { atk: 'krachfaust_schwanzwirbel', w: 4 }, { atk: 'krachfaust_schleimfaust', w: 3, cond: FAR }, { atk: 'krachfaust_hammer', w: 3, cond: FAR }, { atk: 'krachfaust_zornmarsch', w: 4 }],
+    krachfaust_schulter: [{ atk: 'krachfaust_klatscher', w: 4 }, { atk: 'krachfaust_hornschlag', w: 3, cond: FAR }, { atk: 'krachfaust_riesenhaken', w: 3, cond: FAR }, { atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_zornmarsch', w: 3 }],
+    krachfaust_zornmarsch: [{ atk: 'krachfaust_klatscher', w: 4 }, { atk: 'krachfaust_schwanzwirbel', w: 3 }, { atk: 'krachfaust_hammer', w: 3, cond: FAR }],
+    krachfaust_runenwut: [{ atk: 'krachfaust_zornmarsch', w: 1 }], // Phase-Special: nach dem Brüllen sofort der Marsch
   },
   build: () => buildKrachfaust({ scale: SC }),
   init(m) {
@@ -1041,6 +1111,7 @@ export const krachfaust = {
   // Nach dem Knall ist er erschöpft: 6 s Finish-Fenster (Atemwolken, halbes Tempo)
   onAttackEnd(m, id) {
     if (id !== URK || !m.authority || !m.alive) return;
+    m.extra.keepTired = true;
     m.tired = true; m.tiredT = 6; m.stamina = 0; m.queued = null;
     m.ctx.bus.emit('monsterTired', { monster: m, on: true });
   },
@@ -1080,3 +1151,12 @@ export const krachfaust = {
   },
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
 };
+
+// ---- Kurve Okt 2026 (docs/KURVE.md): Ausdauer kostet nur noch etwa die Hälfte (vorher: 1/3 der Jagd keuchend, 4-6 s am Stück), Keuchen max. 3 s (Runenwut 2,2 s; nach dem Urknall bleiben es 6 s),
+// und aus der toten Zone am Körper (< 3,8 m) wählt er die Fäuste seltener, dafür Klatscher/Schulter.
+const STAM_MUL = 0.5;
+for (const a of Object.values(krachfaust.attacks)) if (a.stam) a.stam = Math.max(4, Math.round(a.stam * STAM_MUL));
+for (const id of ['krachfaust_schleimfaust', 'krachfaust_hammer', 'krachfaust_hornschlag', 'krachfaust_trommel', 'krachfaust_pochen']) {
+  const a = krachfaust.attacks[id], w = a.weight;
+  a.weight = (m, d) => w * (d < 3.8 ? 0.35 : 1);
+}

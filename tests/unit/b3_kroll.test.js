@@ -49,8 +49,10 @@ describe('Kroll', () => {
     const inst = new AttackInstance(a, { attackId: a.id, t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 4, y: 0, z: 1 }, seed: 1 });
     const end = inst.sample(inst.duration);
     expect(Math.hypot(end.x, end.z)).toBeCloseTo(12, 0);
-    expect(Math.abs(end.x)).toBeGreaterThan(11);
-    expect(Math.abs(end.z)).toBeLessThan(0.5);
+    // Kurve Okt 2026: rammt auf den Pirscher zu (Richtung (4,1)), Körper steht dabei quer; liegt das Ziel genau seitlich, ist es wie vorher quer zur Blickrichtung
+    expect(end.x * 4 + end.z * 1).toBeGreaterThan(11.5 * Math.hypot(4, 1));
+    const side = new AttackInstance(a, { attackId: a.id, t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 6, y: 0, z: 0 }, seed: 1 }).sample(1e3);
+    expect(Math.abs(side.x)).toBeGreaterThan(11); expect(Math.abs(side.z)).toBeLessThan(0.5);
   });
 
   it('Kesseldruck: Ring um ihn, direkt unter ihm sicher, Ueberlappung trifft nur einmal', () => {

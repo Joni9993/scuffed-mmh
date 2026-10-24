@@ -5,6 +5,7 @@ import { mTrack } from './monster.js';
 import { smooth, clamp01, tailSweep, targetBehind, severTail } from './common.js';
 import { fireballDef } from './mprojectiles.js';
 import { wrapAngle } from '../../core/math.js';
+import { capTired, trackTarget, leadAim, hagel } from './kurve.js';
 
 const R = Math.PI / 180;
 const SC = 1.6;
@@ -186,7 +187,7 @@ const wingBroken = (m) => !!(m.partById.wingL?.broken || m.partById.wingR?.broke
 // ---- 1. Feuerspucke: Kopf zieht zurück, Maul glüht 0,6 s, Feuerball (28 + Brennen); Rotglut: 3er-Fächer
 const FIRE_SPEED = 18;
 const feuer = {
-  id: 'brathalos_feuer', range: [4.5, 30], weight: 5, cooldown: 5, stam: 8, cue: { color: '#ff8a20', tone: 'zisch' }, telegraph: 0.6, flashParts: ['head'], duration: 1.9, hits: [], // damage comes from the fireball projectile
+  id: 'brathalos_feuer', range: [4.5, 30], weight: 5, cooldown: 3.0, stam: 8, lead: 0.95, cue: { color: '#ff8a20', tone: 'zisch' }, telegraph: 0.6, flashParts: ['head'], duration: 1.9, hits: [], // damage comes from the fireball projectile
   events: [{ t: 0.75, call: 'spit', all: true }],
   calls: {
     spit(m, ctx, inst, age = 0) {
@@ -225,7 +226,7 @@ const teppichBall = (i) => (m, ctx, inst, age = 0) => {
   ctx.bus.emit('sfx', { name: 'roar', pos: from, low: true });
 };
 const feuerteppich = {
-  id: 'brathalos_feuerteppich', range: [6, 30], weight: (m) => m.partById.head.broken ? 6 : 3, cooldown: 9, telegraph: 0.8, flashParts: ['head'], duration: 2.7, hits: [], stam: 14, audit: [8, 14],
+  id: 'brathalos_feuerteppich', range: [6, 30], weight: (m) => m.partById.head.broken ? 6 : 3, cooldown: 7, lead: 0.9, telegraph: 0.8, flashParts: ['head'], duration: 2.7, hits: [], stam: 14, audit: [8, 14],
   cue: { color: '#ff4020', tone: 'droehn' },
   events: [{ t: 0.95, call: 'b0', all: true }, { t: 1.2, call: 'b1', all: true }, { t: 1.45, call: 'b2', all: true }],
   calls: { b0: teppichBall(0), b1: teppichBall(1), b2: teppichBall(2) },
@@ -240,7 +241,7 @@ const feuerteppich = {
 const flammenstoss = {
   id: 'brathalos_flammenstoss', range: [0, 7.5], weight: 7, cooldown: 4, telegraph: 0.7, flashParts: ['head'], duration: 2.1, stam: 12,
   cue: { color: '#ffd040', tone: 'knurr' }, audit: [2.5, 5],
-  cond: (m) => !!(m.partById.wingL?.broken || m.partById.wingR?.broken),
+  cond: (m) => !!(m.partById.wingL?.broken || m.partById.wingR?.broken) || m.phase >= 1, // Kurve: ab Glutsturm (45 %) auch mit heilen Flügeln
   marker: { at: 'self', radius: 6.5 }, markerUntil: 0.95,
   hits: [
     { t0: 0.92, t1: 1.3, shape: 'sphere', at: [0, 1.5, 2.8], radius: 2.0, dmg: 24, knock: 'flinch', element: 'fire', status: { type: 'burn' } },
@@ -259,11 +260,60 @@ const flammenstoss = {
   ]),
 };
 
+// ---- Kurve Okt 2026: Am Boden hatte Brathalos kaum Nahkampf (nur Böe 12 und Schwanz nur im Rücken): wer stand oder kreiste, wurde nur vom Feuerball getroffen, der auf die alte Position zielte.
+// Neu: Schnabelhieb (Pick-Lunge), Flammenkranz (Rundum-Feuer am Boden, gegen Kleben/Kreisen) und Vorhalten der Feuerbälle (`lead` + aimTarget unten).
+// ---- 1d. Schnabelhieb: zieht den Kopf zurück, hackt mit dem Schnabel nach vorn-unten und setzt 2,4 m nach; 34 Schaden
+const biss = {
+  id: 'brathalos_biss', range: [0, 8.5], weight: (m, d) => (d < 7 ? 8 : 2.5), cooldown: 2.2, telegraph: 0.55, flashParts: ['head'], duration: 1.7, stam: 5, lead: 0.6, aimYaw: true, tempo: 1.3, cue: { color: '#ffb040', tone: 'zisch' }, audit: [2.5, 5, 8],
+  markerFromHits: true,
+  hits: [{ t0: 0.72, t1: 0.98, shape: 'capsule', from: [0, 2.6, 2.2], to: [0, 0.7, 5.6], radius: 1.4, dmg: 46, knock: 'flinch' }],
+  events: [{ t: 0.74, call: 'peck', all: true }],
+  calls: { peck(m, ctx) { ctx.fx.spark({ x: m.pos.x + Math.sin(m.rot) * 5.2, y: m.pos.y + 0.5, z: m.pos.z + Math.cos(m.rot) * 5.2 }, 14, '#ffb040', 6); ctx.fx.shake?.(0.2, 0.25); } },
+  motion(tau, a) { const f = 2.4 * smooth(clamp01((tau - 0.45) / 0.35)); return { x: a.origin.x + a.dir.x * f, z: a.origin.z + a.dir.z * f }; },
+  pose: mTrack([
+    [0, {}], [0.3, { neck: -0.55, head: -22, jaw: 26, bodyPitch: -8, bodyY: 0.1, tailPitch: 8 }], [0.55, { neck: -0.7, head: -28, jaw: 34, bodyPitch: -10 }],
+    [0.76, { neck: 0.55, head: 22, jaw: 4, bodyPitch: 10, bodyY: -0.1 }, 'lin'], [1.1, { neck: 0.4, head: 14, jaw: 4, bodyPitch: 6 }], [1.7, {}],
+  ]),
+};
+
+// ---- 1e. Flammenkranz: bäumt sich auf, schlägt mit den Flügeln und speit einen Feuerring um sich (r 5,2); 28 Schaden + Brennen. Raus rollen oder zurückweichen
+const kranz = {
+  id: 'brathalos_kranz', range: [0, 6.5], weight: (m, d) => (d < 6 ? 6 : 0), cooldown: 4.5, telegraph: 0.8, flashParts: ['head', 'body'], duration: 2.0, stam: 8, cue: { color: '#ff6a20', tone: 'droehn' }, audit: [2, 4.5], punishRoll: true,
+  marker: { at: 'self', radius: 5.6 }, markerUntil: 1.0,
+  hits: [{ t0: 0.95, t1: 1.1, shape: 'sphere', at: [0, 0.9, 0], radius: 5.2, dmg: 32, knock: 'flinch', element: 'fire', status: { type: 'burn' } }],
+  events: [{ t: 0.95, call: 'ring', all: true }],
+  calls: {
+    ring(m, ctx) {
+      const c = { x: m.pos.x, y: m.pos.y + 0.3, z: m.pos.z };
+      ctx.fx.ring?.(c, 1, 5.4, { color: '#ff8a20', life: 0.45 });
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * 6.28; ctx.fx.spark({ x: c.x + Math.sin(a) * 3.5, y: c.y + 0.6, z: c.z + Math.cos(a) * 3.5 }, 8, '#ff8a20', 5); }
+      ctx.fx.shake?.(0.3, 0.3);
+      ctx.bus.emit('sfx', { name: 'roar', pos: m.pos, low: true });
+    },
+  },
+  pose: mTrack([
+    [0, {}], [0.4, { spread: 1, wing: 50, bodyPitch: -12, bodyY: 0.25, neck: -0.4, head: -20, jaw: 28 }], [0.85, { spread: 1, wing: 65, bodyPitch: -16, bodyY: 0.35, neck: -0.5, head: -24, jaw: 36 }],
+    [0.98, { spread: 1, wing: -40, bodyPitch: 10, bodyY: -0.1, neck: 0.3, head: 12, jaw: 40 }, 'lin'], [1.4, { spread: 1, wing: 20, bodyPitch: 4, jaw: 20 }], [2.0, {}],
+  ]),
+};
+
+// ---- 1f. Glutregen (Fernkampf-Strafe): spuckt vier Glutklumpen im hohen Bogen auf die Stelle, an der der Pirscher gleich steht (Vorhalten) und um ihn herum; Aufschlagmarker rot, Splash r 2,2
+const glutregen = hagel({
+  id: 'brathalos_glutregen', range: [7, 28], weight: 5, cooldown: 5, telegraph: 0.8, flashParts: ['head'], duration: 2.7, stam: 12, audit: [9, 15], cue: { color: '#ff7030', tone: 'schrill' },
+  n: 4, t0: 0.95, step: 0.25, dmg: 24, splash: 2.2, lead: 0.8, kind: 'magma', status: { type: 'burn' },
+  from: (m, inst) => ({ x: inst.origin.x + Math.sin(inst.yaw0) * 3.2, y: inst.origin.y + BEAK_HEIGHT, z: inst.origin.z + Math.cos(inst.yaw0) * 3.2 }),
+  pose: mTrack([
+    [0, {}], [0.45, { neck: -0.6, head: -24, jaw: 30, bodyPitch: -9, bodyY: 0.1, tailPitch: 8 }], [0.85, { neck: -0.7, head: -28, jaw: 38, bodyPitch: -12 }],
+    [0.97, { neck: 0.35, head: 12, jaw: 6, bodyPitch: 6 }, 'lin'], [1.22, { neck: -0.4, head: -18, jaw: 30, bodyPitch: -6 }], [1.47, { neck: 0.35, head: 12, jaw: 6, bodyPitch: 6 }, 'lin'],
+    [1.72, { neck: 0.3, head: 10, jaw: 8, bodyPitch: 5 }], [2.1, { neck: 0.1, head: 2, jaw: 4 }], [2.7, {}],
+  ]),
+});
+
 // ---- 2a. Aufflug: duckt sich, Flügel spreizen, Abheben (Flug-Zustand beginnt am Ende)
 const aufflug = {
   // Take-off cadence is driven by m.flyCd (see `tick`): one take-off every ~30-45 s (21-33 s of ground time + flight), picked sooner when the hunter is far away / in Rotglut.
   id: 'brathalos_aufflug', noTeach: true, range: [0, 40], cooldown: 0, telegraph: 0.6, stam: 22, cue: { color: '#b09060', tone: 'brumm' }, flashParts: ['wingL', 'wingR'], duration: 1.8,
-  weight: (m, dist) => (dist > 14 ? 5 : dist > 8 ? 3 : 1.5) + (m.rage ? 1.5 : 0),
+  weight: (m, dist) => ((dist > 14 ? 5 : dist > 8 ? 3 : 1.5) + (m.rage ? 1.5 : 0)) * 12, // x12: nur wählbar, wenn fällig (cond); mit Biss/Kranz/Glutregen im Pool kam der Aufflug sonst viel zu spät
   cond: (m) => m.flyCd <= 0 && !m.partById.wingL.broken && !m.partById.wingR.broken && !m.blind,
   hits: [],
   events: [{ t: 0.7, call: 'dust', all: true }],
@@ -354,7 +404,7 @@ export const brathalos = {
   bodyRadius: 1.7,
   predator: true, // [L]
   walk: 3.0, run: 7.13, detect: 32, prefer: 6, turn: 0.98, // Owner-Feedback Okt 2026: +15 % (war 2,6 / 6,2 / 0,85)
-  recoverAfter: (m) => (0.35 + m.rng() * 0.5) / (1.15 * m.speedMul),
+  recoverAfter: (m) => (0.12 + m.rng() * 0.3) / (1.15 * m.speedMul), // Kurve Okt 2026: kürzere Pause (war 0,35-0,85)
   drops: ['brathalos_schuppe', 'brathalos_membran', 'glutsack', 'brathalos_rubin'],
   fly: { height: FLY_HEIGHT, minT: 4, maxT: 8, gapMin: 22, gapMax: 33, firstGap: 18, attack: 'brathalos_sturz', radius: 9, speed: 10.35, angSpeed: 0.575, dropDamage: 250 },
   rageAttack: 'brathalos_bruellen',
@@ -371,16 +421,19 @@ export const brathalos = {
       spheres: [{ node: 'tail2', offset: [0, 0, -0.7], r: 0.5 }, { node: 'tail3', offset: [0, 0, -0.5], r: 0.42 }, { node: 'tail3', offset: [0, 0, -1.2], r: 0.42 }] },
   ],
   chains: {
-    brathalos_feuer: [{ atk: 'brathalos_feuerteppich', w: 3 }, { atk: 'brathalos_schwanz', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: null, w: 3 }],
+    brathalos_feuer: [{ atk: 'brathalos_feuerteppich', w: 3 }, { atk: 'brathalos_glutregen', w: 3 }, { atk: 'brathalos_schwanz', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: 'brathalos_biss', w: 3, cond: (m, d) => d < 8 }, { atk: null, w: 3 }],
     brathalos_schwanz: [
       { atk: 'brathalos_boee', w: 2, cond: (m) => !wingBroken(m) }, { atk: 'brathalos_flammenstoss', w: 2, cond: wingBroken },
-      { atk: 'brathalos_feuer', w: 2 }, { atk: null, w: 2 },
+      { atk: 'brathalos_feuer', w: 2 }, { atk: 'brathalos_kranz', w: 2, cond: (m, d) => d < 6.5 }, { atk: null, w: 2 },
     ],
-    brathalos_boee: [{ atk: 'brathalos_feuer', w: 3 }, { atk: null, w: 2 }],
+    brathalos_boee: [{ atk: 'brathalos_feuer', w: 3 }, { atk: 'brathalos_biss', w: 3, cond: (m, d) => d < 8 }, { atk: null, w: 2 }],
+    brathalos_biss: [{ atk: 'brathalos_schwanz', w: 3, cond: (m) => targetBehind(m, 1.6) }, { atk: 'brathalos_kranz', w: 4, cond: (m, d) => d < 6.5 }, { atk: 'brathalos_biss', w: 2, cond: (m, d) => d < 7 }, { atk: 'brathalos_feuer', w: 2 }, { atk: null, w: 2 }],
+    brathalos_kranz: [{ atk: 'brathalos_biss', w: 4, cond: (m, d) => d < 8 }, { atk: 'brathalos_feuer', w: 3 }, { atk: null, w: 2 }],
   },
   phases: [{ at: 0.45, name: 'Glutsturm', cue: { color: '#ff4020', tone: 'droehn' }, special: 'brathalos_feuerteppich' }],
   teachAttack: 'brathalos_feuer', stamina: true, flinchDmg: true,
-  attacks: { brathalos_feuer: feuer, brathalos_feuerteppich: feuerteppich, brathalos_flammenstoss: flammenstoss, brathalos_aufflug: aufflug, brathalos_sturz: sturz, brathalos_boee: boee, brathalos_schwanz: schwanz, brathalos_bruellen: bruellen },
+  chainMax: (m) => (m.flyCd <= 0 ? 0 : 3), // ist der Aufflug fällig, endet die Kette (sonst flog er mit den längeren Nahkampf-Ketten erst nach ~10 s)
+  attacks: { brathalos_feuer: feuer, brathalos_feuerteppich: feuerteppich, brathalos_flammenstoss: flammenstoss, brathalos_aufflug: aufflug, brathalos_sturz: sturz, brathalos_boee: boee, brathalos_schwanz: schwanz, brathalos_bruellen: bruellen, brathalos_biss: biss, brathalos_kranz: kranz, brathalos_glutregen: glutregen, },
   build: () => buildBrathalos({ scale: SC }),
   deadPose: { bodyY: -1.1, bodyRoll: 75, head: 20, neck: -0.3, legL: 40, legR: -30, spread: 0.5, wing: -40 },
   onBreak(m, part) {
@@ -400,8 +453,11 @@ export const brathalos = {
     else if (id === 'brathalos_sturz') { m.air = 0; m._landOnGround?.(); m.setState('combat'); m.recover = 0.9; }
   },
   init(m) { m.flyCd = m.def.fly.firstGap; m._wasUp = false; },
+  // Vorhalten (Kurve Okt 2026, wie Pyrostur): Feuerbälle zielen auf die Position, an der der Pirscher nach Windup + Flug steht (`lead` s, max. 8 m). Umkehren/Rollen entkommt weiter.
+  aimTarget: leadAim,
   /** Flight cadence: the gap timer only runs on the ground; a fresh 21-33 s ground gap is rolled each time he comes down. */
   tick(m, dt) {
+    trackTarget(m, dt); capTired(m, 3.2); // Kurve Okt 2026: Vorhalten + Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     const up = m.flying || m.attack?.id === 'brathalos_aufflug';
     if (up) m._wasUp = true;
     else if (m._wasUp) {
@@ -427,3 +483,5 @@ export const brathalos = {
 
 // Owner-Feedback Okt 2026: Brathalos +15 % Angriffstempo (alle Angriffe inkl. Flug-Sturz)
 for (const a of Object.values(brathalos.attacks)) if (a.tempo === undefined) a.tempo = 1.15;
+// Kurve Okt 2026: Ausdauerkosten ~0,6x (vorher keuchte er bei mehr Nahkampf-Angriffen ständig; 4-6 s Fenster alle ~25 s)
+for (const a of Object.values(brathalos.attacks)) if (a.stam && a.id !== 'brathalos_aufflug') a.stam = Math.max(3, Math.round(a.stam * 0.6));

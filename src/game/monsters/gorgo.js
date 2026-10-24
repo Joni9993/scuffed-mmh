@@ -4,6 +4,7 @@ import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
 import { inRuneAnchor } from '../itemBuffs.js';
+import { capTired, trackTarget, leadAim, hagel } from './kurve.js';
 
 // Gorgo, der Schlackwurm (JR 5, GDD 15.5): ~18 m langer Wurm aus Kopf + 6 Segmenten. Gräbt sich ein (unverwundbar, Schlacke-Hügel),
 // jagt unter der Erde (Jagd-Durchbruch: 2x, Phase 2: 3x hintereinander mit Bodenwarnung unter dem Ziel), spuckt Lava-Brocken (Fächer),
@@ -180,7 +181,7 @@ const MOUTH = 5.0; // Maul-Abstand vor dem Wurzelpunkt (m)
 
 // ---- 1. Graben/Wühlen (Vorspiel der Jagd): taucht ab, Hügel zieht auf das Ziel zu; danach folgen 2 (Phase 2: 3) Durchbrüche am Stück
 const wuehlen = {
-  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 5 : 6), cooldown: 6, telegraph: 0.6, flashParts: ['kopf'], duration: 1.75, stam: 6,
+  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 4 : 4.5), cooldown: 8, telegraph: 0.6, flashParts: ['kopf'], duration: 1.75, stam: 6,
   cue: { color: '#a07040', tone: 'knurr' }, tempo: 1.1,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
@@ -223,7 +224,7 @@ function prepLanding(a) {
 
 // ---- 2a. Stoß (Zwischen-Durchbruch der Jagd): bricht unter dem Ziel durch, taucht sofort wieder ab und setzt nach. Warnung 0,65 s
 const stoss = {
-  id: 'gorgo_stoss', range: [0, 40], weight: 1, cooldown: 0, telegraph: 0.65, flashParts: [], duration: 1.4, stam: 0, internal: true, tgVar: false, noTeach: true,
+  id: 'gorgo_stoss', range: [0, 40], weight: 1, cooldown: 0, lead: 0.8, telegraph: 0.65, flashParts: [], duration: 1.4, stam: 0, internal: true, tgVar: false, noTeach: true,
   cue: { color: '#ff5a1a', tone: 'droehn' }, tempo: 1, audit: [3, 7],
   marker: { at: 'landing', radius: 3.9 }, markerUntil: 0.85,
   prepare: prepLanding,
@@ -242,7 +243,7 @@ const stoss = {
 
 // ---- 2b. Durchbruch (letzter der Jagd, bleibt oben): Bodenwarnung (Risse + Glühen + Rumpeln) >= 0,8 s, dann 30 Schaden + Wurf
 const durchbruch = {
-  id: 'gorgo_durchbruch', range: [0, 40], weight: 1, cooldown: 2, telegraph: 0.8, flashParts: [], duration: 2.1, stam: 0, internal: true, tgVar: false, noTeach: true,
+  id: 'gorgo_durchbruch', range: [0, 40], weight: 1, cooldown: 2, lead: 0.95, telegraph: 0.8, flashParts: [], duration: 2.1, stam: 0, internal: true, tgVar: false, noTeach: true,
   cue: { color: '#ff5a1a', tone: 'droehn' }, tempo: 1, audit: [3, 7],
   marker: { at: 'landing', radius: 3.9 }, markerUntil: 1.0,
   prepare: prepLanding,
@@ -283,7 +284,7 @@ const spuckPose = mTrack([
   [0, {}], [0.35, { neck: 2.4, head: -22, jaw: 30, bodyY: 0.1 }], [0.7, { neck: 3.0, head: -28, jaw: 40 }], [0.85, { neck: 2.4, head: 18, jaw: 10 }, 'lin'], [1.3, { neck: 1.6, head: 10, jaw: 4 }], [2.0, {}],
 ]);
 const spucke = {
-  id: 'gorgo_spucke', range: [7, 24], weight: 7, cooldown: 3, telegraph: 0.7, flashParts: ['kopf'], duration: 2.0, stam: 5, tempo: 1.2,
+  id: 'gorgo_spucke', range: [7, 24], weight: 7, cooldown: 2.2, telegraph: 0.7, flashParts: ['kopf'], duration: 2.0, stam: 5, tempo: 1.2,
   cue: { color: '#ff9a2a', tone: 'zisch' }, cond: (m) => m.phase < 1,
   hits: [], events: [{ t: 0.75, call: 'spuck', all: true }], calls: { spuck: spuckCall(3) }, pose: spuckPose,
 };
@@ -292,6 +293,15 @@ const glutspucke = {
   cue: { color: '#ff3a10', tone: 'zisch' }, cond: (m) => m.phase >= 1,
   hits: [], events: [{ t: 0.75, call: 'spuck', all: true }], calls: { spuck: spuckCall(5) }, pose: spuckPose,
 };
+
+// ---- 3b. Schlackenhagel (Kurve Okt 2026, Fernkampf-Strafe): spuckt 5 glühende Klumpen im hohen Bogen auf die Stelle, an der der Pirscher gleich steht (Vorhalten), und um ihn herum.
+// Aufschlagmarker rot, Splash r 2,3 trifft nur im Aufschlag (keine Pfützen); Rost wie die Spucke.
+const hagelG = hagel({
+  id: 'gorgo_hagel', range: [7, 24], weight: 6, cooldown: 4, telegraph: 0.7, flashParts: ['kopf'], duration: 2.5, stam: 8, audit: [9, 15], tempo: 1.1, cue: { color: '#ffa030', tone: 'schrill' },
+  n: 5, t0: 0.85, step: 0.22, dmg: 26, splash: 2.3, dur: 0.85, arc: 7, lead: 0.9, ring: [1.8, 3.6], kind: 'magma', status: { type: 'rost' },
+  from: (m, inst) => ({ x: inst.origin.x + Math.sin(inst.yaw0) * MOUTH, y: inst.origin.y + 3.4, z: inst.origin.z + Math.cos(inst.yaw0) * MOUTH }),
+  pose: spuckPose,
+});
 
 // ---- 4. Sog: Maul öffnet sich (0,9 s), zieht Pirscher im 12-m-Kegel 2 s an; Rolle bricht den Sog; im Maul 40 Schaden
 const sog = {
@@ -334,7 +344,7 @@ function suctionTick(m, dt) {
 // ---- 5. Körperpeitsche: Halbkreis vor dem Wurm, die Segmente schlagen (20 Schaden)
 const PEITSCHE_LEN = 9;
 const peitsche = {
-  id: 'gorgo_peitsche', range: [0, 9.5], weight: (m) => (m.phase >= 1 ? 8 : 7), cooldown: 2.5, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3'], duration: 2.0, stam: 4, tempo: 1.15,
+  id: 'gorgo_peitsche', range: [0, 9.5], weight: (m) => (m.phase >= 1 ? 8 : 7), cooldown: 2.5, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3'], duration: 2.0, stam: 4, tempo: 1.25,
   cue: { color: '#c070ff', tone: 'klick' }, audit: [3, 6.5],
   marker: { at: 'self', radius: PEITSCHE_LEN }, markerUntil: 0.85,
   cond: (m) => brokenCount(m) < 4,
@@ -374,7 +384,7 @@ const zubiss = {
 // ---- 8. Wurmwalze: der ganze, gerade Körper dreht 180° um seine Mitte (Kopf + Schwanz fegen, Treffer = Körperkontakt, wirft um). Rolle oder Abstand > 10 m
 const WALZE_LEN = 10;
 const walze = {
-  id: 'gorgo_walze', range: [0, 10.5], weight: (m) => (m.phase >= 1 ? 8 : 5), cooldown: 4, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3', 'segment4'], duration: 2.2, stam: 5, tempo: 1.1,
+  id: 'gorgo_walze', range: [0, 10.5], weight: (m, d) => (d > 8.5 ? 2 : m.phase >= 1 ? 8 : 5), cooldown: 3.5, telegraph: 0.7, flashParts: ['segment1', 'segment2', 'segment3', 'segment4'], duration: 2.2, stam: 5, tempo: 1.2,
   cue: { color: '#ff4040', tone: 'droehn' }, audit: [3, 7],
   marker: { at: 'self', radius: WALZE_LEN }, markerUntil: 0.8,
   cond: (m) => brokenCount(m) < 5,
@@ -422,7 +432,7 @@ const ringEvents = (t0, pre) => RING_R.map((_, k) => ({ t: t0 + k * RING_STEP, c
 const WELLE_T = 0.7, WELLE2_T = 1.6;
 const wellePose = [[0, {}], [0.45, { neck: 3.4, head: -22, jaw: 30, bodyY: 0.2 }], [0.66, { neck: 3.6, head: -26, jaw: 36 }], [0.78, { neck: 0, head: 40, jaw: 4, bodyY: -0.6 }, 'lin'], [1.4, { neck: 0.4, head: 10 }]];
 const welle = {
-  id: 'gorgo_welle', range: [0, 13], weight: 6, cooldown: 5, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 2.0, stam: 5, tempo: 1.15,
+  id: 'gorgo_welle', range: [0, 13], weight: (m, d) => (d > 8.5 ? 2.5 : 6), cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 2.0, stam: 5, tempo: 1.25,
   cue: { color: '#ffb030', tone: 'droehn' }, audit: [4.5, 12],
   marker: { at: 'self', radius: RING_R[2] + 1.4 }, markerUntil: WELLE_T,
   cond: (m) => m.phase < 1,
@@ -432,7 +442,7 @@ const welle = {
 };
 // Phase 2 (Glutkern): Doppelwelle – zweite Welle 0,85 s nach der ersten (erst durch, dann wieder auf den Zeitpunkt achten)
 const doppelwelle = {
-  id: 'gorgo_doppelwelle', range: [0, 13], weight: 12, cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 3.0, stam: 6, tempo: 1.15,
+  id: 'gorgo_doppelwelle', range: [0, 13], weight: (m, d) => (d > 8.5 ? 4 : 12), cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 3.0, stam: 6, tempo: 1.2,
   cue: { color: '#ff3a10', tone: 'droehn' }, audit: [4.5, 12],
   marker: { at: 'self', radius: RING_R[2] + 1.4 }, markerUntil: WELLE_T,
   cond: (m) => m.phase >= 1,
@@ -462,14 +472,16 @@ export const gorgo = {
   ],
   attacks: {
     gorgo_wuehlen: wuehlen, gorgo_durchbruch: durchbruch, gorgo_spucke: spucke, gorgo_glutspucke: glutspucke,
-    gorgo_sog: sog, gorgo_peitsche: peitsche, gorgo_schnappen: schnappen,
+    gorgo_sog: sog, gorgo_peitsche: peitsche, gorgo_schnappen: schnappen, gorgo_hagel: hagelG,
     gorgo_stoss: stoss, gorgo_zubiss: zubiss, gorgo_walze: walze, gorgo_welle: welle, gorgo_doppelwelle: doppelwelle,
   },
   // Brocken 2.0
   teachAttack: 'gorgo_spucke', stamina: true, flinchDmg: true,
+  aimTarget: leadAim, // Kurve Okt 2026: Durchbrüche zielen auf die Stelle, an der der Pirscher gleich steht
   chains: {
-    gorgo_spucke: [{ atk: 'gorgo_welle', w: 2 }, { atk: 'gorgo_sog', w: 2 }, { atk: 'gorgo_wuehlen', w: 1 }, { atk: null, w: 1 }],
-    gorgo_glutspucke: [{ atk: 'gorgo_glutspucke', w: 3 }, { atk: 'gorgo_doppelwelle', w: 2 }, { atk: 'gorgo_sog', w: 1 }, { atk: 'gorgo_wuehlen', w: 2 }],
+    gorgo_spucke: [{ atk: 'gorgo_hagel', w: 3 }, { atk: 'gorgo_welle', w: 2 }, { atk: 'gorgo_sog', w: 2 }, { atk: 'gorgo_wuehlen', w: 1 }, { atk: null, w: 1 }], // Kurve: Spucke-Salven gegen Fernkämpfer
+    gorgo_hagel: [{ atk: 'gorgo_welle', w: 2 }, { atk: 'gorgo_doppelwelle', w: 2 }, { atk: 'gorgo_sog', w: 2 }, { atk: 'gorgo_hagel', w: 1 }, { atk: null, w: 2 }],
+    gorgo_glutspucke: [{ atk: 'gorgo_hagel', w: 2 }, { atk: 'gorgo_glutspucke', w: 3 }, { atk: 'gorgo_doppelwelle', w: 2 }, { atk: 'gorgo_sog', w: 1 }, { atk: 'gorgo_wuehlen', w: 2 }],
     gorgo_peitsche: [{ atk: 'gorgo_walze', w: 3 }, { atk: 'gorgo_schnappen', w: 2 }, { atk: 'gorgo_wuehlen', w: 1 }, { atk: null, w: 1 }],
     gorgo_schnappen: [{ atk: 'gorgo_peitsche', w: 2 }, { atk: 'gorgo_walze', w: 2 }, { atk: null, w: 1 }],
     gorgo_sog: [{ atk: 'gorgo_zubiss', w: 5 }, { atk: 'gorgo_peitsche', w: 1 }], // Kette Sog -> Zubiss -> Walze
@@ -507,6 +519,7 @@ export const gorgo = {
   },
   tick(m, dt) {
     const ex = m.extra;
+    trackTarget(m, dt); capTired(m, 3.2); // Kurve Okt 2026: Vorhalten + Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     // ---- Eingraben-Wächter
     if (m.burrowed) {
       if (!m.alive || m.stunT > 0) setBurrowed(m, false); // betäubt (Knallgurke/Kran) oder tot: raus aus dem Boden

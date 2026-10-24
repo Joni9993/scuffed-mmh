@@ -8,6 +8,7 @@ import { Monster, mTrack } from './monster.js';
 import { smooth, clamp01, severTail } from './common.js';
 import { wrapAngle } from '../../core/math.js';
 import { createRng } from '../../core/rng.js';
+import { capTired, trackTarget, leadAim } from './kurve.js';
 import { MIN_TELEGRAPH } from './attack.js';
 
 const R = Math.PI / 180;
@@ -326,9 +327,9 @@ const pranken = strike({
   pose: mTrack([[0, {}], [0.4, { legL: 70, bodyPitch: -6, bodyY: 0.1, head: -8, tailYaw: -20 }], [0.6, { legL: 85, bodyPitch: -10 }], [0.85, { legL: -40, bodyPitch: 14, head: 8, bodyY: -0.2 }, 'lin'], [1.5, {}]]),
 });
 const pranken2 = strike({
-  id: 'voltaro_pranken2', internal: true, range: [0, 9], weight: 0, cooldown: 0, stam: 4, tg: 0.5, dur: 1.35, turn: 0.38, stages: [{ a: 0.3, b: 0.52, f: 1 }], minL: 0.5, maxL: 3,
+  id: 'voltaro_pranken2', internal: true, range: [0, 9], weight: 0, cooldown: 0, stam: 4, tg: 0.5, dur: 1.35, turn: 0.38, stages: [{ a: 0.3, b: 0.52, f: 1 }], minL: 0.5, maxL: 3, reach: 2.0, // Kurve: 2. Hieb setzt näher am Pirscher an (reach 2,0 statt 1,5; sonst ging er bei Abstand 4-5 m knapp vorbei)
   flashParts: ['prankeR'], audit: [3.5, 6],
-  cue: { color: '#e8c13a', tone: 'klick' }, hits: [{ t0: 0.5, t1: 0.74, shape: 'sphere', at: [-0.5, 1.3, 2.2], radius: 1.9, dmg: PK.dmg, knock: 'flinch' }],
+  cue: { color: '#e8c13a', tone: 'klick' }, hits: [{ t0: 0.5, t1: 0.74, shape: 'sphere', at: [-0.5, 1.3, 2.2], radius: 2.05, dmg: PK.dmg, knock: 'flinch' }],
   pose: mTrack([[0, {}], [0.3, { legR: 70, bodyPitch: -6, bodyY: 0.1, tailYaw: 20 }], [0.5, { legR: 85, bodyPitch: -10 }], [0.74, { legR: -40, bodyPitch: 14, bodyY: -0.2 }, 'lin'], [1.35, {}]]),
 });
 const pranken3 = strike({
@@ -438,6 +439,27 @@ const blitzfeld = {
     },
   },
   pose: mTrack([[0, {}], [0.6, { spread: 1, neck: -0.4, head: -25, jaw: 20, bodyPitch: -10, bodyY: 0.15, legL: 25, legR: 25 }], [0.9, { spread: 1, neck: -0.4, head: -25, bodyPitch: -10, bodyY: 0.15 }], [1.2, { neck: 0.3, head: 10, bodyPitch: 8, spread: 0.6, legL: -20, legR: -20 }, 'lin'], [3.0, {}]]),
+};
+
+// ---- Kurve Okt 2026: Funkenschauer (Fernkampf-Strafe, nicht nur im Überladen): fünf Blitze fallen auf die Stelle, an der der Pirscher gleich steht (Vorhalten), und im Ring darum (2,2-4,2 m).
+// Marker rot, Vorwarnung 0,7 s + 0,28 s Staffel, Radius 2,0, 32 Schaden. Raus aus dem Marker oder durchrollen.
+const SCH = { n: 5, warn: 0.7, gap: 0.28, r: 2.0, dmg: 32 };
+const funkenschauer = {
+  id: 'voltaro_funkenschauer', range: [5, 26], weight: normalW(5, 0.7), cooldown: 5, stam: 8, telegraph: 0.8, duration: 3.0, flashParts: ['antennenkamm', 'spulen'], tempo: 1.1, lead: 0.7, audit: [8, 14],
+  cue: { color: '#ffe9a0', tone: 'zisch' }, hits: [],
+  events: [{ t: 0.85, call: 'sched', all: true }],
+  calls: {
+    sched(m, ctx, inst, age = 0) {
+      const base = m.time - age;
+      for (let i = 0; i < SCH.n; i++) {
+        const ang = inst.r(2 * i) * Math.PI * 2, dd = i === 0 ? 0 : 2.2 + inst.r(2 * i + 1) * 2.0, warn = SCH.warn + i * SCH.gap * 0.4;
+        addBolt(m, inst.target.x + Math.sin(ang) * dd, inst.target.z + Math.cos(ang) * dd, SCH.r, base + i * SCH.gap + warn, warn, SCH.dmg, `${inst.key}:s${i}`, 'voltaro_funkenschauer');
+        ctx.fx.bolt?.(crest(m), { x: inst.target.x + Math.sin(ang) * dd, y: ctx.world.heightAt(inst.target.x, inst.target.z) + 0.2, z: inst.target.z + Math.cos(ang) * dd }, { width: 0.18, life: 0.15 + i * 0.03, jag: 1.2 });
+      }
+      ctx.bus.emit('sfx', { name: 'zap', pos: inst.target });
+    },
+  },
+  pose: mTrack([[0, {}], [0.6, { spread: 1, neck: -0.4, head: -25, jaw: 20, bodyPitch: -10, bodyY: 0.15, legL: 25, legR: 25 }], [0.9, { spread: 1, neck: -0.4, head: -25, bodyPitch: -10, bodyY: 0.15 }], [1.4, { neck: 0.3, head: 10, bodyPitch: 8, spread: 0.6, legL: -20, legR: -20 }, 'lin'], [3.0, {}]]),
 };
 
 // ---- Aufladen am Blitzableiter (intern, vom Host in tick() angesetzt): läuft zum Ableiter, Blitz, 3 s laden
@@ -565,6 +587,11 @@ const plasma = {
   pose: mTrack([[0, {}], [0.6, { bodyY: -0.5, legL: 50, legR: 50, bodyPitch: 8, spread: 1 }], [0.95, { bodyY: 0.3, legL: -30, legR: -30, bodyPitch: -14 }], [1.3, { bodyPitch: 16, legL: 40, legR: 40, bodyY: -0.3 }, 'lin'], [1.7, { bodyPitch: 4, spread: 0.5 }], [2.4, {}]]),
 };
 
+// Kurve Okt 2026: Hiebe und Blitzmuster zielen auf die Stelle, an der der Pirscher gleich steht (Umkreisen lohnt nicht mehr; Umkehren/Rollen entkommt)
+pranken.lead = 0.5; pranken2.lead = 0.45; pranken3.lead = 0.5; blitzfeld.lead = 0.7; kettenblitz.lead = 0.7; donnerschlag.lead = 0.6;
+blitzfeld.cooldown = 4.5; blitzfeld.tempo = 1.1;
+for (const a of [pranken, pranken2, pranken3, spulen, funkenlauf, blitzfeld, kettenblitz, donnerschlag, plasma, funkenschauer]) if (a.stam) a.stam = Math.max(3, Math.round(a.stam * 0.6)); // Ausdauer ~0,6x: weniger Keuchen-Pausen
+
 // ======================================================= Definition
 export const voltaro = {
   id: 'voltaro',
@@ -587,7 +614,7 @@ export const voltaro = {
   ],
   attacks: {
     voltaro_pranken: pranken, voltaro_pranken2: pranken2, voltaro_pranken3: pranken3, voltaro_spulen: spulen, voltaro_funkenlauf: funkenlauf, voltaro_blitzfeld: blitzfeld,
-    voltaro_aufladen: aufladen, voltaro_sturmruf: sturmruf, voltaro_kettenblitz: kettenblitz, voltaro_donnerschlag: donnerschlag, voltaro_plasma: plasma,
+    voltaro_aufladen: aufladen, voltaro_sturmruf: sturmruf, voltaro_kettenblitz: kettenblitz, voltaro_donnerschlag: donnerschlag, voltaro_plasma: plasma, voltaro_funkenschauer: funkenschauer,
   },
   chains: {
     // Überladen: Ketten brechen nicht mehr ab (null nur ungeladen)
@@ -596,7 +623,8 @@ export const voltaro = {
     voltaro_pranken3: [{ atk: 'voltaro_blitzfeld', w: 1 }, { atk: null, w: 3 }],
     voltaro_spulen: [{ atk: 'voltaro_pranken', w: 6 }, { atk: 'voltaro_blitzfeld', w: 3 }, { atk: 'voltaro_funkenlauf', w: 2 }, { atk: null, w: 1, cond: noOver }],
     voltaro_funkenlauf: [{ atk: 'voltaro_pranken', w: 3 }, { atk: 'voltaro_blitzfeld', w: 3 }, { atk: null, w: 2, cond: noOver }],
-    voltaro_blitzfeld: [{ atk: 'voltaro_pranken', w: 4 }, { atk: 'voltaro_funkenlauf', w: 2 }, { atk: null, w: 3, cond: noOver }],
+    voltaro_blitzfeld: [{ atk: 'voltaro_pranken', w: 4 }, { atk: 'voltaro_funkenlauf', w: 2 }, { atk: 'voltaro_funkenschauer', w: 3 }, { atk: null, w: 3, cond: noOver }],
+    voltaro_funkenschauer: [{ atk: 'voltaro_blitzfeld', w: 3 }, { atk: 'voltaro_funkenlauf', w: 2 }, { atk: 'voltaro_pranken', w: 3 }, { atk: null, w: 2, cond: noOver }],
     voltaro_kettenblitz: [{ atk: 'voltaro_donnerschlag', w: 3 }, { atk: 'voltaro_plasma', w: 3 }, { atk: 'voltaro_blitzfeld', w: 2 }, { atk: null, w: 1 }],
     voltaro_donnerschlag: [{ atk: 'voltaro_plasma', w: 3 }, { atk: 'voltaro_pranken', w: 2 }, { atk: null, w: 2, cond: noOver }],
     voltaro_plasma: [{ atk: 'voltaro_pranken', w: 5 }, { atk: 'voltaro_blitzfeld', w: 3 }, { atk: null, w: 1 }],
@@ -615,6 +643,7 @@ export const voltaro = {
     },
   }],
   teachAttack: 'voltaro_pranken', stamina: true, flinchDmg: 1500,
+  aimTarget: leadAim,
   build: () => buildVoltaro({ scale: SC }),
   deadPose: { bodyY: -1.0, bodyRoll: 80, head: 20, neck: -0.3, legL: 40, legR: -30 },
   snapExtra: (m) => ({ charge: Math.round(m.charge ?? 0), over: (m.over ?? 0) > 0, tailGone: !!m.severedTail }),
@@ -667,6 +696,7 @@ export const voltaro = {
   tick(m, dt) {
     if (!m.alive) { for (const b of m._bolts) m.ctx.fx.clearMarker?.(`${m.id}:b${b.n}`); m._bolts.length = 0; return; }
     const ctx = m.ctx, auth = m.authority;
+    trackTarget(m, dt); capTired(m, 3.2); // Kurve Okt 2026: Vorhalten + Keuchen max. 3,2 s (Framework würfelt 4-6 s)
 
     // ---- Host: Ableiter-Liste, Ladung, Überladen
     if (auth) {

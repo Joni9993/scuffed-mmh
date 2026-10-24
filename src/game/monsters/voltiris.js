@@ -2,6 +2,7 @@
 // hunters (0-3, discharge = a lethal but rollable bolt), splits into afterimage echoes and closes the arena in a
 // storm cage. Every strike is a deterministic AttackInstance; echoes, lanes and the cage come only from replicated
 // attack events (voltirisEchoes.js). Design: docs/VOLTIRIS_ELDER_REWORK.md
+import { capTired } from './kurve.js';
 import { compileTrack } from '../anim.js';
 import { MREST } from './monster.js';
 import { smooth, clamp01, targetBehind } from './common.js';
@@ -547,6 +548,7 @@ export const voltiris = {
   tick(m, dt) {
     const v = state(m), a = m.attack, tau = a?.inst.sample(a.t).tau ?? 0;
     tickVolt(m, dt);
+    capTired(m, 3.2); // Kurve Okt 2026: Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     updateVoltirisFx(m);
     // Blink gap: invisible and untouchable between vanishing and reappearing.
     const gapDef = a?.inst.def.blinkGap, gap = !!gapDef && m.alive && tau >= gapDef[0] && tau < gapDef[1];
