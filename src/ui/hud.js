@@ -93,7 +93,7 @@ export function createHud(root) {
         if (ids.length && !hunt.training) {
           refs.mut.style.display = '';
           refs.mut.innerHTML = ids.map((i) => `<b title="${MUTATORS[i]?.desc ?? ''}">${MUTATOR_SHORT[i] ?? MUTATORS[i]?.name ?? i}</b>`).join('');
-          api.banner(`Mutatoren: ${ids.map((i) => MUTATORS[i]?.name ?? i).join(' + ')}`, 3);
+          api.banner(`${hunt.quest?.glitchTier ? `Glitch-Stufe ${hunt.quest.glitchTier}` : hunt.quest?.weekly ? 'Wochen-Glitch' : 'Mutatoren'}: ${ids.map((i) => MUTATORS[i]?.name ?? i).join(' + ')}`, 3);
           refs.banner.classList.add('mut');
         }
         hunt.bus?.on('mutfx', (e) => { // Speicherleck: Lock-Marke flackert gruen

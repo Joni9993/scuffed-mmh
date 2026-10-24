@@ -5,18 +5,23 @@ import { weaponStats } from '../data/weapons.js';
 import { FOODS } from '../data/foods.js';
 import { ITEMS } from '../data/items.js';
 import { boxCount } from './inventory.js';
+import { ocProtMul } from '../data/glitchTiers.js';
+import { ocSnapshot } from './endgame.js';
 
 /** Damage reduction = prot / (prot + 80). */
 export const damageReduction = (prot) => prot / (prot + 80);
 
-/** Total protection of an armor set { head, body, legs } (piece ids). */
-export function armorProtection(armor) {
+/** Total protection of an armor set { head, body, legs } (piece ids). `oc` (optional) = Übertaktung { pieceId: 1-5 }: +5 % Teil-Schutz je Stufe, je Teil gerundet. */
+export function armorProtection(armor, oc = null) {
   let sum = 0;
-  for (const slot of SLOTS) sum += ARMOR_PIECES[armor?.[slot]]?.prot ?? 0;
+  for (const slot of SLOTS) {
+    const p = ARMOR_PIECES[armor?.[slot]];
+    if (p) sum += oc ? Math.round(p.prot * ocProtMul(oc[p.id])) : p.prot;
+  }
   return sum;
 }
-/** Schutz inkl. Panzerhaut (+10 % bei 3 Teilen), gerundet. */
-export const armorProtectionEff = (armor) => Math.round(armorProtection(armor) * skillEffects(armorSkills(armor)).protectMul);
+/** Schutz inkl. Übertaktung und Panzerhaut (+10 % bei 3 Teilen), gerundet. */
+export const armorProtectionEff = (armor, oc = null) => Math.round(armorProtection(armor, oc) * skillEffects(armorSkills(armor)).protectMul);
 
 /** Sum the Macken of all worn pieces, each capped at its max level. -> { skillId: level } */
 export function armorSkills(armor) {
@@ -87,7 +92,7 @@ export function buildLoadout(save) {
     const n = Math.min(e.n, def?.max ?? 0, boxCount(save, e.id));
     if (def && n > 0 && items.length < 8) items.push({ id: e.id, n });
   }
-  return { name: save.name, color: save.color, weapon: { type, tier: w.tier, branch: w.branch }, armor, items, food: save.meal };
+  return { name: save.name, color: save.color, weapon: { type, tier: w.tier, branch: w.branch }, armor, items, food: save.meal, oc: ocSnapshot(save) };
 }
 
 /** Standard gear for the debug URL (?scene=hunt) – no save involved. */

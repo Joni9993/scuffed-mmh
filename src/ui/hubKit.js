@@ -39,7 +39,7 @@ export function el(tag, cls = '', html = '') {
 export const REASONS = {
   mats: 'Dir fehlt Material.', schrott: 'Zu wenig Schrott.', full: 'Die Truhe ist voll (99).', owned: 'Hast du schon.', maxed: 'Mehr geht nicht.',
   branch: 'Wähle einen Ast.', has_meal: 'Du hast schon gegessen.', armory_full: `Waffenlager voll (${ARMORY_MAX}). Erst etwas verschrotten.`, bar_full: 'Item-Leiste voll (8).', locked: 'Noch gesperrt.', not_owned: 'Gehört dir nicht.',
-  none: 'Nichts da.', unknown: 'Unbekannt.',
+  none: 'Nichts da.', unknown: 'Unbekannt.', splitter: 'Zu wenig Glitch-Splitter. Hau Glitch-Stufen um.',
 };
 export const reasonText = (r) => REASONS[r.reason] ?? 'Geht nicht.';
 

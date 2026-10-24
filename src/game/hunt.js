@@ -13,6 +13,7 @@ import { computeAim } from './weapons/bow.js';
 import { setLbReticle, lbGlitchActive } from '../ui/lbGlitchOverlay.js';
 import { Player } from './player.js';
 import { resolveMods } from '../data/mutators.js';
+import { glitchQuest } from '../data/glitchTiers.js';
 import { Monster } from './monsters/monster.js';
 import { getMonsterDef } from './monsters/index.js';
 import { spawnPack } from './monsters/jaggling.js';
@@ -56,9 +57,11 @@ export class Hunt {
     this.opts = opts;
     this.input = app.input;
     this.bus = createBus();
-    this.seed = Number(getQuest(opts.quest ?? 'jaggo').fixedSeed ?? opts.seed ?? 1); // Feldstudie: Datum = Seed
+    const gq = glitchQuest(getQuest(opts.quest ?? 'jaggo'), opts); // Glitch-Stufe (opts.tier) / Wochen-Glitch (opts.weekly): feste Mutatoren, Beute-Faktor
+    this.seed = Number(gq.quest.fixedSeed ?? opts.seed ?? 1); // Feldstudie/Wochen-Glitch: Datum = Seed
     this.rng = createRng(this.seed);
-    this.quest = getQuest(opts.quest ?? 'jaggo');
+    this.quest = gq.quest;
+    if (gq.glitch) opts = this.opts = { ...opts, mutators: [] }; // stecken schon im Auftrag (sonst doppelte Beute)
     this.training = !!this.quest.training; // Übungsplatz (Trainingspuppe im Dorf): solo, keine Belohnung/Statistik, Leisten füllen sich
     if (this.training) { opts = this.opts = { ...opts, noFauna: true, noAmbient: true, net: null, god: true }; this.train = newTrain(); }
     this.mods = resolveMods([...(this.quest.mutators ?? []), ...(opts.mutators ?? [])]); // GDD 16.5; Brocken lesen ctx.mods.monster

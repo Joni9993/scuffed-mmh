@@ -273,10 +273,10 @@ export const hubScene = {
     const board = this.board;
     return {
       getPosted: () => board.getPosted().map((p) => ({
-        id: p.postId, quest: p.questId, mutators: p.mutators ?? [], host: p.hostName, joined: p.joined, mine: p.hostId === session.myId,
+        id: p.postId, quest: p.questId, mutators: p.mutators ?? [], tier: p.tier ?? 0, weekly: p.weekly ?? null, host: p.hostName, joined: p.joined, mine: p.hostId === session.myId,
         members: p.members.map((m) => ({ name: m.name, ready: m.ready, me: m.id === session.myId })),
       })),
-      post: (q, mu) => board.post(q, mu),
+      post: (q, mu, extra) => board.post(q, mu, extra),
       join: (id) => board.join(id),
       unpost: () => board.leavePost(),
       setReady: (b) => board.setReady(b),
@@ -384,7 +384,7 @@ export const hubScene = {
     this.starting = true;
     closeStation();
     const save = saveStore.get(), loadout = { ...buildLoadout(save), color: this.myColor(save) }, o = this.opts; // room-resolved colour in the hunt too
-    const base = { quest: st.questId, mutators: st.mutators ?? [], seed: st.seed, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: o.god, nofx: o.nofx };
+    const base = { quest: st.questId, mutators: st.mutators ?? [], tier: st.tier ?? 0, weekly: st.weekly ?? null, seed: st.seed, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: o.god, nofx: o.nofx };
     if (session.role === 'solo') { this.app.goto('hunt', { ...base, aggro: o.aggro }); return; }
     const board = this.board;
     const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, onDispose: () => board.returned() });
