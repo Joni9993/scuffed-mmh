@@ -6,6 +6,7 @@
 //   Glitchpilz (neongrün) Flicker-Teleport, jeder Treffer verwirrt (Steuerung 3 s verkehrt)
 // Wer die Futterstellen vorher abräumt, nimmt ihm die Fähigkeiten. Sein Wischer klaut genau EIN Futter aus dem Beutel (nur die vier Sorten).
 // Farbregel (docs/SMARAGD_BROCKEN.md 1.2): Glitch-Effekte Hacker-Neongrün, nie Cyan/Magenta; Futterfarben (Braun/Rot/Gelbgrün) sind erlaubt.
+import { capTired } from './kurve.js';
 import * as THREE from 'three';
 import { lambert, basic } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
@@ -1032,6 +1033,7 @@ export const mampfaffe = {
     return goEat(m, dt, MAMPFAFFE.EAT_NEAR, far);
   },
   tick(m, dt) {
+    capTired(m, 3.2); // Kurve Okt 2026: Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     visuals(m, dt);
     if (m.authority && m.alive) brain(m, dt);
   },
@@ -1124,3 +1126,6 @@ export const mampfaffe = {
   },
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
 };
+
+// Kurve Okt 2026 (docs/KURVE.md): Ausdauerkosten ~0,6x (vorher keuchte er ~25 % der Jagd, 4-6 s am Stück) -> mehr Angriffe, kürzere Fenster.
+for (const a of Object.values(mampfaffe.attacks)) if (a.stam) a.stam = Math.max(3, Math.round(a.stam * 0.6));

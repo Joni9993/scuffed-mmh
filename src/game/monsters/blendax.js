@@ -3,6 +3,7 @@
 // Wegdrehen = sicher. Hinsehen + im richtigen Moment rollen = Glitch-Konter: Blendax taumelt knapp 2 s.
 // Farbregel (docs/SMARAGD_BROCKEN.md 1.2): alle Glitch-Effekte dieses Brockens sind Hacker-Neongrün, nie Cyan/Magenta.
 // Baut auf Jaggo auf (Angriffe werden NACH Jaggos Tempo-/Größen-Anpassung geklont, siehe retune() in common.js).
+import { capTired, trackTarget, leadAim } from './kurve.js';
 import * as THREE from 'three';
 import { basic } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
@@ -107,6 +108,8 @@ const zickzack = retune(J.jaggo_zickzack, { id: 'blendax_zickzack', dmg: dm([15,
 zickzack.weight = (m) => (m.partById.tail?.broken ? 6 : m.partById.frill?.broken ? 5 : 3);
 const hetzjagd = retune(J.jaggo_hetzjagd, { id: 'blendax_hetzjagd', dmg: dm([30, 24]), tempo: TEMPO, cue: cue('droehn', NEON_PEAK), audit: [8, 14], markerFromHits: true });
 
+for (const c of [bissreihe, zickzack]) for (const h of c.hits) h.radius = Math.round(h.radius * 1.3 * 100) / 100; // Kurve: Bisse/Zickzack-Zonen +30 % (Kugeln auf Kopfhöhe 2,35 m: gingen beim Kreisen knapp über den Pirscher)
+bissreihe.meleeLead = 0.5; zickzack.meleeLead = 0.5; huepfer.meleeLead = 0.5; // Kurve: Nahkampf-Angriffe zielen auf die Stelle, an der der Pirscher gleich steht
 for (const c of [bissreihe, huepfer, schwanz, rueckhuepfer, zickzack, hetzjagd]) { c.markerFromHits = true; delete c.marker; delete c.markerUntil; } // Jaggos ungefähre Ringe weg: Marker = echte Trefferformen
 
 // ---- Blitz: Schirm klappt auf (0,3 s), flackert 24 Hz; bei t = 1,0 s blendet er alle, die ihn ansehen (Kamera zeigt zu Blendax, ±80 Grad).
@@ -281,7 +284,7 @@ export const blendax = {
     blendax_rauschregen: [{ atk: 'blendax_blink', w: 6 }, { atk: 'blendax_sprung', w: 2 }, { atk: null, w: 2 }],
     blendax_blink: [{ atk: 'blendax_sprung', w: 5 }, { atk: 'blendax_bissreihe', w: 3 }, { atk: 'blendax_schwanz', w: 2 }, { atk: null, w: 1 }],
   },
-  aimTarget: aimLead, // Vorhalt für Angriffe mit `lead` (Rauschregen, Blink)
+  aimTarget: (m, ad, tgt) => (ad.meleeLead ? leadAim(m, { lead: ad.meleeLead, aimYaw: true }, tgt, 4) : aimLead(m, ad, tgt)), // Vorhalt: `lead` (Rauschregen, Blink, Geschwindigkeit des Pirschers), `meleeLead` (Kurve: Bisse/Zickzack drehen zur Laufrichtung nach)
   speedFactor: (m) => (m.fogged ? 1.1 : 1) * (m.hopFury > 0 ? 1.15 : 1),
   build: () => buildBlendax({ scale: SC }),
   init(m) {
@@ -295,6 +298,7 @@ export const blendax = {
     };
   },
   tick(m, dt) {
+    trackTarget(m, dt); capTired(m, 3.2); // Kurve Okt 2026: Keuchen max. 3,2 s (Framework würfelt 4-6 s)
     m.fogged = m.ctx.world.zoneAt?.(m.pos.x, m.pos.z) === BLENDAX.FOG_ZONE; // Zone 3: Nebel -> öfter, weiter, schneller
     const e = m.extra;
     e.blitzT = Math.max(0, e.blitzT - dt); e.blitzLock = Math.max(0, e.blitzLock - dt);
@@ -363,3 +367,6 @@ export const blendax = {
   onRage(m, on) { m.extra.eyeMat?.color.set(on ? '#ff3020' : '#ffe14d'); },
 };
 
+
+// Kurve Okt 2026 (docs/KURVE.md): Ausdauerkosten ~0,4x (vorher keuchte er ~25 % der Jagd, 4-6 s am Stück) -> mehr Angriffe, kürzere Fenster.
+for (const a of Object.values(blendax.attacks)) if (a.stam) a.stam = Math.max(2, Math.round(a.stam * 0.4));

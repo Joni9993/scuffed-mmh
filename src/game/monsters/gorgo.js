@@ -181,7 +181,7 @@ const MOUTH = 5.0; // Maul-Abstand vor dem Wurzelpunkt (m)
 
 // ---- 1. Graben/Wühlen (Vorspiel der Jagd): taucht ab, Hügel zieht auf das Ziel zu; danach folgen 2 (Phase 2: 3) Durchbrüche am Stück
 const wuehlen = {
-  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 4 : 4.5), cooldown: 8, telegraph: 0.6, flashParts: ['kopf'], duration: 1.75, stam: 6,
+  id: 'gorgo_wuehlen', noTeach: true, range: [0, 40], weight: (m) => (m.phase >= 1 ? 2.2 : 2.5), cooldown: 10, telegraph: 0.6, flashParts: ['kopf'], duration: 1.75, stam: 6,
   cue: { color: '#a07040', tone: 'knurr' }, tempo: 1.1,
   prepare(a) {
     const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
@@ -297,15 +297,15 @@ const glutspucke = {
 // ---- 3b. Schlackenhagel (Kurve Okt 2026, Fernkampf-Strafe): spuckt 5 glühende Klumpen im hohen Bogen auf die Stelle, an der der Pirscher gleich steht (Vorhalten), und um ihn herum.
 // Aufschlagmarker rot, Splash r 2,3 trifft nur im Aufschlag (keine Pfützen); Rost wie die Spucke.
 const hagelG = hagel({
-  id: 'gorgo_hagel', range: [7, 24], weight: 6, cooldown: 4, telegraph: 0.7, flashParts: ['kopf'], duration: 2.5, stam: 8, audit: [9, 15], tempo: 1.1, cue: { color: '#ffa030', tone: 'schrill' },
-  n: 5, t0: 0.85, step: 0.22, dmg: 26, splash: 2.3, dur: 0.85, arc: 7, lead: 0.9, ring: [1.8, 3.6], kind: 'magma', status: { type: 'rost' },
+  id: 'gorgo_hagel', range: [7, 24], weight: 7, cooldown: 3, telegraph: 0.7, flashParts: ['kopf'], duration: 2.5, stam: 8, audit: [9, 15], tempo: 1.1, cue: { color: '#ffa030', tone: 'schrill' },
+  n: 5, t0: 0.85, step: 0.22, dmg: 34, splash: 2.3, dur: 0.85, arc: 7, lead: 0.9, ring: [1.8, 3.6], kind: 'magma', status: { type: 'rost' },
   from: (m, inst) => ({ x: inst.origin.x + Math.sin(inst.yaw0) * MOUTH, y: inst.origin.y + 3.4, z: inst.origin.z + Math.cos(inst.yaw0) * MOUTH }),
   pose: spuckPose,
 });
 
 // ---- 4. Sog: Maul öffnet sich (0,9 s), zieht Pirscher im 12-m-Kegel 2 s an; Rolle bricht den Sog; im Maul 40 Schaden
 const sog = {
-  id: 'gorgo_sog', range: [6.5, SOG_RANGE], weight: 4, cooldown: 8, telegraph: 0.9, flashParts: ['kopf'], duration: 3.4, stam: 6, tempo: 1.0,
+  id: 'gorgo_sog', range: [6.5, SOG_RANGE], weight: 2.5, cooldown: 8, telegraph: 0.9, flashParts: ['kopf'], duration: 3.4, stam: 6, tempo: 1.0,
   cue: { color: '#a050ff', tone: 'brumm' }, audit: [8, 11],
   marker: { at: 'self', radius: 4 }, markerUntil: SOG_FROM,
   hits: [{ t0: SOG_FROM + 0.3, t1: SOG_FROM + SOG_LEN, shape: 'sphere', at: [0, 1.4, MOUTH - 0.4], radius: 1.8, dmg: 40, knock: 'down' }],
@@ -432,7 +432,7 @@ const ringEvents = (t0, pre) => RING_R.map((_, k) => ({ t: t0 + k * RING_STEP, c
 const WELLE_T = 0.7, WELLE2_T = 1.6;
 const wellePose = [[0, {}], [0.45, { neck: 3.4, head: -22, jaw: 30, bodyY: 0.2 }], [0.66, { neck: 3.6, head: -26, jaw: 36 }], [0.78, { neck: 0, head: 40, jaw: 4, bodyY: -0.6 }, 'lin'], [1.4, { neck: 0.4, head: 10 }]];
 const welle = {
-  id: 'gorgo_welle', range: [0, 13], weight: (m, d) => (d > 8.5 ? 2.5 : 6), cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 2.0, stam: 5, tempo: 1.25,
+  id: 'gorgo_welle', range: [0, 13], weight: (m, d) => (d > 8.5 ? 1 : 6), cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 2.0, stam: 5, tempo: 1.25,
   cue: { color: '#ffb030', tone: 'droehn' }, audit: [4.5, 12],
   marker: { at: 'self', radius: RING_R[2] + 1.4 }, markerUntil: WELLE_T,
   cond: (m) => m.phase < 1,
@@ -442,7 +442,7 @@ const welle = {
 };
 // Phase 2 (Glutkern): Doppelwelle – zweite Welle 0,85 s nach der ersten (erst durch, dann wieder auf den Zeitpunkt achten)
 const doppelwelle = {
-  id: 'gorgo_doppelwelle', range: [0, 13], weight: (m, d) => (d > 8.5 ? 4 : 12), cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 3.0, stam: 6, tempo: 1.2,
+  id: 'gorgo_doppelwelle', range: [0, 13], weight: (m, d) => (d > 8.5 ? 1.5 : 12), cooldown: 4, telegraph: WELLE_T, flashParts: ['kopf', 'segment1'], duration: 3.0, stam: 6, tempo: 1.2,
   cue: { color: '#ff3a10', tone: 'droehn' }, audit: [4.5, 12],
   marker: { at: 'self', radius: RING_R[2] + 1.4 }, markerUntil: WELLE_T,
   cond: (m) => m.phase >= 1,

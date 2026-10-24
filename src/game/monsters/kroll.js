@@ -5,7 +5,7 @@ import { mTrack } from './monster.js';
 import { smooth, clamp01 } from './common.js';
 import { AttackInstance } from './attack.js';
 import { wrapAngle, stepAngle, yawOf } from '../../core/math.js';
-import { capTired, trackTarget, leadAim } from './kurve.js';
+import { capTired, trackTarget, leadAim, hagel } from './kurve.js';
 
 const R = Math.PI / 180;
 const IDLE_YAW = 26, GUARD_YAW = 6, IDLE_BEND = 62, GUARD_BEND = 100; // Grad: Boxer-Haltung / Deckung
@@ -356,6 +356,14 @@ const dampf = {
   ]),
 };
 
+// ---- Kurve Okt 2026 (Rostwerke-Anhebung): Rostgranaten (Fernkampf-Strafe): schleudert vier Rostklumpen im hohen Bogen auf die Stelle, an der der Pirscher gleich steht (Vorhalten), und um ihn herum.
+const granaten = hagel({
+  id: 'kroll_granaten', range: [6, 24], weight: 4, cooldown: 6, telegraph: 0.8, flashParts: ['scherenL', 'scherenR'], duration: 2.6, stam: 6, tempo: 1.1, audit: [8, 14], cue: { color: '#d89a3a', tone: 'schrill' },
+  n: 4, t0: 0.95, step: 0.25, dmg: 20, splash: 2.2, lead: 0.8, kind: 'magma', status: { type: 'rost' },
+  from: (m, inst) => ({ x: inst.origin.x + Math.sin(inst.yaw0) * 2.6, y: inst.origin.y + 2.6, z: inst.origin.z + Math.cos(inst.yaw0) * 2.6 }),
+  pose: mTrack([[0, {}], [0.6, { neck: 0.5, spread: 50, tailPitch: 50, jaw: 60, bodyPitch: -8, bodyY: -0.2 }], [0.95, { neck: 0.2, spread: 0, tailPitch: 70, jaw: 0, wing: 70, bodyPitch: 6 }, 'lin'], [1.6, { neck: 0.1, jaw: 20 }], [2.6, {}]]),
+});
+
 // ---- 4. Kesseldruck (nur Phase 1): Zittern + Ventile pfeifen, Explosion um ihn (Ring), 40. Direkt unter ihm = sicher.
 const RING = 10, RING_R = 3.8, RING_S = 2.1;
 const druck = {
@@ -550,7 +558,7 @@ export const kroll = {
   ],
   attacks: {
     kroll_zange: zange, kroll_griff: griff, kroll_seitrammer: seitrammer, kroll_dampf: dampf, kroll_druck: druck, kroll_wirbel: wirbel, kroll_sprung: sprung,
-    kroll_deckung: deckung, kroll_konter: konter, kroll_doppelsprung: doppelsprung,
+    kroll_deckung: deckung, kroll_konter: konter, kroll_granaten: granaten, kroll_doppelsprung: doppelsprung,
   },
   // Brocken 2.0
   teachAttack: 'kroll_zange', stamina: true, flinchDmg: true,
@@ -559,7 +567,8 @@ export const kroll = {
     kroll_zange: [{ atk: 'kroll_griff', w: 4 }, { atk: 'kroll_seitrammer', w: 3 }, { atk: 'kroll_wirbel', w: 3 }, { atk: 'kroll_dampf', w: 2 }, { atk: null, w: 3 }],
     kroll_seitrammer: [{ atk: 'kroll_griff', w: 4 }, { atk: 'kroll_zange', w: 3 }, { atk: 'kroll_dampf', w: 1 }, { atk: null, w: 1 }], // Seitrammer -> Griff / Zange
     kroll_griff: [{ atk: 'kroll_zange', w: 4 }, { atk: 'kroll_seitrammer', w: 2 }, { atk: null, w: 2 }],
-    kroll_dampf: [{ atk: 'kroll_druck', w: 3 }, { atk: 'kroll_zange', w: 2 }, { atk: 'kroll_seitrammer', w: 5, cond: inPhase2 }, { atk: null, w: 2 }], // HP-Phase 2: Dampf + Ramm
+    kroll_granaten: [{ atk: 'kroll_dampf', w: 2 }, { atk: 'kroll_granaten', w: 2 }, { atk: 'kroll_zange', w: 2 }, { atk: null, w: 2 }],
+    kroll_dampf: [{ atk: 'kroll_granaten', w: 2 }, { atk: 'kroll_druck', w: 3 }, { atk: 'kroll_zange', w: 2 }, { atk: 'kroll_seitrammer', w: 5, cond: inPhase2 }, { atk: null, w: 2 }], // HP-Phase 2: Dampf + Ramm
     kroll_druck: [{ atk: 'kroll_zange', w: 2 }, { atk: null, w: 2 }],
     kroll_wirbel: [{ atk: 'kroll_zange', w: 2 }, { atk: 'kroll_seitrammer', w: 2 }, { atk: null, w: 2 }],
     kroll_sprung: [{ atk: 'kroll_griff', w: 5 }, { atk: 'kroll_zange', w: 2 }, { atk: null, w: 1 }], // Sprung -> Scherengriff

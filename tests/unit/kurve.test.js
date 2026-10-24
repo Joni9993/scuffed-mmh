@@ -277,3 +277,38 @@ describe('Voltaro: Funkenschauer, Vorhalten, Ausdauer', () => {
     for (const a of Object.values(voltaro.attacks)) if (a.stam) expect(a.stam, a.id).toBeLessThanOrEqual(6);
   });
 });
+
+describe('Rostwerke-Anhebung (Kroll/Gorgo/Voltaro) und Smaragd (Blendax/Mampfaffe)', () => {
+  it('Kroll: Rostgranaten ab 6 m, vier Aufschlag-Klumpen mit Rost, in den Ketten', () => {
+    const g = kroll.attacks.kroll_granaten;
+    expect(g.telegraph).toBeGreaterThanOrEqual(MIN_TELEGRAPH);
+    expect(g.events).toHaveLength(4); expect(g.range[0]).toBeGreaterThanOrEqual(6); expect(g.audit?.length).toBeGreaterThan(0);
+    expect(Object.values(kroll.chains).some((l) => l.some((o) => o.atk === 'kroll_granaten'))).toBe(true);
+    const { m } = make({ ...kroll, hp: 1e8 }, 'combat', 0, 12, 3);
+    m.recover = 99; const defs = [];
+    m.projectiles = { spawn: (d) => defs.push(d), update() {}, clear() {} };
+    m.startAttack({ attackId: 'kroll_granaten', t0: 0, origin: { x: 0, y: 0, z: 0 }, yaw: 0, targetPos: { x: 0, y: 0, z: 12 }, seed: 5 });
+    for (let i = 0; i < 3 / DT; i++) { m.update(DT); m.recover = 99; }
+    expect(defs).toHaveLength(4);
+    for (const d of defs) { expect(d.mode).toBe('impact'); expect(d.status.type).toBe('rost'); }
+  });
+  it('Voltaro: Gewittersturm macht die Hiebe 12 % härter, Phase 1 nicht', () => {
+    const { m } = make({ ...voltaro, hp: 1e8 }, 'combat', 0, 6, 3);
+    expect(voltaro.hitDmgMul(m, { dmg: 40 })).toBe(1);
+    m.phase = 1; expect(voltaro.hitDmgMul(m, { dmg: 40 })).toBeCloseTo(1.12);
+    expect(voltaro.hitDmgMul(m, { dmg: 0 })).toBe(1);
+  });
+  it('Blendax: Bisse/Zickzack/Hüpfer halten vor (meleeLead), Keuchen max. 3,2 s, Anti-Kite-Moves bleiben', async () => {
+    const { blendax } = await import('../../src/game/monsters/blendax.js');
+    const { mampfaffe } = await import('../../src/game/monsters/mampfaffe.js');
+    for (const id of ['blendax_bissreihe', 'blendax_zickzack', 'blendax_huepfer']) expect(blendax.attacks[id].meleeLead, id).toBeGreaterThan(0);
+    expect(blendax.attacks.blendax_rauschregen).toBeTruthy(); expect(blendax.attacks.blendax_blink).toBeTruthy();
+    const { m } = make({ ...blendax, hp: 1e8 }, 'combat', 0, 6, 3);
+    m._tv = { x: 4, z: 0 };
+    const out = blendax.aimTarget(m, { meleeLead: 0.5, aimYaw: true }, m.target);
+    expect(out.pos.x).toBeCloseTo(m.target.pos.x + 2, 6);
+    m._taught = true; m.stamina = 0; m.update(DT); m.update(DT);
+    expect(m.tired).toBe(true); expect(m.tiredT).toBeLessThanOrEqual(3.2 + 1e-9);
+    for (const a of Object.values(mampfaffe.attacks)) if (a.stam) expect(a.stam, a.id).toBeLessThanOrEqual(9);
+  });
+});

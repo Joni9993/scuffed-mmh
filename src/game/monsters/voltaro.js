@@ -319,7 +319,7 @@ function strike({ id, tg, dur, turn, stages, minL = 0.8, maxL = 3.8, reach = 1.5
 }
 
 // ---- 1. Prankenhiebe: Ausfallschritt + Hieb, 2–3er Kombo (Kette pranken -> pranken2 -> pranken3)
-const PK = { dmg: 38 };
+const PK = { dmg: 50 }; // Kurve (Rostwerke-Anhebung): war 38 (Rüstung 57 % -> Pranke traf kaum noch)
 const pranken = strike({
   id: 'voltaro_pranken', range: [0, 8.5], weight: normalW(8, 0.75), cooldown: 1.5, stam: 4, tg: 0.6, dur: 1.5, turn: 0.5, stages: [{ a: 0.42, b: 0.66, f: 1 }],
   flashParts: ['prankeL'], audit: [3, 5.5, 7.5],
@@ -397,7 +397,7 @@ const funkenlauf = {
 };
 
 // ---- 4. Blitzfeld: 4–6 Ladungspunkte in Muster (Linie / Kreuz / Ring) um das Ziel, gestaffelt zündend (Boden-Marker ab dem Ausholen)
-const BF = { warn: 0.85, gap: 0.3, r: 2.0, dmg: 40 };
+const BF = { warn: 0.85, gap: 0.3, r: 2.0, dmg: 46 };
 /** Muster der Ladungspunkte (rein, aus Zielposition + Seed): [{ x, z, d }] mit d = Zünd-Verzögerung nach der Vorwarnung. */
 export function fieldPoints(inst, over = false) {
   const T = inst.target, o = inst.origin, dx = T.x - o.x, dz = T.z - o.z, dd = Math.hypot(dx, dz);
@@ -443,9 +443,9 @@ const blitzfeld = {
 
 // ---- Kurve Okt 2026: Funkenschauer (Fernkampf-Strafe, nicht nur im Überladen): fünf Blitze fallen auf die Stelle, an der der Pirscher gleich steht (Vorhalten), und im Ring darum (2,2-4,2 m).
 // Marker rot, Vorwarnung 0,7 s + 0,28 s Staffel, Radius 2,0, 32 Schaden. Raus aus dem Marker oder durchrollen.
-const SCH = { n: 5, warn: 0.7, gap: 0.28, r: 2.0, dmg: 32 };
+const SCH = { n: 5, warn: 0.7, gap: 0.28, r: 2.1, dmg: 38 };
 const funkenschauer = {
-  id: 'voltaro_funkenschauer', range: [5, 26], weight: normalW(5, 0.7), cooldown: 5, stam: 8, telegraph: 0.8, duration: 3.0, flashParts: ['antennenkamm', 'spulen'], tempo: 1.1, lead: 0.7, audit: [8, 14],
+  id: 'voltaro_funkenschauer', range: [5, 26], weight: normalW(7, 0.7), cooldown: 4, stam: 8, telegraph: 0.8, duration: 3.0, flashParts: ['antennenkamm', 'spulen'], tempo: 1.1, lead: 0.7, audit: [8, 14],
   cue: { color: '#ffe9a0', tone: 'zisch' }, hits: [],
   events: [{ t: 0.85, call: 'sched', all: true }],
   calls: {
@@ -643,6 +643,7 @@ export const voltaro = {
     },
   }],
   teachAttack: 'voltaro_pranken', stamina: true, flinchDmg: 1500,
+  hitDmgMul: (m, h) => (m.phase >= 1 && h.dmg > 0 ? 1.12 : 1), // Kurve: Gewittersturm (< 40 %) +12 % Schaden der Hiebe (wie Kroll-P2), Phase 2 muss härter sein als Phase 1
   aimTarget: leadAim,
   build: () => buildVoltaro({ scale: SC }),
   deadPose: { bodyY: -1.0, bodyRoll: 80, head: 20, neck: -0.3, legL: 40, legR: -30 },

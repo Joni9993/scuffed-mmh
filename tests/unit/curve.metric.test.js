@@ -109,6 +109,16 @@ describe('Kurve über 13 Brocken', () => {
     expect(br.circle).toBeGreaterThanOrEqual(0.4 * br.stand);
   }, 900000);
 
+  it('Smaragd-Einstieg liegt über der Rostwerke-Spitze, Mampfaffe >= Blendax, Rostwerke steigen (Kroll <= Gorgo <= Voltaro, je 3 % Toleranz)', () => {
+    const top = Math.max(row('kroll').idx, row('gorgo').idx, row('voltaro').idx);
+    expect(row('blendax').idx).toBeGreaterThanOrEqual(1.05 * row('voltaro').idx);
+    expect(row('blendax').idx).toBeGreaterThan(top);
+    expect(row('mampfaffe').idx).toBeGreaterThanOrEqual(row('blendax').idx);
+    expect(row('krachfaust').idx / row('mampfaffe').idx).toBeLessThanOrEqual(1.6);
+    expect(row('kroll').idx).toBeLessThanOrEqual(1.03 * row('gorgo').idx);
+    expect(row('gorgo').idx).toBeLessThanOrEqual(1.03 * row('voltaro').idx);
+  }, 900000);
+
   it('keine Sprünge > 2x zwischen aufeinanderfolgenden Brocken in meiner Zuständigkeit', () => {
     const mine = new Set(['brathalos', 'kroll', 'gorgo', 'voltaro', 'krachfaust', 'pyrostur', 'felsengroll', 'voltiris', 'gockelok']);
     for (let i = 1; i < IDS.length; i++) if (mine.has(IDS[i]) && mine.has(IDS[i - 1])) expect(row(IDS[i]).idx / row(IDS[i - 1]).idx, `${IDS[i - 1]} -> ${IDS[i]}`).toBeLessThan(2.0);
