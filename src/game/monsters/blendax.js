@@ -11,6 +11,8 @@ import { mTrack } from './monster.js';
 import { jaggo } from './jaggo.js';
 import { retune, severTail, clamp01 } from './common.js';
 import { angleDiff, yawOf } from '../../core/math.js';
+import { glitchDef } from './mprojectiles.js';
+import { aimLead, lobSalve, throwFrom } from './antikite.js';
 
 const SC = 1.5;
 const R = Math.PI / 180;
@@ -91,6 +93,7 @@ const bissreihe = retune(J.jaggo_bissreihe, { id: 'blendax_bissreihe', dmg: dm(1
 bissreihe.weight = (m) => (m.partById.head?.broken ? 6 : 4);
 
 const huepfer = retune(J.jaggo_huepfer, { id: 'blendax_huepfer', dmg: dm(32), tempo: TEMPO, cue: cue('brumm'), range: [3.5, BLENDAX.LEAP_MAX], audit: [5, 9], markerFromHits: true });
+huepfer.weight = (m, d) => (d > 9 ? 1.5 : 3); // Anti-Kite: aus der Ferne lieber Regen/Blink als der (leicht auszuweichende) Hüpfer
 huepfer.prepare = (a) => {
   const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1;
   const len = Math.min(BLENDAX.LEAP_MAX, Math.max(3, d));
@@ -160,6 +163,51 @@ function sprung(i) {
 }
 const sprung1 = sprung(0), sprung2 = sprung(1), sprung3 = sprung(2);
 
+// ---- Anti-Kite (docs/ANTIKITE.md) --------------------------------------------------------------------------------
+// Rauschregen (Fernkämpfer): Schirm flackert 1,0 s, dann regnen vier Neon-Rauschpakete im Bogen um den Jäger (Marker je Paket, Vorhalt auf die Laufrichtung).
+const rauschregen = {
+  id: 'blendax_rauschregen', lockedByBreak: 'frill', range: [7, 30], weight: 10, cooldown: 4, telegraph: 1.0, flashParts: ['frill'], duration: 2.2, tempo: TEMPO, stam: 5,
+  cue: cue('zisch', NEON_HI), audit: [9, 15], lead: 0.9, hits: [],
+  events: [{ t: 1.1, call: 'regen', all: true }],
+  calls: {
+    regen(m, ctx, inst, age = 0) {
+      const from = throwFrom(inst, 1.4, 3.6);
+      lobSalve(m, ctx, inst, age, { make: glitchDef, from, spots: [[0, 0, 0], [-1.7, 0.5, 0.15], [1.7, 0.5, 0.3], [0, -1.9, 0.45]], dur: (d) => 0.7 + d * 0.02, arc: 4, splash: 1.9, dmg: dm(12) });
+      ctx.bus.emit('sfx', { name: 'blendFlash', pos: m.pos });
+      ctx.fx.spark(from, 18, NEON, 6); ctx.fx.spark(from, 8, NEON_PEAK, 4);
+    },
+  },
+  pose: mTrack([
+    [0, {}], [0.3, { spread: 1, head: -10, neck: -0.25, bodyPitch: -6, bodyY: 0.1, tailPitch: -10 }], [1.0, { spread: 1, head: -14, neck: -0.3, bodyPitch: -8, bodyY: 0.14, tailPitch: -10 }],
+    [1.15, { spread: 1, head: 12, neck: 0.3, bodyPitch: 7, bodyY: -0.05 }, 'lin'], [1.8, { spread: 0.5, head: 4, neck: 0.1, bodyPitch: 3 }], [2.2, {}],
+  ]),
+};
+
+// Flimmerblink (Gap-Closer ohne Anlauf): Schirm flackert 1,0 s, dann verschwindet er und steht im selben Moment vor dem Jäger (Marker = Landeplatz + Trefferkugel, 40 Schaden).
+const BLINK_AT = 1.0;
+const blink = {
+  id: 'blendax_blink', range: [7, 24], weight: 10, cooldown: 5, telegraph: 1.0, flashParts: ['frill', 'legs'], duration: 2.0, tempo: TEMPO, stam: 6, lead: 0.6,
+  cue: cue('knurr', NEON_PEAK), audit: [9, 16], markerFromHits: true,
+  prepare(a) {
+    const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1, len = Math.max(0, Math.min(BLENDAX.LEAP_MAX + 8, d - 2.8));
+    a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
+    a.landYaw = yawOf(dx, dz);
+  },
+  hits: [{ t0: BLINK_AT, t1: BLINK_AT + 0.16, shape: 'sphere', at: [0, 1.2, 1.0], radius: 3.0, dmg: dm(22), knock: 'flinch' }],
+  events: [{ t: BLINK_AT, call: 'tp', all: true }],
+  calls: {
+    tp(m, ctx) {
+      ctx.bus.emit('sfx', { name: 'glitchTp', pos: m.pos });
+      ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 3, z: m.pos.z }, 26, NEON, 7); ctx.fx.spark({ x: m.pos.x, y: m.pos.y + 3, z: m.pos.z }, 12, NEON_PEAK, 5);
+    },
+  },
+  motion(tau, a) { return tau < BLINK_AT ? {} : { x: a.landing.x, z: a.landing.z, yaw: a.landYaw }; },
+  pose: mTrack([
+    [0, {}], [0.3, { spread: 1, bodyY: -0.2, bodyPitch: 5, legL: 25, legR: 25 }], [BLINK_AT, { spread: 1, bodyY: -0.4, bodyPitch: 8, legL: 45, legR: 45 }],
+    [BLINK_AT + 0.1, { spread: 0.8, bodyY: 0.1, bodyPitch: -6, head: -10 }], [BLINK_AT + 0.2, { spread: 0.6, bodyY: -0.2, bodyPitch: 8, head: 10 }], [2.0, {}],
+  ]),
+};
+
 // ---------------------------------------------------------------- Kopplung an Welt / Zustände
 const furyOrRage = (m) => m.hopFury > 0 || m.rage;
 
@@ -208,6 +256,7 @@ export const blendax = {
   attacks: {
     blendax_bissreihe: bissreihe, blendax_huepfer: huepfer, blendax_schwanz: schwanz, blendax_rueckhuepfer: rueckhuepfer, blendax_zickzack: zickzack,
     blendax_blitz: blitz, blendax_sprung: sprung1, blendax_sprung2: sprung2, blendax_sprung3: sprung3, blendax_hetzjagd: hetzjagd,
+    blendax_rauschregen: rauschregen, blendax_blink: blink,
   },
   teachAttack: 'blendax_bissreihe',
   recoverAfter: (m) => (0.04 + m.rng() * 0.12) / (1.35 * m.speedMul), // kaum Pause
@@ -228,7 +277,11 @@ export const blendax = {
     blendax_huepfer: [{ atk: 'blendax_sprung2', w: 4, cond: furyOrRage }, { atk: 'blendax_sprung', w: 5 }, { atk: 'blendax_bissreihe', w: 3 }, { atk: null, w: 1 }],
     blendax_schwanz: [{ atk: 'blendax_huepfer', w: 4 }, { atk: 'blendax_bissreihe', w: 3 }, { atk: null, w: 1 }],
     blendax_rueckhuepfer: [{ atk: 'blendax_sprung', w: 5 }, { atk: 'blendax_schwanz', w: 3 }, { atk: null, w: 1 }],
+    // Anti-Kite: Regen -> Blink -> Sprungkette (wer ausweicht, wird eingeholt)
+    blendax_rauschregen: [{ atk: 'blendax_blink', w: 6 }, { atk: 'blendax_sprung', w: 2 }, { atk: null, w: 2 }],
+    blendax_blink: [{ atk: 'blendax_sprung', w: 5 }, { atk: 'blendax_bissreihe', w: 3 }, { atk: 'blendax_schwanz', w: 2 }, { atk: null, w: 1 }],
   },
+  aimTarget: aimLead, // Vorhalt für Angriffe mit `lead` (Rauschregen, Blink)
   speedFactor: (m) => (m.fogged ? 1.1 : 1) * (m.hopFury > 0 ? 1.15 : 1),
   build: () => buildBlendax({ scale: SC }),
   init(m) {
@@ -249,9 +302,9 @@ export const blendax = {
     // Schirm-Flackern (Basic-Material, Farbe = Helligkeit): Blitz-Telegraph 24 Hz hell/dunkel, Kurzschluss wild, benommen aus, sonst gelegentliches Zucken
     const fm = e.frillMat;
     if (!fm || e.frillGone) return;
-    const t = m.time, atk = m.attack?.id === 'blendax_blitz';
+    const t = m.time, atk = m.attack?.id === 'blendax_blitz', flick = atk || m.attack?.id === 'blendax_rauschregen' || (m.attack?.id === 'blendax_blink' && m.attack.inst.sample(m.attack.t).phase === 'telegraph');
     let v = 1;
-    if (atk) v = Math.floor(t * 24) % 2 ? 1 : 0.12;
+    if (flick) v = Math.floor(t * 24) % 2 ? 1 : 0.12;
     else if (m.stunT > 0) v = 0.25 + 0.2 * Math.sin(t * 9);
     else if (e.blitzLock > 0) v = Math.random() < 0.5 ? 0.15 : 1;
     else if ((t * 1.7) % 1 < 0.06) v = 0.45;

@@ -3,7 +3,8 @@ import { lambert, basic } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
 import { smooth, clamp01, tailSweep, targetBehind } from './common.js';
-import { mudDef } from './mprojectiles.js';
+import { mudDef, geroellDef } from './mprojectiles.js';
+import { aimLead, lobSalve, throwFrom } from './antikite.js';
 import { wrapAngle } from '../../core/math.js';
 
 const R = Math.PI / 180;
@@ -375,6 +376,27 @@ const kopfstoss = {
   ]),
 };
 
+// ======================================================= Anti-Kite (docs/ANTIKITE.md)
+// ---- 9. Brockenwurf (Fernkämpfer): wühlt den Kopf in den Boden (0,9 s), reißt einen Brocken los und schleudert drei Stücke im Bogen um den Jäger (Marker je Brocken, 16 Schaden, Vorhalt)
+const brockenwurf = {
+  id: 'barrotz_brockenwurf', range: [8, 24], weight: 5, cooldown: 6, telegraph: 0.9, flashParts: ['head', 'legs'], duration: 2.6, stam: 5, cue: { color: '#e8e0c8', tone: 'knurr' }, audit: [9, 15],
+  lead: 0.9, hits: [],
+  events: [{ t: 1.05, call: 'wurf', all: true }],
+  calls: {
+    wurf(m, ctx, inst, age = 0) {
+      const from = throwFrom(inst, 2.0, 3.0);
+      lobSalve(m, ctx, inst, age, { make: geroellDef, from, spots: [[0, 0, 0], [-2.3, 0.6, 0.3], [2.3, 0.6, 0.6]], dur: (d) => 0.95 + d * 0.025, arc: 6, splash: 2.2, dmg: 16 });
+      ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
+      ctx.fx.spark(from, 16, '#6a4a2a', 6);
+      ctx.fx.shake(0.2, 0.25);
+    },
+  },
+  pose: mTrack([
+    [0, {}], [0.4, { neck: 0.6, head: 30, bodyPitch: 10, bodyY: -0.3, legL: 20, legR: 20 }], [0.8, { neck: 0.7, head: 34, bodyPitch: 12, bodyY: -0.35 }],
+    [0.95, { neck: -0.8, head: -45, bodyPitch: -18, bodyY: 0.3, legL: -15, legR: -15 }, 'lin'], [1.2, { neck: -0.5, head: -25, bodyPitch: -10, bodyY: 0.1 }], [1.7, { neck: 0.2, head: 8, bodyPitch: 4 }], [2.6, {}],
+  ]),
+};
+
 export const barrotz = {
   id: 'barrotz',
   name: 'Barrotz',
@@ -397,6 +419,7 @@ export const barrotz = {
   attacks: {
     barrotz_ramm: ramm, barrotz_hammer: hammer, barrotz_waelzer: waelzer, barrotz_spritzer: spritzer, barrotz_feger: feger,
     barrotz_doppelstampfer: doppel, barrotz_hoerner: hoerner, barrotz_kopfstoss: kopfstoss, barrotz_stummelfeger: stummelfeger,
+    barrotz_brockenwurf: brockenwurf,
   },
   // Brocken 2.0
   teachAttack: 'barrotz_hammer', stamina: true, flinchDmg: true,
@@ -406,8 +429,10 @@ export const barrotz = {
     barrotz_waelzer: [{ atk: 'barrotz_spritzer', w: 1 }],
     barrotz_spritzer: [{ atk: 'barrotz_ramm', w: 3 }, { atk: null, w: 1 }],
     barrotz_ramm: [{ atk: 'barrotz_hoerner', w: 3 }, { atk: null, w: 2 }],
+    barrotz_brockenwurf: [{ atk: 'barrotz_ramm', w: 4 }, { atk: null, w: 2 }], // Anti-Kite: Wurf -> Ramm auf den Ausweichenden
   },
   phases: [{ at: 0.45, name: 'Schlammwut', cue: '#ff4a4a', special: 'barrotz_doppelstampfer', enter: (m) => { m.cds.barrotz_doppelstampfer = 0; } }],
+  aimTarget: aimLead, // Vorhalt für Angriffe mit `lead`
   build: () => buildBarrotz({ scale: SC }),
   init(m) { m.armor = null; m._chained = false; },
   onBreak(m, part) {
@@ -448,8 +473,10 @@ export const barrotz = {
 
 // Owner-Feedback Okt 2026: Barrotz +20 % Angriffstempo (außer Walze) und alle Angriffe 15 % größer (Radius + Reichweite)
 const BARROTZ_TEMPO = 1.2, BARROTZ_SIZE = 1.15;
+const ANTIKITE = new Set(['barrotz_brockenwurf']); // Maße schon final (kein +15 %)
 for (const a of Object.values(barrotz.attacks)) {
   if (a.tempo === undefined) a.tempo = BARROTZ_TEMPO;
+  if (ANTIKITE.has(a.id)) continue;
   for (const h of a.hits ?? []) {
     h.radius *= BARROTZ_SIZE;
     if (h.shape === 'capsule') for (const p of [h.from, h.to]) { p[0] *= BARROTZ_SIZE; p[2] *= BARROTZ_SIZE; }

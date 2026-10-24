@@ -11,6 +11,7 @@ import { lambert, basic } from '../../render/ps1.js';
 import { tex, registerTexture } from '../../render/textures.js';
 import { mTrack } from './monster.js';
 import { kokosDef } from './mprojectiles.js';
+import { aimLead, lobSalve, throwFrom } from './antikite.js';
 import { smooth, clamp01 } from './common.js';
 import { angleDiff, stepAngle, yawOf } from '../../core/math.js';
 
@@ -387,8 +388,9 @@ const rundum = {
 };
 
 // ---- Sprungschlag (Gap-Closer): springt weit (bis 26 m) auf den Pirscher und kracht mit Wucht + Welle herunter
+// Anti-Kite: Gewicht 3 bis 14 m (dort bedienen Obstsalve/Dschungelbeben), 5 bei der ganz weiten Lücke; Ketten-Sprung unten
 const sprungschlag = {
-  id: 'mampfaffe_sprungschlag', range: [8, 26], weight: 5, cooldown: 5, telegraph: 0.6, flashParts: ['legs'], duration: 2.0, tempo: TEMPO,
+  id: 'mampfaffe_sprungschlag', range: [8, 26], weight: (m, d) => (d > 14 ? 5 : 3), cooldown: 5, telegraph: 0.6, flashParts: ['legs'], duration: 2.0, tempo: TEMPO,
   cue: cue('schrill', NEON), audit: [10, 20], stam: 12,
   markerFromHits: true,
   prepare(a) {
@@ -602,6 +604,48 @@ const flimmersprung = {
   pose: mTrack([
     [0, { ...Z }], [0.25, { bodyY: -0.3, bodyPitch: 6, legL: -30, legR: -30 }], [0.5, { bodyY: -0.45, bodyPitch: 8, head: 10, legL: -45, legR: -45 }],
     [0.78, { bodyY: -0.2, bodyPitch: 0 }], [0.86, { legL: 85, legR: 85, bodyPitch: 14, bodyY: -0.1, head: 12 }, 'lin'], [1.2, { legL: 40, legR: 40, bodyPitch: 6 }], [2.0, { ...Z }],
+  ]),
+};
+
+// ---- Anti-Kite (docs/ANTIKITE.md): braucht keinen Futter-Buff -----------------------------------------------------------------------------
+// Obstsalve (Fernkämpfer): Arme hoch, vier Fruchtbomben im hohen Bogen um den Jäger (Marker je Frucht, 22 Schaden, Vorhalt auf die Laufrichtung)
+const obstsalve = {
+  id: 'mampfaffe_obstsalve', range: [7, 24], weight: 12, cooldown: 4, telegraph: 0.8, flashParts: ['prankeL', 'prankeR'], duration: 2.3, tempo: TEMPO, stam: 5,
+  cue: cue('knurr', NEON), audit: [9, 15], lead: 0.9, hits: [],
+  events: [{ t: 1.0, call: 'wurf', all: true }],
+  calls: {
+    wurf(m, ctx, inst, age = 0) {
+      const from = throwFrom(inst, 2.4, 3.2);
+      lobSalve(m, ctx, inst, age, { make: kokosDef, from, spots: [[0, 0, 0], [-1.8, 0.5, 0.15], [1.8, 0.5, 0.3], [0, -2.0, 0.45]], dur: (d) => 1.0 + d * 0.03, arc: 6.5, splash: 2.0, dmg: 22 });
+      ctx.bus.emit('sfx', { name: 'coconut', pos: from });
+      ctx.fx.spark(from, 14, FOODS.kokosnuss.hi, 5);
+    },
+  },
+  pose: mTrack([
+    [0, { ...Z }], [0.35, { legL: -70, legR: -70, bodyPitch: -12, head: -10 }], [0.75, { legL: -100, legR: -100, bodyPitch: -18, bodyY: 0.2, head: -14, wing: 0.2 }],
+    [1.0, { legL: 80, legR: 80, bodyPitch: 14, head: 14, wing: 0 }, 'lin'], [1.4, { legL: 40, legR: 40, bodyPitch: 6, head: 4 }], [2.3, { ...Z }],
+  ]),
+};
+
+// Dschungelbeben (Flächenangriff um Fernkämpfer): Hocksprung, Landung mit einer Druckwelle bis 12,8 m (Roll-Timing oder Weglaufen aus der roten Fläche)
+const dschungelbeben = {
+  id: 'mampfaffe_dschungelbeben', range: [6, 16], weight: 6, cooldown: 7, telegraph: 0.8, flashParts: ['legs'], duration: 2.4, tempo: TEMPO, stam: 8,
+  cue: cue('knurr', NEON_PEAK), audit: [8, 14], markerFromHits: true,
+  hits: [{ t0: 1.35, t1: 1.5, shape: 'sphere', at: [0, 0.5, 0], radius: 12.8, dmg: 28, knock: 'flinch' }],
+  events: [{ t: 1.35, call: 'bumm', all: true }],
+  calls: {
+    bumm(m, ctx) {
+      ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
+      ctx.fx.shake?.(0.6, 0.45);
+      const c = { x: m.pos.x, y: m.pos.y + 0.4, z: m.pos.z };
+      ctx.fx.spark(c, 30, NEON, 8); ctx.fx.spark(c, 14, NEON_PEAK, 6);
+    },
+  },
+  motion(tau) { const k = clamp01((tau - 0.9) / 0.45); return { air: 3.0 * 4 * k * (1 - k) }; },
+  pose: mTrack([
+    [0, { ...Z }], [0.4, { legL: -50, legR: -50, bodyY: -0.4, bodyPitch: 6 }], [0.8, { legL: -90, legR: -90, bodyY: -0.6, wing: 0.3 }],
+    [1.0, { legL: -110, legR: -110, bodyY: 0.5, bodyPitch: -14, wing: 0.6 }], [1.35, { legL: 90, legR: 90, bodyY: -0.5, bodyPitch: 16, wing: 0 }, 'lin'],
+    [1.7, { legL: 50, legR: 50, bodyY: -0.2, bodyPitch: 8 }], [2.4, { ...Z }],
   ]),
 };
 
@@ -824,6 +868,7 @@ function rampageStep(m, dt) {
   const opts = [];
   const add = (id, w) => { const a = A[id]; if (a && id !== e.last && dist >= a.range[0] && dist <= a.range[1] && (!a.cond || a.cond(m, m.ctx)) && m._atkAllowed(a)) opts.push([id, w]); };
   add('mampfaffe_sprungschlag', 6); add('mampfaffe_rolle', 2);
+  add('mampfaffe_obstsalve', 4); add('mampfaffe_dschungelbeben', 3);
   add('mampfaffe_rundum', 5); add('mampfaffe_faeuste', 4); add('mampfaffe_erdschlag', 4); add('mampfaffe_stampfer', 3); add('mampfaffe_grabbel', 1.5);
   if (bk) add(bk, 4);
   if (!opts.length) { m._navTo(dt, tgt.pos.x, tgt.pos.z, m.def.run, 3.2 * turn); return true; } // hinterher, nie Pause
@@ -936,6 +981,7 @@ export const mampfaffe = {
     mampfaffe_faeuste: faeuste, mampfaffe_grabbel: grabbel, mampfaffe_stampfer: stampfer, mampfaffe_rolle: rolle, mampfaffe_brust: brust, mampfaffe_fressen: fressen,
     mampfaffe_erdschlag: erdschlag, mampfaffe_rundum: rundum, mampfaffe_sprungschlag: sprungschlag,
     mampfaffe_kokoswurf: kokoswurf, mampfaffe_feuerruelpser: feuerruelpser, mampfaffe_stinkwolke: stinkwolke, mampfaffe_flimmersprung: flimmersprung,
+    mampfaffe_obstsalve: obstsalve, mampfaffe_dschungelbeben: dschungelbeben,
   },
   teachAttack: 'mampfaffe_faeuste',
   recoverAfter: (m) => (m.extra.fz === 'rampage' ? 0.03 + m.rng() * 0.05 : (0.1 + m.rng() * 0.22) / m.speedMul), // Affenwut: kaum Atempause
@@ -954,9 +1000,12 @@ export const mampfaffe = {
     mampfaffe_grabbel: [{ atk: 'mampfaffe_faeuste', w: 4 }, { atk: null, w: 2 }],
     mampfaffe_rolle: [{ atk: 'mampfaffe_stampfer', w: 2 }, { atk: 'mampfaffe_sprungschlag', w: 2 }, { atk: null, w: 3 }],
     mampfaffe_rundum: [{ atk: 'mampfaffe_erdschlag', w: 3 }, { atk: 'mampfaffe_faeuste', w: 2 }, { atk: null, w: 3 }],
-    mampfaffe_sprungschlag: [{ atk: 'mampfaffe_rundum', w: 4 }, { atk: 'mampfaffe_faeuste', w: 3 }, { atk: null, w: 2 }],
+    mampfaffe_sprungschlag: [{ atk: 'mampfaffe_rundum', w: 4 }, { atk: 'mampfaffe_faeuste', w: 3 }, { atk: 'mampfaffe_sprungschlag', w: 2 }, { atk: null, w: 3 }], // Kettensprung: wer wegläuft, wird gleich nochmal angesprungen
+    mampfaffe_obstsalve: [{ atk: 'mampfaffe_sprungschlag', w: 3 }, { atk: 'mampfaffe_rolle', w: 1 }, { atk: null, w: 4 }], // Anti-Kite: Salve -> Sprung auf den Ausweichenden
+    mampfaffe_dschungelbeben: [{ atk: 'mampfaffe_sprungschlag', w: 3 }, { atk: 'mampfaffe_rolle', w: 2 }, { atk: 'mampfaffe_faeuste', w: 2 }, { atk: null, w: 2 }],
     mampfaffe_brust: [{ atk: 'mampfaffe_rolle', w: 2 }, { atk: 'mampfaffe_faeuste', w: 3 }],
   },
+  aimTarget: aimLead, // Vorhalt für Angriffe mit `lead` (Obstsalve)
   speedFactor: (m) => (m.extra.fz === 'rampage' ? MAMPFAFFE.RAMPAGE_SPEED : m.extra.fz === 'forage' ? 1.4 : 1),
   dmgFactor: (m) => (m.extra.hungry ? 1.1 : 1), // Knurrender Magen: +10 % Schaden
   hitDmgMul: (m, hit) => (hit.side && m.partById['pranke' + hit.side]?.broken ? 0.75 : 1), // Faustbruch: -25 % auf der Seite

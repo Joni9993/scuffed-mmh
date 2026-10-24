@@ -3,6 +3,8 @@ import { mTrack } from './monster.js';
 import { yawOf } from '../../core/math.js';
 import { spawnPack } from './jaggling.js';
 import { severTail } from './common.js';
+import { geroellDef } from './mprojectiles.js';
+import { aimLead, lobSalve, throwFrom } from './antikite.js';
 
 const SC = 1.3;
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -166,6 +168,70 @@ const hetzjagd = {
   ]),
 };
 
+// ======================================================= Anti-Kite (docs/ANTIKITE.md): Einsteiger-Brocken -> lange, klare Ankündigung (>= 1,0 s, ohne Timing-Variation), mäßiger Schaden
+const SOFT = { tempo: 1, tgVar: false, stam: 3 }; // Tempo 1 (nicht Jaggos +25 %), feste Ankündigung
+
+// ---- Geröllwurf (Fernkämpfer): scharrt 1,0 s (Beine blinken), schleudert zwei Brocken im Bogen auf den Jäger (Aufschlag-Marker, 12 Schaden, Vorhalt auf die Laufrichtung)
+const geroellwurf = {
+  id: 'jaggo_geroellwurf', range: [7, 22], weight: 5, cooldown: 5, telegraph: 1.0, flashParts: ['legs'], duration: 2.5, cue: { color: '#d6a85a', tone: 'brumm' }, audit: [8, 14],
+  ...SOFT, lead: 0.9, hits: [],
+  events: [{ t: 1.12, call: 'wurf', all: true }],
+  calls: {
+    wurf(m, ctx, inst, age = 0) {
+      const from = throwFrom(inst, 1.8, 2.2);
+      lobSalve(m, ctx, inst, age, { make: geroellDef, from, spots: [[0, 0, 0], [1.4, 0.6, 0.35]], dur: (d) => 0.85 + d * 0.025, arc: 5, splash: 1.7, dmg: 12 });
+      ctx.bus.emit('sfx', { name: 'heavy', pos: m.pos });
+      ctx.fx.spark(from, 12, '#b8a888', 5);
+    },
+  },
+  pose: mTrack([
+    [0, {}], [0.3, { bodyY: -0.25, bodyPitch: 10, neck: 0.3, head: 12, legL: 40, legR: -10 }], [0.5, { bodyY: -0.28, bodyPitch: 11, legL: -25, legR: 40 }],
+    [0.7, { bodyY: -0.28, bodyPitch: 11, legL: 40, legR: -25 }], [0.9, { bodyY: -0.2, bodyPitch: -8, neck: -0.45, head: -26, legL: 10, legR: 10 }], [1.0, { bodyY: 0.05, bodyPitch: -12, neck: -0.55, head: -32 }],
+    [1.14, { bodyY: -0.1, bodyPitch: 12, neck: 0.55, head: 22 }, 'lin'], [1.6, { bodyPitch: 6, neck: 0.2, head: 6 }], [2.5, {}],
+  ]),
+};
+
+// ---- Drehbiss (gegen Umkreisen): duckt sich zurück (Kopf hoch, 1,0 s), dann eine schnelle Drehung mit gestrecktem Kopf rundum (Radius ~5 m, 14 Schaden)
+const drehbiss = {
+  id: 'jaggo_drehbiss', range: [0, 6.5], weight: 5, cooldown: 4, telegraph: 1.0, flashParts: ['body', 'tail'], duration: 2.2, noFace: true, cue: { color: '#f2f2c8', tone: 'schrill' }, audit: [2, 4.5],
+  ...SOFT, stam: 4,
+  marker: { at: 'self', radius: 5.2 }, markerUntil: 1.15,
+  hits: [
+    { t0: 1.02, t1: 1.62, shape: 'sphere', at: [0, 2.0, 3.4], radius: 1.4, dmg: 16, knock: 'flinch' },
+    { t0: 1.02, t1: 1.62, shape: 'capsule', from: [0, 1.4, -1.2], to: [0, 1.3, -3.6], radius: 1.1, dmg: 12, knock: 'flinch' }, // Schwanz zieht hinterher
+  ],
+  motion(tau, a) {
+    const sign = a.r(0) < 0.5 ? 1 : -1;
+    return { yaw: a.yaw0 + sign * (-0.35 * smooth(clamp01(tau / 0.9)) + (Math.PI * 2 + 0.35) * smooth(clamp01((tau - 1.0) / 0.6))) };
+  },
+  pose: mTrack([
+    [0, {}], [0.5, { neck: -0.5, head: -16, bodyPitch: -8, bodyY: 0.08, tailYaw: -28, bodyRoll: 10 }], [1.0, { neck: -0.55, head: -18, bodyPitch: -9, bodyY: 0.1, tailYaw: -30, bodyRoll: 12 }],
+    [1.12, { neck: 0.5, head: 14, bodyPitch: 9, bodyY: -0.1, tailYaw: 30, bodyRoll: 0 }], [1.62, { neck: 0.4, head: 10, bodyPitch: 7, bodyY: -0.1, tailYaw: 25 }], [2.2, {}],
+  ]),
+};
+
+// ---- Weitsprung (Gap-Closer gegen Fernkämpfer): geht 1,1 s tief in die Hocke, springt bis 17 m auf den Jäger (Landemarker = Trefferkugel, 18 Schaden)
+const fernsprung = {
+  id: 'jaggo_fernsprung', range: [9.5, 22], weight: 3, cooldown: 8, telegraph: 1.1, flashParts: ['legs'], duration: 3.0, cue: { color: '#ff9a3c', tone: 'droehn' }, audit: [11, 18],
+  ...SOFT, stam: 4, lead: 0.9,
+  marker: { at: 'landing', radius: 3.6 }, markerUntil: 1.9,
+  prepare(a) {
+    const dx = a.target.x - a.origin.x, dz = a.target.z - a.origin.z, d = Math.hypot(dx, dz) || 1, len = Math.min(17, Math.max(5, d));
+    a.landing = { x: a.origin.x + (dx / d) * len, z: a.origin.z + (dz / d) * len };
+    a.jumpYaw = yawOf(dx, dz);
+  },
+  hits: [{ t0: 1.82, t1: 1.96, shape: 'sphere', at: [0, 0.9, 0], radius: 3.1, dmg: 18, knock: 'flinch' }],
+  motion(tau, a) {
+    const k = clamp01((tau - 1.1) / 0.7);
+    return { x: a.origin.x + (a.landing.x - a.origin.x) * k, z: a.origin.z + (a.landing.z - a.origin.z) * k, yaw: a.jumpYaw, air: 4.0 * 4 * k * (1 - k) };
+  },
+  pose: mTrack([
+    [0, {}], [0.5, { bodyY: -0.45, bodyPitch: 8, legL: 50, legR: 50, neck: -0.2 }], [1.1, { bodyY: -0.55, bodyPitch: 10, legL: 58, legR: 58 }],
+    [1.3, { bodyY: 0.2, legL: -35, legR: -35, bodyPitch: -10, neck: -0.2 }], [1.8, { bodyY: 0, bodyPitch: 6, legL: 25, legR: 25, neck: 0.3 }],
+    [1.96, { bodyY: -0.35, bodyPitch: 8, legL: 45, legR: 45 }], [2.5, { bodyY: -0.1, legL: 10, legR: 10 }], [3.0, {}],
+  ]),
+};
+
 export const jaggo = {
   id: 'jaggo',
   name: 'Jaggo der Große',
@@ -185,7 +251,8 @@ export const jaggo = {
     { id: 'tail', label: 'Schwanz', factor: 0.8, breakHp: 700, jitter: 0.06, elem: { fire: 10, shock: 10 },
       spheres: [{ node: 'tail1', offset: [0, 0, -0.8], r: 0.45 }, { node: 'tail2', offset: [0, 0, -0.7], r: 0.35 }] },
   ],
-  attacks: { jaggo_bissreihe: bissreihe, jaggo_huepfer: huepfer, jaggo_schwanz: schwanz, jaggo_rudelruf: rudelruf, jaggo_zickzack: zickzack, jaggo_rueckhuepfer: rueckhuepfer, jaggo_hetzjagd: hetzjagd },
+  attacks: { jaggo_bissreihe: bissreihe, jaggo_huepfer: huepfer, jaggo_schwanz: schwanz, jaggo_rudelruf: rudelruf, jaggo_zickzack: zickzack, jaggo_rueckhuepfer: rueckhuepfer, jaggo_hetzjagd: hetzjagd,
+    jaggo_geroellwurf: geroellwurf, jaggo_drehbiss: drehbiss, jaggo_fernsprung: fernsprung },
   teachAttack: 'jaggo_bissreihe',
   recoverAfter: (m) => (0.2 + m.rng() * 0.4) / (1.25 * m.speedMul), // Brocken 2.0: kürzere Grundpause gleicht Ketten-End-Erholung + Erschöpfung aus (nie leichter als vorher)
   stamina: true,
@@ -195,10 +262,15 @@ export const jaggo = {
     jaggo_bissreihe: [
       { atk: 'jaggo_huepfer', w: 2 }, { atk: 'jaggo_rueckhuepfer', w: 2 }, { atk: 'jaggo_schwanz', w: 2 }, { atk: null, w: 3 },
       { atk: 'jaggo_zickzack', w: 4, cond: broken }, // Kammbruch: mehr Beisserei
+      { atk: 'jaggo_drehbiss', w: 5 }, // Anti-Umkreisen: nach den Bissen die Rundum-Drehung
     ],
-    jaggo_zickzack: [{ atk: 'jaggo_bissreihe', w: 3 }, { atk: null, w: 2 }],
+    jaggo_zickzack: [{ atk: 'jaggo_bissreihe', w: 3 }, { atk: 'jaggo_drehbiss', w: 2 }, { atk: null, w: 2 }],
+    jaggo_drehbiss: [{ atk: 'jaggo_bissreihe', w: 3 }, { atk: 'jaggo_huepfer', w: 2 }, { atk: null, w: 3 }],
+    jaggo_geroellwurf: [{ atk: 'jaggo_fernsprung', w: 3 }, { atk: null, w: 3 }], // Anti-Kite: Wurf -> Weitsprung auf den Ausweichenden
+    jaggo_fernsprung: [{ atk: 'jaggo_bissreihe', w: 4 }, { atk: 'jaggo_drehbiss', w: 2 }, { atk: null, w: 2 }],
     jaggo_rudelruf: [{ atk: 'jaggo_hetzjagd', w: 3 }, { atk: 'jaggo_huepfer', w: 1 }],
   },
+  aimTarget: aimLead, // Vorhalt für Angriffe mit `lead` (Geröllwurf, Weitsprung)
   build: () => buildRaptor({ scale: SC, skin: 'scale', crest: true }),
   poseHook(m, p) {
     const inst = m.attack?.inst;
@@ -218,9 +290,10 @@ export const jaggo = {
 
 // Owner-Feedback Okt 2026: Jaggo +25 % Angriffstempo, Treffer-Zonen +20 % (Rudelruf-Bann bleibt 8 m)
 const JAGGO_TEMPO = 1.25, JAGGO_SIZE = 1.2;
+const ANTIKITE = new Set(['jaggo_geroellwurf', 'jaggo_drehbiss', 'jaggo_fernsprung']); // Maße schon final, Tempo 1
 for (const a of Object.values(jaggo.attacks)) {
   if (a.tempo === undefined) a.tempo = JAGGO_TEMPO;
-  if (a.id === 'jaggo_rudelruf') continue;
+  if (a.id === 'jaggo_rudelruf' || ANTIKITE.has(a.id)) continue;
   for (const h of a.hits ?? []) {
     h.radius *= JAGGO_SIZE;
     if (h.shape === 'capsule') for (const p of [h.from, h.to]) { p[0] *= JAGGO_SIZE; p[2] *= JAGGO_SIZE; }
