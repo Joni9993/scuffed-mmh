@@ -4,6 +4,8 @@ import { rollReward, rollBreak } from '../data/drops.js';
 import { boxAddAll, boxRemove, addSchrott } from './inventory.js';
 import { BESTIARY } from '../data/compendium.js';
 import { applyChestResult } from './huntChest.js';
+import { recordGlitchWin } from './endgame.js';
+import { isTierQuest } from '../data/glitchTiers.js';
 
 export const MAX_JR = 14;
 
@@ -108,15 +110,23 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
     const b = BESTIARY.find((x) => x.id === id);
     if (b) for (const e of b.entries) if (e.at > before && e.at <= after) book.push({ monster: b.name, name: e.name });
   }
-  let jrUp = null, firstClear = false;
+  let jrUp = null, firstClear = false, glitch = null, best = null;
   if (rewards.result === 'win') {
     save.stats.wins++;
-    firstClear = !save.clears[quest.id];
+    const variant = !!(quest.glitchTier || quest.weekly); // Glitch-Stufe/Wochen-Glitch: eigene Bestzeiten, nie Rang-Aufstieg
+    firstClear = !variant && !save.clears[quest.id];
     save.clears[quest.id] = (save.clears[quest.id] ?? 0) + 1;
+    const firstKill = !!quest.monster && !(save.kills[quest.monster] > 0);
     if (quest.monster) save.kills[quest.monster] = (save.kills[quest.monster] ?? 0) + 1;
     const t = Math.floor(Number(info.time));
-    if (t > 0 && (!save.best[quest.id] || t < save.best[quest.id])) save.best[quest.id] = t;
-    if (quest.jrUp && save.jr < quest.jrUp) { save.jr = Math.min(MAX_JR, quest.jrUp); jrUp = save.jr; }
+    if (variant) {
+      glitch = recordGlitchWin(save, quest, t);
+      if (glitch.tier > 0 && glitch.time > 0) best = { tier: glitch.tier, time: glitch.time, prev: glitch.prevBest, isNew: glitch.newBest };
+    } else {
+      if (firstKill && isTierQuest(quest)) glitch = { tier: 0, splitter: 0, weeklyBonus: 0, unlocked: 1, award: null }; // erster Sieg gegen diesen Brocken: Glitch-Stufe 1 offen
+      if (t > 0) { const prev = save.best[quest.id] ?? null; best = { tier: 0, time: t, prev, isNew: !prev || t < prev }; if (best.isNew) save.best[quest.id] = t; }
+      if (quest.jrUp && save.jr < quest.jrUp) { save.jr = Math.min(MAX_JR, quest.jrUp); jrUp = save.jr; }
+    }
   } else save.stats.fails++;
   const st = save.stats;
   st.playtime += Math.max(0, Math.min(86400, Math.floor(Number(info.time) || 0)));
@@ -124,7 +134,7 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
   st.carves += Math.max(0, Math.floor(Number(info.carves) || 0));
   st.glitch += Math.max(0, Math.floor(Number(info.glitch) || 0));
   save.meal = null; // one meal per hunt
-  return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear, rp: (save.rp ?? 0) - rpBefore, keyOpen: openKeys(save).filter((k) => !openBefore.includes(k)), book };
+  return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear, rp: (save.rp ?? 0) - rpBefore, glitch, best, keyOpen: openKeys(save).filter((k) => !openBefore.includes(k)), book };
 }
 
 export const questById = getQuest;

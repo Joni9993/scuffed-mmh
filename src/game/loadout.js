@@ -2,6 +2,7 @@
 // protect, flinkfuss, stats, dmgMul, v.maxHp/maxStamina, resist, itemSpeed; wraps takeHit for Dickschädel / Hitzefell.
 import { weaponStats } from '../data/weapons.js';
 import { armorProtection, armorSkills, skillEffects, foodEffects } from '../meta/loadout.js';
+import { ocPowerMul } from '../data/glitchTiers.js';
 
 const EISEN_T = { burn: 10, poison: 12, verwirrt: 3, itemlock: 1 }; // Standarddauern der Zustände, die Eisenmagen kürzt
 const REALITY_T={...EISEN_T,mud:25,rost:20};
@@ -13,12 +14,13 @@ export function applyLoadout(player, lo, { reapply = false } = {}) {
   const sk = skillEffects(skills);
   const food = foodEffects(lo.food);
 
+  stats.power *= ocPowerMul(lo.oc?.weapons?.[w.type]); // Übertaktung (Schmiede): +4 % Kraft je Stufe
   stats.crit += sk.crit;
   stats.partDmgMul=(stats.partDmgMul??1)*sk.partDmgMul;
   player.stats = stats;
   player.weaponTier = w.tier; player.weaponBranch = w.branch;
   if (w.branch && player.def.tierMesh) player.rebuildWeaponMesh(w.tier, w.branch); // [KT] branch-specific mesh (katana)
-  player.protect = Math.round(armorProtection(lo.armor) * sk.protectMul); // Panzerhaut
+  player.protect = Math.round(armorProtection(lo.armor, lo.oc?.armor) * sk.protectMul); // Übertaktung + Panzerhaut
   player.flinkfuss = sk.flinkfuss;
   player.skills = skills;
   player.dmgMul = 1 + food.atk;

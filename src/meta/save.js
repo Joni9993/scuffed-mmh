@@ -5,9 +5,11 @@ import { ARMOR_PIECES, DEFAULT_ARMOR, SLOTS } from '../data/armor.js';
 import { WEAPON_TYPES } from '../data/weapons.js';
 import { FOODS } from '../data/foods.js';
 import { getQuest, RANK_RP } from '../data/quests.js';
+import { cleanTier, cleanOc, cleanWeekKey, MAX_TIER } from '../data/glitchTiers.js';
 
 export const SAVE_KEY = 'scuffedhunter.save.v1';
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
+export const MAX_SPLITTER = 999999;
 export const MAX_SCHROTT = 999999;
 export const BAR_SLOTS = 8;
 export const PLAYER_COLORS = ['#5ad8ff', '#ff6b6b', '#7dff7d', '#ffd84a', '#c08aff', '#ff9a3a', '#f4f0d0', '#ff7ad0'];
@@ -32,6 +34,10 @@ export function defaultSave() {
     best: {}, // questId -> fastest win (seconds)
     fights: {}, // monsterId -> Kämpfe (Sieg oder Niederlage) – schaltet Kompendium-Einträge frei
     bookSeen: {}, // monsterId -> gelesene Kompendium-Einträge (NEU-Markierung)
+    // Endgame (docs/ENDGAME.md): cleared = höchste geschaffte Glitch-Stufe je Brocken, best = Bestzeit (s) je Brocken x Stufe 1-10,
+    // splitter = Währung, weekly = zuletzt gewonnene Wochen-Glitch-Woche ('2026-W43' oder '')
+    glitch: { cleared: {}, best: {}, splitter: 0, weekly: '' },
+    oc: { weapons: {}, armor: {} }, // Übertaktung 1-5: Waffentyp -> n, Rüstungsteil-ID -> n
     created: Date.now(), updated: Date.now(),
   };
 }
@@ -56,6 +62,8 @@ export const MIGRATIONS = {
     if (isObj(d.clears)) for (const [q, n] of Object.entries(d.clears)) { const m = getQuest(q)?.monster; if (m) kills[m] = (kills[m] ?? 0) + (Number(n) || 0); }
     return { ...d, version: 2, kills: isObj(d.kills) ? d.kills : kills, best: isObj(d.best) ? d.best : {} };
   },
+  // v2 -> v3: Glitch-Stufen (glitch) + Übertaktung (oc) – sanitize() füllt die Defaults, hier nur die Versionsstufe
+  2(d) { return { ...d, version: 3, glitch: isObj(d.glitch) ? d.glitch : undefined, oc: isObj(d.oc) ? d.oc : undefined }; },
 };
 
 const int = (v, lo, hi, def) => {
@@ -128,6 +136,19 @@ export function sanitize(d) {
   const fsrc = isObj(d.fights) ? d.fights : s.kills;
   for (const [id, n] of Object.entries(fsrc)) { const c = int(n, 0, 99999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.fights[id] = c; }
   if (isObj(d.bookSeen)) for (const [id, n] of Object.entries(d.bookSeen)) { const c = int(n, 0, 999, 0); if (c > 0 && /^[a-z_]{1,32}$/.test(id)) s.bookSeen[id] = c; }
+  // Endgame: Glitch-Stufen + Übertaktung (fehlt alles -> Defaults)
+  const g = isObj(d.glitch) ? d.glitch : {};
+  const mid = (id) => /^[a-z_]{1,32}$/.test(id);
+  if (isObj(g.cleared)) for (const [id, n] of Object.entries(g.cleared)) { const c = cleanTier(n); if (c > 0 && mid(id)) s.glitch.cleared[id] = c; }
+  if (isObj(g.best)) for (const [id, m] of Object.entries(g.best)) {
+    if (!mid(id) || !isObj(m)) continue;
+    for (const [t, sec] of Object.entries(m)) { const tier = Math.floor(Number(t)), c = Number(sec) >= 1 ? int(sec, 1, 99999, 0) : 0; if (tier >= 1 && tier <= MAX_TIER && c > 0) (s.glitch.best[id] ??= {})[tier] = c; }
+  }
+  s.glitch.splitter = int(g.splitter, 0, MAX_SPLITTER, 0);
+  s.glitch.weekly = cleanWeekKey(g.weekly) ?? '';
+  const oc = isObj(d.oc) ? d.oc : {};
+  if (isObj(oc.weapons)) for (const type of Object.keys(WEAPON_TYPES)) { const c = cleanOc(oc.weapons[type]); if (c > 0) s.oc.weapons[type] = c; }
+  if (isObj(oc.armor)) for (const id of Object.keys(ARMOR_PIECES)) { const c = cleanOc(oc.armor[id]); if (c > 0) s.oc.armor[id] = c; }
   s.version = CURRENT_VERSION;
   return s;
 }

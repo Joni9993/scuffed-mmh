@@ -12,6 +12,8 @@ import { SHOP_STOCK, buy, sell, sellPrice } from '../meta/shop.js';
 import { esc, costChips, delta, reasonText, itemDetail, weaponTag, pieceSkillsHtml } from './hubKit.js';
 import { iconHtml } from './hubIcons.js';
 import { ARMORY_MAX } from '../meta/save.js';
+import { OC_MAX, OC_WEAPON_POWER, OC_ARMOR_PROT, ocPowerMul, ocProtMul, ocCost } from '../data/glitchTiers.js';
+import { ocOfWeapon, ocOfPiece, overclockWeapon, overclockArmor } from '../meta/endgame.js';
 
 const tabs = (cur, list, glow = {}) => `<div class="tabs">${list.map(([k, n]) => `<button class="tab${k === cur ? ' on' : ''}${glow[k] ? ' glow' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
 
@@ -26,7 +28,7 @@ const BRANCHED = (t) => t === 3 || t === 5 || t === 6 || t === 7;
 const nodeKey = (n) => `${n.tier}${n.branch ?? ''}`;
 
 export function createSchmiede(ctx) {
-  let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null, wnode = null; // wnode = tree node key being looked at
+  let tab = 'weapons', wsel = ctx.save.loadout.weapon, psel = null, wnode = null, osel = { kind: 'weapon', id: ctx.save.loadout.weapon }; // wnode = tree node key being looked at
   let pv = null, keepScroll = 0, host = null, typeOpen = false, scrollSel = true; // keepScroll: Scrollposition der linken Liste über Re-Render; scrollSel: gewählten Knoten ins Bild holen
 
   const elemTxt = (o) => Object.entries(o.elems ?? {}).map(([k, v]) => `${k === 'fire' ? 'Feuer' : k === 'shock' ? 'Schock' : k === 'rust' ? 'Rost' : k === 'blast' ? 'Sprengung' : k} ${v}`).join(', ') || '–';
@@ -49,7 +51,8 @@ export function createSchmiede(ctx) {
     const s = ctx.save, w = s.weapons[wsel];
     const opts = weaponUpgradeOptions(s, wsel);
     if (!wnode || !TREE.some((n) => nodeKey(n) === wnode)) wnode = opts.length ? nodeKey(opts[0]) : curNode(w);
-    const cur = weaponStats(wsel, w.tier, w.branch);
+    const ocm = ocPowerMul(ocOfWeapon(s, wsel)), withOc = (st) => ({ ...st, power: Math.round(st.power * ocm) }); // angezeigte Kraft inkl. Übertaktung
+    const cur = withOc(weaponStats(wsel, w.tier, w.branch));
     // Waffenart: eine Zeile (◀ Name ▶), Antippen des Namens klappt das Raster aller Arten auf – der Baum bleibt sichtbar
     const i = WEAPON_ORDER.indexOf(wsel), anyUp = WEAPON_ORDER.some((t) => t !== wsel && canUpgradeWeapon(s, t));
     const pager = `<div class="wpager"><button class="sm" data-a="wstep" data-k="-1" aria-label="Vorige Waffenart">◀</button>
@@ -74,7 +77,7 @@ export function createSchmiede(ctx) {
     }).join('');
     // right
     const node = TREE.find((n) => nodeKey(n) === wnode);
-    const nst = nodeState(node, w, opts), nxt = weaponStats(wsel, node.tier, node.branch);
+    const nst = nodeState(node, w, opts), nxt = withOc(weaponStats(wsel, node.tier, node.branch));
     const opt = opts.find((o) => o.tier === node.tier && o.branch === node.branch);
     let act;
     if (nst === 'next') act = `<div class="costs">${costChips(opt.cost, s)}</div><button class="btn small ${opt.ok ? 'go glow' : 'dis'}" data-a="upg" data-b="${node.branch ?? ''}">Schmieden</button>`;
@@ -100,7 +103,7 @@ export function createSchmiede(ctx) {
       return `<button class="acell${own ? ' own' : ''}${worn ? ' worn' : ''}${!own && canCraftArmor(s, id).ok ? ' glow' : ''}${psel === id ? ' sel' : ''}" data-a="psel" data-k="${id}">${SLOT_NAMES[sl]}${worn ? ' *' : own ? ' +' : ''}</button>`;
     }).join('')}</div>`).join('');
     const p = getPiece(psel), own = s.armorOwned[psel], worn = lo.armor[p.slot] === psel;
-    const before = armorProtection(lo.armor), after = armorProtection({ ...lo.armor, [p.slot]: psel });
+    const before = armorProtection(lo.armor, s.oc?.armor), after = armorProtection({ ...lo.armor, [p.slot]: psel }, s.oc?.armor);
     const sk0 = armorSkills(lo.armor), sk1 = armorSkills({ ...lo.armor, [p.slot]: psel });
     const ids = [...new Set([...Object.keys(sk0), ...Object.keys(sk1)])];
     const skTxt = ids.length ? ids.map((id) => `<span class="${(sk0[id] ?? 0) === (sk1[id] ?? 0) ? '' : (sk1[id] ?? 0) > (sk0[id] ?? 0) ? 'sk up' : 'sk dn'}">${SKILLS[id].name} ${sk0[id] ?? 0}→${sk1[id] ?? 0}</span>`).join('') : '<span>keine Macken</span>';
@@ -112,20 +115,49 @@ export function createSchmiede(ctx) {
     return { left: grid, info };
   }
 
+  // ---- Übertaktung (Glitch-Splitter): Waffenart +1..+5 (Kraft), getragenes Rüstungsteil +1..+5 (Schutz). Zusatzwert im Speicherstand.
+  const pips = (n) => '◆'.repeat(n) + '◇'.repeat(OC_MAX - n);
+  const splitChip = (s, need) => `<span class="chip split${need !== undefined && (s.glitch?.splitter ?? 0) < need ? ' no' : ''}" title="Glitch-Splitter">◆ ${s.glitch?.splitter ?? 0}${need !== undefined ? `/${need}` : ''}</span>`;
+  function ocView() {
+    const s = ctx.save, lo = s.loadout;
+    const wRows = WEAPON_ORDER.map((t) => { const n = ocOfWeapon(s, t), on = osel.kind === 'weapon' && osel.id === t;
+      return `<button class="rowbtn tn${on ? ' sel' : ''}${t === lo.weapon ? ' cur' : ''}" data-a="osel" data-kind="weapon" data-k="${t}"><span class="nm">${esc(WEAPON_TYPES[t].name)}<br><small>${pips(n)}${t === lo.weapon ? ' · getragen' : ''}</small></span></button>`; }).join('');
+    const aRows = SLOTS.map((sl) => { const id = lo.armor[sl], n = ocOfPiece(s, id), on = osel.kind === 'armor' && osel.id === id;
+      return `<button class="rowbtn tn${on ? ' sel' : ''}" data-a="osel" data-kind="armor" data-k="${id}"><span class="nm">${esc(getPiece(id).name)}<br><small>${SLOT_NAMES[sl]} · ${pips(n)}</small></span></button>`; }).join('');
+    const left = `<div class="sub">Waffen <small>(je Waffenart, bleibt beim Aufwerten)</small></div>${wRows}<div class="sub">Getragene Rüstung <small>(je Teil)</small></div>${aRows}`;
+    let info;
+    if (osel.kind === 'armor' && getPiece(osel.id) && lo.armor[getPiece(osel.id).slot] === osel.id) {
+      const p = getPiece(osel.id), n = ocOfPiece(s, p.id), cost = ocCost('armor', n);
+      const now = Math.round(p.prot * ocProtMul(n)), nxt = Math.round(p.prot * ocProtMul(n + 1));
+      info = `<div class="fi-h"><b>${esc(p.name)}</b> <small>${pips(n)}</small></div>
+        <div class="stats"><span>Schutz ${now}${cost !== null ? ` → ${nxt} ${delta(now, nxt)}` : ''}</span><span>je Stufe +${Math.round(OC_ARMOR_PROT * 100)} %</span></div>
+        <div class="costs">${cost !== null ? splitChip(s, cost) : '<span class="chip ok">Maximal übertaktet</span>'}</div>
+        <button class="btn small${cost !== null && (s.glitch?.splitter ?? 0) >= cost ? ' go glow' : ' dis'}" data-a="ocbuy">${cost !== null ? `Übertakten +${n + 1}` : 'Voll'}</button>`;
+    } else {
+      const t = WEAPON_TYPES[osel.id] ? osel.id : lo.weapon, w = s.weapons[t], st = weaponStats(t, w.tier, w.branch), n = ocOfWeapon(s, t), cost = ocCost('weapon', n);
+      const now = Math.round(st.power * ocPowerMul(n)), nxt = Math.round(st.power * ocPowerMul(n + 1));
+      info = `<div class="fi-h"><b>${esc(WEAPON_TYPES[t].name)}</b> <small>${esc(st.name)} · ${pips(n)}</small></div>
+        <div class="stats"><span>Kraft ${now}${cost !== null ? ` → ${nxt} ${delta(now, nxt)}` : ''}</span><span>je Stufe +${Math.round(OC_WEAPON_POWER * 100)} %</span></div>
+        <div class="costs">${cost !== null ? splitChip(s, cost) : '<span class="chip ok">Maximal übertaktet</span>'}</div>
+        <button class="btn small${cost !== null && (s.glitch?.splitter ?? 0) >= cost ? ' go glow' : ' dis'}" data-a="ocbuy">${cost !== null ? `Übertakten +${n + 1}` : 'Voll'}</button>`;
+    }
+    return { top: `<div class="note">Mehr Takt, mehr Rauch. ${splitChip(s)}</div>`, left, info };
+  }
+
   /** what the preview shows: worn outfit, with the weapon / armor piece that is being looked at */
   function previewGear() {
     const s = ctx.save, g = makeGear(buildLoadout(s));
     if (tab === 'weapons') {
       const n = TREE.find((x) => nodeKey(x) === wnode) ?? { tier: s.weapons[wsel].tier, branch: s.weapons[wsel].branch };
       g.weapon = { type: wsel, tier: n.tier, branch: n.branch };
-    } else if (psel) g.armor = { ...g.armor, [getPiece(psel).slot]: psel };
+    } else if (tab === 'armor' && psel) g.armor = { ...g.armor, [getPiece(psel).slot]: psel };
     return makeGear(g);
   }
 
   return {
     render() {
-      const v = tab === 'weapons' ? weaponsView() : armorView();
-      return `<div class="fg"><div class="fg-l"><div class="fg-tabs">${tabs(tab, [['weapons', 'Waffen'], ['armor', 'Rüstung']], { weapons: WEAPON_ORDER.some((t) => canUpgradeWeapon(ctx.save, t)), armor: SET_ORDER.some((set) => SLOTS.some((sl) => canCraftArmor(ctx.save, pieceId(set, sl)).ok)) })}</div>${v.top ?? ''}<div class="fg-scroll">${v.left}</div></div>
+      const v = tab === 'weapons' ? weaponsView() : tab === 'oc' ? ocView() : armorView();
+      return `<div class="fg"><div class="fg-l"><div class="fg-tabs">${tabs(tab, [['weapons', 'Waffen'], ['armor', 'Rüstung'], ['oc', 'Übertakten']], { weapons: WEAPON_ORDER.some((t) => canUpgradeWeapon(ctx.save, t)), armor: SET_ORDER.some((set) => SLOTS.some((sl) => canCraftArmor(ctx.save, pieceId(set, sl)).ok)) })}</div>${v.top ?? ''}<div class="fg-scroll">${v.left}</div></div>
         <div class="fg-p">${previewSlot(true)}</div><div class="fg-r"><div class="fg-info">${v.info}</div></div></div>`;
     },
     after(body) {
@@ -146,6 +178,11 @@ export function createSchmiede(ctx) {
       else if (a === 'wsel') { wsel = d.k; wnode = null; keepScroll = 0; typeOpen = false; scrollSel = true; }
       else if (a === 'wtypes') { typeOpen = !typeOpen; keepScroll = 0; scrollSel = !typeOpen; }
       else if (a === 'wstep') { const n = WEAPON_ORDER.length; wsel = WEAPON_ORDER[(WEAPON_ORDER.indexOf(wsel) + Number(d.k) + n) % n]; wnode = null; keepScroll = 0; typeOpen = false; scrollSel = true; }
+      else if (a === 'osel') osel = { kind: d.kind === 'armor' ? 'armor' : 'weapon', id: d.k };
+      else if (a === 'ocbuy') {
+        const r = osel.kind === 'armor' ? overclockArmor(s, osel.id) : overclockWeapon(s, WEAPON_TYPES[osel.id] ? osel.id : s.loadout.weapon);
+        if (r.ok) { ctx.commit(); ctx.toast(`Übertaktet auf +${r.level}. Es riecht nach heißem Metall.`); } else ctx.toast(reasonText(r), true);
+      }
       else if (a === 'wnode') wnode = d.k;
       else if (a === 'psel') psel = d.k;
       else if (a === 'equipw') { equipWeapon(s, wsel); ctx.commit(); ctx.toast(`${WEAPON_TYPES[wsel].name} ausgerüstet.`); }
@@ -176,7 +213,7 @@ export function createTruhe(ctx) {
   const curWeapon = (s) => { const t = s.loadout.weapon, w = s.weapons[t]; return weaponStats(t, w.tier, w.branch); };
   function gear() {
     const s = ctx.save, lo = s.loadout;
-    const prot = armorProtection(lo.armor), sk = armorSkills(lo.armor), fx = skillEffects(sk);
+    const prot = armorProtection(lo.armor, s.oc?.armor), sk = armorSkills(lo.armor), fx = skillEffects(sk);
     const cw = curWeapon(s);
     const slotBtn = (sl) => {
       const nm = sl === 'weapon' ? cw.name : getPiece(lo.armor[sl]).name;
@@ -201,10 +238,10 @@ export function createTruhe(ctx) {
     }).join('');
   }
   function armorChoices(s, sl) {
-    const lo = s.loadout, cur = lo.armor[sl], p0 = armorProtection(lo.armor);
+    const lo = s.loadout, cur = lo.armor[sl], p0 = armorProtection(lo.armor, s.oc?.armor);
     const owned = Object.keys(s.armorOwned).filter((id) => getPiece(id)?.slot === sl).sort((a, b) => getPiece(b).prot - getPiece(a).prot);
     return owned.map((id) => {
-      const p = getPiece(id), on = id === cur, p1 = armorProtection({ ...lo.armor, [sl]: id });
+      const p = getPiece(id), on = id === cur, p1 = armorProtection({ ...lo.armor, [sl]: id }, s.oc?.armor);
       return `<div class="tch2${on ? ' on' : ''}"><button class="rowbtn tch${on ? ' sel' : ''}" data-a="${on ? 'noop' : 'wear'}" data-k="${id}"><span class="nm">${esc(p.name)}<br><small>${esc(p.setName)}</small></span><small>${on ? '<span class="tr-on">getragen</span>' : `Schutz ${p1} ${delta(p0, p1)}`}</small></button>
         <div class="tch-sk">${pieceSkillsHtml(id, lo.armor)}</div></div>`;
     }).join('') || '<div class="note">Noch nichts. In der Schmiede gibt es Rüstung.</div>';

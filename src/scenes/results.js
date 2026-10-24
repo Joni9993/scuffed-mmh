@@ -28,7 +28,7 @@ export const resultsScene = {
     if (quest && rewards) {
       sum = saveStore.update((s) => { jrBefore = s.jr; return applyHuntResult(s, quest, rewards, { time: opts.time, kos: opts.stats?.kos, glitch: opts.stats?.perfect, carves: opts.carves }); });
     }
-    const awards = pickAwards({ ...opts.stats, time: opts.time }, opts.coopStats);
+    const awards = pickAwards({ ...opts.stats, time: opts.time }, opts.coopStats, { tierAward: sum?.glitch?.award });
     const win = result === 'win';
     const p = rewards?.parts ?? {};
     const el = document.createElement('div');
@@ -46,6 +46,9 @@ export const resultsScene = {
         ${rewards?.parts?.handedIn && Object.keys(p.handedIn).length ? `<div class="note">Abgegeben: ${Object.entries(p.handedIn).map(([id, n]) => `${n}× ${esc(ITEMS[id]?.name ?? id)}`).join(', ')}</div>` : ''}
         ${Object.keys(rewards?.used ?? {}).length ? list('Verbraucht', rewards.used) : ''}
         ${sum?.rp ? `<div class="rs-big">+${sum.rp} RP</div>` : ''}
+        ${sum?.glitch?.splitter ? `<div class="rs-big rs-split">◆ +${sum.glitch.splitter} Glitch-Splitter${sum.glitch.weeklyBonus ? ` <small>(davon ${sum.glitch.weeklyBonus} Wochenbonus)</small>` : ''}</div>` : ''}
+        ${sum?.best?.isNew ? `<div class="rs-jr">Neue Bestzeit! ${mmss(sum.best.time)}${sum.best.prev ? ` (vorher ${mmss(sum.best.prev)})` : ''}${sum.best.tier ? ` · Glitch-Stufe ${sum.best.tier}` : ''}</div>` : sum?.best ? `<div class="note">Zeit ${mmss(sum.best.time)}, Bestzeit ${mmss(sum.best.prev)}${sum.best.tier ? ` (Stufe ${sum.best.tier})` : ''}.</div>` : ''}
+        ${sum?.glitch?.unlocked ? `<div class="rs-jr">Glitch-Stufe ${sum.glitch.unlocked} freigeschaltet (${esc(quest?.name?.split(' · ')[0] ?? '')}). Am Auftragsbrett wählbar.</div>` : ''}
         ${sum?.keyOpen?.length ? `<div class="rs-jr">Rang-Auftrag freigeschaltet: ${sum.keyOpen.map((id) => esc(questById(id).name)).join(', ')}!</div>` : ''}
         ${sum?.book?.length ? `<div class="rs-jr">Kompendium (Spiegel): ${sum.book.map((b) => `${esc(b.monster)} – ${esc(b.name)}`).join(', ')}</div>` : ''}
         ${sum?.jrUp ? `<div class="rs-jr">Jägerrang ${sum.jrUp}! (vorher ${jrBefore}) Neue Aufträge am Brett.</div>` : ''}

@@ -46,7 +46,7 @@ export function createHuntTruhe(ctx) {
 
   function gear() {
     const lo = ch.loadout(), combat = ch.hooks.inCombat?.();
-    const prot = armorProtection(lo.armor), sk = armorSkills(lo.armor);
+    const prot = armorProtection(lo.armor, lo.oc?.armor), sk = armorSkills(lo.armor);
     const skillTxt = Object.entries(sk).map(([id, l]) => `${SKILLS[id].name} ${l}`).join(' · ') || 'keine Macken';
     const curKey = weaponKey(lo.weapon);
     const weap = ch.allWeapons().sort((a, b) => WEAPON_ORDER.indexOf(a.type) - WEAPON_ORDER.indexOf(b.type)).map((w) => {

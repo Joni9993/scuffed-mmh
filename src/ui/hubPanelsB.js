@@ -3,6 +3,9 @@ import { MUTATORS, MUTATOR_ORDER, MAX_MUTATORS, resolveMods, rewardLabel } from 
 import { FOODS, FOOD_ORDER } from '../data/foods.js';
 import { questList } from '../data/quests.js';
 import { registerFieldStudy, getBestTime, FIELDSTUDY_ID } from '../meta/fieldstudy.js';
+import { MAX_TIER, isTierQuest, tierInfo, tierQuestIds, WEEKLY_BONUS, splitterForWin, WEEKLY_TIER, SPLITTER_FACTOR } from '../data/glitchTiers.js';
+import { tierUnlocked, tierClearedOf, bestTime, monstersClearedAt } from '../meta/endgame.js';
+import { weeklyQuest } from '../meta/weekly.js';
 import { monsters } from '../game/monsters/index.js';
 import { cookMeal } from '../meta/crafting.js';
 import { missing } from '../meta/inventory.js';
@@ -57,36 +60,40 @@ export function createLocalBoard({ name, start }) {
   const emit = () => subs.forEach((f) => f());
   return {
     getPosted: () => (post ? [post] : []),
-    post(questId, mutators = []) { post = { id: 'local', quest: questId, mutators, host: name(), members: [{ name: name(), ready: false, me: true }], joined: true, mine: true }; emit(); },
+    post(questId, mutators = [], extra = {}) { post = { id: 'local', quest: questId, mutators, tier: extra.tier ?? 0, weekly: extra.weekly ?? null, host: name(), members: [{ name: name(), ready: false, me: true }], joined: true, mine: true }; emit(); },
     join() {},
     unpost() { post = null; emit(); },
     setReady(b) {
       if (!post) return;
       post.members[0].ready = !!b; emit();
-      if (b && post.members.length === 1) start(post.quest, post.mutators);
+      if (b && post.members.length === 1) start(post.quest, post.mutators, { tier: post.tier, weekly: post.weekly });
     },
     onChange(fn) { subs.add(fn); return () => subs.delete(fn); },
   };
 }
 
-export function startSolo(app, store, questId, mutators = []) {
+export function startSolo(app, store, questId, mutators = [], extra = {}) {
   const save = store.get();
-  app.goto('hunt', { quest: questId, mutators, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
+  app.goto('hunt', { quest: questId, mutators, tier: extra.tier ?? 0, weekly: extra.weekly ?? null, loadout: buildLoadout(save), name: save.name, seed: (Math.random() * 1e9) | 0 });
 }
 
 // Aufbau: oben (falls vorhanden) dein Auftrag bzw. offene Aufträge im Raum, darunter Reiter Jagd | Rotglut | Sammeln | ★ Woche.
 // Links die Liste (kompakt, gesperrte zusammengefasst), rechts der gewählte Auftrag mit Mutatoren und „Posten".
 const QB_TABS = [['hunt', 'Jagd'], ['rot', 'Rotglut'], ['gather', 'Sammeln'], ['week', '★ Woche']];
-const qCat = (q) => (q.id === FIELDSTUDY_ID ? 'week' : q.gather ? 'gather' : q.variant ? 'rot' : 'hunt');
+const qCat = (q) => (q.id === FIELDSTUDY_ID || q.id === 'wochenglitch' ? 'week' : q.gather ? 'gather' : q.variant ? 'rot' : 'hunt');
 const mName = (id) => (id ? monsters[id]?.name ?? id : null);
 
 export function createBrett(ctx) {
-  const adapter = ctx.adapter ?? createLocalBoard({ name: () => ctx.save.name, start: (q, mu) => { ctx.close(); startSolo(ctx.app, ctx.store, q, mu); } });
+  const adapter = ctx.adapter ?? createLocalBoard({ name: () => ctx.save.name, start: (q, mu, extra) => { ctx.close(); startSolo(ctx.app, ctx.store, q, mu, extra); } });
   const unsub = adapter.onChange?.(() => ctx.rerender());
   let sel = null, info = null, tab = null, mutOpen = false, showLocked = false;
   const chosen = []; // 0-2 Mutatoren fuer den naechsten Posten
   const mutHtml = (ids) => ids.map((i) => MUTATORS[i]).filter(Boolean).map((m) => `${esc(m.name)}${rewardLabel(m) ? ` (${rewardLabel(m)})` : ''}`).join(' · ');
-  const allQuests = () => [registerFieldStudy(), ...questList()];
+  const allQuests = () => [weeklyQuest(), registerFieldStudy(), ...questList()];
+  const tierSel = {}; // Brocken -> zuletzt gewählte Glitch-Stufe (nur Sitzung)
+  const names = (ids) => ids.map((i) => MUTATORS[i]?.name).filter(Boolean).map(esc).join(' · ');
+  /** gewählte Stufe: 0 ... freigeschaltet (nie mehr als der Spielstand erlaubt) */
+  const tierOf = (s, q) => (isTierQuest(q) ? Math.max(0, Math.min(tierUnlocked(s, q.monster), tierSel[q.monster] ?? 0)) : 0);
   const isOpen = (s, q) => !questLock(s, q) && (!q.monster || !!monsters[q.monster]);
 
   /** Standard: der nächste offene Rang-Auftrag, sonst der erste offene Auftrag im Reiter. */
@@ -103,7 +110,7 @@ export function createBrett(ctx) {
     const row = (q) => {
       const ok = isOpen(s, q), key = isKeyQuest(q, s), done = s.clears[q.id] ?? 0;
       return `<button class="rowbtn qrow${q.id === sel ? ' sel' : ''}${ok ? '' : ' lock'}${key && ok ? ' key' : ''}" data-a="qsel" data-k="${q.id}">
-        <span class="nm">${key ? '<i class="qk">RANG</i> ' : ''}${esc(q.name)}${done ? ` <small class="qd">✓${done}</small>` : ''}<br><small>${ok ? esc(mName(q.monster) ?? 'Sammelauftrag') : questLock(s, q) ? (questLock(s, q).reason === 'rp' ? `noch ${questLock(s, q).need} RP` : `ab JR ${questLock(s, q).need}`) : 'kommt noch'}</small></span>
+        <span class="nm">${key ? '<i class="qk">RANG</i> ' : ''}${esc(q.name)}${done ? ` <small class="qd">✓${done}</small>` : ''}<br><small>${ok ? esc(mName(q.monster) ?? 'Sammelauftrag') + (isTierQuest(q) && tierClearedOf(s, q.monster) ? ` · Glitch ${tierClearedOf(s, q.monster)}` : q.id === 'wochenglitch' && s.glitch?.weekly === q.weekly ? ' · diese Woche ✓' : '') : questLock(s, q) ? (questLock(s, q).reason === 'rp' ? `noch ${questLock(s, q).need} RP` : `ab JR ${questLock(s, q).need}`) : 'kommt noch'}</small></span>
         <span class="chip ok">${iconHtml('schrott')}${q.reward}</span></button>`;
     };
     let html = open.map(row).join('');
@@ -118,11 +125,12 @@ export function createBrett(ctx) {
     const q = allQuests().find((x) => x.id === sel);
     if (!q) return '<div class="note">Wähle links einen Auftrag.</div>';
     const isFs = q.id === FIELDSTUDY_ID, lock = questLock(s, q), ok = isOpen(s, q), key = isKeyQuest(q, s);
+    const isWk = q.id === 'wochenglitch', tierQ = isTierQuest(q), tier = tierOf(s, q);
     const fixed = q.mutators?.length ? q.mutators : null;
     const head = `<div class="fi-h"><b>${esc(q.name)}</b>${mName(q.monster) ? ` <small>· ${esc(mName(q.monster))}</small>` : ''}</div>
-      <div class="qchips"><span class="chip ok">${iconHtml('schrott')}${q.reward}</span>${q.rp ? `<span class="chip">+${q.rp} RP</span>` : ''}${key ? `<span class="chip qkey">Rang-Auftrag → JR ${q.jrUp}</span>` : ''}${s.clears[q.id] ? `<span class="chip">✓ ${s.clears[q.id]}×</span>` : ''}${s.best?.[q.id] ? `<span class="chip">⏱ ${mmss(s.best[q.id])}</span>` : ''}</div>`;
+      <div class="qchips"><span class="chip ok">${iconHtml('schrott')}${isWk ? q.reward : Math.round(q.reward * (tier ? tierInfo(tier).payMul : 1))}</span>${q.rp ? `<span class="chip">+${isWk ? q.rp : Math.round(q.rp * (tier ? tierInfo(tier).payMul : 1))} RP</span>` : ''}${key ? `<span class="chip qkey">Rang-Auftrag → JR ${q.jrUp}</span>` : ''}${s.clears[q.id] ? `<span class="chip">✓ ${s.clears[q.id]}×</span>` : ''}${bestTime(s, q, tier) ? `<span class="chip">⏱ ${mmss(bestTime(s, q, tier))}</span>` : ''}</div>`;
     if (!ok) return `${head}<div class="note">${esc(q.desc)}</div><div class="qlockmsg">${!lock ? 'Dieser Brocken ist noch nicht im Rostnest angekommen.' : lock.reason === 'rp' ? `Gesperrt: noch ${lock.need} RP sammeln.` : `Gesperrt: Jägerrang ${lock.need} nötig.`}</div>`;
-    if (mutOpen && !fixed) { // Mutator-Auswahl ersetzt kurz die Beschreibung
+    if (mutOpen && !fixed && !tier) { // Mutator-Auswahl ersetzt kurz die Beschreibung
       const tiles = MUTATOR_ORDER.map((id) => { const m = MUTATORS[id], on = chosen.includes(id);
         return `<button class="mtile${on ? ' on' : ''}" aria-pressed="${on}" data-a="mut" data-k="${id}"><span class="mt-n">${on ? '✓ ' : ''}${esc(m.name)}</span><span class="mt-r">${esc(rewardLabel(m))}</span></button>`; }).join('');
       const focus = info ?? chosen[chosen.length - 1];
@@ -130,11 +138,23 @@ export function createBrett(ctx) {
         <div class="muts">${tiles}</div><div class="mt-info">${focus && MUTATORS[focus] ? `<b>${esc(MUTATORS[focus].name)}:</b> ${esc(MUTATORS[focus].desc)}` : 'Antippen: Wirkung erscheint hier. Mehr Risiko, mehr Beute.'}</div>
         <div class="qact"><button class="btn small" data-a="mutclr">Keine</button><button class="btn small go" data-a="mutdone">Fertig</button></div>`;
     }
-    const mutLine = fixed ? `<div class="qmut"><small>Feste Mutatoren:</small> ${mutHtml(fixed)}</div>`
+    // Glitch-Stufe (nur echte Brocken-Jagden): Stepper 0-10, gesperrte Stufen sichtbar, feste Mutatoren der Stufe in der Zeile darunter
+    let tierRow = '';
+    if (tierQ) {
+      const un = tierUnlocked(s, q.monster), ti = tierInfo(tier);
+      const sub = !un ? 'Erst diesen Brocken besiegen.' : tier === 0 ? `Frei bis Stufe ${un}. Normaler Auftrag.` : `+${Math.round((ti.matMul - 1) * 100)} % Beute, Schrott &amp; RP +${Math.round((ti.payMul - 1) * 100)} % · ◆${splitterForWin(tier)}`;
+      tierRow = `<div class="qtier${un ? '' : ' lock'}"><button class="sm" data-a="tdn" data-k="${q.monster}" aria-label="Stufe runter"${tier <= 0 ? ' disabled' : ''}>−</button>
+        <span class="qt-n"><b>Glitch-Stufe ${tier}${tier === MAX_TIER ? ' (Max)' : ''}</b><small>${sub}</small></span>
+        <button class="sm${un > tierClearedOf(s, q.monster) && tier < un ? ' glow' : ''}" data-a="tup" data-k="${q.monster}" aria-label="Stufe hoch"${tier >= un ? ' disabled' : ''}>+</button></div>`;
+    }
+    const wkInfo = isWk ? `<div class="note">Erster Sieg der Woche: +${WEEKLY_BONUS} Splitter extra. Sonst ◆${splitterForWin(WEEKLY_TIER)} pro Sieg.${s.glitch?.weekly === q.weekly ? ' Diese Woche schon geholt.' : ''}</div>` : '';
+    const mutLine = isWk ? `<div class="qmut"><small>Wochen-Mutatoren:</small> ${names(q.mutators)}</div>`
+      : tier ? `<div class="qmut"><small>Stufe ${tier} · ${tierInfo(tier).mutators.length} Mutatoren:</small> ${names(tierInfo(tier).mutators)}</div>`
+      : fixed ? `<div class="qmut"><small>Feste Mutatoren:</small> ${mutHtml(fixed)}</div>`
       : `<button class="qmut tapline" data-a="mutopen"><small>Mutatoren:</small> ${chosen.length ? mutHtml(chosen) : 'keine'} <b>✎</b></button>`;
     const fsLine = isFs ? `<div class="note">Bestzeit diese Woche: ${getBestTime(q.fieldStudy) ? mmss(getBestTime(q.fieldStudy)) : '–'}</div>` : '';
     const mine = adapter.getPosted().find((p) => p.joined);
-    return `${head}<div class="qdesc">${esc(q.desc)}</div>${fsLine}${mutLine}
+    return `${head}<div class="qdesc">${esc(q.desc)}</div>${fsLine}${wkInfo}${tierRow}${mutLine}
       <div class="qact">${mine ? '<small>Du hast schon einen Auftrag offen (oben).</small>' : `<button class="btn small go" data-a="post" data-k="${q.id}">Posten</button>`}</div>`;
   }
 
@@ -144,8 +164,9 @@ export function createBrett(ctx) {
     const one = (p) => {
       const q = allQuests().find((x) => x.id === p.quest);
       const me = p.members.find((m) => m.me), alone = p.members.length <= 1;
-      const mu = p.mutators?.length ? p.mutators : q?.mutators ?? [];
-      return `<div class="qpost${p.joined ? ' mine' : ''}"><span class="nm"><b>${esc(q?.name ?? p.quest)}</b> <small>von ${esc(p.host)} · ${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(', ')}${mu.length ? ` · ${mutHtml(mu)}` : ''}</small></span>
+      const mu = p.mutators?.length ? p.mutators : q?.mutators ?? [], gl = p.tier > 0 || p.weekly;
+      const title = `${esc(q?.name ?? p.quest)}${p.tier > 0 ? ` · Glitch ${p.tier}` : p.weekly ? ' · Wochen-Glitch' : ''}`;
+      return `<div class="qpost${p.joined ? ' mine' : ''}"><span class="nm"><b>${title}</b> <small>von ${esc(p.host)} · ${p.members.map((m) => `${esc(m.name)}${m.ready ? ' ✓' : ''}`).join(', ')}${mu.length ? ` · ${gl ? names(mu) : mutHtml(mu)}` : ''}</small></span>
         ${p.joined ? `${p.mine ? '<button class="btn small" data-a="unpost">Zurückziehen</button>' : ''}<button class="btn small go" data-a="ready" data-k="${p.id}" data-r="${me?.ready ? 0 : 1}">${me?.ready ? 'Nicht bereit' : alone ? 'Los!' : 'Bereit'}</button>`
           : `<button class="btn small go" data-a="join" data-k="${p.id}">Beitreten</button>`}</div>`;
     };
@@ -170,7 +191,14 @@ export function createBrett(ctx) {
       if (a === 'mutdone') { mutOpen = false; return true; }
       if (a === 'mutclr') { chosen.length = 0; info = null; return true; }
       if (a === 'mut') { info = d.k; const i = chosen.indexOf(d.k); if (i >= 0) chosen.splice(i, 1); else { if (chosen.length >= MAX_MUTATORS) chosen.shift(); chosen.push(d.k); } return true; }
-      if (a === 'post') { const q = allQuests().find((x) => x.id === d.k); adapter.post(d.k, q?.mutators?.length ? [] : [...chosen]); return true; } // feste Mutatoren stecken im Auftrag
+      if (a === 'tup' || a === 'tdn') { const cur = Math.min(tierUnlocked(ctx.save, d.k), tierSel[d.k] ?? 0); tierSel[d.k] = Math.max(0, Math.min(tierUnlocked(ctx.save, d.k), cur + (a === 'tup' ? 1 : -1))); return true; }
+      if (a === 'post') {
+        const q = allQuests().find((x) => x.id === d.k), t = q ? tierOf(ctx.save, q) : 0;
+        if (q?.id === 'wochenglitch') adapter.post(q.baseId, [...q.mutators], { weekly: q.weekly }); // Basis-Auftrag + Wochenschlüssel: Gäste brauchen kein Datum
+        else if (t > 0) adapter.post(d.k, [], { tier: t }); // Mutatoren kommen aus der Stufentabelle (Host bereinigt)
+        else adapter.post(d.k, q?.mutators?.length ? [] : [...chosen]); // feste Mutatoren stecken im Auftrag
+        return true;
+      }
       if (a === 'join') { adapter.join(d.k); return true; }
       if (a === 'unpost') { adapter.unpost?.(); return true; }
       if (a === 'ready') { adapter.setReady(d.r === '1'); return true; }
@@ -181,9 +209,10 @@ export function createBrett(ctx) {
 
 function rankLine(s) {
   const { next, rp } = rankProgress(s);
-  if (!next) return `JR ${s.jr} · RP ${rp} (Höchstrang)`;
+  const sp = ` · ◆ ${s.glitch?.splitter ?? 0} Splitter`;
+  if (!next) return `JR ${s.jr} · RP ${rp} (Höchstrang)${sp}`;
   const k = next.keys.map((id) => questById(id).name).join(' oder ');
-  return `JR ${s.jr} · RP ${rp}/${next.rp} · nächster Rang: ${esc(k)}`;
+  return `JR ${s.jr} · RP ${rp}/${next.rp} · nächster Rang: ${esc(k)}${sp}`;
 }
 
 // ============================================================ Spiegel (Aussehen + Erfolge)
@@ -261,10 +290,24 @@ export function createSpiegel(ctx) {
       <div class="sub">Brocken &amp; Bestzeiten</div>${rows}${deathHtml()}`;
   }
 
-  const tabsHtml = () => `<div class="tabs">${[['look', 'Aussehen'], ['stats', 'Erfolge'], ['book', `Kompendium${bookNew() ? ' ●' : ''}`]].map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
+  // ---- Glitch-Stufen: Splitter, geschaffte Stufen, Bestzeiten je Brocken x Stufe (N = normaler Auftrag)
+  function glitchView() {
+    const s = ctx.save, tile = (k, v) => `<div class="stile"><b>${v}</b><small>${k}</small></div>`, mons = tierQuestIds().map((id) => questById(id));
+    const tiles = [['Glitch-Splitter', `◆ ${s.glitch?.splitter ?? 0}`], ['Stufe 5 geschafft', `${monstersClearedAt(s, 5)}/${mons.length}`], ['Stufe 10 geschafft', `${monstersClearedAt(s, 10)}/${mons.length}`], ['Wochen-Glitch', s.glitch?.weekly === weeklyQuest().weekly ? 'geholt' : 'offen']];
+    const rows = mons.map((q) => {
+      const cl = tierClearedOf(s, q.monster), un = tierUnlocked(s, q.monster);
+      const cells = Array.from({ length: MAX_TIER + 1 }, (_, t) => { const b = bestTime(s, q, t); return `<span class="gt${b ? ' on' : t <= un ? ' open' : ''}"><i>${t === 0 ? 'N' : 'S' + t}</i>${b ? mmss(b) : t <= un ? '·' : 'zu'}</span>`; }).join('');
+      return `<div class="row srow gr"><span class="nm"><b>${esc(mName(q.monster) ?? q.monster)}</b> <small>${un ? `geschafft bis Stufe ${cl}${cl >= MAX_TIER ? ' (Max)' : ''}` : 'noch nicht besiegt'}</small></span><div class="gtimes">${cells}</div></div>`;
+    }).join('');
+    return `<div class="fg-tabs">${tabsHtml()}</div><div class="stile-grid">${tiles.map(([k, v]) => tile(k, v)).join('')}</div>
+      <div class="sub">Bestzeiten je Brocken &amp; Glitch-Stufe</div>${rows}
+      <div class="note">Splitter: jeder Sieg auf Glitch-Stufe gibt Stufe × ${SPLITTER_FACTOR}, dazu der Wochen-Glitch. Ausgeben in der Schmiede: Übertaktung.</div>`;
+  }
+
+  const tabsHtml = () => `<div class="tabs">${[['look', 'Aussehen'], ['stats', 'Erfolge'], ['glitch', 'Glitch ◆'], ['book', `Kompendium${bookNew() ? ' ●' : ''}`]].map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-a="tab" data-k="${k}">${n}</button>`).join('')}</div>`;
 
   return {
-    render: () => (tab === 'look' ? look() : tab === 'book' ? bookView() : statsView()),
+    render: () => (tab === 'look' ? look() : tab === 'book' ? bookView() : tab === 'glitch' ? glitchView() : statsView()),
     after(body) {
       body.classList.toggle('fit', tab === 'look');
       const slot = body.querySelector('[data-gpv]');

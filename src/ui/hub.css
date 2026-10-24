@@ -73,6 +73,7 @@ small { opacity: .7; font-size: .88em; }
 .rs-panel { height: auto; max-height: 94vh; }
 .rs-panel .st-body { max-height: 66vh; }
 .rs-big { font-size: max(12px, 3.4vmin); color: #ffd84a; margin: 1vmin 0; display: flex; gap: 1vmin; align-items: center; }
+.rs-big.rs-split { color: #7fe8ff; text-shadow: 1px 0 #ff2bd6; } .rs-big small { font-size: .6em; color: #cfd0ff; }
 .rs-items { display: flex; flex-wrap: wrap; gap: .8vmin; } .rs-jr { margin: 1.4vmin 0; padding: 1vmin; background: #5a3ac0; text-align: center; animation: blink 1s steps(2) 4; }
 .rs-foot { flex: none; padding: 1vmin; text-align: center; border-top: 2px solid #3a3a9a; }
 
@@ -293,3 +294,19 @@ small { opacity: .7; font-size: .88em; }
 .tcells.c3 .tn .nm { font-size: max(9px, 1.8vmin); } .tcells .tn .mk { width: .9em; }
 .tcells .tn .nm small { opacity: .6; }
 @media (max-width: 760px) { .tcells.c3 { grid-template-columns: minmax(0, 1fr); } .tcells.c3 .tn .nm { font-size: max(10px, 2vmin); } }
+
+/* ===== Endgame: Glitch-Stufen (Auftragsbrett), Bestzeiten (Spiegel), Übertaktung (Schmiede) ===== */
+.qtier { display: flex; align-items: center; gap: 6px; padding: 4px 6px; background: rgba(16, 16, 64, .7); border: 1px solid #3a3a8a; border-left: 3px solid #7fe8ff; }
+.qtier .sm { flex: none; min-width: 44px; min-height: 44px; font-weight: bold; }
+.qtier .sm[disabled] { opacity: .35; pointer-events: none; }
+.qtier .qt-n { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: center; line-height: 1.2; }
+.qtier .qt-n b { color: #7fe8ff; text-shadow: 1px 0 #ff2bd6; } .qtier .qt-n small { font-size: max(10px, 1.9vmin); opacity: .85; }
+.qtier.lock .qt-n { opacity: .6; }
+.srow.gr { flex-direction: column; align-items: stretch; gap: 2px; }
+.gtimes { display: flex; flex-wrap: wrap; gap: 3px; }
+.gt { display: inline-flex; flex-direction: column; align-items: center; min-width: 44px; padding: 1px 3px; background: #101040; border: 1px solid #2a2a6a; font-size: max(10px, 1.9vmin); line-height: 1.25; opacity: .5; }
+.gt i { font-style: normal; color: #7fe8ff; font-size: .85em; } .gt.open { opacity: .85; } .gt.on { opacity: 1; color: #cfffcf; border-color: #3a8a4a; }
+.chip.split { color: #7fe8ff; border-color: #2a8aa0; }
+.ocbox { display: flex; flex-direction: column; gap: 4px; padding: 4px 6px; background: rgba(16, 16, 64, .7); border: 1px solid #3a3a8a; border-left: 3px solid #7fe8ff; }
+.ocbox .oc-h { display: flex; justify-content: space-between; gap: 6px; } .ocbox .oc-h b { color: #7fe8ff; }
+.ocbox .oc-pips { letter-spacing: 2px; color: #7fe8ff; }
