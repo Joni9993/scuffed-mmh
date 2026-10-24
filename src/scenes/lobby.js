@@ -7,6 +7,7 @@ import { WEAPON_TYPES } from '../data/weapons.js';
 import { quests } from '../data/quests.js';
 import { sfx } from '../audio/sfx.js';
 import { shareJoinLink } from '../meta/sharelink.js';
+import { saveStore } from '../meta/save.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const wname = (t) => WEAPON_TYPES[t]?.name ?? t;
@@ -117,14 +118,15 @@ export const lobbyScene = {
 
   /** Auftrag startet: Jagd mit dem Poster als Jagd-Host, Verkehr nur zwischen den Teilnehmern. */
   _begin(st) {
+    if (st.lateJoin && saveStore.get().settledHunts?.includes(st.postId)) { this.board.returned(); this.err = 'Diese Jagd hast du bereits abgeschlossen oder verlassen.'; this._render(); return; }
     this.handedOff = true;
     const board = this.board;
-    const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, roundId: st.postId, onDispose: () => board.returned() });
+    const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, roundId: st.postId, board, onDispose: () => board.returned() });
     const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, gear: m?.gear, slot }; });
     const slot = st.members.indexOf(session.myId);
     const o = this.opts;
     this.app.goto('hunt', {
-      quest: st.questId, mutators: st.mutators ?? [], glitchTier: st.tier ?? 0, weekly: st.weekly ?? null, seed: st.seed, net: channel, players, playerId: session.myId, slot: Math.max(0, slot),
+      quest: st.questId, mutators: st.mutators ?? [], glitchTier: st.tier ?? 0, weekly: st.weekly ?? null, seed: st.seed, net: channel, players, joining: !!st.lateJoin, playerId: session.myId, slot: Math.max(0, slot),
       name: session.profile.name, weapon: session.profile.weapon, tier: session.profile.tier, loadout: o.loadout, coop: true,
       god: o.god, nofx: o.nofx, aggro: st.hostId === session.myId ? o.aggro : false,
     });

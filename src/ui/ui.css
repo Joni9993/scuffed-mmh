@@ -290,3 +290,4 @@ body.glitch-mode .hud-name { text-shadow: 2px 0 #ff2bd6, -2px 0 #00ffe5; }
 .hud-status .st-schleim { color: #0b2a0b; background: #39ff14; padding: 0 .6vmin; animation: monflick .14s steps(1) infinite; }
 .dmg.blast { color: #ffb020; font-size: max(14px, 5vmin); text-shadow: 2px 2px 0 #4a2200, 0 0 8px #ff8a1a; z-index: 2; }
 .dmg.kf-pulse { color: #d8ffd0; font-size: max(16px, 6vmin); text-shadow: 2px 2px 0 #0b2a0b, 0 0 10px #39ff14; z-index: 2; }
+.hud-connection{position:absolute;left:50%;top:24%;transform:translateX(-50%);padding:14px;background:#10182af5;border:1px solid #9acdc3;max-width:80vw;color:#e9f6f0;font:14px/1.5 system-ui,sans-serif;text-align:center;z-index:25}.hud-connection[hidden]{display:none}.hud-connection span{display:block}.hud-connection button{margin-top:10px;min-height:44px;background:#4d2631;border:1px solid #d99b9b;color:#fff;padding:8px 14px}

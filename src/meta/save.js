@@ -29,6 +29,7 @@ export function defaultSave() {
     loadout: { weapon: 'gs', armor: { ...DEFAULT_ARMOR }, items: [] },
     meal: null,
     clears: {},
+    settledHunts: [],
     stats: { hunts: 0, wins: 0, fails: 0, kos: 0, carves: 0, crafted: 0, glitch: 0, playtime: 0 },
     kills: {}, // monsterId -> n
     best: {}, // questId -> fastest win (seconds)
@@ -89,6 +90,7 @@ export function sanitize(d) {
   const s = base;
   s.name = typeof d.name === 'string' && d.name.trim() ? cleanName(d.name) : base.name;
   s.nameSet = !!d.nameSet;
+  s.settledHunts = Array.isArray(d.settledHunts) ? [...new Set(d.settledHunts.filter(id => typeof id === 'string' && /^[\w-]{1,128}$/.test(id)))].slice(-64) : [];
   s.color = PLAYER_COLORS.includes(d.color) ? d.color : PLAYER_COLORS[0];
   s.jr = int(d.jr, 1, 14, 1);
   s.schrott = int(d.schrott, 0, MAX_SCHROTT, 0);

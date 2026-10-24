@@ -37,6 +37,7 @@ export class Effects {
     const e = fn(this, params);
     e.kind = kind;
     e.params = params;
+    e.age = 0;
     this.list.push(e);
     if (e.mesh) this.group.add(e.mesh);
     return e;
@@ -45,6 +46,7 @@ export class Effects {
   update(dt) {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const e = this.list[i];
+      e.age = (e.age ?? 0) + dt;
       if (e.update(dt) === false) {
         this.list.splice(i, 1);
         if (e.mesh) this.group.remove(e.mesh);
@@ -58,6 +60,17 @@ export class Effects {
     this.hunt.scene?.remove(this.group);
     for (const g of Object.values(this.geo)) g.dispose();
     this.list.length = 0;
+  }
+
+  snapshot() { return this.list.filter(e => e.kind && e.params).map(e => ({ kind: e.kind, params: e.params, age: e.age ?? 0 })); }
+  restore(list) {
+    for (const e of this.list) { if (e.mesh) this.group.remove(e.mesh); e.dispose?.(); }
+    this.list.length = 0;
+    for (const d of list ?? []) {
+      const e = this.spawn(d.kind, d.params); if (!e) continue;
+      e.age = Math.max(0, Number(d.age) || 0);
+      if (e.update(e.age) === false) { this.list.splice(this.list.indexOf(e), 1); e.mesh?.removeFromParent(); e.dispose?.(); }
+    }
   }
 }
 
@@ -84,6 +97,7 @@ function thrown(fx, p, { color, onLand }) {
 }
 
 const KINDS = {
+  surveyBeacon: (fx, p) => beacon(fx, p.pos, p.owner, 'surveyZones', ITEMS.leuchtsignal.effect, '#40f0d0'),
   venom: (fx, p) => thrown(fx, p, {
     color: '#a8c030',
     onLand(h, at) {
@@ -242,7 +256,7 @@ function beacon(fx, at, owner, key, cfg, color) {
   ring.scale.setScalar(r); mesh.add(ring);
   const post = new THREE.Mesh(fx.geo.cuke, mat); post.scale.set(0.5, 2, 0.5); post.position.y = 0.5; mesh.add(post);
   let t = cfg.duration;
-  return { mesh, dispose() {
+  return { mesh, kind: key === 'runeZones' ? 'runeanchor' : 'surveyBeacon', params: { pos: { ...at }, owner }, age: 0, dispose() {
     zone.active = false;
     const i = zones.indexOf(zone); if (i >= 0) zones.splice(i, 1);
     mat.dispose();

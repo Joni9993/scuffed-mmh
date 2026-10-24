@@ -20,13 +20,15 @@ export class Presence {
     this.tags = new Map();
     this.offs = [
       session.on(MSG.TP, (d, from) => {
-        if (from === session.myId) return;
+        if (from === session.myId || session.member(from)?.online === false) return;
         let b = this.bufs.get(from);
         if (!b) { b = new SnapBuffer({ angleKeys: ['rot'] }); this.bufs.set(from, b); }
         const s = decodeTown(d);
         b.push(s.T, s, nowS());
       }),
       session.on('peer-leave', ({ id }) => this.#drop(id)),
+      session.on('peer-away', ({ id }) => this.#drop(id)),
+      session.on('peer-return', ({ id }) => this.#drop(id)),
       session.on('role', () => { for (const id of [...this.bufs.keys()]) this.#drop(id); }),
     ];
   }

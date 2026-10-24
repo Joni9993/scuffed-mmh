@@ -65,6 +65,7 @@ export class HuntChest {
   #bump(id, d) {
     const v = (this.delta[id] ?? 0) + d;
     if (v) this.delta[id] = v; else delete this.delta[id];
+    this.onChange?.();
   }
 
   // ---- gear
@@ -88,6 +89,7 @@ export class HuntChest {
     this.weapon = { type: w.type, tier: w.tier, branch: w.branch ?? null };
     this.gearChanged = true;
     this.hooks.apply?.(this.loadout());
+    this.onChange?.();
     return { ok: true };
   }
 
@@ -99,6 +101,7 @@ export class HuntChest {
     this.armor = { ...this.armor, [p.slot]: pieceId };
     this.gearChanged = true;
     this.hooks.apply?.(this.loadout());
+    this.onChange?.();
     return { ok: true };
   }
 

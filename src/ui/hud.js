@@ -61,6 +61,8 @@ export function createHud(root) {
     <div class="hud-zone"></div>
     <div class="hud-center"></div>`;
   const inputNote = document.createElement('div'); inputNote.className = 'hud-input-feedback'; inputNote.setAttribute('role', 'status'); el.appendChild(inputNote);
+  const connectionNote = document.createElement('div'); connectionNote.className = 'hud-connection ui-hit'; connectionNote.hidden = true;
+  connectionNote.innerHTML = '<span role="status"></span><button type="button">Jagd verlassen</button>'; el.appendChild(connectionNote);
   root.appendChild(el);
   const q = (s) => el.querySelector(s);
   const refs = {
@@ -79,6 +81,7 @@ export function createHud(root) {
   });
   const cache = {};
   let currentHunt = null;
+  connectionNote.querySelector('button').addEventListener('click', () => currentHunt?.abandon());
   refs.mut.addEventListener('click', () => currentHunt?.showModifiers());
   const set = (k, v, fn) => { if (cache[k] !== v) { cache[k] = v; fn(v); } };
   let cine = null; // Optional cinematic preview overlay
@@ -87,6 +90,7 @@ export function createHud(root) {
 
   const api = {
     el,
+    connection(message, hunt) { if (hunt) currentHunt = hunt; connectionNote.hidden = !message; connectionNote.querySelector('span').textContent = message; },
     feedback(action, reason) {
       if (!settings.inputFeedback || !INPUT_NOTICES[reason] || performance.now() - lastNoteAt < 800) return;
       lastNoteAt = performance.now(); noteT = 1.1;

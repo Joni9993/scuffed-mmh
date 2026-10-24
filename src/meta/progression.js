@@ -83,17 +83,20 @@ export function buildRewards({ quest, result, gathered = {}, carved = {}, breaks
  * Jagd vorzeitig verlassen (Pause "Verlassen", Host weg, ...): kein Ergebnis-Bildschirm, aber Verbrauchtes (Spitzen, Tränke) wird
  * abgebucht, Truhen-Aenderungen und Gesammeltes bleiben erhalten. Sonst kaemen verschossene Spitzen in der Stadt zurueck.
  */
-export function applyHuntLeave(save, { used = {}, gathered = {}, chest = null } = {}) {
+export function applyHuntLeave(save, { used = {}, gathered = {}, chest = null, roundId } = {}) {
+  if (roundId && save.settledHunts?.includes(roundId)) return;
   applyChestResult(save, chest);
   for (const [id, n] of Object.entries(used)) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
   boxAddAll(save, gathered);
+  if (roundId) save.settledHunts = [...(save.settledHunts ?? []), roundId].slice(-64);
 }
 
 /**
- * Apply rewards + progression to the save. Idempotence is the caller's job (call once per hunt).
+ * Apply rewards + progression once per roundId; callers without a roundId must call once.
  * -> { schrott, added, sold, overflowSchrott, jrUp: newJr|null, firstClear }
  */
 export function applyHuntResult(save, quest, rewards, info = {}) {
+  if (info.roundId && save.settledHunts?.includes(info.roundId)) return { duplicate: true, schrott: 0, added: {}, sold: {}, overflowSchrott: 0, jrUp: null, firstClear: false, rp: 0, glitch: null, best: null, keyOpen: [], book: [] };
   applyChestResult(save, rewards.chest); // camp chest: crafted/spent stock + gear first, so crafted-and-used items net out
   for (const [id, n] of Object.entries(rewards.used ?? {})) boxRemove(save, id, Math.min(n, save.box[id] ?? 0));
   const r = boxAddAll(save, rewards.items ?? {});
@@ -134,6 +137,7 @@ export function applyHuntResult(save, quest, rewards, info = {}) {
   st.carves += Math.max(0, Math.floor(Number(info.carves) || 0));
   st.glitch += Math.max(0, Math.floor(Number(info.glitch) || 0));
   save.meal = null; // one meal per hunt
+  if (info.roundId) save.settledHunts = [...(save.settledHunts ?? []), info.roundId].slice(-64);
   return { schrott: rewards.schrott ?? 0, added: r.added, sold: r.sold, overflowSchrott: r.schrott, jrUp, firstClear, rp: (save.rp ?? 0) - rpBefore, glitch, best, keyOpen: openKeys(save).filter((k) => !openBefore.includes(k)), book };
 }
 

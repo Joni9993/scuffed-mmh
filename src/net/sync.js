@@ -14,6 +14,7 @@ import { monsters as MONDEFS } from '../game/monsters/index.js';
 import { encodeKkBar, decodeKkBar, decodeKk } from '../game/buffs.js'; // [KK]
 import { onKkEvent, kkState } from '../game/weapons/krachkiste.js'; // [KK]
 import { settings } from '../core/settings.js';
+import { HuntReconnect } from './huntReconnect.js';
 
 export const RATE_P = 15;   // Hz  Pirscher
 export const NEUTRAL_R = 75; // [L] neutral animals farther than this from every hunter are not replicated
@@ -48,6 +49,7 @@ export class HuntNet {
     for (const info of opts.players ?? []) if (info.id !== this.myId) this.#addRemote(info);
     if (this.isGuest) for (const m of hunt.monsters) m.authority = false;
     this.#bind();
+    if (net.roundId && net.onMembers) this.recovery = new HuntReconnect(this, opts);
   }
 
   // ---------- Vertrag
@@ -63,7 +65,7 @@ export class HuntNet {
   /** Mampfaffe-Futterklau: der getroffene Gast meldet dem Host, was er verloren hat (der Host setzt den Buff). Host selbst: direkt im Brocken. */
   sendSteal(monsterId, kind) { if (this.isGuest) this.net.sendHost(MSG.EV, { k: 'fst', m: monsterId, f: String(kind).slice(0, 16) }); }
   /** Gast: eigener Pirscher ist umgekippt -> Host zählt. */
-  sendKo() { this.net.sendHost(MSG.EV, { k: 'ko' }); }
+  sendKo() { this.net.sendHost(MSG.EV, { k: 'ko', n: this.hunt.stats.kos }); }
   /** Team feedback is decided by the host; guests can only request a validated ping. */
   broadcastTeam(event) { if (this.isHost) this.net.sendAll(MSG.EV, { k: 'teamEvent', event }); }
   requestTeamPing(ping) { if (this.isGuest) this.net.sendHost(MSG.EV, { k: 'teamPing', ping }); }
@@ -73,6 +75,7 @@ export class HuntNet {
   sendIa(d) { if (this.isHost) this.net.sendAll(MSG.EV, { k: 'ia', ...d }); else this.net.sendHost(MSG.EV, { k: 'ia', ...d }); }
   /** Host: Jagd ist entschieden -> alle. */
   sendEnd(result, reason) {
+    this.net.finish?.();
     this.ended = true;
     this.submitReport(true);
     this.net.sendAll(MSG.EV, { k: 'reportRequest', round: this.net.roundId });
@@ -109,6 +112,7 @@ export class HuntNet {
 
   // ---------- Fernspieler
   #addRemote(info) {
+    if (this.peers.has(info.id)) return;
     const hunt = this.hunt;
     const weapon = weapons[info.weapon] ? info.weapon : 'gs';
     const dg = decodeGear(info.gear); // [G] remote outfit; old clients send no code -> default armor, weapon type/tier as before
@@ -121,6 +125,10 @@ export class HuntNet {
     hunt.scene.add(p.mesh, p.rig.shadow);
     hunt.players.push(p);
     this.peers.set(info.id, { id: info.id, name: info.name, rtt: 0, player: p, buf: new SnapBuffer({ angleKeys: ['rot'] }) });
+    if (this.net.session?.member(info.id)?.online === false || this.net.pending?.includes(info.id)) {
+      p.netAway = true; p.mesh.visible = false; p.rig.shadow.visible = false;
+    }
+    hunt.report?.add(info);
     if (hunt.net) hunt.applyCoopScale?.(); // [N] Beitritt mitten in der Jagd
   }
   #removeRemote(id) {
@@ -135,6 +143,9 @@ export class HuntNet {
     hunt.hud?.center?.(`${peer.name} ist weg`, 2);
     hunt.applyCoopScale?.(); // [N] HP-Anteil bleibt, Max-HP sinkt
   }
+  addParticipant(info) { this.#addRemote(info); }
+  removeParticipant(id) { this.#removeRemote(id); }
+  pump() { return this.recovery?.pump() ?? false; }
 
   // ---------- Handler
   #bind() {
@@ -178,9 +189,9 @@ export class HuntNet {
       off.push(hunt.bus.on('revierAlly', () => n.sendAll(MSG.EV, { k: 'ally' }))); // Revierstreit: Bündnis-Banner auch bei Gästen
       off.push(hunt.bus.on('revierRetreat', () => n.sendAll(MSG.EV, { k: 'retreat' })));
     } else {
-      off.push(n.on(MSG.M, (d, from) => { if (from === n.hostId) this.#onM(d); }));
-      off.push(n.on(MSG.ATK, (d, from) => { if (from === n.hostId) this.#onAtk(d); }));
-      off.push(n.on(MSG.END, (d, from) => { if (from !== n.hostId || d.round !== n.roundId) return; this.ended = true; this.submitReport(true); hunt.netFinish(d.r, d.why); }));
+      off.push(n.on(MSG.M, (d, from) => { if (from === n.hostId && !this.recovery?.blocked && d.T / 1000 > (this.recovery?.cutoff ?? -Infinity)) this.#onM(d); }));
+      off.push(n.on(MSG.ATK, (d, from) => { if (from === n.hostId && !this.recovery?.blocked && d.T / 1000 > (this.recovery?.cutoff ?? -Infinity)) this.#onAtk(d); }));
+      off.push(n.on(MSG.END, (d, from) => { if (from !== n.hostId || d.round !== n.roundId || this.recovery?.blocked) return; this.ended = true; this.submitReport(true); hunt.netFinish(d.r, d.why); }));
       // Glitch-Konter eines Gastes auf einen Brocken-Angriff (Blendax-Blitz): der Host entscheidet, was der Brocken tut (def.onGlitchCounter)
       off.push(hunt.bus.on('gockelEnter', e => n.sendHost(MSG.EV, { k: 'genter', m: e.monster.id })));
       off.push(hunt.bus.on('glitchCounter', (e) => { const lh = e?.player?.lastHit; if (e?.player?.local && lh?.attackId) n.sendHost(MSG.EV, { k: 'gcm', a: lh.attackId, m: lh.monsterId }); }));
@@ -198,7 +209,8 @@ export class HuntNet {
   // ---------- Host: Treffer, Ereignisse
   #onHit(d, from) {
     const hunt = this.hunt;
-    const r = applyHitOnce(this.hits, from, decodeHit(d), (h) => {
+    if (hunt.result || this.recovery?.blocked || this.peers.get(from)?.player.netAway) return;
+    const r = applyHitOnce(this.hits, `${from}:${this.net.session?.member(from)?.epoch ?? 0}`, decodeHit(d), (h) => {
       const m = hunt.monsters.find((x) => x.id === h.monsterId);
       if (!m || !m.alive) return null;
       h.res.attackerId = from; // dem Absender vertrauen, nicht der Nutzlast
@@ -218,6 +230,7 @@ export class HuntNet {
   }
 
   #onEv(d, from) {
+    if (!d || this.recovery?.blocked) return;
     const hunt = this.hunt;
     switch (d.k) {
       case 'reportStats':
@@ -233,7 +246,7 @@ export class HuntNet {
         break;
       case 'teamPing': if (this.isHost && this.peers.has(from)) hunt.teamplay?.ping(d.ping, from); break;
       case 'teamEvent': if (this.isGuest && from === this.net.hostId) hunt.teamplay?.receive(d.event); break;
-      case 'ko': if (this.isHost) hunt.netKo(from); break;
+      case 'ko': if (this.isHost) { if (this.recovery) this.recovery.recordKo(from, d.n); else hunt.netKo(from); } break;
       case 'fst': if (this.isHost) { const m = this.#mon(d.m); if (m?.alive) m.def.onFoodStolen?.(m, d.f); } break; // Gast wurde bestohlen: Mampfaffe frisst das Futter
       case 'gcopy': { const m=this.#mon(d.m); if(this.peers.has(from) || from===this.net.hostId)m?.def.receiveCopies?.(m,from,d.c); break; }
       case 'genter': if (this.isHost) { const m = this.#mon(d.m); if (m?.def.id === 'gockelok' && ['reveal','entry'].includes(m.gockelForm)) m.formTime = 16; } break;
@@ -264,14 +277,15 @@ export class HuntNet {
       }
       case 'bye': if (from === this.net.hostId && this.isGuest) this.#hostGone(); else this.#removeRemote(from); break; // participant left the hunt (still in the room)
       case 'pb': {
+        if (from !== this.net.hostId) break;
         const m = this.#mon(d.m), part = m?.partById[d.p];
         if (this.isGuest && m && part) this.#replicateBreak(m, part);
         break;
       }
-      case 'st': { const m = this.#mon(d.m); if (this.isGuest && m) { m.attack = null; hunt.fx.clearMarker?.(m.id); } break; }
-      case 'ally': if (this.isGuest) this.hunt.bus.emit('revierAlly', {}); break;
-      case 'retreat': if (this.isGuest) this.hunt.bus.emit('revierRetreat', {}); break;
-      case 'dead': { const m = this.#mon(d.m); if (this.isGuest && m && m.alive) this.#kill(m); break; }
+      case 'st': { const m = this.#mon(d.m); if (this.isGuest && from === this.net.hostId && m) { m.attack = null; hunt.fx.clearMarker?.(m.id); } break; }
+      case 'ally': if (this.isGuest && from === this.net.hostId) this.hunt.bus.emit('revierAlly', {}); break;
+      case 'retreat': if (this.isGuest && from === this.net.hostId) this.hunt.bus.emit('revierRetreat', {}); break;
+      case 'dead': { const m = this.#mon(d.m); if (this.isGuest && from === this.net.hostId && m && m.alive) this.#kill(m); break; }
     }
   }
 
@@ -401,6 +415,7 @@ export class HuntNet {
   claimGather(pointId) { this.net.sendHost(MSG.GATHER, { id: pointId, c: 1 }); }
 
   #onGather(d, from) {
+    if (this.recovery?.blocked || this.isHost && this.peers.get(from)?.player.netAway || !this.isHost && this.net.hostId && from !== this.net.hostId) return;
     const hunt = this.hunt, world = hunt.world;
     const pt = world.gatherPoints?.find((g) => g.id === d.id);
     if (!pt) return;
@@ -432,6 +447,7 @@ export class HuntNet {
     }
   }
   #onFx(d, from) {
+    if (this.recovery?.blocked || this.peers.get(from)?.player.netAway) return;
     if (d.k === 'arrow') { this.#mirrorArrow(d.p, from); return; }
     if (!this.hunt.spawnEffect) return;
     this._inFx = true;
@@ -551,6 +567,7 @@ export class HuntNet {
   }
 
   dispose() {
+    this.recovery?.dispose();
     clearTimeout(this._reportTimer);
     this.reportWaiters.splice(0).forEach(fn => fn(this.hunt.report?.final));
     for (const f of this.offs) f();

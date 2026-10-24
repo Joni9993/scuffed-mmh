@@ -276,6 +276,8 @@ export const hubScene = {
         id: p.postId, quest: p.questId, mutators: p.mutators ?? [], tier: p.tier ?? 0, weekly: p.weekly ?? null, host: p.hostName, joined: p.joined, mine: p.hostId === session.myId,
         members: p.members.map((m) => ({ name: m.name, ready: m.ready, me: m.id === session.myId })),
       })),
+      getRunning: () => board.getRunning(),
+      joinRunning: id => board.joinRunning(id),
       post: (q, mu, extra) => board.post(q, mu, extra),
       join: (id) => board.join(id),
       unpost: () => board.leavePost(),
@@ -384,13 +386,14 @@ export const hubScene = {
     this.starting = true;
     closeStation();
     const save = saveStore.get(), loadout = { ...buildLoadout(save), color: this.myColor(save) }, o = this.opts; // room-resolved colour in the hunt too
+    if (st.lateJoin && save.settledHunts?.includes(st.postId)) { this.starting = false; this.board.returned(); this.toast('Diese Jagd hast du bereits abgeschlossen oder verlassen.'); return; }
     const base = { quest: st.questId, mutators: st.mutators ?? [], glitchTier: st.tier ?? 0, weekly: st.weekly ?? null, seed: st.seed, loadout, name: save.name, weapon: loadout.weapon.type, tier: loadout.weapon.tier, god: o.god, nofx: o.nofx };
     if (session.role === 'solo') { this.app.goto('hunt', { ...base, aggro: o.aggro }); return; }
     const board = this.board;
-    const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, roundId: st.postId, onDispose: () => board.returned() });
+    const channel = createHuntChannel(session, { hostId: st.hostId, members: st.members, roundId: st.postId, board, onDispose: () => board.returned() });
     const players = st.members.map((id, slot) => { const m = session.member(id); return { id, name: m?.name ?? id, weapon: m?.weapon ?? 'gs', tier: m?.tier ?? 1, gear: id === session.myId ? this._gearCode : this.presence.sample(id)?.gear ?? m?.gear, slot }; }); // [G] freshest known outfit (presence beats the join-time roster)
     const slot = st.members.indexOf(session.myId);
-    this.app.goto('hunt', { ...base, net: channel, players, playerId: session.myId, slot: Math.max(0, slot), coop: true, aggro: st.hostId === session.myId ? o.aggro : false });
+    this.app.goto('hunt', { ...base, net: channel, players, joining: !!st.lateJoin, playerId: session.myId, slot: Math.max(0, slot), coop: true, aggro: st.hostId === session.myId ? o.aggro : false });
   },
 
   // ---------------------------------------------------------------- emotes

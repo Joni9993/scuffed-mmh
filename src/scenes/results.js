@@ -8,6 +8,7 @@ import { settings } from '../core/settings.js';
 import { sfx } from '../audio/sfx.js';
 import { pickAwards } from '../meta/awards.js';
 import { teamReportHtml } from '../ui/teamReport.js';
+import { clearCheckpoint } from '../net/huntSnapshot.js';
 import '../ui/hub.css';
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -27,7 +28,8 @@ export const resultsScene = {
     const { quest, rewards, result = 'fail' } = opts;
     let sum = null, jrBefore = 1;
     if (quest && rewards) {
-      sum = saveStore.update((s) => { jrBefore = s.jr; return applyHuntResult(s, quest, rewards, { time: opts.time, kos: opts.stats?.kos, glitch: opts.stats?.perfect, carves: opts.carves }); });
+      sum = saveStore.update((s) => { jrBefore = s.jr; return applyHuntResult(s, quest, rewards, { roundId: opts.roundId, time: opts.time, kos: opts.stats?.kos, glitch: opts.stats?.perfect, carves: opts.carves }); });
+      clearCheckpoint(opts.roundId);
     }
     const awards = pickAwards({ ...opts.stats, time: opts.time }, opts.coopStats, { tierAward: sum?.glitch?.award });
     const win = result === 'win';
@@ -40,6 +42,7 @@ export const resultsScene = {
         <span class="st-npc">${esc(quest?.name ?? '')}${opts.time ? ` · ${mmss(opts.time)}` : ''}</span></div>
       <div class="st-body">
         <div class="note">${win ? 'Geschafft. Der Brocken sieht das anders, aber der hat auch keine Stimme.' : `${esc(opts.reason || 'Pech')}. Gesammeltes behältst du trotzdem.`}</div>
+        ${sum?.duplicate ? '<div class="note">Dieser Jagdabschluss wurde bereits verbucht.</div>' : ''}
         ${opts.reportMissing ? '<div class="note">Der gemeinsame Jagdbericht konnte nicht übertragen werden. Deine persönliche Beute ist davon nicht betroffen.</div>' : ''}
         ${shared ? '<nav class="results-tabs" aria-label="Jagdbericht"><button type="button" data-report-tab="team" aria-pressed="true">Die Truppe</button><button type="button" data-report-tab="loot" aria-pressed="false">Deine Beute</button></nav>' : ''}
         ${shared ? `<section data-report-view="team">${teamReportHtml(opts.report, opts.playerId)}</section>` : ''}

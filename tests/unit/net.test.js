@@ -101,7 +101,7 @@ describe('protocol roundtrips', () => {
     expect(d).toEqual({ id: 7, monsterId: 'jaggo', res: { partId: 'head', dmg: 104, elemDmg: 4, blunt: 30, crit: true, weak: true, attackerId: 'p2' } });
   });
   it('knows all message types of the architecture', () => {
-    expect(Object.values(MSG).sort()).toEqual(['atk', 'end', 'ev', 'fx', 'gather', 'hello', 'hit', 'lobby', 'm', 'p', 'ping', 'prof', 'qb', 'ready', 'start', 'tp'].sort());
+    expect(Object.values(MSG).sort()).toEqual(['atk', 'end', 'ev', 'fx', 'gather', 'hello', 'hit', 'lobby', 'm', 'p', 'ping', 'prof', 'qb', 'ready', 'room-close', 'room-leave', 'start', 'sync', 'tp'].sort());
   });
 });
 

@@ -174,6 +174,11 @@ export function createBrett(ctx) {
     if (mine) return `<div class="qtop">${one(mine)}</div>`;
     return others.length ? `<div class="qtop"><div class="sub">Offen im Raum</div>${others.map(one).join('')}</div>` : '';
   }
+  function runningHtml() {
+    const active = adapter.getRunning?.() ?? [];
+    if (!active.length) return '';
+    return `<div class="qtop"><div class="sub">Laufende Jagden</div>${active.map(p => `<div class="qpost"><div class="nm"><b>${esc(questList().find(q => q.id === p.questId)?.name ?? p.questId)}${p.tier ? ` · Glitch ${p.tier}` : ''}</b><small> · ${p.members.length}/6 Pirscher · ${esc(p.hostName)}${p.online ? '' : ' · Host verbindet sich neu'}</small></div><button class="btn small go" data-a="joinrunning" data-k="${esc(p.postId)}"${p.members.length >= 6 || !p.online ? ' disabled' : ''}>Mitjagen</button></div>`).join('')}</div>`;
+  }
 
   return {
     dispose() { unsub?.(); },
@@ -181,10 +186,11 @@ export function createBrett(ctx) {
       const s = ctx.save;
       pickDefault(s);
       const glow = { [qCat(questList().find((q) => isKeyQuest(q, s) && isOpen(s, q)) ?? { id: '-' })]: true };
-      return `${postedHtml()}<div class="qhead">${tabs(tab, QB_TABS, glow)}<small class="qrank">${rankLine(s)}</small></div>
+      return `${postedHtml()}${runningHtml()}<div class="qhead">${tabs(tab, QB_TABS, glow)}<small class="qrank">${rankLine(s)}</small></div>
         <div class="qb"><div class="qlist">${listHtml(s)}</div><div class="qdet">${detailHtml(s)}</div></div>`;
     },
     click(a, d) {
+      if (a === 'joinrunning') { adapter.joinRunning?.(d.k); return true; }
       if (a === 'tab') { tab = d.k; sel = null; mutOpen = false; showLocked = false; return true; }
       if (a === 'qsel') { sel = d.k; mutOpen = false; return true; }
       if (a === 'qlocked') { showLocked = true; return true; }

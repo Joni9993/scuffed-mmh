@@ -15,6 +15,7 @@ export function createRng(seed = 1) {
   rng.pick = (arr) => arr[Math.floor(next() * arr.length)];
   rng.sign = () => (next() < 0.5 ? -1 : 1);
   rng.state = () => s;
+  rng.restore = state => { if (Number.isFinite(state)) s = state >>> 0; };
   return rng;
 }
 export function hashSeed(str) {

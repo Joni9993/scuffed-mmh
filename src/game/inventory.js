@@ -52,6 +52,7 @@ export class HuntInventory {
       this.loot[id] = (this.loot[id] ?? 0) + added;
       if (carve) this.carved[id] = (this.carved[id] ?? 0) + added;
       this.#toBar(id);
+      this.onChange?.();
     }
     return added;
   }
@@ -64,6 +65,7 @@ export class HuntInventory {
       const k = Math.min(left, pool[id] ?? 0);
       if (k > 0) { pool[id] -= k; left -= k; if (!pool[id]) delete pool[id]; }
     }
+    this.onChange?.();
     return true;
   }
 
@@ -88,7 +90,7 @@ export class HuntInventory {
     if (!carryable(id) || n <= 0) return 0;
     if (!this.bar.includes(id) && this.bar.length >= BAR_MAX) return 0; // would vanish from the bar
     const k = Math.max(0, Math.min(n, ITEMS[id].max - this.count(id)));
-    if (k > 0) { this.brought[id] = (this.brought[id] ?? 0) + k; this.brought0[id] = (this.brought0[id] ?? 0) + k; this.#toBar(id); }
+    if (k > 0) { this.brought[id] = (this.brought[id] ?? 0) + k; this.brought0[id] = (this.brought0[id] ?? 0) + k; this.#toBar(id); this.onChange?.(); }
     return k;
   }
   /** Camp chest: give brought items back (only the brought pool; free/loot stay). Spent count (brought0 - brought) is unchanged. */
@@ -98,6 +100,7 @@ export class HuntInventory {
       this.brought[id] -= k; this.brought0[id] -= k;
       if (!this.brought[id]) delete this.brought[id];
       if (!this.brought0[id]) delete this.brought0[id];
+      this.onChange?.();
     }
     return k;
   }

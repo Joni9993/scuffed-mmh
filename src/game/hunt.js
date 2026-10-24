@@ -447,6 +447,7 @@ export class Hunt {
   }
 
   update(dt) {
+    if (this.net?.pump()) return;
     if (this.school?.menuOpen) { this.input.reset(); return; }
     if (this.panelOpen) this.input.reset(); // panel up: nothing reaches the player (also swallows stale key repeats)
     if (this.panelOpen && (this.player.state === 'ko' || this.result)) closeStation(); // knocked out: back to the world
@@ -529,6 +530,7 @@ export class Hunt {
 
   dispose() {
     this.disposed = true;
+    this.net?.dispose(); // capture final resumable state before destroying world, effects or inventory systems
     this.school?.dispose(); this.teamplay?.dispose(); this.tactics?.dispose();
     this.report?.dispose();
     this.finaleArsenal?.dispose();
@@ -546,7 +548,6 @@ export class Hunt {
     this.overlay?.remove();
     this.pauseEl?.remove();
     this.leaveEl?.remove(); // [N]
-    this.net?.dispose(); // [N]
     this.app.touch?.setVisible(false);
     this.input.reset();
     this.input.contextLabel = null; this.input.lockOn = false; this.input.glitchReady = false;

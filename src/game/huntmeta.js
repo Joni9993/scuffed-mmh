@@ -13,6 +13,7 @@ import { showOnboarding } from '../ui/onboarding.js';
 import { HuntChest } from '../meta/huntChest.js';
 import { saveStore, PLAYER_COLORS } from '../meta/save.js';
 import { makeGear, encodeGear } from '../data/gearlook.js';
+import { clearCheckpoint } from '../net/huntSnapshot.js';
 
 export const CARVE_HOLD = 0.8;
 export const CARVE_WINDOW = 45;
@@ -249,7 +250,9 @@ export class HuntMeta {
     if (this.phase === 'leaving' || h.training) return;
     this.phase = 'leaving';
     if (h.opts.loadout?.debug) return;
-    saveStore.update((s) => applyHuntLeave(s, { used: this.inv.used(), gathered: this.inv.gathered(), chest: this.chest.result() }));
+    const roundId = h.net?.net.roundId;
+    saveStore.update((s) => applyHuntLeave(s, { used: this.inv.used(), gathered: this.inv.gathered(), chest: this.chest.result(), roundId }));
+    clearCheckpoint(roundId);
   }
 
   async proceed() {
@@ -264,7 +267,7 @@ export class HuntMeta {
     this.phase = 'leaving';
     const report = h.net ? (h.net.ended ? await h.net.waitForReport() : null) : h.report?.snapshot(true);
     if (h.disposed) return;
-    const payload = { result, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, teamMoments: h.teamplay?.summary(), report, reportMissing: !!h.net?.ended && !report, playerId: h.player.id, carves: this.carveCount, debug: !!this.loadout.debug };
+    const payload = { result, roundId: h.net?.net.roundId, reason: h.reason ?? this.finalResult?.reason ?? '', quest: h.quest, rewards: this.rewards(result), time: (h.timeLimit ?? h.quest.timeLimit) - h.timeLeft, stats: h.stats, teamMoments: h.teamplay?.summary(), report, reportMissing: !!h.net?.ended && !report, playerId: h.player.id, carves: this.carveCount, debug: !!this.loadout.debug };
     queueMicrotask(() => h.app.goto('results', payload));
   }
 

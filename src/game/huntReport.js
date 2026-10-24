@@ -28,6 +28,9 @@ export function createHuntReport(h) {
     }),
   ];
   const api = {
+    add(p) { if (p?.id && !roster.has(p.id)) roster.set(p.id, { id: p.id, name: String(p.name ?? 'Pirscher').slice(0, 12), weapon: p.weaponId ?? p.weapon ?? 'gs' }); },
+    roster: () => [...roster.values()],
+    restoreLocal(s) { for (const k of ['damageTaken', 'potions', 'support']) local[k] = cleanReportStats(s)[k]; },
     local(freeze = false) {
       if (frozen) return { ...frozen };
       const s = cleanReportStats({ ...h.stats, ...local });
@@ -58,7 +61,7 @@ export function createHuntReport(h) {
       return report;
     },
     receive(report) {
-      if (!report || report.version !== 1 || !report.complete || !Array.isArray(report.players) || report.players.length > 6) return false;
+      if (!report || report.version !== 1 || !report.complete || !Array.isArray(report.players) || report.players.length > 64) return false;
       if (report.players.length !== roster.size || report.players.some(p => !p || !roster.has(p.id)) || new Set(report.players.map(p => p.id)).size !== report.players.length) return false;
       final = { version: 1, complete: true, players: report.players.map(p => ({ ...roster.get(p.id), name: String(p.name ?? roster.get(p.id).name).slice(0, 12), weapon: typeof p.weapon === 'string' ? p.weapon.slice(0, 12) : roster.get(p.id).weapon, ...cleanReportStats(p), breaks: Math.floor(Math.max(0, Math.min(1000, Number(p.breaks) || 0))), stuns: Math.floor(Math.max(0, Math.min(1000, Number(p.stuns) || 0))), complete: !!p.complete, left: !!p.left })), moments: (Array.isArray(report.moments) ? report.moments : []).filter(e => e && typeof e === 'object').slice(0, 12).map(e => ({ title: String(e.title ?? '').slice(0, 80), text: String(e.text ?? '').slice(0, 300), at: Number.isFinite(e.at) ? Math.max(0, e.at) : 0 })) };
       return true;

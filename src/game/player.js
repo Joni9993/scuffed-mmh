@@ -84,7 +84,7 @@ export class Player {
   get hp() { return this.v.hp; }
   get maxHp() { return this.v.maxHp; }
   get stamina() { return this.v.stamina; }
-  get alive() { return this.state !== 'ko'; }
+  get alive() { return this.state !== 'ko' && !this.netAway; }
   /** Glitch-Modus aktiv? (Waffen-Glitches / HUD) */
   get glitching() { return !!this.glitch?.active; }
   /** Grundbonus im Glitch-Modus (x1,3), von hunt.playerHit in dmgMul eingerechnet */
@@ -187,7 +187,7 @@ export class Player {
    * @returns 'hit'|'block'|'iframe'|'perfect'|'ignored'
    */
   takeHit(h) {
-    if (this.state === 'ko') return 'ignored';
+    if (!this.alive) return 'ignored';
     this.lastHit = h.attackId ? { attackId: h.attackId, monsterId: h.monster?.def?.id ?? null, time: (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000 } : null; // Tod-Log
     const rp = this.state === 'roll' ? rollPhase(this.rollT, this.iframeExtend) : null;
     if (rp?.invuln) {
@@ -735,6 +735,7 @@ export class Player {
   // [N] network avatar (local:false): state/pose come from snapshots, no input or physics.
   // remote = { state, rollT, sprint, speed, wp: {name, t, charging, level}|null, air }
   updateRemote(dt) {
+    if (this.netAway) { this.mesh.visible = false; this.rig.shadow.visible = false; return; }
     const r = this.remote;
     if (!r) return;
     this.time += dt;

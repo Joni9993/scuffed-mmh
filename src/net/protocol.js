@@ -5,6 +5,7 @@ export const MSG = {
   HELLO: 'hello', PROFILE: 'prof', LOBBY: 'lobby', READY: 'ready', START: 'start',
   P: 'p', M: 'm', ATK: 'atk', HIT: 'hit', GATHER: 'gather', FX: 'fx', EV: 'ev', END: 'end', PING: 'ping',
   QB: 'qb', TP: 'tp', // Auftragsbrett (Raum-Ebene), Stadt-Präsenz
+  SYNC: 'sync', LEAVE: 'room-leave', CLOSE: 'room-close',
 };
 /** Nachrichten, die der Host von Gästen an die anderen Gäste weiterreicht (alles andere geht nur an den Host). */
 export const RELAY = new Set([MSG.P, MSG.FX, MSG.GATHER, MSG.TP]);
@@ -179,6 +180,7 @@ export const ERR = {
   timeout: 'Verbindung blockiert – anderes Netz/WLAN probieren',
   hostLeft: 'Host hat die Jagd verlassen',
   badCode: 'Code: 4 Buchstaben',
+  resume: 'Der reservierte Platz ist abgelaufen. Bitte dem Raum erneut beitreten.',
 };
 
 // ---------- Stadt-Präsenz (Raum-Ebene, ~10 Hz): Position/Blickrichtung/Animation
